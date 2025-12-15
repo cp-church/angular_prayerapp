@@ -1,17 +1,22 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PromptCard } from '../PromptCard';
-import type { PrayerPrompt } from '../../types/prayer';
-import { PrayerType } from '../../types/prayer';
 
-describe('PromptCard', () => {
-  const mockPrompt: PrayerPrompt = {
-    id: 'prompt-1',
-    title: 'Prayer for Healing',
-    description: 'Pray for physical and emotional healing for those who are sick or suffering.',
-    type: PrayerType.HEALING,
-    created_at: '2024-01-01T00:00:00Z',
-    updated_at: '2024-01-01T00:00:00Z'
+// Mock window.confirm
+const mockConfirm = vi.fn();
+Object.defineProperty(window, 'confirm', {
+  value: mockConfirm,
+  writable: true
+});
+
+describe('PromptCard Component', () => {
+  const mockPrompt = {
+    id: '1',
+    title: 'Daily Prayer',
+    type: 'Guidance' as const,
+    description: 'Take time to seek God\'s guidance for your day',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   };
 
   const mockOnDelete = vi.fn();
@@ -19,356 +24,316 @@ describe('PromptCard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockConfirm.mockReturnValue(true); // Default to confirming delete
   });
 
-  describe('Rendering', () => {
-    it('renders prompt title', () => {
-      render(
-        <PromptCard 
-          prompt={mockPrompt} 
-          isAdmin={false}
-        />
-      );
-      
-      expect(screen.getByText('Prayer for Healing')).toBeDefined();
-    });
+  it('renders prompt details correctly', () => {
+    render(
+      <PromptCard
+        prompt={mockPrompt}
+        isAdmin={false}
+      />
+    );
 
-    it('renders prompt description', () => {
-      render(
-        <PromptCard 
-          prompt={mockPrompt} 
-          isAdmin={false}
-        />
-      );
-      
-      expect(screen.getByText('Pray for physical and emotional healing for those who are sick or suffering.')).toBeDefined();
-    });
-
-    it('renders lightbulb icon', () => {
-      render(
-        <PromptCard 
-          prompt={mockPrompt} 
-          isAdmin={false}
-        />
-      );
-      
-      const lightbulbIcon = document.querySelector('.lucide-lightbulb');
-      expect(lightbulbIcon).toBeDefined();
-    });
-
-    it('renders type badge with correct text', () => {
-      render(
-        <PromptCard 
-          prompt={mockPrompt} 
-          isAdmin={false}
-          onTypeClick={mockOnTypeClick}
-        />
-      );
-      
-      expect(screen.getByText('Healing')).toBeDefined();
-    });
-
-    it('renders tag icon in type badge', () => {
-      render(
-        <PromptCard 
-          prompt={mockPrompt} 
-          isAdmin={false}
-          onTypeClick={mockOnTypeClick}
-        />
-      );
-      
-      const tagIcon = document.querySelector('.lucide-tag');
-      expect(tagIcon).toBeDefined();
-    });
+    expect(screen.getByText('Daily Prayer')).toBeInTheDocument();
+    expect(screen.getByText('Take time to seek God\'s guidance for your day')).toBeInTheDocument();
+    expect(screen.getByText('Guidance')).toBeInTheDocument();
   });
 
-  describe('Type Badge Interaction', () => {
-    it('calls onTypeClick when type badge is clicked', () => {
-      render(
-        <PromptCard 
-          prompt={mockPrompt} 
-          isAdmin={false}
-          onTypeClick={mockOnTypeClick}
-        />
-      );
-      
-      const typeBadge = screen.getByText('Healing');
-      fireEvent.click(typeBadge);
-      
-      expect(mockOnTypeClick).toHaveBeenCalledWith('Healing');
-      expect(mockOnTypeClick).toHaveBeenCalledTimes(1);
-    });
+  it('displays type badge with correct styling', () => {
+    render(
+      <PromptCard
+        prompt={mockPrompt}
+        isAdmin={false}
+      />
+    );
 
-    it('displays default styling when type is not selected', () => {
-      render(
-        <PromptCard 
-          prompt={mockPrompt} 
-          isAdmin={false}
-          onTypeClick={mockOnTypeClick}
-          isTypeSelected={false}
-        />
-      );
-      
-      const typeBadge = screen.getByText('Healing').closest('button');
-      expect(typeBadge?.className).toContain('bg-gray-100');
-      expect(typeBadge?.className).not.toContain('bg-[#988F83]');
-    });
+    const typeButton = screen.getByRole('button', { name: /guidance/i });
+    expect(typeButton).toHaveClass('bg-gray-100');
+    expect(typeButton).toHaveClass('text-gray-700');
+  });
 
-    it('displays selected styling when type is selected', () => {
-      render(
-        <PromptCard 
-          prompt={mockPrompt} 
-          isAdmin={false}
-          onTypeClick={mockOnTypeClick}
-          isTypeSelected={true}
-        />
-      );
-      
-      const typeBadge = screen.getByText('Healing').closest('button');
-      expect(typeBadge?.className).toContain('bg-[#988F83]');
-      expect(typeBadge?.className).toContain('text-white');
-    });
+  it('shows selected type badge styling when isTypeSelected is true', () => {
+    render(
+      <PromptCard
+        prompt={mockPrompt}
+        isAdmin={false}
+        isTypeSelected={true}
+      />
+    );
 
-    it('shows filter title when type is not selected', () => {
-      render(
-        <PromptCard 
-          prompt={mockPrompt} 
-          isAdmin={false}
-          onTypeClick={mockOnTypeClick}
-          isTypeSelected={false}
-        />
-      );
-      
-      const typeBadge = screen.getByText('Healing').closest('button');
-      expect(typeBadge?.getAttribute('title')).toBe('Filter by Healing');
-    });
+    const typeButton = screen.getByRole('button', { name: /guidance/i });
+    expect(typeButton).toHaveClass('bg-[#988F83]');
+    expect(typeButton).toHaveClass('text-white');
+  });
 
-    it('shows remove filter title when type is selected', () => {
-      render(
-        <PromptCard 
-          prompt={mockPrompt} 
-          isAdmin={false}
-          onTypeClick={mockOnTypeClick}
-          isTypeSelected={true}
-        />
-      );
-      
-      const typeBadge = screen.getByText('Healing').closest('button');
-      expect(typeBadge?.getAttribute('title')).toBe('Remove Healing filter');
-    });
+  it('calls onTypeClick when type button is clicked', () => {
+    render(
+      <PromptCard
+        prompt={mockPrompt}
+        isAdmin={false}
+        onTypeClick={mockOnTypeClick}
+      />
+    );
 
-    it('does not crash when onTypeClick is not provided', () => {
-      render(
-        <PromptCard 
-          prompt={mockPrompt} 
-          isAdmin={false}
-        />
-      );
-      
-      const typeBadge = screen.getByText('Healing');
-      expect(() => fireEvent.click(typeBadge)).not.toThrow();
+    const typeButton = screen.getByRole('button', { name: /guidance/i });
+    fireEvent.click(typeButton);
+
+    expect(mockOnTypeClick).toHaveBeenCalledWith('Guidance');
+  });
+
+  it('shows delete button for admin users', () => {
+    render(
+      <PromptCard
+        prompt={mockPrompt}
+        isAdmin={true}
+        onDelete={mockOnDelete}
+      />
+    );
+
+    const deleteButton = screen.getByRole('button', { name: /delete prompt/i });
+    expect(deleteButton).toBeInTheDocument();
+  });
+
+  it('hides delete button for non-admin users', () => {
+    render(
+      <PromptCard
+        prompt={mockPrompt}
+        isAdmin={false}
+        onDelete={mockOnDelete}
+      />
+    );
+
+    const deleteButton = screen.queryByRole('button', { name: /delete prompt/i });
+    expect(deleteButton).not.toBeInTheDocument();
+  });
+
+  it('hides delete button when onDelete is not provided', () => {
+    render(
+      <PromptCard
+        prompt={mockPrompt}
+        isAdmin={true}
+      />
+    );
+
+    const deleteButton = screen.queryByRole('button', { name: /delete prompt/i });
+    expect(deleteButton).not.toBeInTheDocument();
+  });
+
+  it('shows confirmation dialog when delete button is clicked', () => {
+    render(
+      <PromptCard
+        prompt={mockPrompt}
+        isAdmin={true}
+        onDelete={mockOnDelete}
+      />
+    );
+
+    const deleteButton = screen.getByRole('button', { name: /delete prompt/i });
+    fireEvent.click(deleteButton);
+
+    expect(mockConfirm).toHaveBeenCalledWith('Are you sure you want to delete this prayer prompt?');
+  });
+
+  it('calls onDelete when confirmation is accepted', async () => {
+    mockOnDelete.mockResolvedValue(undefined);
+    mockConfirm.mockReturnValue(true);
+
+    render(
+      <PromptCard
+        prompt={mockPrompt}
+        isAdmin={true}
+        onDelete={mockOnDelete}
+      />
+    );
+
+    const deleteButton = screen.getByRole('button', { name: /delete prompt/i });
+    fireEvent.click(deleteButton);
+
+    await waitFor(() => {
+      expect(mockOnDelete).toHaveBeenCalledWith('1');
     });
   });
 
-  describe('Admin Delete Functionality', () => {
-    it('shows delete button when user is admin', () => {
-      render(
-        <PromptCard 
-          prompt={mockPrompt} 
-          isAdmin={true}
-          onDelete={mockOnDelete}
-        />
-      );
-      
-      const deleteButton = screen.getByTitle('Delete prompt');
-      expect(deleteButton).toBeDefined();
-    });
+  it('does not call onDelete when confirmation is cancelled', () => {
+    mockConfirm.mockReturnValue(false);
 
-    it('does not show delete button when user is not admin', () => {
-      render(
-        <PromptCard 
-          prompt={mockPrompt} 
-          isAdmin={false}
-          onDelete={mockOnDelete}
-        />
-      );
-      
-      const deleteButton = screen.queryByTitle('Delete prompt');
-      expect(deleteButton).toBeNull();
-    });
+    render(
+      <PromptCard
+        prompt={mockPrompt}
+        isAdmin={true}
+        onDelete={mockOnDelete}
+      />
+    );
 
-    it('does not show delete button when onDelete is not provided', () => {
-      render(
-        <PromptCard 
-          prompt={mockPrompt} 
-          isAdmin={true}
-        />
-      );
-      
-      const deleteButton = screen.queryByTitle('Delete prompt');
-      expect(deleteButton).toBeNull();
-    });
+    const deleteButton = screen.getByRole('button', { name: /delete prompt/i });
+    fireEvent.click(deleteButton);
 
-    it('shows confirmation dialog when delete button is clicked', () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-      
-      render(
-        <PromptCard 
-          prompt={mockPrompt} 
-          isAdmin={true}
-          onDelete={mockOnDelete}
-        />
-      );
-      
-      const deleteButton = screen.getByTitle('Delete prompt');
-      fireEvent.click(deleteButton);
-      
-      expect(confirmSpy).toHaveBeenCalledWith('Are you sure you want to delete this prayer prompt?');
-      
-      confirmSpy.mockRestore();
-    });
-
-    it('calls onDelete when deletion is confirmed', async () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-      mockOnDelete.mockResolvedValue(undefined);
-      
-      render(
-        <PromptCard 
-          prompt={mockPrompt} 
-          isAdmin={true}
-          onDelete={mockOnDelete}
-        />
-      );
-      
-      const deleteButton = screen.getByTitle('Delete prompt');
-      fireEvent.click(deleteButton);
-      
-      await waitFor(() => {
-        expect(mockOnDelete).toHaveBeenCalledWith('prompt-1');
-        expect(mockOnDelete).toHaveBeenCalledTimes(1);
-      });
-      
-      confirmSpy.mockRestore();
-    });
-
-    it('does not call onDelete when deletion is cancelled', () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-      
-      render(
-        <PromptCard 
-          prompt={mockPrompt} 
-          isAdmin={true}
-          onDelete={mockOnDelete}
-        />
-      );
-      
-      const deleteButton = screen.getByTitle('Delete prompt');
-      fireEvent.click(deleteButton);
-      
-      expect(mockOnDelete).not.toHaveBeenCalled();
-      
-      confirmSpy.mockRestore();
-    });
-
-    it('handles delete errors gracefully', async () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      const error = new Error('Delete failed');
-      mockOnDelete.mockRejectedValue(error);
-      
-      render(
-        <PromptCard 
-          prompt={mockPrompt} 
-          isAdmin={true}
-          onDelete={mockOnDelete}
-        />
-      );
-      
-      const deleteButton = screen.getByTitle('Delete prompt');
-      fireEvent.click(deleteButton);
-      
-      await waitFor(() => {
-        expect(consoleErrorSpy).toHaveBeenCalledWith('Error deleting prompt:', error);
-      });
-      
-      confirmSpy.mockRestore();
-      consoleErrorSpy.mockRestore();
-    });
+    expect(mockOnDelete).not.toHaveBeenCalled();
   });
 
-  describe('Styling and Layout', () => {
-    it('applies correct container classes', () => {
-      const { container } = render(
-        <PromptCard 
-          prompt={mockPrompt} 
-          isAdmin={false}
-        />
-      );
-      
-      const card = container.firstChild as HTMLElement;
-      expect(card.className).toContain('bg-white');
-      expect(card.className).toContain('rounded-lg');
-      expect(card.className).toContain('shadow-md');
+  it('handles delete error gracefully', async () => {
+    mockOnDelete.mockRejectedValue(new Error('Delete failed'));
+    mockConfirm.mockReturnValue(true);
+
+    // Mock console.error to avoid test output pollution
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(
+      <PromptCard
+        prompt={mockPrompt}
+        isAdmin={true}
+        onDelete={mockOnDelete}
+      />
+    );
+
+    const deleteButton = screen.getByRole('button', { name: /delete prompt/i });
+    fireEvent.click(deleteButton);
+
+    await waitFor(() => {
+      expect(mockOnDelete).toHaveBeenCalledWith('1');
     });
 
-    it('applies dark mode classes', () => {
-      const { container } = render(
-        <PromptCard 
-          prompt={mockPrompt} 
-          isAdmin={false}
-        />
-      );
-      
-      const card = container.firstChild as HTMLElement;
-      expect(card.className).toContain('dark:bg-gray-800');
-    });
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Error deleting prompt:', expect.any(Error));
 
-    it('preserves whitespace in description', () => {
-      const multiLinePrompt: PrayerPrompt = {
-        ...mockPrompt,
-        description: 'Line 1\nLine 2\nLine 3'
-      };
-      
-      const { container } = render(
-        <PromptCard 
-          prompt={multiLinePrompt} 
-          isAdmin={false}
-        />
-      );
-      
-      const description = container.querySelector('.whitespace-pre-wrap');
-      expect(description).toBeDefined();
-      expect(description?.textContent).toContain('Line 1');
-      expect(description?.textContent).toContain('Line 2');
-      expect(description?.textContent).toContain('Line 3');
-    });
+    consoleErrorSpy.mockRestore();
   });
 
-  describe('Different Prompt Types', () => {
-    it('renders correctly with different type', () => {
-      const familyPrompt: PrayerPrompt = {
-        id: 'prompt-2',
-        title: 'Prayer for Family',
-        description: 'Pray for family unity and relationships.',
-        type: PrayerType.FAMILY,
-        created_at: '2024-01-02T00:00:00Z',
-        updated_at: '2024-01-02T00:00:00Z'
-      };
-      
-      render(
-        <PromptCard 
-          prompt={familyPrompt} 
-          isAdmin={false}
-          onTypeClick={mockOnTypeClick}
-        />
-      );
-      
-      expect(screen.getByText('Family')).toBeDefined();
-      
-      const typeBadge = screen.getByText('Family');
-      fireEvent.click(typeBadge);
-      
-      expect(mockOnTypeClick).toHaveBeenCalledWith('Family');
+  it('applies correct CSS classes for card styling', () => {
+    render(
+      <PromptCard
+        prompt={mockPrompt}
+        isAdmin={false}
+      />
+    );
+
+    const card = screen.getByText('Daily Prayer').closest('.prompt-card');
+    expect(card).toHaveClass('bg-white');
+    expect(card).toHaveClass('dark:bg-gray-800');
+    expect(card).toHaveClass('!border-[#988F83]');
+  });
+
+  it('displays lightbulb icon', () => {
+    render(
+      <PromptCard
+        prompt={mockPrompt}
+        isAdmin={false}
+      />
+    );
+
+    // Check for the Lightbulb icon by looking for an SVG with the appropriate title or structure
+    const icons = document.querySelectorAll('svg');
+    expect(icons.length).toBeGreaterThan(0);
+  });
+
+  it('displays tag icon in type badge', () => {
+    render(
+      <PromptCard
+        prompt={mockPrompt}
+        isAdmin={false}
+      />
+    );
+
+    // Check that there are multiple icons (lightbulb + tag)
+    const icons = document.querySelectorAll('svg');
+    expect(icons.length).toBeGreaterThan(1);
+  });
+
+  it('preserves whitespace in description', () => {
+    const promptWithWhitespace = {
+      ...mockPrompt,
+      description: 'Line 1\nLine 2\n  Indented line'
+    };
+
+    render(
+      <PromptCard
+        prompt={promptWithWhitespace}
+        isAdmin={false}
+      />
+    );
+
+    const description = screen.getByText((content, element) => {
+      return element?.textContent === 'Line 1\nLine 2\n  Indented line';
     });
+    expect(description).toHaveClass('whitespace-pre-wrap');
+  });
+
+  it('has correct accessibility attributes', () => {
+    render(
+      <PromptCard
+        prompt={mockPrompt}
+        isAdmin={true}
+        onDelete={mockOnDelete}
+        onTypeClick={mockOnTypeClick}
+      />
+    );
+
+    const typeButton = screen.getByRole('button', { name: /guidance/i });
+    expect(typeButton).toHaveAttribute('title', 'Filter by Guidance');
+
+    const deleteButton = screen.getByRole('button', { name: /delete prompt/i });
+    expect(deleteButton).toHaveAttribute('title', 'Delete prompt');
+  });
+
+  it('shows correct title for selected type button', () => {
+    render(
+      <PromptCard
+        prompt={mockPrompt}
+        isAdmin={false}
+        onTypeClick={mockOnTypeClick}
+        isTypeSelected={true}
+      />
+    );
+
+    const typeButton = screen.getByRole('button', { name: /guidance/i });
+    expect(typeButton).toHaveAttribute('title', 'Remove Guidance filter');
+  });
+
+  it('handles missing onTypeClick gracefully', () => {
+    render(
+      <PromptCard
+        prompt={mockPrompt}
+        isAdmin={false}
+        // onTypeClick is intentionally omitted
+      />
+    );
+
+    const typeButton = screen.getByRole('button', { name: /guidance/i });
+    // Should not throw error when clicked
+    expect(() => fireEvent.click(typeButton)).not.toThrow();
+  });
+
+  it('renders with different prompt types', () => {
+    const differentTypePrompt = {
+      ...mockPrompt,
+      type: 'Thanksgiving' as const
+    };
+
+    render(
+      <PromptCard
+        prompt={differentTypePrompt}
+        isAdmin={false}
+      />
+    );
+
+    expect(screen.getByText('Thanksgiving')).toBeInTheDocument();
+  });
+
+  it('maintains card structure with long descriptions', () => {
+    const longDescriptionPrompt = {
+      ...mockPrompt,
+      description: 'A'.repeat(500) // Very long description
+    };
+
+    render(
+      <PromptCard
+        prompt={longDescriptionPrompt}
+        isAdmin={false}
+      />
+    );
+
+    const description = screen.getByText('A'.repeat(500));
+    expect(description).toBeInTheDocument();
+    expect(description).toHaveClass('whitespace-pre-wrap');
   });
 });

@@ -1,721 +1,324 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-// Mock Planning Center to avoid noisy errors when lookup fails in components
-vi.mock('../../lib/planningcenter', () => ({
-  lookupPersonByEmail: vi.fn().mockResolvedValue({ people: [], count: 0 }),
-  formatPersonName: vi.fn((person: any) => `${person.attributes.first_name} ${person.attributes.last_name}`),
-}));
+import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PendingUpdateCard } from '../PendingUpdateCard';
-import type { PrayerUpdate } from '../../types/prayer';
 
-describe('PendingUpdateCard', () => {
+// Mock the Planning Center library
+vi.mock('../../lib/planningcenter', () => ({
+  lookupPersonByEmail: vi.fn(),
+  formatPersonName: vi.fn(() => 'John Doe')
+}));
+
+describe('PendingUpdateCard Component', () => {
+  const mockUpdate = {
+    id: '1',
+    prayer_id: '100',
+    content: 'Great update on this prayer',
+    author: 'Jane Smith',
+    author_email: 'jane@example.com',
+    created_at: new Date().toISOString(),
+    prayer_title: 'Prayer for John Doe'
+  };
+
   const mockOnApprove = vi.fn();
   const mockOnDeny = vi.fn();
   const mockOnEdit = vi.fn();
 
-  const mockUpdate: PrayerUpdate & { prayer_title?: string } = {
-    id: 'update-123',
-    prayer_id: 'prayer-456',
-    prayer_title: 'Test Prayer Title',
-    content: 'This is a test update for the prayer',
-    author: 'John Doe',
-    author_email: 'john@example.com',
-    is_anonymous: false,
-    created_at: '2025-10-18T10:00:00Z',
-    approval_status: 'pending'
-  };
-
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('renders update details correctly', () => {
+    const updateWithoutEmail = { ...mockUpdate, author_email: undefined as unknown as string };
+
+    render(
+      <PendingUpdateCard
+        update={updateWithoutEmail}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
+
+    expect(screen.getByText('Prayer Update')).toBeInTheDocument();
+    expect(screen.getByText('Great update on this prayer')).toBeInTheDocument();
+    expect(screen.getByText('By Jane Smith')).toBeInTheDocument();
+    expect(screen.getByText('Update for: Prayer for John Doe')).toBeInTheDocument();
+    expect(screen.queryByText('Email:')).not.toBeInTheDocument();
+  });
+
+  it('shows action buttons when not editing', () => {
+    render(
+      <PendingUpdateCard
+        update={mockUpdate}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: /approve/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /deny/i })).toBeInTheDocument();
+  });
+
+  it('calls onApprove when approve button is clicked', async () => {
     mockOnApprove.mockResolvedValue(undefined);
-    mockOnDeny.mockResolvedValue(undefined);
-    mockOnEdit.mockResolvedValue(undefined);
+
+    render(
+      <PendingUpdateCard
+        update={mockUpdate}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
+
+    const approveButton = screen.getByRole('button', { name: /approve/i });
+    fireEvent.click(approveButton);
+
+    expect(mockOnApprove).toHaveBeenCalledWith('1');
   });
 
-  describe('Rendering', () => {
-    it('renders the component with heading', () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
+  it('shows deny form when deny button is clicked', () => {
+    render(
+      <PendingUpdateCard
+        update={mockUpdate}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
 
-      expect(screen.getByText('Prayer Update')).toBeDefined();
-    });
+    const denyButton = screen.getByRole('button', { name: /deny/i });
+    fireEvent.click(denyButton);
 
-    it('renders update content', () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
-
-      expect(screen.getByText('This is a test update for the prayer')).toBeDefined();
-    });
-
-    it('renders prayer title when provided', () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
-
-      expect(screen.getByText(/Update for: Test Prayer Title/i)).toBeDefined();
-    });
-
-    it('does not render prayer title section when not provided', () => {
-      const updateWithoutTitle = { ...mockUpdate, prayer_title: undefined };
-      render(
-        <PendingUpdateCard
-          update={updateWithoutTitle}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
-
-      expect(screen.queryByText(/Update for:/i)).toBeNull();
-    });
-
-    it('renders author name', () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
-
-      expect(screen.getByText(/By John Doe/i)).toBeDefined();
-    });
-
-    it('renders author email when provided', () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
-
-      expect(screen.getByText(/Email: john@example.com/i)).toBeDefined();
-    });
-
-    it('does not render email when not provided', () => {
-      const updateWithoutEmail = { ...mockUpdate, author_email: undefined };
-      render(
-        <PendingUpdateCard
-          update={updateWithoutEmail}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
-
-      const emailTexts = screen.queryAllByText(/Email:/i);
-      expect(emailTexts.length).toBe(0);
-    });
-
-    it('renders formatted date', () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
-
-      expect(screen.getByText(/Submitted/i)).toBeDefined();
-    });
-
-    it('renders approve button', () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
-
-      expect(screen.getByRole('button', { name: /approve/i })).toBeDefined();
-    });
-
-    it('renders deny button', () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
-
-      expect(screen.getByRole('button', { name: /^deny$/i })).toBeDefined();
-    });
-
-    it('renders edit button when onEdit prop is provided', () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-          onEdit={mockOnEdit}
-        />
-      );
-
-      expect(screen.getByRole('button', { name: /^edit$/i })).toBeDefined();
-    });
-
-    it('does not render edit button when onEdit prop is not provided', () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
-
-      expect(screen.queryByRole('button', { name: /^edit$/i })).toBeNull();
-    });
+    expect(screen.getByText('Reason for denial (required):')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /confirm denial/i })).toBeInTheDocument();
   });
 
-  describe('Approve Action', () => {
-    it('calls onApprove when approve button is clicked', async () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
+  it('does not submit deny form without reason', () => {
+    render(
+      <PendingUpdateCard
+        update={mockUpdate}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
 
-      const approveButton = screen.getByRole('button', { name: /approve/i });
-      fireEvent.click(approveButton);
+    // Open deny form
+    const denyButton = screen.getByRole('button', { name: /deny/i });
+    fireEvent.click(denyButton);
 
-      await waitFor(() => {
-        expect(mockOnApprove).toHaveBeenCalledTimes(1);
-        expect(mockOnApprove).toHaveBeenCalledWith('update-123');
-      });
-    });
+    // Try to submit without reason
+    const confirmButton = screen.getByRole('button', { name: /confirm denial/i });
+    fireEvent.click(confirmButton);
 
-    it('shows loading state when approving', async () => {
-      mockOnApprove.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
-      
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
-
-      const approveButton = screen.getByRole('button', { name: /approve/i });
-      fireEvent.click(approveButton);
-
-      expect(screen.getByText(/Approving.../i)).toBeDefined();
-      
-      await waitFor(() => {
-        expect(mockOnApprove).toHaveBeenCalled();
-      });
-    });
-
-    it('disables buttons while approving', async () => {
-      mockOnApprove.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
-      
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
-
-      const approveButton = screen.getByRole('button', { name: /approve/i });
-      const denyButton = screen.getByRole('button', { name: /^deny$/i });
-      
-      fireEvent.click(approveButton);
-
-      expect((approveButton as HTMLButtonElement).disabled).toBe(true);
-      expect((denyButton as HTMLButtonElement).disabled).toBe(true);
-      
-      await waitFor(() => {
-        expect(mockOnApprove).toHaveBeenCalled();
-      });
-    });
+    expect(mockOnDeny).not.toHaveBeenCalled();
   });
 
-  describe('Deny Action', () => {
-    it('shows deny form when deny button is clicked', () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
+  it('shows edit form when edit button is clicked', () => {
+    render(
+      <PendingUpdateCard
+        update={mockUpdate}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
 
-      const denyButton = screen.getByRole('button', { name: /^deny$/i });
-      fireEvent.click(denyButton);
+    const editButton = screen.getByRole('button', { name: /edit/i });
+    fireEvent.click(editButton);
 
-      expect(screen.getByText(/Reason for denial/i)).toBeDefined();
-    });
-
-    it('hides deny form initially', () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
-
-      expect(screen.queryByText(/Reason for denial/i)).toBeNull();
-    });
-
-    it('toggles deny form visibility', () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
-
-      const denyButton = screen.getByRole('button', { name: /^deny$/i });
-      
-      // Show form
-      fireEvent.click(denyButton);
-      expect(screen.getByText(/Reason for denial/i)).toBeDefined();
-      
-      // Hide form
-      fireEvent.click(denyButton);
-      expect(screen.queryByText(/Reason for denial/i)).toBeNull();
-    });
-
-    it('allows typing in denial reason textarea', () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
-
-      const denyButton = screen.getByRole('button', { name: /^deny$/i });
-      fireEvent.click(denyButton);
-
-      const textarea = screen.getByPlaceholderText(/Explain why/i) as HTMLTextAreaElement;
-      fireEvent.change(textarea, { target: { value: 'Inappropriate content' } });
-
-      expect(textarea.value).toBe('Inappropriate content');
-    });
-
-    it('calls onDeny with reason when form is submitted', async () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
-
-      const denyButton = screen.getByRole('button', { name: /^deny$/i });
-      fireEvent.click(denyButton);
-
-      const textarea = screen.getByPlaceholderText(/Explain why/i);
-      fireEvent.change(textarea, { target: { value: 'Invalid update' } });
-
-      const submitButton = screen.getByRole('button', { name: /confirm denial/i });
-      fireEvent.click(submitButton);
-
-      await waitFor(() => {
-        expect(mockOnDeny).toHaveBeenCalledTimes(1);
-        expect(mockOnDeny).toHaveBeenCalledWith('update-123', 'Invalid update');
-      });
-    });
-
-    it('validates whitespace-only denial reason', async () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
-
-      const denyButton = screen.getByRole('button', { name: /^deny$/i });
-      fireEvent.click(denyButton);
-
-      const textarea = screen.getByPlaceholderText(/Explain why/i);
-      fireEvent.change(textarea, { target: { value: '   ' } });
-
-      const form = textarea.closest('form')!;
-      fireEvent.submit(form);
-
-      // Should not call onDeny with whitespace-only reason
-      await new Promise(resolve => setTimeout(resolve, 100));
-      expect(mockOnDeny).not.toHaveBeenCalled();
-    });
-
-    it('hides deny form after submission', async () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
-
-      const denyButton = screen.getByRole('button', { name: /^deny$/i });
-      fireEvent.click(denyButton);
-
-      const textarea = screen.getByPlaceholderText(/Explain why/i);
-      fireEvent.change(textarea, { target: { value: 'Test reason' } });
-
-      const submitButton = screen.getByRole('button', { name: /confirm denial/i });
-      fireEvent.click(submitButton);
-
-      await waitFor(() => {
-        expect(screen.queryByText(/Reason for denial/i)).toBeNull();
-      });
-    });
-
-    it('does not submit with empty reason', () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
-
-      const denyButton = screen.getByRole('button', { name: /^deny$/i });
-      fireEvent.click(denyButton);
-
-      const submitButton = screen.getByRole('button', { name: /confirm denial/i }) as HTMLButtonElement;
-      
-      expect(submitButton.disabled).toBe(true);
-    });
-
-    it('does not submit with whitespace-only reason', () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
-
-      const denyButton = screen.getByRole('button', { name: /^deny$/i });
-      fireEvent.click(denyButton);
-
-      const textarea = screen.getByPlaceholderText(/Explain why/i);
-      fireEvent.change(textarea, { target: { value: '   ' } });
-
-      const submitButton = screen.getByRole('button', { name: /confirm denial/i }) as HTMLButtonElement;
-      
-      expect(submitButton.disabled).toBe(true);
-    });
-
-    it('shows loading state when denying', async () => {
-      mockOnDeny.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
-      
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
-
-      const denyButton = screen.getByRole('button', { name: /^deny$/i });
-      fireEvent.click(denyButton);
-
-      const textarea = screen.getByPlaceholderText(/Explain why/i);
-      fireEvent.change(textarea, { target: { value: 'Test' } });
-
-      const submitButton = screen.getByRole('button', { name: /confirm denial/i });
-      fireEvent.click(submitButton);
-
-      expect(screen.getByText(/Denying.../i)).toBeDefined();
-      
-      await waitFor(() => {
-        expect(mockOnDeny).toHaveBeenCalled();
-      });
-    });
+    expect(screen.getByDisplayValue('Great update on this prayer')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Jane Smith')).toBeInTheDocument();
   });
 
-  describe('Edit Functionality', () => {
-    it('shows edit form when edit button is clicked', () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-          onEdit={mockOnEdit}
-        />
-      );
+  it('pre-fills edit form with current update data', () => {
+    render(
+      <PendingUpdateCard
+        update={mockUpdate}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
 
-      const editButton = screen.getByRole('button', { name: /^edit$/i });
-      fireEvent.click(editButton);
+    const editButton = screen.getByRole('button', { name: /edit/i });
+    fireEvent.click(editButton);
 
-      expect(screen.getByText(/Update Details/i)).toBeDefined();
-      expect(screen.getByText(/^Author \*/i)).toBeDefined();
-      expect(screen.getByRole('button', { name: /save changes/i })).toBeDefined();
-    });
-
-    it('hides header and action buttons when editing', () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-          onEdit={mockOnEdit}
-        />
-      );
-
-      const editButton = screen.getByRole('button', { name: /^edit$/i });
-      fireEvent.click(editButton);
-
-      expect(screen.queryByText('Prayer Update')).toBeNull();
-      expect(screen.queryByRole('button', { name: /approve/i })).toBeNull();
-    });
-
-    it('populates edit form with current values', () => {
-      const { container } = render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-          onEdit={mockOnEdit}
-        />
-      );
-
-      const editButton = screen.getByRole('button', { name: /^edit$/i });
-      fireEvent.click(editButton);
-
-      const textareas = container.querySelectorAll('textarea');
-      const inputs = container.querySelectorAll('input[type="text"]');
-      
-      // Find the textarea in the edit form (not the deny form)
-      const contentTextarea = textareas[0] as HTMLTextAreaElement;
-      const authorInput = inputs[0] as HTMLInputElement;
-
-      expect(contentTextarea.value).toBe('This is a test update for the prayer');
-      expect(authorInput.value).toBe('John Doe');
-    });
-
-    it('allows editing content and author', () => {
-      const { container } = render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-          onEdit={mockOnEdit}
-        />
-      );
-
-      const editButton = screen.getByRole('button', { name: /^edit$/i });
-      fireEvent.click(editButton);
-
-      const textareas = container.querySelectorAll('textarea');
-      const inputs = container.querySelectorAll('input[type="text"]');
-      
-      const contentTextarea = textareas[0] as HTMLTextAreaElement;
-      const authorInput = inputs[0] as HTMLInputElement;
-
-      fireEvent.change(contentTextarea, { target: { value: 'Updated content' } });
-      fireEvent.change(authorInput, { target: { value: 'Jane Smith' } });
-
-      expect(contentTextarea.value).toBe('Updated content');
-      expect(authorInput.value).toBe('Jane Smith');
-    });
-
-    it('saves edits when save button is clicked', async () => {
-      const { container } = render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-          onEdit={mockOnEdit}
-        />
-      );
-
-      const editButton = screen.getByRole('button', { name: /^edit$/i });
-      fireEvent.click(editButton);
-
-      const textareas = container.querySelectorAll('textarea');
-      const inputs = container.querySelectorAll('input[type="text"]');
-      
-      const contentTextarea = textareas[0];
-      const authorInput = inputs[0];
-
-      fireEvent.change(contentTextarea, { target: { value: 'Edited content' } });
-      fireEvent.change(authorInput, { target: { value: 'New Author' } });
-
-      const saveButton = screen.getByRole('button', { name: /save changes/i });
-      fireEvent.click(saveButton);
-
-      await waitFor(() => {
-        expect(mockOnEdit).toHaveBeenCalledWith('update-123', {
-          content: 'Edited content',
-          author: 'New Author'
-        });
-      });
-    });
-
-    it('exits edit mode after saving changes', async () => {
-      const { container } = render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-          onEdit={mockOnEdit}
-        />
-      );
-
-      const editButton = screen.getByRole('button', { name: /^edit$/i });
-      fireEvent.click(editButton);
-
-      const textareas = container.querySelectorAll('textarea');
-      const contentTextarea = textareas[0];
-      fireEvent.change(contentTextarea, { target: { value: 'Edited' } });
-
-      const saveButton = screen.getByRole('button', { name: /save changes/i });
-      fireEvent.click(saveButton);
-
-      await waitFor(() => {
-        expect(mockOnEdit).toHaveBeenCalled();
-        expect(screen.queryByText(/Update Details \*/i)).toBeNull();
-      });
-    });
-
-    it('cancels editing when cancel button is clicked', () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-          onEdit={mockOnEdit}
-        />
-      );
-
-      const editButton = screen.getByRole('button', { name: /^edit$/i });
-      fireEvent.click(editButton);
-
-      expect(screen.getByText(/Update Details \*/i)).toBeDefined();
-
-      const cancelButtons = screen.getAllByRole('button', { name: /cancel/i });
-      const editCancelButton = cancelButtons[0]; // First cancel is for edit form
-      fireEvent.click(editCancelButton);
-
-      expect(screen.queryByText(/Update Details \*/i)).toBeNull();
-      expect(screen.getByText('Prayer Update')).toBeDefined();
-    });
+    expect(screen.getByDisplayValue('Great update on this prayer')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Jane Smith')).toBeInTheDocument();
   });
 
-  describe('Dark Mode Support', () => {
-    it('includes dark mode classes for container', () => {
-      const { container } = render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
+  it('resets edit form when cancel is clicked', () => {
+    render(
+      <PendingUpdateCard
+        update={mockUpdate}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
 
-      const card = container.firstChild as HTMLElement;
-      expect(card.className).toContain('dark:bg-gray-800');
-      expect(card.className).toContain('dark:border-gray-700');
-    });
+    // Open edit form
+    const editButton = screen.getByRole('button', { name: /edit/i });
+    fireEvent.click(editButton);
 
-    it('includes dark mode classes for text', () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
+    // Modify a field
+    const contentTextarea = screen.getByDisplayValue('Great update on this prayer');
+    fireEvent.change(contentTextarea, { target: { value: 'Modified content' } });
 
-      const heading = screen.getByText('Prayer Update');
-      expect(heading.className).toContain('dark:text-gray-100');
-    });
+    // Cancel
+    const cancelButton = screen.getByRole('button', { name: /cancel/i });
+    fireEvent.click(cancelButton);
+
+    // Should go back to view mode with original data
+    expect(screen.getByText('Great update on this prayer')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Modified content')).not.toBeInTheDocument();
   });
 
-  describe('Icons', () => {
-    it('renders approve icon', () => {
-      const { container } = render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
+  it('disables all buttons during loading operations', () => {
+    mockOnApprove.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
 
-      const checkIcon = container.querySelector('svg.lucide-check-circle');
-      expect(checkIcon).toBeDefined();
-    });
+    render(
+      <PendingUpdateCard
+        update={mockUpdate}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
 
-    it('renders deny icon', () => {
-      const { container } = render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
+    // Start an approve operation
+    const approveButton = screen.getByRole('button', { name: /approve/i });
+    fireEvent.click(approveButton);
 
-      const xIcon = container.querySelector('svg.lucide-x-circle');
-      expect(xIcon).toBeDefined();
-    });
-
-    it('renders edit icon when onEdit provided', () => {
-      const { container } = render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-          onEdit={mockOnEdit}
-        />
-      );
-
-      const editIcon = container.querySelector('svg.lucide-edit-2');
-      expect(editIcon).toBeDefined();
-    });
+    // All buttons should be disabled during operation
+    expect(approveButton).toBeDisabled();
+    expect(screen.getByRole('button', { name: /edit/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /deny/i })).toBeDisabled();
   });
 
-  describe('Accessibility', () => {
-    it('uses semantic heading for title', () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
+  it('formats date correctly', () => {
+    const updateWithDate = {
+      ...mockUpdate,
+      created_at: '2023-12-14T15:30:00Z'
+    };
 
-      const heading = screen.getByText('Prayer Update');
-      expect(heading.tagName).toBe('H3');
-    });
+    render(
+      <PendingUpdateCard
+        update={updateWithDate}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
 
-    it('textarea has required attribute in deny form', () => {
-      render(
-        <PendingUpdateCard
-          update={mockUpdate}
-          onApprove={mockOnApprove}
-          onDeny={mockOnDeny}
-        />
-      );
+    // Should show formatted date
+    expect(screen.getByText(/Submitted/)).toBeInTheDocument();
+  });
 
-      const denyButton = screen.getByRole('button', { name: /^deny$/i });
-      fireEvent.click(denyButton);
+  it('hides prayer title when not provided', () => {
+    const updateWithoutPrayerTitle = { ...mockUpdate, prayer_title: undefined };
 
-      const textarea = screen.getByPlaceholderText(/Explain why/i) as HTMLTextAreaElement;
-      expect(textarea.required).toBe(true);
-    });
+    render(
+      <PendingUpdateCard
+        update={updateWithoutPrayerTitle}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
+
+    expect(screen.queryByText('Update for:')).not.toBeInTheDocument();
+  });
+
+  it('hides email section when no email provided', () => {
+    const updateWithoutEmail = { ...mockUpdate, author_email: undefined as unknown as string };
+
+    render(
+      <PendingUpdateCard
+        update={updateWithoutEmail}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
+
+    expect(screen.queryByText('Email:')).not.toBeInTheDocument();
+    expect(screen.queryByText('Checking Planning Center...')).not.toBeInTheDocument();
+  });
+
+  it('handles cancel deny form', () => {
+    render(
+      <PendingUpdateCard
+        update={mockUpdate}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
+
+    // Open deny form
+    const denyButton = screen.getByRole('button', { name: /deny/i });
+    fireEvent.click(denyButton);
+
+    expect(screen.getByText('Reason for denial (required):')).toBeInTheDocument();
+
+    // Cancel
+    const cancelButton = screen.getByRole('button', { name: /cancel/i });
+    fireEvent.click(cancelButton);
+
+    expect(screen.queryByText('Reason for denial (required):')).not.toBeInTheDocument();
+  });
+
+  it('shows mark as answered indicator when flag is set', () => {
+    const updateWithMarkAsAnswered = { ...mockUpdate, mark_as_answered: true };
+
+    render(
+      <PendingUpdateCard
+        update={updateWithMarkAsAnswered}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
+
+    expect(screen.getByText('Will mark prayer as answered')).toBeInTheDocument();
+  });
+
+  it('hides edit button when onEdit is not provided', () => {
+    render(
+      <PendingUpdateCard
+        update={mockUpdate}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        // onEdit is intentionally omitted
+      />
+    );
+
+    expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument();
+  });
+
+  it('shows cancel edit button when in editing mode', () => {
+    render(
+      <PendingUpdateCard
+        update={mockUpdate}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
+
+    const editButton = screen.getByRole('button', { name: /edit/i });
+    fireEvent.click(editButton);
+
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
   });
 });

@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { act } from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PrayerForm } from '../PrayerForm';
 import * as userInfoStorage from '../../utils/userInfoStorage';
 
@@ -21,6 +21,11 @@ describe('PrayerForm', () => {
       lastName: '',
       email: ''
     });
+  });
+
+  afterEach(() => {
+    // Ensure any pending timers are cleared to avoid state updates after teardown
+    vi.clearAllTimers();
   });
 
   it('renders when isOpen is true', () => {
@@ -302,5 +307,155 @@ describe('PrayerForm', () => {
 
     consoleErrorSpy.mockRestore();
   });
-});
 
+  it('shows success message after successful submission', async () => {
+    mockOnSubmit.mockResolvedValue(undefined);
+
+    render(
+      <PrayerForm
+        onSubmit={mockOnSubmit}
+        onCancel={mockOnCancel}
+        isOpen={true}
+      />
+    );
+
+    // Fill all required fields
+    fireEvent.change(screen.getByPlaceholderText('First name'), { target: { value: 'John' } });
+    fireEvent.change(screen.getByPlaceholderText('Last name'), { target: { value: 'Doe' } });
+    fireEvent.change(screen.getByPlaceholderText('Your email address'), { target: { value: 'john@example.com' } });
+    fireEvent.change(screen.getByPlaceholderText('Who or what this prayer is for'), { target: { value: 'Test' } });
+    fireEvent.change(screen.getByPlaceholderText('Describe the prayer request in detail'), { target: { value: 'Test description' } });
+
+    const submitButton = screen.getByRole('button', { name: /submit/i });
+    act(() => {
+      fireEvent.click(submitButton);
+    });
+
+    // Wait for success message to appear
+    await waitFor(() => {
+      expect(screen.getByText('Prayer request submitted successfully!')).toBeDefined();
+    });
+  });
+
+  it('shows success state after successful submission', async () => {
+    mockOnSubmit.mockResolvedValue(undefined);
+
+    render(
+      <PrayerForm
+        onSubmit={mockOnSubmit}
+        onCancel={mockOnCancel}
+        isOpen={true}
+      />
+    );
+
+    // Fill all required fields
+    fireEvent.change(screen.getByPlaceholderText('First name'), { target: { value: 'John' } });
+    fireEvent.change(screen.getByPlaceholderText('Last name'), { target: { value: 'Doe' } });
+    fireEvent.change(screen.getByPlaceholderText('Your email address'), { target: { value: 'john@example.com' } });
+    fireEvent.change(screen.getByPlaceholderText('Who or what this prayer is for'), { target: { value: 'Test' } });
+    fireEvent.change(screen.getByPlaceholderText('Describe the prayer request in detail'), { target: { value: 'Test description' } });
+
+    const submitButton = screen.getByRole('button', { name: /submit/i });
+    fireEvent.click(submitButton);
+
+    // Wait for success state to show
+    await waitFor(() => {
+      expect(screen.getByText('Prayer request submitted successfully!')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /submitted/i })).toBeInTheDocument();
+    }, { timeout: 3000 });
+  });
+
+  it('disables submit button during submission', async () => {
+    let resolveSubmit: () => void;
+    const submitPromise = new Promise<void>(resolve => {
+      resolveSubmit = resolve;
+    });
+    mockOnSubmit.mockImplementation(() => submitPromise);
+
+    render(
+      <PrayerForm
+        onSubmit={mockOnSubmit}
+        onCancel={mockOnCancel}
+        isOpen={true}
+      />
+    );
+
+    // Fill all required fields
+    fireEvent.change(screen.getByPlaceholderText('First name'), { target: { value: 'John' } });
+    fireEvent.change(screen.getByPlaceholderText('Last name'), { target: { value: 'Doe' } });
+    fireEvent.change(screen.getByPlaceholderText('Your email address'), { target: { value: 'john@example.com' } });
+    fireEvent.change(screen.getByPlaceholderText('Who or what this prayer is for'), { target: { value: 'Test' } });
+    fireEvent.change(screen.getByPlaceholderText('Describe the prayer request in detail'), { target: { value: 'Test description' } });
+
+    const submitButton = screen.getByRole('button', { name: /submit/i });
+
+    fireEvent.click(submitButton);
+
+    // Submit button should be disabled during submission
+    await waitFor(() => {
+      expect(submitButton).toBeDisabled();
+      expect(screen.getByRole('button', { name: /submitting/i })).toBeInTheDocument();
+    });
+
+    // Resolve the submission
+    resolveSubmit!();
+
+    // Wait for submission to complete
+    await waitFor(() => {
+      expect(mockOnSubmit).toHaveBeenCalled();
+    });
+  });
+
+  it('does not submit when required fields are empty', async () => {
+    render(
+      <PrayerForm
+        onSubmit={mockOnSubmit}
+        onCancel={mockOnCancel}
+        isOpen={true}
+      />
+    );
+
+    const submitButton = screen.getByRole('button', { name: /submit/i });
+    act(() => {
+      fireEvent.click(submitButton);
+    });
+
+    // Should not call onSubmit if required fields are empty
+    await waitFor(() => {
+      expect(mockOnSubmit).not.toHaveBeenCalled();
+    }, { timeout: 1000 });
+  });
+
+  it('shows correct button text during submission', async () => {
+    // Avoid delayed timers in tests to prevent async state updates after teardown
+    mockOnSubmit.mockResolvedValue(undefined);
+
+    render(
+      <PrayerForm
+        onSubmit={mockOnSubmit}
+        onCancel={mockOnCancel}
+        isOpen={true}
+      />
+    );
+
+    // Fill all required fields
+    fireEvent.change(screen.getByPlaceholderText('First name'), { target: { value: 'John' } });
+    fireEvent.change(screen.getByPlaceholderText('Last name'), { target: { value: 'Doe' } });
+    fireEvent.change(screen.getByPlaceholderText('Your email address'), { target: { value: 'john@example.com' } });
+    fireEvent.change(screen.getByPlaceholderText('Who or what this prayer is for'), { target: { value: 'Test' } });
+    fireEvent.change(screen.getByPlaceholderText('Describe the prayer request in detail'), { target: { value: 'Test description' } });
+
+    const submitButton = screen.getByRole('button', { name: /submit/i });
+    act(() => {
+      fireEvent.click(submitButton);
+    });
+
+    // Button text should change during submission
+    expect(screen.getByRole('button', { name: /submitting/i })).toBeDefined();
+
+    // Wait for submission to complete
+    await waitFor(() => {
+      expect(mockOnSubmit).toHaveBeenCalled();
+    });
+  });
+});

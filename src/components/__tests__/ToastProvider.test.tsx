@@ -1,112 +1,217 @@
-import React, { useContext } from 'react';
-import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import React from 'react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ToastProvider } from '../ToastProvider';
 import { ToastContext } from '../../contexts/ToastContext';
 
-describe('ToastProvider', () => {
-  it('shows a toast and allows manual removal', async () => {
-    const TestChild: React.FC = () => {
-      const ctx = useContext(ToastContext);
+// Test component that consumes the toast context
+const TestConsumer = () => {
+  const context = React.useContext(ToastContext);
+  const showToast = context?.showToast || (() => {});
 
-      return (
-        <div>
-            <button onClick={() => ctx!.showToast('Hello world', 'success')}>Show Toast</button>
-          </div>
-      );
-    };
+  return (
+    <div>
+      <button onClick={() => showToast('Test message', 'success')}>
+        Show Success Toast
+      </button>
+      <button onClick={() => showToast('Error message', 'error')}>
+        Show Error Toast
+      </button>
+      <button onClick={() => showToast('Info message')}>
+        Show Info Toast
+      </button>
+    </div>
+  );
+};
 
+describe('ToastProvider Component', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('renders children', () => {
     render(
       <ToastProvider>
-        <TestChild />
+        <div>Test Child</div>
       </ToastProvider>
     );
 
-    fireEvent.click(screen.getByText(/Show Toast/i));
+    expect(screen.getByText('Test Child')).toBeInTheDocument();
+  });
 
-    // Toast should be visible
-    expect(screen.getByText(/Hello world/i)).toBeTruthy();
+  it('provides toast context to children', () => {
+    render(
+      <ToastProvider>
+        <TestConsumer />
+      </ToastProvider>
+    );
 
-    // Manual close: find the close button inside the toast itself
-    const toastContainer = screen.getByText(/Hello world/i).closest('div');
-    const closeButton = within(toastContainer!).getByRole('button');
+    expect(screen.getByText('Show Success Toast')).toBeInTheDocument();
+  });
+
+  it('shows toast when showToast is called', () => {
+    render(
+      <ToastProvider>
+        <TestConsumer />
+      </ToastProvider>
+    );
+
+    const button = screen.getByText('Show Success Toast');
+    fireEvent.click(button);
+
+    expect(screen.getByText('Test message')).toBeInTheDocument();
+  });
+
+  it('applies correct styles for success toast', () => {
+    render(
+      <ToastProvider>
+        <TestConsumer />
+      </ToastProvider>
+    );
+
+    const button = screen.getByText('Show Success Toast');
+    fireEvent.click(button);
+
+    const toast = screen.getByText('Test message').closest('div');
+    expect(toast).toHaveClass('bg-green-100');
+    expect(toast).toHaveClass('text-green-800');
+    expect(toast).toHaveClass('border-green-200');
+  });
+
+  it('applies correct styles for error toast', () => {
+    render(
+      <ToastProvider>
+        <TestConsumer />
+      </ToastProvider>
+    );
+
+    const button = screen.getByText('Show Error Toast');
+    fireEvent.click(button);
+
+    const toast = screen.getByText('Error message').closest('div');
+    expect(toast).toHaveClass('bg-red-100');
+    expect(toast).toHaveClass('text-red-800');
+    expect(toast).toHaveClass('border-red-200');
+  });
+
+  it('applies default styles for info toast', () => {
+    render(
+      <ToastProvider>
+        <TestConsumer />
+      </ToastProvider>
+    );
+
+    const button = screen.getByText('Show Info Toast');
+    fireEvent.click(button);
+
+    const toast = screen.getByText('Info message').closest('div');
+    expect(toast).toHaveClass('bg-blue-100');
+    expect(toast).toHaveClass('text-blue-800');
+    expect(toast).toHaveClass('border-blue-200');
+  });
+
+  it('includes close button for each toast', () => {
+    render(
+      <ToastProvider>
+        <TestConsumer />
+      </ToastProvider>
+    );
+
+    const button = screen.getByText('Show Success Toast');
+    fireEvent.click(button);
+
+    const closeButton = screen.getByRole('button', { name: '' }); // Close button has no text
+    expect(closeButton).toBeInTheDocument();
+  });
+
+  it('removes toast when close button is clicked', () => {
+    render(
+      <ToastProvider>
+        <TestConsumer />
+      </ToastProvider>
+    );
+
+    const button = screen.getByText('Show Success Toast');
+    fireEvent.click(button);
+
+    expect(screen.getByText('Test message')).toBeInTheDocument();
+
+    const closeButton = screen.getByRole('button', { name: '' });
     fireEvent.click(closeButton);
 
-    // After clicking close the toast should be removed
-    expect(screen.queryByText(/Hello world/i)).toBeNull();
-
-    // (Auto-remove is handled via timeout inside the provider; we verify manual removal.)
+    expect(screen.queryByText('Test message')).not.toBeInTheDocument();
   });
 
-  it('auto-dismisses toast after 5 seconds', async () => {
-  const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
-
-    const TestChild: React.FC = () => {
-      const ctx = useContext(ToastContext);
-
-      return (
-        <div>
-            <button onClick={() => ctx!.showToast('Auto remove', 'info')}>Show Auto</button>
-          </div>
-      );
-    };
-
+  it('auto-removes toast after 5 seconds', () => {
     render(
       <ToastProvider>
-        <TestChild />
+        <TestConsumer />
       </ToastProvider>
     );
 
-    fireEvent.click(screen.getByText(/Show Auto/i));
+    const button = screen.getByText('Show Success Toast');
+    fireEvent.click(button);
 
-    // Toast should be visible
-    expect(screen.getByText(/Auto remove/i)).toBeTruthy();
+    expect(screen.getByText('Test message')).toBeInTheDocument();
 
-    // Ensure a timer was scheduled and invoke its callback to simulate expiry
-    expect(setTimeoutSpy).toHaveBeenCalled();
-    const lastCall = setTimeoutSpy.mock.calls[setTimeoutSpy.mock.calls.length - 1];
-    const timerCallback = lastCall && lastCall[0];
-    if (typeof timerCallback === 'function') {
-      timerCallback();
-    }
-
-    await waitFor(() => {
-      expect(screen.queryByText(/Auto remove/i)).toBeNull();
+    // Fast-forward 5 seconds
+    act(() => {
+      vi.advanceTimersByTime(5000);
     });
 
-    setTimeoutSpy.mockRestore();
+    expect(screen.queryByText('Test message')).not.toBeInTheDocument();
   });
 
-  it('renders multiple toasts and applies correct styles for types', async () => {
-    const TestChild: React.FC = () => {
-      const ctx = useContext(ToastContext);
-
-      return (
-        <div>
-            <button onClick={() => ctx!.showToast('First', 'success')}>Show First</button>
-            <button onClick={() => ctx!.showToast('Second', 'error')}>Show Second</button>
-          </div>
-      );
-    };
-
+  it('shows multiple toasts', () => {
     render(
       <ToastProvider>
-        <TestChild />
+        <TestConsumer />
       </ToastProvider>
     );
 
-    fireEvent.click(screen.getByText(/Show First/i));
-    fireEvent.click(screen.getByText(/Show Second/i));
+    const successButton = screen.getByText('Show Success Toast');
+    const errorButton = screen.getByText('Show Error Toast');
 
-    // Both toasts should be visible
-    expect(screen.getByText('First')).toBeTruthy();
-    expect(screen.getByText('Second')).toBeTruthy();
+    fireEvent.click(successButton);
+    fireEvent.click(errorButton);
 
-    // Check styling for success (green) and error (red)
-    const firstToast = screen.getByText('First').closest('div');
-    const secondToast = screen.getByText('Second').closest('div');
+    expect(screen.getByText('Test message')).toBeInTheDocument();
+    expect(screen.getByText('Error message')).toBeInTheDocument();
+  });
 
-    expect(firstToast?.className).toContain('bg-green-100');
-    expect(secondToast?.className).toContain('bg-red-100');
+  it('positions toast container correctly', () => {
+    render(
+      <ToastProvider>
+        <TestConsumer />
+      </ToastProvider>
+    );
+
+    const button = screen.getByText('Show Success Toast');
+    fireEvent.click(button);
+
+    const container = screen.getByText('Test message').closest('.fixed');
+    expect(container).toHaveClass('right-4');
+    expect(container).toHaveClass('bottom-4');
+    expect(container).toHaveClass('md:top-4');
+    expect(container).toHaveClass('md:bottom-auto');
+  });
+
+  it('includes check circle icon in toast', () => {
+    render(
+      <ToastProvider>
+        <TestConsumer />
+      </ToastProvider>
+    );
+
+    const button = screen.getByText('Show Success Toast');
+    fireEvent.click(button);
+
+    // The CheckCircle icon should be present
+    const icon = document.querySelector('svg');
+    expect(icon).toBeInTheDocument();
   });
 });
