@@ -191,7 +191,9 @@ describe("PrayerSearch Component", () => {
   it("clears search when clear button clicked", async () => {
     const user = userEvent.setup();
     render(<PrayerSearch />);
-    const input = screen.getByPlaceholderText(/Search by title/i) as HTMLInputElement;
+    const input = screen.getByPlaceholderText(
+      /Search by title, requester, email, description, or denial reasons/i
+    ) as HTMLInputElement;
     await user.type(input, "test");
     const clear = input.parentElement?.querySelector('button');
     if (clear) await user.click(clear);
