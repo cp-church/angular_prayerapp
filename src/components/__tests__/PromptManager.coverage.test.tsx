@@ -29,7 +29,6 @@ vi.mock("../../lib/supabase", () => ({
     })),
   },
   directQuery: vi.fn().mockResolvedValue({ data: [], error: null }),
-  directMutation: vi.fn().mockResolvedValue({ data: null, error: null }),
   getSupabaseConfig: vi
     .fn()
     .mockReturnValue({ url: "https://test.supabase.co", anonKey: "test-key" }),
@@ -86,16 +85,17 @@ describe("PromptManager - Coverage Tests", () => {
         expect(screen.getByText(/upload csv file/i)).toBeDefined();
       });
 
-      // Find all buttons and find the X close button near the CSV upload header
+      // Find the close button in the CSV upload modal
+      // Looking for button without text content (icon-only button) near the header
       const allButtons = screen.getAllByRole("button");
       
-      // Filter to find X button (small button with just an icon)
-      for (const button of allButtons) {
-        const svg = button.querySelector('svg.lucide-x');
-        if (svg) {
-          await user.click(button);
-          break;
-        }
+      // Find button with X icon by checking if it's near "Upload CSV File" text
+      const closeButton = allButtons.find(btn => {
+        return btn.querySelector('svg') && !btn.textContent?.trim();
+      });
+      
+      if (closeButton) {
+        await user.click(closeButton);
       }
 
       await waitFor(() => {
@@ -1267,12 +1267,8 @@ describe("PromptManager - Coverage Tests", () => {
     it("handles timeout abort during search", async () => {
       const user = userEvent.setup();
 
-      // Mock fetch to simulate abort
-      global.fetch = vi.fn().mockImplementation(() => {
-        const controller = new AbortController();
-        controller.abort();
-        return Promise.reject(controller.signal.reason || new Error("Aborted"));
-      });
+      // Mock fetch to simulate abort with explicit error
+      global.fetch = vi.fn().mockRejectedValue(new Error("Request aborted"));
 
       render(<PromptManager onSuccess={mockOnSuccess} />);
 
@@ -1280,9 +1276,8 @@ describe("PromptManager - Coverage Tests", () => {
       await user.click(searchButton);
 
       await waitFor(() => {
-        // Should show some error message
-        const errorElement = screen.queryByRole("alert") || screen.queryByText(/failed|error/i);
-        expect(errorElement).toBeDefined();
+        // Should show the abort error message
+        expect(screen.getByText(/request aborted/i)).toBeDefined();
       });
     });
 
