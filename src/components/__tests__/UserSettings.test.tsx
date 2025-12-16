@@ -1198,18 +1198,20 @@ describe("UserSettings", () => {
   });
 
   describe("Print Error Handling", () => {
+    const createMockWindow = () => ({
+      close: vi.fn(),
+      document: {
+        write: vi.fn(),
+        close: vi.fn(),
+      },
+    });
+
     it("handles error when printing prayers fails", async () => {
       const user = userEvent.setup();
       const { downloadPrintablePrayerList } =
         await import("../../utils/printablePrayerList");
       
-      const mockWindow = {
-        close: vi.fn(),
-        document: {
-          write: vi.fn(),
-          close: vi.fn(),
-        },
-      };
+      const mockWindow = createMockWindow();
       window.open = vi.fn(() => mockWindow) as any;
 
       vi.mocked(downloadPrintablePrayerList).mockRejectedValue(
@@ -1230,13 +1232,7 @@ describe("UserSettings", () => {
       const { downloadPrintablePromptList } =
         await import("../../utils/printablePromptList");
       
-      const mockWindow = {
-        close: vi.fn(),
-        document: {
-          write: vi.fn(),
-          close: vi.fn(),
-        },
-      };
+      const mockWindow = createMockWindow();
       window.open = vi.fn(() => mockWindow) as any;
 
       vi.mocked(downloadPrintablePromptList).mockRejectedValue(
