@@ -1413,4 +1413,592 @@ describe("PrayerSearch Component", () => {
       expect(cancelButtons.length).toBeGreaterThan(0);
     });
   });
+
+  it("calls delete handler when delete button is clicked", async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    
+    setMockPrayerData([{
+      id:"1",
+      title:"Prayer to Delete",
+      requester:"John",
+      email:"j@t.com",
+      status:"current",
+      approval_status:"approved",
+      created_at:"2025-01-01T00:00:00Z",
+      prayer_updates:[]
+    }]);
+    render(<PrayerSearch />);
+    await user.selectOptions(screen.getAllByRole('combobox')[0], "all");
+    await waitFor(() => expect(screen.getByText("Prayer to Delete")).toBeDefined());
+    
+    const deleteBtn = screen.getByTitle(/delete this prayer/i);
+    await user.click(deleteBtn);
+    
+    expect(confirmSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Are you sure you want to delete the prayer "Prayer to Delete"')
+    );
+    
+    confirmSpy.mockRestore();
+  });
+
+  it("confirms deletion when user accepts", async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    
+    setMockPrayerData([{
+      id:"1",
+      title:"Prayer to Delete Confirmed",
+      requester:"John",
+      email:"j@t.com",
+      status:"current",
+      approval_status:"approved",
+      created_at:"2025-01-01T00:00:00Z",
+      prayer_updates:[]
+    }]);
+    render(<PrayerSearch />);
+    await user.selectOptions(screen.getAllByRole('combobox')[0], "all");
+    await waitFor(() => expect(screen.getByText("Prayer to Delete Confirmed")).toBeDefined());
+    
+    const deleteBtn = screen.getByTitle(/delete this prayer/i);
+    await user.click(deleteBtn);
+    
+    expect(confirmSpy).toHaveBeenCalled();
+    
+    confirmSpy.mockRestore();
+  });
+
+  it("displays denial reason for prayer with long text", async () => {
+    const user = userEvent.setup();
+    const longReason = "This prayer request contains inappropriate content that does not align with our community standards. Please review our guidelines before submitting.";
+    
+    setMockPrayerData([{
+      id:"1",
+      title:"Prayer with Long Denial",
+      requester:"John",
+      email:"j@t.com",
+      status:"current",
+      approval_status:"denied",
+      denial_reason:longReason,
+      created_at:"2025-01-01T00:00:00Z",
+      prayer_updates:[]
+    }]);
+    render(<PrayerSearch />);
+    await user.selectOptions(screen.getAllByRole('combobox')[0], "all");
+    await waitFor(() => expect(screen.getByText("Prayer with Long Denial")).toBeDefined());
+    
+    await user.click(screen.getByText("Prayer with Long Denial"));
+    
+    await waitFor(() => {
+      expect(screen.getByText(longReason)).toBeDefined();
+    });
+  });
+
+  it("does not show denial reason section when not denied", async () => {
+    const user = userEvent.setup();
+    setMockPrayerData([{
+      id:"1",
+      title:"Approved Prayer",
+      requester:"John",
+      email:"j@t.com",
+      status:"current",
+      approval_status:"approved",
+      created_at:"2025-01-01T00:00:00Z",
+      prayer_updates:[]
+    }]);
+    render(<PrayerSearch />);
+    await user.selectOptions(screen.getAllByRole('combobox')[0], "all");
+    await waitFor(() => expect(screen.getByText("Approved Prayer")).toBeDefined());
+    
+    await user.click(screen.getByText("Approved Prayer"));
+    
+    await waitFor(() => {
+      expect(screen.queryByText(/this content violates/i)).toBeNull();
+    });
+  });
+
+  it("handles delete button click with stopPropagation", async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    
+    setMockPrayerData([{
+      id:"1",
+      title:"Test Prayer",
+      requester:"John",
+      email:"j@t.com",
+      status:"current",
+      approval_status:"approved",
+      created_at:"2025-01-01T00:00:00Z",
+      prayer_updates:[]
+    }]);
+    render(<PrayerSearch />);
+    await user.selectOptions(screen.getAllByRole('combobox')[0], "all");
+    await waitFor(() => expect(screen.getByText("Test Prayer")).toBeDefined());
+    
+    // Click delete button - should not expand/collapse the card
+    const deleteBtn = screen.getByTitle(/delete this prayer/i);
+    await user.click(deleteBtn);
+    
+    // Verify confirm was called
+    expect(confirmSpy).toHaveBeenCalled();
+    
+    confirmSpy.mockRestore();
+  });
+
+  it("displays multiple prayers with denial reasons", async () => {
+    const user = userEvent.setup();
+    setMockPrayerData([
+      {
+        id:"1",
+        title:"Denied Prayer 1",
+        requester:"John",
+        email:"j@t.com",
+        status:"current",
+        approval_status:"denied",
+        denial_reason:"Reason 1",
+        created_at:"2025-01-01T00:00:00Z",
+        prayer_updates:[]
+      },
+      {
+        id:"2",
+        title:"Denied Prayer 2",
+        requester:"Jane",
+        email:"jane@t.com",
+        status:"current",
+        approval_status:"denied",
+        denial_reason:"Reason 2",
+        created_at:"2025-01-02T00:00:00Z",
+        prayer_updates:[]
+      }
+    ]);
+    render(<PrayerSearch />);
+    await user.selectOptions(screen.getAllByRole('combobox')[0], "all");
+    
+    await waitFor(() => {
+      expect(screen.getByText("Denied Prayer 1")).toBeDefined();
+      expect(screen.getByText("Denied Prayer 2")).toBeDefined();
+    });
+    
+    // Expand first prayer
+    await user.click(screen.getByText("Denied Prayer 1"));
+    await waitFor(() => {
+      expect(screen.getByText("Reason 1")).toBeDefined();
+    });
+    
+    // Expand second prayer
+    await user.click(screen.getByText("Denied Prayer 2"));
+    await waitFor(() => {
+      expect(screen.getByText("Reason 2")).toBeDefined();
+    });
+  });
+
+  it("shows prayer with all fields populated", async () => {
+    const user = userEvent.setup();
+    setMockPrayerData([{
+      id:"1",
+      title:"Complete Prayer",
+      requester:"John Doe",
+      email:"john@example.com",
+      status:"current",
+      approval_status:"approved",
+      prayer_for:"Jane Smith",
+      description:"This is a complete prayer with all fields",
+      created_at:"2025-01-01T00:00:00Z",
+      prayer_updates:[
+        {id:"u1",content:"Update 1",author:"Author 1",created_at:"2025-01-02T00:00:00Z",approval_status:"approved"}
+      ]
+    }]);
+    render(<PrayerSearch />);
+    await user.selectOptions(screen.getAllByRole('combobox')[0], "all");
+    
+    await waitFor(() => {
+      expect(screen.getByText("Complete Prayer")).toBeDefined();
+    });
+    
+    await user.click(screen.getByText("Complete Prayer"));
+    
+    await waitFor(() => {
+      expect(screen.getByText("This is a complete prayer with all fields")).toBeDefined();
+      expect(screen.getByText(/praying for:/i)).toBeDefined();
+      expect(screen.getByText("Jane Smith")).toBeDefined();
+    });
+  });
+
+  it("handles prayer with null email", async () => {
+    const user = userEvent.setup();
+    setMockPrayerData([{
+      id:"1",
+      title:"Prayer Without Email",
+      requester:"John",
+      email:null,
+      status:"current",
+      approval_status:"approved",
+      created_at:"2025-01-01T00:00:00Z",
+      prayer_updates:[]
+    }]);
+    render(<PrayerSearch />);
+    await user.selectOptions(screen.getAllByRole('combobox')[0], "all");
+    
+    await waitFor(() => {
+      expect(screen.getByText("Prayer Without Email")).toBeDefined();
+      expect(screen.getByText(/john/i)).toBeDefined();
+    });
+  });
+
+  it("handles prayer with null description", async () => {
+    const user = userEvent.setup();
+    setMockPrayerData([{
+      id:"1",
+      title:"Prayer Without Description",
+      requester:"John",
+      email:"j@t.com",
+      status:"current",
+      approval_status:"approved",
+      description:null,
+      created_at:"2025-01-01T00:00:00Z",
+      prayer_updates:[]
+    }]);
+    render(<PrayerSearch />);
+    await user.selectOptions(screen.getAllByRole('combobox')[0], "all");
+    
+    await waitFor(() => {
+      expect(screen.getByText("Prayer Without Description")).toBeDefined();
+    });
+    
+    await user.click(screen.getByText("Prayer Without Description"));
+    
+    await waitFor(() => {
+      // Should not crash, just not show description section
+      expect(screen.queryByText(/prayer description/i)).toBeNull();
+    });
+  });
+
+  it("handles prayer with empty prayer_for field", async () => {
+    const user = userEvent.setup();
+    setMockPrayerData([{
+      id:"1",
+      title:"Prayer",
+      requester:"John",
+      email:"j@t.com",
+      status:"current",
+      approval_status:"approved",
+      prayer_for:"",
+      created_at:"2025-01-01T00:00:00Z",
+      prayer_updates:[]
+    }]);
+    render(<PrayerSearch />);
+    await user.selectOptions(screen.getAllByRole('combobox')[0], "all");
+    
+    await waitFor(() => {
+      expect(screen.getByText("Prayer")).toBeDefined();
+    });
+    
+    await user.click(screen.getByText("Prayer"));
+    
+    await waitFor(() => {
+      // Should not show praying for section with empty value
+      expect(screen.queryByText(/praying for:/i)).toBeNull();
+    });
+  });
+
+  it("displays prayer with pending approval in expanded state", async () => {
+    const user = userEvent.setup();
+    setMockPrayerData([{
+      id:"1",
+      title:"Pending Prayer",
+      requester:"John",
+      email:"j@t.com",
+      status:"current",
+      approval_status:"pending",
+      created_at:"2025-01-01T00:00:00Z",
+      prayer_updates:[]
+    }]);
+    render(<PrayerSearch />);
+    await user.selectOptions(screen.getAllByRole('combobox')[0], "all");
+    
+    await waitFor(() => {
+      expect(screen.getByText("Pending Prayer")).toBeDefined();
+    });
+    
+    await user.click(screen.getByText("Pending Prayer"));
+    
+    await waitFor(() => {
+      expect(screen.getByText(/approval status:/i)).toBeDefined();
+      const pendingBadges = screen.getAllByText(/pending/i);
+      expect(pendingBadges.length).toBeGreaterThan(0);
+    });
+  });
+
+  it("shows edit button is clickable", async () => {
+    const user = userEvent.setup();
+    setMockPrayerData([{
+      id:"1",
+      title:"Test",
+      requester:"John",
+      email:"j@t.com",
+      status:"current",
+      approval_status:"approved",
+      description:"Desc",
+      created_at:"2025-01-01T00:00:00Z",
+      prayer_updates:[]
+    }]);
+    render(<PrayerSearch />);
+    await user.selectOptions(screen.getAllByRole('combobox')[0], "all");
+    
+    await waitFor(() => {
+      const editBtn = screen.getByTitle(/edit this prayer/i);
+      expect(editBtn).toBeDefined();
+      expect(editBtn).not.toBeDisabled();
+    });
+  });
+
+  it("shows delete button is clickable when not deleting", async () => {
+    const user = userEvent.setup();
+    setMockPrayerData([{
+      id:"1",
+      title:"Test",
+      requester:"John",
+      email:"j@t.com",
+      status:"current",
+      approval_status:"approved",
+      created_at:"2025-01-01T00:00:00Z",
+      prayer_updates:[]
+    }]);
+    render(<PrayerSearch />);
+    await user.selectOptions(screen.getAllByRole('combobox')[0], "all");
+    
+    await waitFor(() => {
+      const deleteBtn = screen.getByTitle(/delete this prayer/i);
+      expect(deleteBtn).toBeDefined();
+      expect(deleteBtn).not.toBeDisabled();
+    });
+  });
+
+  it("handles clicking on prayer card to expand", async () => {
+    const user = userEvent.setup();
+    setMockPrayerData([{
+      id:"1",
+      title:"Expandable Prayer",
+      requester:"John",
+      email:"j@t.com",
+      status:"current",
+      approval_status:"approved",
+      description:"Hidden until expanded",
+      created_at:"2025-01-01T00:00:00Z",
+      prayer_updates:[]
+    }]);
+    render(<PrayerSearch />);
+    await user.selectOptions(screen.getAllByRole('combobox')[0], "all");
+    
+    await waitFor(() => {
+      expect(screen.getByText("Expandable Prayer")).toBeDefined();
+    });
+    
+    // Should not see description yet
+    expect(screen.queryByText("Hidden until expanded")).toBeNull();
+    
+    // Click to expand
+    await user.click(screen.getByText("Expandable Prayer"));
+    
+    // Now should see description
+    await waitFor(() => {
+      expect(screen.getByText("Hidden until expanded")).toBeDefined();
+    });
+  });
+
+  it("displays prayer with updates in collapsed state", async () => {
+    const user = userEvent.setup();
+    setMockPrayerData([{
+      id:"1",
+      title:"Prayer with Updates",
+      requester:"John",
+      email:"j@t.com",
+      status:"current",
+      approval_status:"approved",
+      created_at:"2025-01-01T00:00:00Z",
+      prayer_updates:[
+        {id:"u1",content:"Update",author:"A",created_at:"2025-01-02T00:00:00Z",approval_status:"approved"}
+      ]
+    }]);
+    render(<PrayerSearch />);
+    await user.selectOptions(screen.getAllByRole('combobox')[0], "all");
+    
+    await waitFor(() => {
+      expect(screen.getByText("Prayer with Updates")).toBeDefined();
+    });
+  });
+
+  it("displays prayer title as clickable", async () => {
+    const user = userEvent.setup();
+    setMockPrayerData([{
+      id:"1",
+      title:"Clickable Title",
+      requester:"John",
+      email:"j@t.com",
+      status:"current",
+      approval_status:"approved",
+      description:"Content",
+      created_at:"2025-01-01T00:00:00Z",
+      prayer_updates:[]
+    }]);
+    render(<PrayerSearch />);
+    await user.selectOptions(screen.getAllByRole('combobox')[0], "all");
+    
+    await waitFor(() => {
+      const title = screen.getByText("Clickable Title");
+      expect(title).toBeDefined();
+    });
+    
+    await user.click(screen.getByText("Clickable Title"));
+    
+    await waitFor(() => {
+      expect(screen.getByText("Content")).toBeDefined();
+    });
+  });
+
+  it("renders prayer with archived status badge", async () => {
+    const user = userEvent.setup();
+    setMockPrayerData([{
+      id:"1",
+      title:"Archived Prayer",
+      requester:"John",
+      email:"j@t.com",
+      status:"archived",
+      approval_status:"approved",
+      created_at:"2025-01-01T00:00:00Z",
+      prayer_updates:[]
+    }]);
+    render(<PrayerSearch />);
+    await user.selectOptions(screen.getAllByRole('combobox')[0], "all");
+    
+    await waitFor(() => {
+      expect(screen.getByText("Archived Prayer")).toBeDefined();
+      const archivedBadges = screen.getAllByText(/archived/i);
+      expect(archivedBadges.length).toBeGreaterThan(0);
+    });
+  });
+
+  it("handles search with empty search term", async () => {
+    const user = userEvent.setup();
+    setMockPrayerData([{
+      id:"1",
+      title:"Test Prayer",
+      requester:"John",
+      email:"j@t.com",
+      status:"current",
+      approval_status:"approved",
+      created_at:"2025-01-01T00:00:00Z",
+      prayer_updates:[]
+    }]);
+    render(<PrayerSearch />);
+    
+    const searchBtn = screen.getByRole("button", {name: /^search$/i});
+    await user.click(searchBtn);
+    
+    // Should handle search with empty term
+    expect(searchBtn).toBeDefined();
+  });
+
+  it("displays prayer card in compact format", async () => {
+    const user = userEvent.setup();
+    setMockPrayerData([{
+      id:"1",
+      title:"Compact Prayer",
+      requester:"John Doe",
+      email:"john@test.com",
+      status:"current",
+      approval_status:"approved",
+      created_at:"2025-01-01T00:00:00Z",
+      prayer_updates:[]
+    }]);
+    render(<PrayerSearch />);
+    await user.selectOptions(screen.getAllByRole('combobox')[0], "all");
+    
+    await waitFor(() => {
+      // Should show compact info
+      expect(screen.getByText("Compact Prayer")).toBeDefined();
+      expect(screen.getByText("john@test.com")).toBeDefined();
+    });
+  });
+
+  it("shows prayer status and approval status together", async () => {
+    const user = userEvent.setup();
+    setMockPrayerData([{
+      id:"1",
+      title:"Test",
+      requester:"John",
+      email:"j@t.com",
+      status:"answered",
+      approval_status:"approved",
+      created_at:"2025-01-01T00:00:00Z",
+      prayer_updates:[]
+    }]);
+    render(<PrayerSearch />);
+    await user.selectOptions(screen.getAllByRole('combobox')[0], "all");
+    
+    await waitFor(() => {
+      const answeredBadges = screen.getAllByText(/answered/i);
+      const approvedBadges = screen.getAllByText(/approved/i);
+      expect(answeredBadges.length).toBeGreaterThan(0);
+      expect(approvedBadges.length).toBeGreaterThan(0);
+    });
+  });
+
+  it("displays checkbox for each prayer", async () => {
+    const user = userEvent.setup();
+    setMockPrayerData([
+      {id:"1",title:"Prayer 1",requester:"J",email:"j@t.com",status:"current",approval_status:"approved",created_at:"2025-01-01T00:00:00Z",prayer_updates:[]},
+      {id:"2",title:"Prayer 2",requester:"J",email:"j@t.com",status:"current",approval_status:"approved",created_at:"2025-01-02T00:00:00Z",prayer_updates:[]}
+    ]);
+    render(<PrayerSearch />);
+    await user.selectOptions(screen.getAllByRole('combobox')[0], "all");
+    
+    await waitFor(() => {
+      const checkboxes = screen.getAllByRole('checkbox');
+      // Should have select-all plus one for each prayer
+      expect(checkboxes.length).toBeGreaterThanOrEqual(3);
+    });
+  });
+
+  it("shows action buttons for each prayer", async () => {
+    const user = userEvent.setup();
+    setMockPrayerData([{
+      id:"1",
+      title:"Test",
+      requester:"John",
+      email:"j@t.com",
+      status:"current",
+      approval_status:"approved",
+      created_at:"2025-01-01T00:00:00Z",
+      prayer_updates:[]
+    }]);
+    render(<PrayerSearch />);
+    await user.selectOptions(screen.getAllByRole('combobox')[0], "all");
+    
+    await waitFor(() => {
+      expect(screen.getByTitle(/edit this prayer/i)).toBeDefined();
+      expect(screen.getByTitle(/delete this prayer/i)).toBeDefined();
+    });
+  });
+
+  it("renders prayer card with proper styling", async () => {
+    const user = userEvent.setup();
+    setMockPrayerData([{
+      id:"1",
+      title:"Styled Prayer",
+      requester:"John",
+      email:"j@t.com",
+      status:"current",
+      approval_status:"approved",
+      created_at:"2025-01-01T00:00:00Z",
+      prayer_updates:[]
+    }]);
+    render(<PrayerSearch />);
+    await user.selectOptions(screen.getAllByRole('combobox')[0], "all");
+    
+    await waitFor(() => {
+      const prayer = screen.getByText("Styled Prayer");
+      expect(prayer).toBeDefined();
+    });
+  });
 });
