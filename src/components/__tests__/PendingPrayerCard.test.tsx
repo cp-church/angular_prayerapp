@@ -1,11 +1,17 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PendingPrayerCard } from '../PendingPrayerCard';
+import { lookupPersonByEmail } from '../../lib/planningcenter';
 
 // Mock the Planning Center library
 vi.mock('../../lib/planningcenter', () => ({
   lookupPersonByEmail: vi.fn(),
-  formatPersonName: vi.fn(() => 'John Doe')
+  formatPersonName: vi.fn((person) => {
+    if (person && person.attributes) {
+      return `${person.attributes.first_name} ${person.attributes.last_name}`;
+    }
+    return 'John Doe';
+  })
 }));
 
 describe('PendingPrayerCard Component', () => {
@@ -29,11 +35,12 @@ describe('PendingPrayerCard Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers();
+    // Default mock implementation for Planning Center lookup
+    vi.mocked(lookupPersonByEmail).mockResolvedValue({ people: [] });
   });
 
   afterEach(() => {
-    vi.useRealTimers();
+    // Clean up
   });
 
   it('renders prayer details correctly', () => {
@@ -315,5 +322,285 @@ describe('PendingPrayerCard Component', () => {
     fireEvent.click(cancelButton);
 
     expect(screen.queryByText('Reason for denial (required):')).not.toBeInTheDocument();
+  });
+
+  // Additional tests to improve coverage
+
+  it('handles error when approve fails', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockOnApprove.mockRejectedValue(new Error('Approval failed'));
+
+    render(
+      <PendingPrayerCard
+        prayer={mockPrayer}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
+
+    const approveButton = screen.getByRole('button', { name: /approve/i });
+    await fireEvent.click(approveButton);
+
+    // Give it a moment for the error to be logged
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('handles error when deny fails', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockOnDeny.mockRejectedValue(new Error('Denial failed'));
+
+    render(
+      <PendingPrayerCard
+        prayer={mockPrayer}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
+
+    // Open deny form
+    const denyButton = screen.getByRole('button', { name: /deny/i });
+    fireEvent.click(denyButton);
+
+    // Fill in reason
+    const reasonTextarea = screen.getByPlaceholderText(/Explain why this prayer request cannot be approved.../);
+    fireEvent.change(reasonTextarea, { target: { value: 'Inappropriate content' } });
+
+    // Submit
+    const confirmButton = screen.getByRole('button', { name: /confirm denial/i });
+    await fireEvent.click(confirmButton);
+
+    // Give it a moment for the error to be logged
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('calls onDeny with correct parameters when deny form is submitted', async () => {
+    mockOnDeny.mockResolvedValue(undefined);
+
+    render(
+      <PendingPrayerCard
+        prayer={mockPrayer}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
+
+    // Open deny form
+    const denyButton = screen.getByRole('button', { name: /deny/i });
+    fireEvent.click(denyButton);
+
+    // Fill in reason
+    const reasonTextarea = screen.getByPlaceholderText(/Explain why this prayer request cannot be approved.../);
+    fireEvent.change(reasonTextarea, { target: { value: 'Test denial reason' } });
+
+    // Submit
+    const confirmButton = screen.getByRole('button', { name: /confirm denial/i });
+    await fireEvent.click(confirmButton);
+
+    // Give it a moment for the callback to complete
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    expect(mockOnDeny).toHaveBeenCalledWith('1', 'Test denial reason');
+  });
+
+  it('handles error when edit fails', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockOnEdit.mockRejectedValue(new Error('Edit failed'));
+
+    render(
+      <PendingPrayerCard
+        prayer={mockPrayer}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
+
+    // Open edit form
+    const editButton = screen.getByRole('button', { name: /edit/i });
+    fireEvent.click(editButton);
+
+    // Submit without changes
+    const saveButton = screen.getByRole('button', { name: /save changes/i });
+    await fireEvent.click(saveButton);
+
+    // Give it a moment for the error to be logged
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('calls onEdit with correct parameters when edit form is submitted', async () => {
+    mockOnEdit.mockResolvedValue(undefined);
+
+    render(
+      <PendingPrayerCard
+        prayer={mockPrayer}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
+
+    // Open edit form
+    const editButton = screen.getByRole('button', { name: /edit/i });
+    fireEvent.click(editButton);
+
+    // Modify fields
+    const descriptionTextarea = screen.getByDisplayValue('Please pray for healing');
+    fireEvent.change(descriptionTextarea, { target: { value: 'Updated prayer request' } });
+
+    const requesterInput = screen.getByDisplayValue('Jane Smith');
+    fireEvent.change(requesterInput, { target: { value: 'Updated Requester' } });
+
+    const prayerForInput = screen.getByDisplayValue('John Doe');
+    fireEvent.change(prayerForInput, { target: { value: 'Updated Person' } });
+
+    const emailInput = screen.getByDisplayValue('jane@example.com');
+    fireEvent.change(emailInput, { target: { value: 'updated@example.com' } });
+
+    // Submit
+    const saveButton = screen.getByRole('button', { name: /save changes/i });
+    await fireEvent.click(saveButton);
+
+    // Give it a moment for the callback to complete
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    expect(mockOnEdit).toHaveBeenCalledWith('1', {
+      title: 'Prayer for Updated Person',
+      description: 'Updated prayer request',
+      requester: 'Updated Requester',
+      prayer_for: 'Updated Person',
+      email: 'updated@example.com'
+    });
+  });
+
+  it('shows Planning Center person when lookup succeeds', async () => {
+    const mockPerson = {
+      id: '123',
+      type: 'Person',
+      attributes: {
+        first_name: 'John',
+        last_name: 'Doe'
+      }
+    };
+
+    vi.mocked(lookupPersonByEmail).mockResolvedValue({ people: [mockPerson] });
+
+    render(
+      <PendingPrayerCard
+        prayer={mockPrayer}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
+
+    // Wait for Planning Center lookup to complete
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    // Verify the lookup was called
+    expect(lookupPersonByEmail).toHaveBeenCalledWith('jane@example.com');
+    
+    // Check that the PC success indicator is displayed (green badge)
+    const pcElements = screen.queryAllByText((content, element) => {
+      return element?.textContent?.includes('Planning Center:') || false;
+    });
+    expect(pcElements.length).toBeGreaterThan(0);
+  });
+
+  it('shows not in Planning Center when lookup returns no results', async () => {
+    vi.mocked(lookupPersonByEmail).mockResolvedValue({ people: [] });
+
+    render(
+      <PendingPrayerCard
+        prayer={mockPrayer}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
+
+    // Wait for Planning Center lookup to complete
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    expect(screen.getByText(/Not in Planning Center/)).toBeInTheDocument();
+  });
+
+  it('shows error when Planning Center lookup fails', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(lookupPersonByEmail).mockRejectedValue(new Error('PC lookup failed'));
+
+    render(
+      <PendingPrayerCard
+        prayer={mockPrayer}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
+
+    // Wait for Planning Center lookup to fail
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    expect(screen.getByText(/\(PC lookup failed\)/)).toBeInTheDocument();
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('shows loading state during Planning Center lookup', () => {
+    // Mock a never-resolving promise to keep loading state
+    vi.mocked(lookupPersonByEmail).mockImplementation(() => new Promise(() => {}));
+
+    render(
+      <PendingPrayerCard
+        prayer={mockPrayer}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
+
+    expect(screen.getByText(/Checking Planning Center.../)).toBeInTheDocument();
+  });
+
+  it('submits edit with null email when email field is empty', async () => {
+    mockOnEdit.mockResolvedValue(undefined);
+
+    render(
+      <PendingPrayerCard
+        prayer={mockPrayer}
+        onApprove={mockOnApprove}
+        onDeny={mockOnDeny}
+        onEdit={mockOnEdit}
+      />
+    );
+
+    // Open edit form
+    const editButton = screen.getByRole('button', { name: /edit/i });
+    fireEvent.click(editButton);
+
+    // Clear email field
+    const emailInput = screen.getByDisplayValue('jane@example.com');
+    fireEvent.change(emailInput, { target: { value: '' } });
+
+    // Submit
+    const saveButton = screen.getByRole('button', { name: /save changes/i });
+    await fireEvent.click(saveButton);
+
+    // Give it a moment for the callback to complete
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    expect(mockOnEdit).toHaveBeenCalledWith('1', expect.objectContaining({
+      email: null
+    }));
   });
 });
