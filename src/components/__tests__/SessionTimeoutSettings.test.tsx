@@ -190,8 +190,6 @@ describe('SessionTimeoutSettings', () => {
     expect(await screen.findByText(/Failed to save settings to database/i)).toBeInTheDocument();
   });
 
-
-
   it('handles general error during save', async () => {
     // Mock upsert to throw an error
     mockUpsert = vi.fn(async () => {
