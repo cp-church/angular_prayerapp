@@ -24,6 +24,8 @@ const createAdminSettingsMock = (requireVerification: boolean | null) => ({
   )
 });
 
+import { supabase } from '../../lib/supabase';
+
 vi.mock('../../lib/supabase', () => ({
   supabase: {
     from: vi.fn(),
@@ -32,8 +34,6 @@ vi.mock('../../lib/supabase', () => ({
     }
   }
 }));
-
-import { supabase } from '../../lib/supabase';
 
 describe('useVerification - additional coverage tests', () => {
   beforeEach(() => {
@@ -217,13 +217,13 @@ describe('useVerification - additional coverage tests', () => {
         expect(result.current.isEnabled).toBe(true);
       });
 
-      let verified: any;
+      let verified: { actionType: string; actionData: any; email: string } | undefined;
       await act(async () => {
         verified = await result.current.verifyCode('code-123', '123456');
       });
       
-      expect(verified.actionType).toBe('prayer_submission');
-      expect(verified.email).toBeUndefined();
+      expect(verified?.actionType).toBe('prayer_submission');
+      expect(verified?.email).toBeUndefined();
     });
 
     it('handles non-Error thrown in requestCode', async () => {
@@ -418,7 +418,7 @@ describe('useVerification - additional coverage tests', () => {
       });
 
       // Request code should return null for recently verified email
-      let response: any;
+      let response: { codeId: string; expiresAt: string } | null | undefined;
       await act(async () => {
         response = await result.current.requestCode('recent@example.com', 'test', {});
       });
@@ -453,13 +453,13 @@ describe('useVerification - additional coverage tests', () => {
       });
 
       // Request code for expired email should send new code
-      let response: any;
+      let response: { codeId: string; expiresAt: string } | null | undefined;
       await act(async () => {
         response = await result.current.requestCode('expired@example.com', 'test', {});
       });
 
       expect(response).not.toBeNull();
-      expect(response.codeId).toBe('new-code');
+      expect(response?.codeId).toBe('new-code');
       
       // The expired session should have been cleaned up
       const storedSessions = JSON.parse(localStorage.getItem('prayer_app_verified_sessions') || '[]');
@@ -486,13 +486,13 @@ describe('useVerification - additional coverage tests', () => {
       });
 
       // Should handle corrupted localStorage gracefully and request new code
-      let response: any;
+      let response: { codeId: string; expiresAt: string } | null | undefined;
       await act(async () => {
         response = await result.current.requestCode('user@example.com', 'test', {});
       });
 
       expect(response).not.toBeNull();
-      expect(response.codeId).toBe('code-123');
+      expect(response?.codeId).toBe('code-123');
     });
 
     it('handles session with invalid expiresAt field', async () => {
@@ -506,7 +506,7 @@ describe('useVerification - additional coverage tests', () => {
       } as any);
 
       // Pre-populate localStorage with session that has invalid expiresAt
-      const sessions: any = [{
+      const sessions: Array<{ email: string; verifiedAt: number; expiresAt: null }> = [{
         email: 'user@example.com',
         verifiedAt: Date.now(),
         expiresAt: null  // Invalid
@@ -520,13 +520,13 @@ describe('useVerification - additional coverage tests', () => {
       });
 
       // Should treat invalid session as not verified and request new code
-      let response: any;
+      let response: { codeId: string; expiresAt: string } | null | undefined;
       await act(async () => {
         response = await result.current.requestCode('user@example.com', 'test', {});
       });
 
       expect(response).not.toBeNull();
-      expect(response.codeId).toBe('code-456');
+      expect(response?.codeId).toBe('code-456');
     });
   });
 
