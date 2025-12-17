@@ -8,10 +8,7 @@ vi.mock("../../lib/supabase", async () => {
   const supabase = createSupabaseMock({ fromData: {} });
   return {
     supabase,
-    handleSupabaseError: vi.fn((err: any) => {
-      console.error('Supabase error:', err);
-      return err?.message || "Unknown error";
-    }),
+    handleSupabaseError: vi.fn((err: any) => err?.message || "Unknown error"),
   } as any;
 });
 
@@ -111,10 +108,10 @@ describe("usePrayerManager - Simple Coverage Tests", () => {
       document.dispatchEvent(new Event("visibilitychange"));
     });
 
-    // Give it a moment to trigger the reload
-    await new Promise((resolve) => setTimeout(resolve, 10));
-
-    expect(vi.mocked(supabase.from).mock.calls.length).toBeGreaterThan(initialCallCount);
+    // Wait for the reload to be triggered
+    await waitFor(() => {
+      expect(vi.mocked(supabase.from).mock.calls.length).toBeGreaterThan(initialCallCount);
+    });
   });
 
   it("searches in update content", async () => {
@@ -229,7 +226,10 @@ describe("usePrayerManager - Simple Coverage Tests", () => {
     ];
 
     const mockChain = createMockChain(mockPrayers);
-    mockChain.eq = vi.fn().mockResolvedValue({ data: null, error: null });
+    // Fix: eq should return this for chaining, then resolve at the end
+    mockChain.eq = vi.fn().mockReturnValue(
+      Promise.resolve({ data: null, error: null })
+    );
 
     vi.mocked(supabase.from).mockReturnValue(mockChain as any);
 
