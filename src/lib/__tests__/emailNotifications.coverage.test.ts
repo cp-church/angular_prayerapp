@@ -213,10 +213,9 @@ describe('emailNotifications - Additional Coverage Tests', () => {
         title: 'New Prayer Request',
         description: 'Please pray for...',
         requester: 'Alice',
-        requesterEmail: 'alice@example.com',
         prayerFor: 'Family',
         status: 'open'
-      } as any);
+      });
 
       expect(sendEmailToAllSubscribers).toHaveBeenCalled();
     });
@@ -229,10 +228,9 @@ describe('emailNotifications - Additional Coverage Tests', () => {
         title: 'Fallback Prayer',
         description: 'Description text',
         requester: 'Bob',
-        requesterEmail: 'bob@example.com',
         prayerFor: 'Health',
         status: 'open'
-      } as any);
+      });
 
       expect(sendEmailToAllSubscribers).toHaveBeenCalled();
       expect(consoleWarn).toHaveBeenCalled();
@@ -246,10 +244,9 @@ describe('emailNotifications - Additional Coverage Tests', () => {
         title: 'Error Case Prayer',
         description: 'Desc',
         requester: 'Charlie',
-        requesterEmail: 'charlie@example.com',
         prayerFor: 'World',
         status: 'open'
-      } as any);
+      });
 
       expect(sendEmailToAllSubscribers).toHaveBeenCalled();
       expect(consoleWarn).toHaveBeenCalled();
@@ -265,7 +262,7 @@ describe('emailNotifications - Additional Coverage Tests', () => {
         content: 'Update',
         author: 'Author',
         markedAsAnswered: false
-      } as any);
+      });
 
       expect(consoleError).toHaveBeenCalled();
       expect(sendEmailToAllSubscribers).not.toHaveBeenCalled();
