@@ -281,4 +281,211 @@ describe("usePrayerManager - Simple Coverage Tests", () => {
       })
     );
   });
+
+  it("converts null description to default text", async () => {
+    const mockPrayers = [
+      {
+        id: "p1",
+        title: "Test",
+        description: null, // Null description
+        status: "current",
+        requester: "John",
+        prayer_for: "Friend",
+        email: null,
+        is_anonymous: false,
+        approval_status: "approved",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        date_requested: new Date().toISOString(),
+        prayer_updates: [],
+      },
+    ];
+
+    const mockChain = createMockChain(mockPrayers);
+    vi.mocked(supabase.from).mockReturnValue(mockChain as any);
+
+    const { result } = renderHook(() => usePrayerManager());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.prayers[0].description).toBe("No description provided");
+  });
+
+  it("handles prayer with single update object instead of array", async () => {
+    const mockPrayers = [
+      {
+        id: "p1",
+        title: "Test",
+        description: "Test",
+        status: "current",
+        requester: "John",
+        prayer_for: "Friend",
+        email: null,
+        is_anonymous: false,
+        approval_status: "approved",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        date_requested: new Date().toISOString(),
+        // Single update object instead of array
+        prayer_updates: {
+          id: "u1",
+          prayer_id: "p1",
+          content: "Update",
+          author: "John",
+          approval_status: "approved",
+          created_at: new Date().toISOString(),
+        },
+      },
+    ];
+
+    const mockChain = createMockChain(mockPrayers);
+    vi.mocked(supabase.from).mockReturnValue(mockChain as any);
+
+    const { result } = renderHook(() => usePrayerManager());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    // Should handle single object and convert to array
+    expect(result.current.prayers[0].updates).toHaveLength(1);
+  });
+
+  it("filters prayers by status correctly", async () => {
+    const mockPrayers = [
+      {
+        id: "p1",
+        title: "Current Prayer",
+        description: "Test",
+        status: "current",
+        requester: "John",
+        prayer_for: "Friend",
+        email: null,
+        is_anonymous: false,
+        approval_status: "approved",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        date_requested: new Date().toISOString(),
+        prayer_updates: [],
+      },
+      {
+        id: "p2",
+        title: "Answered Prayer",
+        description: "Test",
+        status: "answered",
+        requester: "Jane",
+        prayer_for: "Family",
+        email: null,
+        is_anonymous: false,
+        approval_status: "approved",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        date_requested: new Date().toISOString(),
+        prayer_updates: [],
+      },
+    ];
+
+    const mockChain = createMockChain(mockPrayers);
+    vi.mocked(supabase.from).mockReturnValue(mockChain as any);
+
+    const { result } = renderHook(() => usePrayerManager());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    const currentPrayers = result.current.getFilteredPrayers(PrayerStatus.CURRENT);
+    expect(currentPrayers).toHaveLength(1);
+    expect(currentPrayers[0].status).toBe(PrayerStatus.CURRENT);
+
+    const answeredPrayers = result.current.getFilteredPrayers(PrayerStatus.ANSWERED);
+    expect(answeredPrayers).toHaveLength(1);
+    expect(answeredPrayers[0].status).toBe(PrayerStatus.ANSWERED);
+  });
+
+  it("returns all prayers when no search term or status filter provided", async () => {
+    const mockPrayers = [
+      {
+        id: "p1",
+        title: "Prayer 1",
+        description: "Test",
+        status: "current",
+        requester: "John",
+        prayer_for: "Friend",
+        email: null,
+        is_anonymous: false,
+        approval_status: "approved",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        date_requested: new Date().toISOString(),
+        prayer_updates: [],
+      },
+      {
+        id: "p2",
+        title: "Prayer 2",
+        description: "Test",
+        status: "answered",
+        requester: "Jane",
+        prayer_for: "Family",
+        email: null,
+        is_anonymous: false,
+        approval_status: "approved",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        date_requested: new Date().toISOString(),
+        prayer_updates: [],
+      },
+    ];
+
+    const mockChain = createMockChain(mockPrayers);
+    vi.mocked(supabase.from).mockReturnValue(mockChain as any);
+
+    const { result } = renderHook(() => usePrayerManager());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    const allPrayers = result.current.getFilteredPrayers();
+    expect(allPrayers).toHaveLength(2);
+  });
+
+  it("filters prayers with non-string field values", async () => {
+    const mockPrayers = [
+      {
+        id: "p1",
+        title: "Test Prayer",
+        description: "Description here",
+        status: "current",
+        requester: "John",
+        prayer_for: "Friend",
+        email: null,
+        is_anonymous: false,
+        approval_status: "approved",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        date_requested: new Date().toISOString(),
+        prayer_updates: [],
+      },
+    ];
+
+    const mockChain = createMockChain(mockPrayers);
+    vi.mocked(supabase.from).mockReturnValue(mockChain as any);
+
+    const { result } = renderHook(() => usePrayerManager());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    // Should match on string fields
+    const filtered = result.current.getFilteredPrayers(undefined, "Description");
+    expect(filtered).toHaveLength(1);
+
+    // Should not match non-existent
+    const notFiltered = result.current.getFilteredPrayers(undefined, "nonexistent");
+    expect(notFiltered).toHaveLength(0);
+  });
 });
