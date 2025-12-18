@@ -1,5 +1,5 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useAdminData } from '../useAdminData';
 
 // Mock supabase
@@ -30,6 +30,7 @@ vi.mock('../../lib/errorLogger', () => ({
   logError: vi.fn()
 }));
 
+// Import mocked modules after vi.mock declarations
 import { supabase } from '../../lib/supabase';
 import * as email from '../../lib/emailNotifications';
 import { logError } from '../../lib/errorLogger';
