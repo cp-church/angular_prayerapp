@@ -23,7 +23,7 @@ import { Observable } from 'rxjs';
   template: `
     <div class="w-full min-h-screen bg-gray-50 dark:bg-gray-900">
       <!-- Header -->
-      <header class="w-full bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
+      <header class="w-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
         <div class="w-full max-w-6xl mx-auto px-4 py-4 sm:py-6">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div class="flex items-center gap-3">
