@@ -15,6 +15,7 @@ import { PrayerTypesManagerComponent } from '../../components/prayer-types-manag
 import { EmailSettingsComponent } from '../../components/email-settings/email-settings.component';
 import { AdminUserManagementComponent } from '../../components/admin-user-management/admin-user-management.component';
 import { PrayerSearchComponent } from '../../components/prayer-search/prayer-search.component';
+import { BackupStatusComponent } from '../../components/backup-status/backup-status.component';
 
 type AdminTab = 'prayers' | 'updates' | 'deletions' | 'preferences' | 'settings';
 type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'timeouts';
@@ -34,7 +35,8 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'time
     PrayerTypesManagerComponent,
     EmailSettingsComponent,
     AdminUserManagementComponent,
-    PrayerSearchComponent
+    PrayerSearchComponent,
+    BackupStatusComponent
   ],
   template: `
     <div class="w-full min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors flex flex-col">
@@ -530,6 +532,9 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'time
             <div *ngIf="activeSettingsTab === 'tools'" class="space-y-6">
               <div class="mb-4">
                 <app-prayer-search></app-prayer-search>
+              </div>
+              <div class="mb-4">
+                <app-backup-status></app-backup-status>
               </div>
             </div>
 
