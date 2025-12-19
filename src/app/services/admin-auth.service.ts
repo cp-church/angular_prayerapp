@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, interval } from 'rxjs';
 import { SupabaseService } from './supabase.service';
 import type { User } from '@supabase/supabase-js';
@@ -30,6 +31,8 @@ export class AdminAuthService {
   public isAdmin$ = this.isAdminSubject.asObservable();
   public loading$ = this.loadingSubject.asObservable();
 
+  private router = inject(Router);
+
   constructor(private supabase: SupabaseService) {
     this.initializeAuth();
   }
@@ -50,7 +53,7 @@ export class AdminAuthService {
 
     // Listen for auth state changes
     this.supabase.client.auth.onAuthStateChange(async (event, session) => {
-      console.log('[AdminAuth] Auth state changed:', event);
+      console.log('[AdminAuth] Auth state changed:', event, 'URL:', window.location.href);
       
       if (session?.user) {
         this.userSubject.next(session.user);
@@ -59,6 +62,21 @@ export class AdminAuthService {
         if (!this.sessionStart) {
           this.sessionStart = Date.now();
           this.persistSessionStart(this.sessionStart);
+        }
+
+        // Handle magic link redirect after successful authentication
+        // Check for redirect param on both SIGNED_IN and INITIAL_SESSION (magic link flow)
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          const urlParams = new URLSearchParams(window.location.search);
+          const redirect = urlParams.get('redirect');
+          console.log('[AdminAuth] Event:', event, 'redirect param:', redirect);
+          if (redirect === 'admin') {
+            // Wait for admin status to be set
+            setTimeout(() => {
+              console.log('[AdminAuth] Redirecting to /admin, isAdmin:', this.isAdminSubject.value);
+              this.router.navigate(['/admin']);
+            }, 200);
+          }
         }
       } else {
         this.userSubject.next(null);
