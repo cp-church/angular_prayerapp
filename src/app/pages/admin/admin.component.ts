@@ -9,6 +9,10 @@ import { PendingUpdateCardComponent } from '../../components/pending-update-card
 import { PendingDeletionCardComponent } from '../../components/pending-deletion-card/pending-deletion-card.component';
 import { PendingUpdateDeletionCardComponent } from '../../components/pending-update-deletion-card/pending-update-deletion-card.component';
 import { PendingPreferenceChangeCardComponent } from '../../components/pending-preference-change-card/pending-preference-change-card.component';
+import { AppBrandingComponent } from '../../components/app-branding/app-branding.component';
+import { PromptManagerComponent } from '../../components/prompt-manager/prompt-manager.component';
+import { PrayerTypesManagerComponent } from '../../components/prayer-types-manager/prayer-types-manager.component';
+import { EmailSettingsComponent } from '../../components/email-settings/email-settings.component';
 
 type AdminTab = 'prayers' | 'updates' | 'deletions' | 'preferences' | 'settings';
 type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'timeouts';
@@ -16,7 +20,18 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'time
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, PendingPrayerCardComponent, PendingUpdateCardComponent, PendingDeletionCardComponent, PendingUpdateDeletionCardComponent, PendingPreferenceChangeCardComponent],
+  imports: [
+    CommonModule,
+    PendingPrayerCardComponent,
+    PendingUpdateCardComponent,
+    PendingDeletionCardComponent,
+    PendingUpdateDeletionCardComponent,
+    PendingPreferenceChangeCardComponent,
+    AppBrandingComponent,
+    PromptManagerComponent,
+    PrayerTypesManagerComponent,
+    EmailSettingsComponent
+  ],
   template: `
     <div class="w-full min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors flex flex-col">
       <!-- Header -->
@@ -483,7 +498,25 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'time
             </div>
 
             <!-- Other Settings Tabs Placeholder -->
-            <div *ngIf="activeSettingsTab !== 'analytics'" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center border border-gray-200 dark:border-gray-700">
+            <div *ngIf="activeSettingsTab === 'content'" class="space-y-6">
+              <div class="mb-4">
+                <app-branding (onSave)="handleBrandingSave()"></app-branding>
+              </div>
+              <div class="mb-4">
+                <app-prompt-manager (onSave)="handlePromptManagerSave()"></app-prompt-manager>
+              </div>
+              <div class="mb-4">
+                <app-prayer-types-manager (onSave)="handlePrayerTypesManagerSave()"></app-prayer-types-manager>
+              </div>
+            </div>
+
+            <div *ngIf="activeSettingsTab === 'email'" class="space-y-6">
+              <div class="mb-4">
+                <app-email-settings (onSave)="handleEmailSettingsSave()"></app-email-settings>
+              </div>
+            </div>
+
+            <div *ngIf="activeSettingsTab !== 'analytics' && activeSettingsTab !== 'content' && activeSettingsTab !== 'email'" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center border border-gray-200 dark:border-gray-700">
               <h3 class="text-lg font-medium text-gray-700 dark:text-gray-200 mb-2">
                 {{ activeSettingsTab | titlecase }} Settings
               </h3>
@@ -559,6 +592,21 @@ export class AdminComponent implements OnInit, OnDestroy {
     if (tab === 'analytics' && this.analyticsStats.totalPageViews === 0) {
       this.loadAnalytics();
     }
+  }
+
+  handleBrandingSave() {
+    // Could refresh data or show notification
+    console.log('Branding settings saved');
+  }
+
+  handlePromptManagerSave() {
+    // Could refresh data or show notification
+    console.log('Prompt manager action completed');
+  }
+
+  handlePrayerTypesManagerSave() {
+    // Could refresh data or show notification
+    console.log('Prayer types manager action completed');
   }
 
   ngOnDestroy() {
@@ -677,5 +725,10 @@ export class AdminComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error('Error denying preference change:', error);
     }
+  }
+
+  handleEmailSettingsSave() {
+    // Email settings component handles its own save feedback
+    console.log('Email settings saved');
   }
 }

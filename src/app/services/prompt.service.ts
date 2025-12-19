@@ -31,6 +31,22 @@ export class PromptService {
       this.loadingSubject.next(true);
       this.errorSubject.next(null);
 
+      // Fetch prayer types for ordering
+      const { data: typesData, error: typesError } = await this.supabase.client
+        .from('prayer_types')
+        .select('name, display_order')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+
+      if (typesError) throw typesError;
+
+      // Create a set of active type names for filtering
+      const activeTypeNames = new Set((typesData || []).map((t: any) => t.name));
+
+      // Create a map of type name to display_order
+      const typeOrderMap = new Map(typesData?.map((t: any) => [t.name, t.display_order]) || []);
+
+      // Fetch all prompts
       const { data, error } = await this.supabase.client
         .from('prayer_prompts')
         .select('*')
@@ -38,7 +54,16 @@ export class PromptService {
 
       if (error) throw error;
 
-      this.promptsSubject.next(data || []);
+      // Filter to only include prompts with active types, then sort by type's display_order
+      const sortedPrompts = (data || [])
+        .filter((p: any) => activeTypeNames.has(p.type))
+        .sort((a: any, b: any) => {
+          const orderA = typeOrderMap.get(a.type) ?? 999;
+          const orderB = typeOrderMap.get(b.type) ?? 999;
+          return orderA - orderB;
+        });
+
+      this.promptsSubject.next(sortedPrompts);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load prompts';
       console.error('Failed to load prompts:', err);
