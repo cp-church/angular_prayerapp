@@ -27,14 +27,7 @@ import { Observable } from 'rxjs';
         <div class="w-full max-w-6xl mx-auto px-4 py-4 sm:py-6">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div class="flex items-center gap-3">
-              <div class="min-w-0 flex-1">
-                <app-logo (logoStatusChange)="hasLogo = $event"></app-logo>
-                <div *ngIf="!hasLogo">
-                  <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
-                    Church Prayer Manager
-                  </h1>
-                </div>
-              </div>
+              <app-logo (logoStatusChange)="hasLogo = $event"></app-logo>
             </div>
             
             <div class="flex flex-col gap-2">
@@ -458,10 +451,25 @@ export class HomeComponent implements OnInit {
   }
 
   getDisplayedPrompts(): PrayerPrompt[] {
-    const prompts = this.promptService.promptsSubject.value;
+    let prompts = this.promptService.promptsSubject.value;
     if (this.activeFilter !== 'prompts') return [];
-    if (this.selectedPromptTypes.length === 0) return prompts;
-    return prompts.filter(p => this.selectedPromptTypes.includes(p.type));
+    
+    // Filter by search term if present
+    if (this.filters.searchTerm && this.filters.searchTerm.trim()) {
+      const searchLower = this.filters.searchTerm.toLowerCase().trim();
+      prompts = prompts.filter(p => 
+        p.title.toLowerCase().includes(searchLower) ||
+        p.description.toLowerCase().includes(searchLower) ||
+        p.type.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    // Filter by selected types
+    if (this.selectedPromptTypes.length > 0) {
+      prompts = prompts.filter(p => this.selectedPromptTypes.includes(p.type));
+    }
+    
+    return prompts;
   }
 
   getUniquePromptTypes(): string[] {
