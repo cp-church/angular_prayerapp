@@ -325,7 +325,7 @@ export class PrayerFormComponent implements OnInit, OnChanges {
           expiresAt: verificationResult.expiresAt,
           email: this.formData.email
         };
-        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       } else {
         // No verification required, submit directly
         await this.submitPrayer(prayerData);

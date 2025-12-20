@@ -577,6 +577,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     totalSubscribers: 0,
     loading: false
   };
+  
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -606,6 +607,9 @@ export class AdminComponent implements OnInit, OnDestroy {
       .subscribe(data => {
         this.adminData = data;
         this.cdr.markForCheck();
+        
+        // Auto-progress through tabs when each section is complete
+        this.autoProgressTabs();
       });
 
     // Initial fetch
@@ -614,6 +618,77 @@ export class AdminComponent implements OnInit, OnDestroy {
     // Load analytics if settings tab is already active
     if (this.activeTab === 'settings' && this.activeSettingsTab === 'analytics') {
       this.loadAnalytics();
+    }
+  }
+
+  /**
+   * Auto-progress through approval tabs when each section is complete
+   * Priority order: prayers -> updates -> deletions -> preferences
+   */
+  private autoProgressTabs() {
+    if (!this.adminData) return;
+
+    // If on prayers tab, check if all prayers are done
+    if (this.activeTab === 'prayers') {
+      const pendingPrayers = this.adminData.pendingPrayers || [];
+      if (pendingPrayers.length === 0) {
+        // Move to updates if there are any
+        if ((this.adminData.pendingUpdates || []).length > 0) {
+          this.onTabChange('updates');
+        } else if ((this.adminData.pendingDeletions || []).length > 0) {
+          // Move to deletions if there are any
+          this.onTabChange('deletions');
+        } else if ((this.adminData.pendingPreferences || []).length > 0) {
+          // Move to preferences if there are any
+          this.onTabChange('preferences');
+        }
+      }
+    }
+    // If on updates tab, check if all updates are done
+    else if (this.activeTab === 'updates') {
+      const pendingUpdates = this.adminData.pendingUpdates || [];
+      if (pendingUpdates.length === 0) {
+        // Move to deletions if there are any
+        if ((this.adminData.pendingDeletions || []).length > 0) {
+          this.onTabChange('deletions');
+        } else if ((this.adminData.pendingPreferences || []).length > 0) {
+          // Move to preferences if there are any
+          this.onTabChange('preferences');
+        } else if ((this.adminData.pendingPrayers || []).length > 0) {
+          // Cycle back to prayers if any exist
+          this.onTabChange('prayers');
+        }
+      }
+    }
+    // If on deletions tab, check if all deletions are done
+    else if (this.activeTab === 'deletions') {
+      const pendingDeletions = this.adminData.pendingDeletions || [];
+      if (pendingDeletions.length === 0) {
+        // Move to preferences if there are any
+        if ((this.adminData.pendingPreferences || []).length > 0) {
+          this.onTabChange('preferences');
+        } else if ((this.adminData.pendingPrayers || []).length > 0) {
+          // Cycle back to prayers if any exist
+          this.onTabChange('prayers');
+        } else if ((this.adminData.pendingUpdates || []).length > 0) {
+          // Cycle to updates if any exist
+          this.onTabChange('updates');
+        }
+      }
+    }
+    // If on preferences tab, check if all preferences are done
+    else if (this.activeTab === 'preferences') {
+      const pendingPreferences = this.adminData.pendingPreferences || [];
+      if (pendingPreferences.length === 0) {
+        // Cycle back to prayers or to the next section with items
+        if ((this.adminData.pendingPrayers || []).length > 0) {
+          this.onTabChange('prayers');
+        } else if ((this.adminData.pendingUpdates || []).length > 0) {
+          this.onTabChange('updates');
+        } else if ((this.adminData.pendingDeletions || []).length > 0) {
+          this.onTabChange('deletions');
+        }
+      }
     }
   }
 
@@ -694,6 +769,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   async approvePrayer(id: string) {
     try {
       await this.adminDataService.approvePrayer(id);
+      this.autoProgressTabs();
     } catch (error) {
       console.error('Error approving prayer:', error);
     }
@@ -702,6 +778,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   async denyPrayer(id: string, reason: string) {
     try {
       await this.adminDataService.denyPrayer(id, reason);
+      this.autoProgressTabs();
     } catch (error) {
       console.error('Error denying prayer:', error);
     }
@@ -718,6 +795,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   async approveUpdate(id: string) {
     try {
       await this.adminDataService.approveUpdate(id);
+      this.autoProgressTabs();
     } catch (error) {
       console.error('Error approving update:', error);
     }
@@ -726,6 +804,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   async denyUpdate(id: string, reason: string) {
     try {
       await this.adminDataService.denyUpdate(id, reason);
+      this.autoProgressTabs();
     } catch (error) {
       console.error('Error denying update:', error);
     }
@@ -742,6 +821,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   async approveDeletionRequest(id: string) {
     try {
       await this.adminDataService.approveDeletionRequest(id);
+      this.autoProgressTabs();
     } catch (error) {
       console.error('Error approving deletion request:', error);
     }
@@ -750,6 +830,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   async denyDeletionRequest(id: string, reason: string) {
     try {
       await this.adminDataService.denyDeletionRequest(id, reason);
+      this.autoProgressTabs();
     } catch (error) {
       console.error('Error denying deletion request:', error);
     }
@@ -758,6 +839,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   async approveUpdateDeletionRequest(id: string) {
     try {
       await this.adminDataService.approveUpdateDeletionRequest(id);
+      this.autoProgressTabs();
     } catch (error) {
       console.error('Error approving update deletion request:', error);
     }
@@ -766,6 +848,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   async denyUpdateDeletionRequest(id: string, reason: string) {
     try {
       await this.adminDataService.denyUpdateDeletionRequest(id, reason);
+      this.autoProgressTabs();
     } catch (error) {
       console.error('Error denying update deletion request:', error);
     }
@@ -774,6 +857,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   async approvePreferenceChange(id: string) {
     try {
       await this.adminDataService.approvePreferenceChange(id);
+      this.autoProgressTabs();
     } catch (error) {
       console.error('Error approving preference change:', error);
     }
@@ -782,6 +866,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   async denyPreferenceChange(id: string, reason: string) {
     try {
       await this.adminDataService.denyPreferenceChange(id, reason);
+      this.autoProgressTabs();
     } catch (error) {
       console.error('Error denying preference change:', error);
     }

@@ -3,6 +3,7 @@ import { BehaviorSubject, Observable, fromEvent } from 'rxjs';
 import { SupabaseService } from './supabase.service';
 import { ToastService } from './toast.service';
 import { EmailNotificationService } from './email-notification.service';
+import { VerificationService } from './verification.service';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export type PrayerStatus = 'current' | 'answered';
@@ -57,7 +58,8 @@ export class PrayerService {
   constructor(
     private supabase: SupabaseService,
     private toast: ToastService,
-    private emailNotification: EmailNotificationService
+    private emailNotification: EmailNotificationService,
+    private verificationService: VerificationService
   ) {
     this.initializePrayers();
   }

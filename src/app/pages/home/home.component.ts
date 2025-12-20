@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { ChangeDetectorRef } from '@angular/core';
 import { PrayerFormComponent } from '../../components/prayer-form/prayer-form.component';
 import { PrayerFiltersComponent, PrayerFilters } from '../../components/prayer-filters/prayer-filters.component';
 import { SkeletonLoaderComponent } from '../../components/skeleton-loader/skeleton-loader.component';
@@ -312,7 +313,7 @@ export class HomeComponent implements OnInit {
     codeId: '',
     expiresAt: '',
     email: '',
-    actionType: '' as 'update' | 'deletion' | 'update_deletion' | '',
+    actionType: '' as 'update' | 'deletion' | 'update_deletion' | 'delete_update' | '',
     actionData: null as any
   };
 
@@ -321,7 +322,8 @@ export class HomeComponent implements OnInit {
     public promptService: PromptService,
     public adminAuthService: AdminAuthService,
     private toastService: ToastService,
-    private verificationService: VerificationService
+    private verificationService: VerificationService,
+    private cdr: ChangeDetectorRef
   ) {
     // Load logo state from cache immediately to prevent flash
     const windowCache = (window as any).__cachedLogos;
@@ -430,6 +432,7 @@ export class HomeComponent implements OnInit {
           actionType: 'update',
           actionData: updateData
         };
+        this.cdr.detectChanges();
       } else {
         await this.submitUpdate(updateData);
       }
@@ -441,10 +444,42 @@ export class HomeComponent implements OnInit {
 
   async deleteUpdate(updateId: string): Promise<void> {
     try {
-      await this.prayerService.deleteUpdate(updateId);
+      // Get user email - try both possible keys
+      let userEmail = localStorage.getItem('userEmail');
+      if (!userEmail) {
+        userEmail = localStorage.getItem('prayerapp_user_email');
+      }
+      
+      if (!userEmail) {
+        this.toastService.error('Please enter your email first');
+        return;
+      }
+
+      // Request verification code
+      const verificationResult = await this.verificationService.requestCode(
+        userEmail,
+        'user_delete_update',
+        { updateId }
+      );
+
+      if (!verificationResult) {
+        this.toastService.error('Failed to send verification code');
+        return;
+      }
+
+      // Update verification state
+      this.verificationState = {
+        isOpen: true,
+        email: userEmail,
+        actionType: 'delete_update',
+        codeId: verificationResult.codeId,
+        expiresAt: verificationResult.expiresAt,
+        actionData: { updateId }
+      };
+      this.cdr.detectChanges();
     } catch (error) {
-      console.error('Error deleting update:', error);
-      this.toastService.error('Failed to delete update');
+      console.error('Error requesting verification code:', error);
+      this.toastService.error('Failed to request verification code');
     }
   }
 
@@ -505,6 +540,7 @@ export class HomeComponent implements OnInit {
           actionType: 'update_deletion',
           actionData: requestData
         };
+        this.cdr.detectChanges();
       } else {
         await this.submitUpdateDeletion(requestData);
       }
@@ -590,6 +626,12 @@ export class HomeComponent implements OnInit {
         await this.submitDeletion(this.verificationState.actionData);
       } else if (this.verificationState.actionType === 'update_deletion') {
         await this.submitUpdateDeletion(this.verificationState.actionData);
+      } else if (this.verificationState.actionType === 'delete_update') {
+        // Get the update ID from action data and perform deletion
+        const updateId = this.verificationState.actionData?.updateId;
+        if (updateId) {
+          await this.prayerService.deleteUpdate(updateId);
+        }
       }
       
       this.verificationState = {

@@ -57,7 +57,7 @@ import { VerificationService } from '../../services/verification.service';
               (input)="handleCodeChange(i, $event)"
               (keydown)="handleKeyDown(i, $event)"
               [attr.autocomplete]="i === 0 ? 'one-time-code' : 'off'"
-              [disabled]="isVerifying || timeRemaining === 0"
+              [disabled]="isVerifying || hasExpired"
               class="w-12 h-14 text-center text-2xl font-semibold border-2 rounded-lg
                      bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
                      border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-200
@@ -115,7 +115,8 @@ export class VerificationDialogComponent implements OnInit, OnChanges, OnDestroy
   isVerifying = false;
   isResending = false;
   error: string | null = null;
-  timeRemaining = 0;
+  timeRemaining = 900; // Initialize with 15 minutes
+  hasExpired = false;
   private timerInterval: any;
   private previousCodeId = '';
 
@@ -127,6 +128,14 @@ export class VerificationDialogComponent implements OnInit, OnChanges, OnDestroy
 
   async ngOnChanges() {
     if (this.isOpen) {
+      // Reset expired flag when opening with new code
+      this.hasExpired = false;
+      
+      // Initialize code array immediately so inputs render
+      if (!this.code || this.code.length === 0) {
+        this.code = new Array(this.codeLength).fill('');
+      }
+      
       // Fetch code length when dialog opens or new code is generated
       if (this.codeId !== this.previousCodeId) {
         this.previousCodeId = this.codeId;
@@ -144,6 +153,7 @@ export class VerificationDialogComponent implements OnInit, OnChanges, OnDestroy
       // Reset state when dialog closes
       this.code = new Array(this.codeLength).fill('');
       this.error = null;
+      this.hasExpired = false;
       this.stopTimer();
       document.body.style.overflow = '';
     }
@@ -181,7 +191,8 @@ export class VerificationDialogComponent implements OnInit, OnChanges, OnDestroy
     const now = Date.now();
     this.timeRemaining = Math.max(0, Math.floor((expires - now) / 1000));
 
-    if (this.timeRemaining === 0) {
+    if (this.timeRemaining === 0 && !this.hasExpired) {
+      this.hasExpired = true;
       this.error = 'Code expired. Please request a new one.';
       this.stopTimer();
     }
