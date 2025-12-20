@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
@@ -25,6 +25,7 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'time
 @Component({
   selector: 'app-admin',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     PendingPrayerCardComponent,
@@ -196,7 +197,7 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'time
 
             <div class="space-y-6">
               <app-pending-prayer-card
-                *ngFor="let prayer of adminData?.pendingPrayers"
+                *ngFor="let prayer of adminData?.pendingPrayers; trackBy: trackByPrayerId"
                 [prayer]="prayer"
                 (approve)="approvePrayer($event)"
                 (deny)="denyPrayer($event.id, $event.reason)"
@@ -227,7 +228,7 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'time
 
             <div class="space-y-6">
               <app-pending-update-card
-                *ngFor="let update of adminData?.pendingUpdates"
+                *ngFor="let update of adminData?.pendingUpdates; trackBy: trackByUpdateId"
                 [update]="update"
                 (approve)="approveUpdate($event)"
                 (deny)="denyUpdate($event.id, $event.reason)"
@@ -265,7 +266,7 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'time
 
                 <div class="space-y-6">
                   <app-pending-deletion-card
-                    *ngFor="let request of adminData?.pendingDeletionRequests"
+                    *ngFor="let request of adminData?.pendingDeletionRequests; trackBy: trackByDeletionRequestId"
                     [deletionRequest]="request"
                     (approve)="approveDeletionRequest($event)"
                     (deny)="denyDeletionRequest($event.id, $event.reason)"
@@ -281,7 +282,7 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'time
                 
                 <div class="space-y-6">
                   <app-pending-update-deletion-card
-                    *ngFor="let request of adminData?.pendingUpdateDeletionRequests"
+                    *ngFor="let request of adminData?.pendingUpdateDeletionRequests; trackBy: trackByDeletionRequestId"
                     [deletionRequest]="request"
                     (approve)="approveUpdateDeletionRequest($event)"
                     (deny)="denyUpdateDeletionRequest($event.id, $event.reason)"
@@ -313,7 +314,7 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'time
 
             <div class="space-y-6">
               <app-pending-preference-change-card
-                *ngFor="let change of adminData?.pendingPreferenceChanges"
+                *ngFor="let change of adminData?.pendingPreferenceChanges; trackBy: trackByPreferenceChangeId"
                 [change]="change"
                 (approve)="approvePreferenceChange($event)"
                 (deny)="denyPreferenceChange($event.id, $event.reason)"
@@ -780,5 +781,22 @@ export class AdminComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error('Error denying preference change:', error);
     }
+  }
+
+  // TrackBy functions for ngFor optimization
+  trackByPrayerId(index: number, prayer: any): string {
+    return prayer.id;
+  }
+
+  trackByUpdateId(index: number, update: any): string {
+    return update.id;
+  }
+
+  trackByDeletionRequestId(index: number, request: any): string {
+    return request.id;
+  }
+
+  trackByPreferenceChangeId(index: number, change: any): string {
+    return change.id;
   }
 }

@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import type { PendingPreferenceChange } from '../../services/admin-data.service';
@@ -7,6 +7,7 @@ import type { PendingPreferenceChange } from '../../services/admin-data.service'
   selector: 'app-pending-preference-change-card',
   standalone: true,
   imports: [CommonModule, FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6 mb-4">
       <!-- Header -->
