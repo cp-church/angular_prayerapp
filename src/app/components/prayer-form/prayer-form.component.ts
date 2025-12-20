@@ -212,7 +212,6 @@ export class PrayerFormComponent implements OnInit, OnChanges {
     this.loadUserInfo();
     this.verificationService.isEnabled$.subscribe(enabled => {
       this.isVerificationEnabled = enabled;
-      console.log('Prayer Form - Verification enabled status:', enabled);
     });
     this.adminAuthService.isAdmin$.subscribe(isAdmin => {
       this.isAdmin = isAdmin;
@@ -280,9 +279,7 @@ export class PrayerFormComponent implements OnInit, OnChanges {
 
       // Check if verification is required (skip if admin is logged in)
       const isAdmin = this.adminAuthService.getIsAdmin();
-      console.log('Prayer Form - About to check verification. isVerificationEnabled:', this.isVerificationEnabled, 'isAdmin:', isAdmin);
       if (this.isVerificationEnabled && !isAdmin) {
-        console.log('Prayer Form - Requesting verification code for:', this.formData.email);
         const verificationResult = await this.verificationService.requestCode(
           this.formData.email,
           'prayer_submission',

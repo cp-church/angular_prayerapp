@@ -429,20 +429,14 @@ export class EmailNotificationService {
       let adminLink = `${window.location.origin}#admin`;
       
       if (payload.requestId) {
-        console.log('🔗 Generating approval link for', { type: payload.type, adminEmail, requestId: payload.requestId });
         const link = await this.approvalLinks.generateApprovalLink(
           payload.type,
           payload.requestId,
           adminEmail
         );
         if (link) {
-          console.log('✅ Approval link generated:', link);
           adminLink = link;
-        } else {
-          console.warn('⚠️ Approval link generation returned null, using fallback');
         }
-      } else {
-        console.log('⏭️ Skipping approval code generation: no requestId provided');
       }
 
       let subject: string;

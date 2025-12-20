@@ -351,7 +351,6 @@ export class HomeComponent implements OnInit {
     // Subscribe to verification status
     this.verificationService.isEnabled$.subscribe(enabled => {
       this.isVerificationEnabled = enabled;
-      console.log('Home Component - Verification enabled status:', enabled);
     });
     
     // Subscribe to admin status
@@ -410,10 +409,8 @@ export class HomeComponent implements OnInit {
   async addUpdate(updateData: any): Promise<void> {
     try {
       const isAdmin = this.adminAuthService.getIsAdmin();
-      console.log('Home - About to add update. isVerificationEnabled:', this.isVerificationEnabled, 'isAdmin:', isAdmin);
       
       if (this.isVerificationEnabled && !isAdmin && updateData.author_email) {
-        console.log('Home - Requesting verification code for update:', updateData.author_email);
         const verificationResult = await this.verificationService.requestCode(
           updateData.author_email,
           'prayer_update',
@@ -454,10 +451,8 @@ export class HomeComponent implements OnInit {
   async requestDeletion(requestData: any): Promise<void> {
     try {
       const isAdmin = this.adminAuthService.getIsAdmin();
-      console.log('Home - About to request deletion. isVerificationEnabled:', this.isVerificationEnabled, 'isAdmin:', isAdmin);
       
       if (this.isVerificationEnabled && !isAdmin && requestData.requester_email) {
-        console.log('Home - Requesting verification code for deletion:', requestData.requester_email);
         const verificationResult = await this.verificationService.requestCode(
           requestData.requester_email,
           'deletion_request',
@@ -489,10 +484,8 @@ export class HomeComponent implements OnInit {
   async requestUpdateDeletion(requestData: any): Promise<void> {
     try {
       const isAdmin = this.adminAuthService.getIsAdmin();
-      console.log('Home - About to request update deletion. isVerificationEnabled:', this.isVerificationEnabled, 'isAdmin:', isAdmin);
       
       if (this.isVerificationEnabled && !isAdmin && requestData.requester_email) {
-        console.log('Home - Requesting verification code for update deletion:', requestData.requester_email);
         const verificationResult = await this.verificationService.requestCode(
           requestData.requester_email,
           'update_deletion_request',

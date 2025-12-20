@@ -4,12 +4,10 @@ import { environment } from '../environments/environment';
 export function initializeSentry(): void {
   const dsn = environment.sentryDsn;
 
-  console.log('🔍 Sentry initialization check:');
-  console.log('DSN configured:', !!dsn);
-  console.log('Environment:', environment.production ? 'production' : 'development');
-
   if (!dsn) {
-    console.warn('⚠️ Sentry DSN not configured. Error tracking disabled.');
+    if (!environment.production) {
+      console.debug('Sentry DSN not configured');
+    }
     return;
   }
 
@@ -37,14 +35,11 @@ export function initializeSentry(): void {
       beforeSend(event) {
         // Don't send errors in development
         if (!environment.production) {
-          console.log('🚫 Filtering out development error');
           return null;
         }
         return event;
       },
     });
-
-    console.log('✅ Sentry initialized successfully');
     
     // Expose Sentry globally for manual testing
     (window as any).Sentry = Sentry;

@@ -21,14 +21,12 @@ export class VerificationService {
   expiryMinutes$ = this.expiryMinutesSubject.asObservable();
 
   constructor(private supabase: SupabaseService) {
-    console.log('VerificationService - Constructor called');
     // Delay the check slightly to ensure Supabase client is ready
     setTimeout(() => this.checkIfEnabled(), 100);
   }
 
   private async checkIfEnabled(): Promise<void> {
     try {
-      console.log('VerificationService - Checking if verification is enabled...');
       
       // Match React version: use .eq('id', 1) instead of .limit(1)
       const { data, error } = await this.supabase.client
@@ -38,13 +36,10 @@ export class VerificationService {
         .maybeSingle();
       
       if (error) {
-        console.error('VerificationService - Error fetching settings:', error);
+        console.error('Error fetching verification settings:', error);
       }
       
-      console.log('VerificationService - Query result:', { data, error });
-      
       const isEnabled = data?.require_email_verification === true;
-      console.log('VerificationService - Setting isEnabled to:', isEnabled);
       
       this.isEnabledSubject.next(isEnabled);
       if (data?.verification_code_expiry_minutes) {

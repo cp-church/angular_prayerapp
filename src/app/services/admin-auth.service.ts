@@ -46,7 +46,6 @@ export class AdminAuthService {
     const sessionValidated = localStorage.getItem('approvalSessionValidated');
     
     if (approvalEmail && sessionValidated === 'true') {
-      console.log('[AdminAuth] Found approval code session for:', approvalEmail);
       this.isAdminSubject.next(true);
       this.sessionStart = this.getPersistedSessionStart() || Date.now();
       this.persistSessionStart(this.sessionStart);
@@ -66,7 +65,6 @@ export class AdminAuthService {
 
     // Listen for auth state changes
     this.supabase.client.auth.onAuthStateChange(async (event, session) => {
-      console.log('[AdminAuth] Auth state changed:', event, 'URL:', window.location.href);
       
       if (session?.user) {
         this.userSubject.next(session.user);
@@ -82,11 +80,9 @@ export class AdminAuthService {
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
           const urlParams = new URLSearchParams(window.location.search);
           const redirect = urlParams.get('redirect');
-          console.log('[AdminAuth] Event:', event, 'redirect param:', redirect);
           if (redirect === 'admin') {
             // Wait for admin status to be set
             setTimeout(() => {
-              console.log('[AdminAuth] Redirecting to /admin, isAdmin:', this.isAdminSubject.value);
               this.router.navigate(['/admin']);
             }, 200);
           }
@@ -156,7 +152,6 @@ export class AdminAuthService {
       const sessionValidated = localStorage.getItem('approvalSessionValidated');
       
       if (approvalEmail && sessionValidated === 'true') {
-        console.log('[AdminAuth] Approval code session found for:', approvalEmail);
         this.isAdminSubject.next(true);
         return;
       }
@@ -205,14 +200,14 @@ export class AdminAuthService {
 
       // Check inactivity timeout
       if (inactivityTime > this.timeoutSettings.inactivityTimeoutMinutes * 60000) {
-        console.log('[AdminAuth] Session expired due to inactivity');
+          console.log('[AdminAuth] Session expired due to inactivity');
         this.logout();
         return;
       }
 
       // Check max session duration
       if (sessionDuration > this.timeoutSettings.maxSessionDurationMinutes * 60000) {
-        console.log('[AdminAuth] Session expired due to max duration');
+          console.log('[AdminAuth] Session expired due to max duration');
         this.logout();
         return;
       }

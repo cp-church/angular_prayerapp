@@ -701,8 +701,6 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(emailAddress)) return;
 
-    console.log('Loading preferences for email:', emailAddress);
-
     try {
       // Check for pending preference changes first (most recent user intent)
       const { data: pendingData, error: pendingError } = await this.supabase.client
@@ -716,8 +714,6 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
       
       if (pendingError) {
         console.error('Error loading pending preferences:', pendingError);
-      } else {
-        console.log('Pending preferences data:', pendingData);
       }
       
       // Check for approved preferences in email_subscribers
@@ -732,25 +728,20 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
         return;
       }
 
-      console.log('Subscriber data:', subscriberData);
-
       // Priority: pending changes > approved subscriber data > defaults
       if (pendingData) {
-        console.log('Using pending preferences');
         // User has pending changes, show what they requested
         if (pendingData.name && pendingData.name.trim()) {
           this.name = pendingData.name;
         }
         this.receiveNotifications = pendingData.receive_new_prayer_notifications;
       } else if (subscriberData) {
-        console.log('Using subscriber preferences');
         // User has approved preferences
         if (subscriberData.name && subscriberData.name.trim()) {
           this.name = subscriberData.name;
         }
         this.receiveNotifications = subscriberData.is_active;
       } else {
-        console.log('No preferences found, using defaults');
         // New user - set defaults
         this.receiveNotifications = true;
       }
