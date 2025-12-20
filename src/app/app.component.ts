@@ -1,9 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Injector } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ToastContainerComponent } from './components/toast-container/toast-container.component';
-import { ApprovalLinksService } from './services/approval-links.service';
-import { AdminAuthService } from './services/admin-auth.service';
 
 @Component({
   selector: 'app-root',
@@ -22,8 +20,7 @@ export class AppComponent implements OnInit {
 
   constructor(
     private router: Router,
-    private approvalLinks: ApprovalLinksService,
-    private adminAuth: AdminAuthService
+    private injector: Injector
   ) {}
 
   ngOnInit() {
@@ -32,6 +29,7 @@ export class AppComponent implements OnInit {
 
   /**
    * Handle approval code in URL for one-time admin login
+   * Admin services are lazy loaded only when approval code is present
    */
   private async handleApprovalCode() {
     const params = new URLSearchParams(window.location.search);
@@ -44,13 +42,24 @@ export class AppComponent implements OnInit {
     if (existingEmail) {
       // Clear URL params and navigate to admin
       window.history.replaceState({}, '', window.location.pathname);
-      this.adminAuth.setApprovalSession(existingEmail);
+      
+      // Lazy load admin auth service
+      const { AdminAuthService } = await import('./services/admin-auth.service');
+      const adminAuth = this.injector.get(AdminAuthService);
+      adminAuth.setApprovalSession(existingEmail);
       this.router.navigate(['/admin']);
       return;
     }
 
     try {
-      const result = await this.approvalLinks.validateApprovalCode(code);
+      // Lazy load both services
+      const { ApprovalLinksService } = await import('./services/approval-links.service');
+      const { AdminAuthService } = await import('./services/admin-auth.service');
+      
+      const approvalLinks = this.injector.get(ApprovalLinksService);
+      const adminAuth = this.injector.get(AdminAuthService);
+      
+      const result = await approvalLinks.validateApprovalCode(code);
 
       if (result?.user?.email) {
         // Store approval session data
@@ -60,12 +69,12 @@ export class AppComponent implements OnInit {
         localStorage.setItem('approvalApprovalId', result.approval_id);
 
         // Immediately set admin status
-        this.adminAuth.setApprovalSession(result.user.email);
+        adminAuth.setApprovalSession(result.user.email);
 
         // Clear URL params
         window.history.replaceState({}, '', window.location.pathname);
         
-        // Navigate to admin - auth service now knows user is admin
+        // Navigate to admin
         this.router.navigate(['/admin']);
       } else {
         // Code validation failed, go to login
