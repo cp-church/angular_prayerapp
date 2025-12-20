@@ -28,7 +28,7 @@ export class VerificationService {
   private async checkIfEnabled(): Promise<void> {
     try {
       
-      // Match React version: use .eq('id', 1) instead of .limit(1)
+      // Fetch admin settings using the admin_settings table
       const { data, error } = await this.supabase.client
         .from('admin_settings')
         .select('require_email_verification, verification_code_expiry_minutes')
