@@ -1,594 +1,660 @@
-# Deployment Guide
-
-Complete guide to deploying the Prayer App to production.
-
-## Overview
-
-**Frontend**: Static site (Vite build)  
-**Backend**: Supabase (PostgreSQL + Edge Functions)  
-**Hosting Options**: Vercel, Netlify, GitHub Pages, or any static host
-
-## Prerequisites
-
-- Production Supabase project
-- Hosting account (Vercel/Netlify recommended)
-- Domain verified in Resend (for production emails)
-- Environment variables configured
-
-## Production Checklist
-
-### Before Deployment
-
-- [ ] All migrations applied to production database
-- [ ] Admin password changed from default
-- [ ] Resend domain verified (see EMAIL.md)
-- [ ] Environment variables configured
-- [ ] Edge Functions deployed
-- [ ] Build tested locally
-- [ ] RLS policies verified
-
-### After Deployment
-
-- [ ] Test prayer submission
-- [ ] Test email notifications
-- [ ] Test admin portal access
-- [ ] Verify realtime updates
-- [ ] Monitor error logs
-- [ ] Set up monitoring/alerts
-
-## Environment Setup
-
-### 1. Supabase Project
-
-Create production project:
-
-1. Go to [supabase.com](https://supabase.com)
-2. Create new project
-3. Note project URL and anon key
-4. Apply all migrations (see DATABASE.md)
-
-### 2. Environment Variables
-
-Create `.env.production`:
-
-```env
-# Supabase
-VITE_SUPABASE_URL=https://xxxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=your_anon_key_here
-
-# Resend (for Edge Function)
-RESEND_API_KEY=re_xxxxxxxxxxxxxxxx
-```
-
-**Never commit `.env` files!** Add to `.gitignore`.
-
-### 3. Resend Configuration
-
-**Production requires verified domain**:
-
-1. Add domain at [resend.com/domains](https://resend.com/domains)
-2. Add DNS records to your domain provider
-3. Wait for verification (can take hours)
-4. Update Edge Function to use verified domain
-
-**Update send-notification/index.ts**:
-
-```typescript
-// Remove test mode restrictions:
-// - Remove recipient filtering
-// - Remove "[TEST MODE]" from subjects
-// - Use verified domain sender
-
-const { data, error } = await resend.emails.send({
-  from: 'noreply@yourdomain.com', // Use verified domain
-  to: emailDetails.recipients,     // Use all recipients
-  subject: emailDetails.subject,   // Remove [TEST MODE] prefix
-  html: emailDetails.htmlContent
-});
-```
-
-## Edge Functions Deployment
-
-### Deploy All Functions
-
-Use the provided script:
-
-```bash
-# Make executable
-chmod +x deploy-functions.sh
-
-# Deploy all functions
-./deploy-functions.sh all
-```
-
-Or deploy individually:
-
-```bash
-./deploy-functions.sh send-notification
-./deploy-functions.sh send-prayer-reminders
-```
-
-### Manual Deployment
-
-#### send-notification
-
-```bash
-supabase functions deploy send-notification --no-verify-jwt
-
-# Set environment variable
-supabase secrets set RESEND_API_KEY=your_api_key
-```
-
-**Flags**:
-- `--no-verify-jwt`: Allows anonymous invocation (required)
-
-#### send-prayer-reminders
-
-```bash
-supabase functions deploy send-prayer-reminders
-
-# Set environment variable
-supabase secrets set RESEND_API_KEY=your_api_key
-```
-
-### Verify Deployment
-
-```bash
-# List deployed functions
-supabase functions list
-
-# Check function logs
-supabase functions logs send-notification
-```
-
-## Frontend Deployment
-
-### Build for Production
-
-```bash
-# Install dependencies
-npm install
-
-# Build
-npm run build
-```
-
-Output in `dist/` directory.
-
-### Vercel Deployment
-
-#### Option 1: Vercel CLI
-
-```bash
-# Install Vercel CLI
-npm install -g vercel
-
-# Deploy
-vercel
-
-# Production deployment
-vercel --prod
-```
-
-#### Option 2: Git Integration
-
-1. Push code to GitHub
-2. Import to Vercel: [vercel.com/new](https://vercel.com/new)
-3. Configure:
-   - Framework: Vite
-   - Build Command: `npm run build`
-   - Output Directory: `dist`
-4. Add environment variables:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-5. Deploy
-
-**Auto-deploy on push**: Enabled by default
-
-### Netlify Deployment
-
-#### Option 1: Netlify CLI
-
-```bash
-# Install Netlify CLI
-npm install -g netlify-cli
-
-# Login
-netlify login
-
-# Deploy
-netlify deploy
-
-# Production
-netlify deploy --prod
-```
-
-#### Option 2: Git Integration
-
-1. Push code to GitHub
-2. Import to Netlify: [app.netlify.com/start](https://app.netlify.com/start)
-3. Configure:
-   - Build Command: `npm run build`
-   - Publish Directory: `dist`
-4. Add environment variables
-5. Deploy
-
-Create `netlify.toml`:
-
-```toml
-[build]
-  command = "npm run build"
-  publish = "dist"
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-```
-
-### GitHub Pages
-
-1. Install gh-pages:
-
-```bash
-npm install --save-dev gh-pages
-```
-
-2. Update `package.json`:
-
-```json
-{
-  "scripts": {
-    "deploy": "npm run build && gh-pages -d dist"
-  },
-  "homepage": "https://yourusername.github.io/prayerapp"
-}
-```
-
-3. Deploy:
-
-```bash
-npm run deploy
-```
-
-4. Configure GitHub Pages:
-   - Settings → Pages
-   - Source: gh-pages branch
-
-### Custom Server
-
-For custom hosting:
-
-```bash
-# Build
-npm run build
-
-# Upload dist/ to your server
-scp -r dist/* user@server:/var/www/prayerapp/
-
-# Configure nginx/apache to serve static files
-```
-
-## Database Migration
-
-### Apply Migrations to Production
-
-**Option 1**: Supabase Dashboard
-
-1. Go to SQL Editor
-2. Copy migration file content
-3. Run each migration in order (see DATABASE.md)
-
-**Option 2**: Supabase CLI
-
-```bash
-# Link to production project
-supabase link --project-ref your-project-ref
-
-# Push migrations
-supabase db push
-
-# Or run specific migration
-supabase db execute --file supabase/migrations/your_migration.sql
-```
-
-### Verify Migrations
-
-```sql
--- Check tables exist
-SELECT table_name FROM information_schema.tables 
-WHERE table_schema = 'public';
-
--- Check RLS policies
-SELECT tablename, policyname FROM pg_policies;
-
--- Check constraints
-SELECT conname, conrelid::regclass 
-FROM pg_constraint 
-WHERE contype = 'c';
-```
-
-## Configuration
-
-### Admin Setup
-
-1. Change default password:
-
-```sql
-UPDATE admin_settings 
-SET admin_password = 'your_secure_password_here';
-```
-
-2. Set reminder interval:
-
-```sql
-UPDATE admin_settings 
-SET reminder_interval_days = 7;
-```
-
-### Cron Jobs (Optional)
-
-Set up scheduled functions in Supabase:
-
-1. Dashboard → Database → Cron Jobs
-2. Create job:
-
-```sql
--- Send reminders weekly
-SELECT cron.schedule(
-  'send-weekly-reminders',
-  '0 9 * * 1', -- Monday 9am
-  $$
-  SELECT net.http_post(
-    url := 'https://xxxxx.supabase.co/functions/v1/send-prayer-reminders',
-    headers := '{"Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb
-  );
-  $$
-);
-```
-
-**Note**: Auto-archiving of prayers is handled by the `send-prayer-reminders` function based on the `days_before_archive` setting.
-
-## Monitoring
-
-### Supabase Monitoring
-
-Dashboard → Reports shows:
-- API requests
-- Database connections
-- Storage usage
-- Error rates
-
-### Edge Function Logs
-
-```bash
-# Real-time logs
-supabase functions logs send-notification --follow
-
-# Specific time range
-supabase functions logs send-notification --since 1h
-```
-
-### Error Tracking
-
-**Option 1**: Supabase Dashboard → Logs
-
-**Option 2**: Sentry Integration
-
-```bash
-npm install @sentry/react
-```
-
-```typescript
-// src/main.tsx
-import * as Sentry from "@sentry/react";
-
-Sentry.init({
-  dsn: "your-sentry-dsn",
-  environment: "production"
-});
-```
-
-### Uptime Monitoring
-
-Recommended services:
-- [UptimeRobot](https://uptimerobot.com)
-- [Pingdom](https://www.pingdom.com)
-- [Better Uptime](https://betteruptime.com)
-
-Monitor:
-- Main site: `https://yourdomain.com`
-- API health: `https://xxxxx.supabase.co/rest/v1/prayers?limit=1`
-
-## Performance Optimization
-
-### Frontend
-
-1. **Enable compression** in hosting config
-2. **Add CDN** (Vercel/Netlify automatic)
-3. **Optimize images** (use WebP, lazy loading)
-4. **Code splitting** (already in Vite)
-
-### Database
-
-1. **Indexes**: Already created (see DATABASE.md)
-2. **Connection pooling**: Supabase automatic
-3. **Query optimization**: Use EXPLAIN ANALYZE
-
-### Caching
-
-Add cache headers in hosting config:
-
-**Vercel** (`vercel.json`):
-
-```json
-{
-  "headers": [
-    {
-      "source": "/assets/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    }
-  ]
-}
-```
-
-**Netlify** (`netlify.toml`):
-
-```toml
-[[headers]]
-  for = "/assets/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-```
-
-## Security
-
-### Best Practices
-
-- ✅ Never commit `.env` files
-- ✅ Use strong admin password
-- ✅ Enable RLS on all tables
-- ✅ Validate input on client and server
-- ✅ Use HTTPS (automatic on Vercel/Netlify)
-- ✅ Limit Edge Function invocations
-- ✅ Monitor for abuse
-
-### Rate Limiting
-
-Supabase includes automatic rate limiting:
-- Anonymous: 10 requests/second
-- Authenticated: 100 requests/second
-
-For custom limits, use Edge Functions middleware.
-
-## Rollback Procedures
-
-### Frontend Rollback
-
-**Vercel**: Dashboard → Deployments → Previous → Promote
-
-**Netlify**: Deploys → Previous → Publish
-
-**Git**: 
-```bash
-git revert HEAD
-git push
-```
-
-### Database Rollback
-
-Create rollback migrations:
-
-```sql
--- Example: Rollback constraint change
-ALTER TABLE status_change_requests 
-DROP CONSTRAINT IF EXISTS status_change_requests_requested_status_check;
-
-ALTER TABLE status_change_requests 
-ADD CONSTRAINT status_change_requests_requested_status_check 
-CHECK (requested_status IN ('active', 'answered', 'ongoing', 'closed'));
-```
-
-### Edge Function Rollback
-
-```bash
-# Redeploy previous version
-cd supabase/functions/send-notification
-git checkout HEAD~1 -- .
-supabase functions deploy send-notification --no-verify-jwt
-```
-
-## Troubleshooting
-
-### Build Failures
-
-**Module not found**:
-```bash
-rm -rf node_modules package-lock.json
-npm install
-npm run build
-```
-
-**TypeScript errors**:
-```bash
-npm run type-check
-# Fix errors, then rebuild
-```
-
-### Deployment Issues
-
-**Environment variables not loading**:
-- Verify in hosting dashboard
-- Restart deployment
-- Check variable names match `.env`
-
-**404 on routes**:
-- Add SPA redirect rules (see hosting configs above)
-
-### Database Connection
-
-**Connection refused**:
-- Check Supabase project status
-- Verify URL and keys
-- Check IP allowlist (if enabled)
-
-**RLS blocking queries**:
-- Run RLS fix migrations
-- Verify policies in dashboard
-- Check user permissions
-
-### Email Not Sending
-
-**Test mode restrictions**:
-- Verify domain (see EMAIL.md)
-- Update Edge Function to production mode
-- Redeploy function
-
-**Resend errors**:
-- Check API key in secrets
-- Verify sender domain
-- Check rate limits
-
-## Updates & Maintenance
-
-### Updating Dependencies
-
-```bash
-# Check for updates
-npm outdated
-
-# Update
-npm update
-
-# Test
-npm run build
-npm run preview
-```
-
-### Database Maintenance
-
-Supabase handles:
-- Automatic backups (daily)
-- Vacuum/analyze
-- Index maintenance
-
-Manual tasks:
-- Review and clean old data
-- Archive old records
-- Monitor storage usage
-
-## Support Resources
-
-- **Supabase**: [supabase.com/docs](https://supabase.com/docs)
-- **Vercel**: [vercel.com/docs](https://vercel.com/docs)
-- **Netlify**: [docs.netlify.com](https://docs.netlify.com)
-- **Resend**: [resend.com/docs](https://resend.com/docs)
+# Angular Prayer App - Production Deployment Guide
+
+## Comprehensive Deployment Instructions
+
+This guide provides step-by-step instructions for deploying the Angular Prayer App to production.
+
+## Table of Contents
+
+1. [Pre-Deployment Checklist](#pre-deployment-checklist)
+2. [Environment Setup](#environment-setup)
+3. [Database Configuration](#database-configuration)
+4. [Building for Production](#building-for-production)
+5. [Deploying to Vercel](#deploying-to-vercel)
+6. [Domain & SSL Setup](#domain--ssl-setup)
+7. [Monitoring Setup](#monitoring-setup)
+8. [Post-Deployment Verification](#post-deployment-verification)
+9. [Backup & Recovery](#backup--recovery)
+10. [Troubleshooting](#troubleshooting)
 
 ---
 
-**Next Steps**: See TROUBLESHOOTING.md for common issues and solutions.
+## Pre-Deployment Checklist
+
+### Code Quality
+- [ ] All TypeScript errors resolved: `ng build`
+- [ ] No console.log statements in production code (done)
+- [ ] All tests passing
+- [ ] No hardcoded secrets or credentials
+- [ ] Environment variables properly configured
+
+### Security
+- [ ] Admin users created in database
+- [ ] RLS policies enabled on all tables
+- [ ] Email verification enabled
+- [ ] Session timeouts configured
+- [ ] API keys secured in environment variables
+- [ ] Database backups configured
+
+### Infrastructure
+- [ ] Supabase project created
+- [ ] Database migrations run
+- [ ] Edge functions deployed
+- [ ] Email service configured
+- [ ] Error tracking (Sentry) set up
+- [ ] Analytics (Clarity) configured
+
+### Configuration
+- [ ] `.env.production` created
+- [ ] Sentry DSN configured
+- [ ] Clarity project ID configured
+- [ ] Supabase credentials verified
+- [ ] Email service credentials set
+
+### Documentation
+- [ ] Backup procedures documented
+- [ ] Recovery procedures tested
+- [ ] Scaling plan documented
+- [ ] Monitoring thresholds set
+
+---
+
+## Environment Setup
+
+### 1. Create Production Environment File
+
+Create `.env.production` in project root:
+
+```bash
+# Supabase - Production Project
+VITE_SUPABASE_URL=https://your-production-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-production-anon-key
+VITE_SUPABASE_SERVICE_KEY=your-production-service-key
+
+# Monitoring
+VITE_SENTRY_DSN=https://your-key@ingest.sentry.io/your-project-id
+VITE_CLARITY_PROJECT_ID=your-clarity-project-id
+
+# App Configuration
+VITE_APP_VERSION=1.0.0
+```
+
+**Security Note:** Never commit `.env.production` to version control. Add to `.gitignore`.
+
+### 2. Verify Supabase Production Project
+
+```bash
+# Test connection
+curl https://your-project.supabase.co/rest/v1/admin_settings \
+  -H "apikey: your-production-anon-key"
+```
+
+Expected response: 200 OK with settings data
+
+### 3. Configure Supabase Auth
+
+1. Go to Supabase Dashboard → Authentication → Providers
+2. Enable "Email" provider
+3. Configure Magic Link settings:
+   - Validity period: 24 hours
+   - Email type: Magic Link
+
+4. Set redirect URLs:
+   ```
+   https://yourdomain.com
+   https://yourdomain.com/admin
+   ```
+
+### 4. Deploy Edge Functions
+
+```bash
+cd supabase/functions
+
+# Deploy each function
+supabase functions deploy send-verification-code
+supabase functions deploy send-email
+supabase functions deploy verify-code
+supabase functions deploy validate-approval-code
+supabase functions deploy check-admin-status
+supabase functions deploy planning-center-lookup
+supabase functions deploy send-prayer-reminders
+```
+
+Verify functions deployed:
+```bash
+supabase functions list
+```
+
+---
+
+## Database Configuration
+
+### 1. Run Migrations
+
+```bash
+# Connect to production database
+supabase migration list
+
+# Run all pending migrations
+supabase db pull  # Pull production schema
+```
+
+### 2. Create Initial Admin User
+
+```sql
+-- In Supabase SQL Editor
+
+-- Insert admin user
+INSERT INTO email_subscribers (email, is_admin, is_active)
+VALUES ('admin@yourdomain.com', true, true)
+ON CONFLICT (email) DO UPDATE SET is_admin = true;
+
+-- Create admin settings if not exist
+INSERT INTO admin_settings (id, require_email_verification)
+VALUES (1, true)
+ON CONFLICT (id) DO NOTHING;
+```
+
+### 3. Initialize Admin Settings
+
+```sql
+UPDATE admin_settings SET
+  require_email_verification = true,
+  verification_code_expiry_minutes = 10,
+  inactivity_timeout_minutes = 30,
+  max_session_duration_minutes = 480,
+  app_title = 'Prayer App',
+  app_subtitle = 'Share your prayer requests',
+  use_logo = false
+WHERE id = 1;
+```
+
+### 4. Enable RLS Policies
+
+Ensure all tables have RLS enabled:
+
+```sql
+-- Enable RLS on all tables
+ALTER TABLE prayers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE prayer_updates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE email_subscribers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_settings ENABLE ROW LEVEL SECURITY;
+-- ... etc for all tables
+```
+
+### 5. Configure Email Service
+
+In Supabase:
+1. Go to Authentication → Email Templates
+2. Configure email sender:
+   - From email: noreply@yourdomain.com
+   - From name: Prayer App
+3. Customize email templates
+
+For production emails, configure SMTP:
+1. Settings → Email Provider
+2. Set SMTP credentials:
+   - Host: your-email-provider
+   - Port: 587 (or 465)
+   - Username & Password
+   - Encryption: TLS
+
+---
+
+## Building for Production
+
+### 1. Build Application
+
+```bash
+# Install dependencies (if not already done)
+npm install
+
+# Build for production
+ng build --configuration production
+
+# Output will be in: dist/prayerapp/
+```
+
+### 2. Verify Build
+
+```bash
+# Check build size
+ls -lh dist/prayerapp/
+
+# Expected main files:
+# - main.*.js (~200KB)
+# - styles.*.css (~85KB)
+# - polyfills.*.js (~90KB)
+# - chunks/*.js (various sizes)
+```
+
+### 3. Test Production Build Locally
+
+```bash
+# Serve production build locally
+npx http-server dist/prayerapp/ -p 8080 -o
+
+# Test at http://localhost:8080
+# Test prayer submission
+# Test admin login
+# Test email verification
+```
+
+---
+
+## Deploying to Vercel
+
+### 1. Connect Repository to Vercel
+
+```bash
+# Option 1: Via CLI
+npm install -g vercel
+vercel login
+vercel link
+```
+
+Or visit: https://vercel.com/import
+
+### 2. Configure Vercel Project
+
+In Vercel Dashboard:
+1. Select repository
+2. Framework: Angular
+3. Build Command: `ng build --configuration production`
+4. Output Directory: `dist/prayerapp`
+5. Install Command: `npm install`
+
+### 3. Set Environment Variables
+
+In Vercel Dashboard → Settings → Environment Variables:
+
+```
+VITE_SUPABASE_URL = https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY = your-anon-key
+VITE_SUPABASE_SERVICE_KEY = your-service-key
+VITE_SENTRY_DSN = your-sentry-dsn
+VITE_CLARITY_PROJECT_ID = your-clarity-id
+VITE_APP_VERSION = 1.0.0
+```
+
+**Important:** Set these for Production, Preview, and Development if needed.
+
+### 4. Deploy
+
+```bash
+# Deploy main branch
+git push origin main
+
+# Or manually via CLI
+vercel --prod
+```
+
+Monitor deployment in Vercel Dashboard. Build typically takes 2-3 minutes.
+
+### 5. Verify Deployment
+
+After deployment completes:
+1. Visit https://yourdomain.vercel.app
+2. Test home page loads
+3. Test prayer submission
+4. Test admin login
+5. Check Sentry dashboard for errors
+6. Monitor Vercel analytics
+
+---
+
+## Domain & SSL Setup
+
+### 1. Add Custom Domain
+
+In Vercel Dashboard → Project Settings → Domains:
+
+1. Add your domain (e.g., prayerapp.com)
+2. Add nameserver records to your domain registrar:
+   - ns1.vercel-dns.com
+   - ns2.vercel-dns.com
+   - ns3.vercel-dns.com
+   - ns4.vercel-dns.com
+
+3. Or add A records:
+   - A: 76.76.19.61 → prayerapp.com
+   - A: 76.76.19.62 → prayerapp.com
+   - CNAME: www → cname.vercel-dns.com
+
+### 2. SSL/HTTPS
+
+SSL is automatically configured by Vercel. Takes ~10 minutes to activate.
+
+Verify: https://yourdomain.com (should have green lock)
+
+### 3. Configure Supabase Redirect URLs
+
+Update Supabase Auth settings with your production domain:
+
+```
+https://yourdomain.com
+https://yourdomain.com/admin
+https://www.yourdomain.com
+https://www.yourdomain.com/admin
+```
+
+---
+
+## Monitoring Setup
+
+### 1. Sentry Configuration
+
+1. Create Sentry project (sentry.io)
+2. Create release:
+   ```bash
+   npm install @sentry/cli --save-dev
+   sentry-cli releases create <version>
+   sentry-cli releases files <version> upload-sourcemaps ./dist
+   ```
+
+3. Get DSN and add to `.env.production`
+4. Verify in Sentry Dashboard → Issues
+
+### 2. Clarity Configuration
+
+1. Create Clarity project (clarity.microsoft.com)
+2. Get project ID
+3. Add to `.env.production`
+4. Verify in Clarity Dashboard → Sessions
+
+### 3. Vercel Analytics
+
+Vercel provides built-in analytics:
+1. Dashboard → Analytics
+2. Monitor:
+   - Core Web Vitals
+   - Page load times
+   - Error rates
+   - Unique visitors
+
+### 4. Database Monitoring
+
+In Supabase Dashboard:
+1. Monitor → Realtime
+2. Monitor → API
+3. Monitor → Edge Functions
+
+Set alerts for:
+- High query latency
+- Function errors
+- Subscription failures
+
+---
+
+## Post-Deployment Verification
+
+### 1. Functional Testing
+
+Test each feature:
+- [ ] Home page loads
+- [ ] Prayer submission works
+- [ ] Email verification codes received
+- [ ] Prayers appear in admin portal
+- [ ] Admin can approve prayers
+- [ ] Prayers appear on home page after approval
+- [ ] Prayer updates work
+- [ ] Prayer deletions work
+- [ ] Settings/preferences work
+- [ ] Dark mode toggles
+- [ ] Mobile responsive
+- [ ] Accessibility (Tab navigation, screen reader)
+
+### 2. Performance Testing
+
+Check performance metrics:
+
+```bash
+# Lighthouse audit
+npm install -g lighthouse
+lighthouse https://yourdomain.com --view
+```
+
+Target scores:
+- Performance: > 80
+- Accessibility: > 90
+- Best Practices: > 90
+- SEO: > 90
+
+### 3. Security Testing
+
+- [ ] Verify HTTPS active
+- [ ] Check SSL certificate valid
+- [ ] Verify environment variables not exposed
+- [ ] Test RLS policies (can't access other user data)
+- [ ] Test email verification required
+- [ ] Test session timeouts working
+
+### 4. Monitoring Verification
+
+- [ ] Sentry receiving errors
+- [ ] Clarity tracking sessions
+- [ ] Vercel analytics active
+- [ ] Error alerts configured
+- [ ] Performance alerts configured
+
+---
+
+## Backup & Recovery
+
+### 1. Database Backup Strategy
+
+**Manual Backup:**
+```bash
+# Export database
+pg_dump \
+  --host=$SUPABASE_HOST \
+  --username=$SUPABASE_USER \
+  --password \
+  --database=postgres > backup.sql
+
+# Compress
+gzip backup.sql
+```
+
+**Automated Backup:**
+In Supabase Dashboard:
+1. Settings → Backups
+2. Enable automated daily backups
+3. Retention: 14 days minimum
+
+### 2. Recovery Procedure
+
+If database corrupted:
+
+1. **Stop application** (pause Vercel deployment)
+2. **Restore from backup:**
+   ```bash
+   gunzip backup.sql.gz
+   psql -U postgres -h $SUPABASE_HOST < backup.sql
+   ```
+3. **Verify data integrity**
+4. **Resume application**
+
+### 3. Backup Schedule
+
+- **Daily:** Automated by Supabase (retained 14 days)
+- **Weekly:** Manual backup to secure storage
+- **Monthly:** Backup to cold storage (S3, etc.)
+
+### 4. Disaster Recovery Plan
+
+If complete service failure:
+
+1. Deploy to alternate domain/server
+2. Restore database from backup
+3. Update DNS/domain to point to new location
+4. Verify all features working
+5. Migrate users/data as needed
+
+---
+
+## Scaling Considerations
+
+### When to Scale
+
+Monitor these metrics:
+- Database connections > 80% of limit
+- Query latency > 1 second
+- Edge function duration > 5 seconds
+- Email sending failures > 1%
+
+### Scaling Options
+
+1. **Database:**
+   - Upgrade Supabase plan
+   - Enable connection pooling
+   - Add read replicas
+   - Optimize slow queries
+
+2. **Application:**
+   - Already uses Vercel autoscaling
+   - Monitor build times
+   - Monitor function durations
+
+3. **Email:**
+   - Increase email service plan
+   - Implement email queue
+   - Add rate limiting
+
+---
+
+## Troubleshooting Deployment Issues
+
+### Issue: Build Fails
+
+**Check:**
+1. Vercel build logs
+2. All environment variables set
+3. No TypeScript errors locally
+4. All dependencies in package.json
+
+**Fix:**
+```bash
+npm install
+ng build --configuration production
+# Should complete without errors
+```
+
+### Issue: Environment Variables Not Found
+
+**Check:**
+1. Variables set in Vercel dashboard
+2. Correct environment (Production/Preview)
+3. Variable names exact match
+
+**Fix:**
+1. Redeploy after adding variables
+2. Or restart deployment: Vercel Dashboard → Redeploy
+
+### Issue: Database Connection Failed
+
+**Check:**
+1. VITE_SUPABASE_URL correct
+2. VITE_SUPABASE_ANON_KEY correct
+3. Supabase project running
+4. Network connectivity
+
+**Test Connection:**
+```bash
+curl https://your-project.supabase.co/rest/v1/ \
+  -H "apikey: your-anon-key" \
+  -H "Authorization: Bearer your-anon-key"
+```
+
+### Issue: Emails Not Sending
+
+**Check:**
+1. Edge function `send-email` deployed
+2. Email service configured in Supabase
+3. Function logs for errors
+4. Admin email notifications enabled
+
+**Debug:**
+1. Check Supabase Functions logs
+2. Check email provider logs
+3. Verify function can reach email service
+4. Test with manual email send
+
+### Issue: Admin Portal Not Working
+
+**Check:**
+1. Supabase auth configured
+2. Admin user exists in database
+3. Magic link redirect URL configured
+4. Session timeouts not too aggressive
+
+**Test:**
+1. Check browser console for errors
+2. Check Sentry dashboard
+3. Test magic link email received
+4. Verify admin status in database
+
+---
+
+## Monitoring Checklist (Post-Deployment)
+
+Daily:
+- [ ] Check Sentry for new errors
+- [ ] Review Clarity sessions
+- [ ] Monitor database performance
+- [ ] Check email sending status
+
+Weekly:
+- [ ] Review error trends
+- [ ] Check performance metrics
+- [ ] Review user feedback
+- [ ] Backup database
+
+Monthly:
+- [ ] Security audit
+- [ ] Database optimization
+- [ ] Performance optimization
+- [ ] Cost review
+
+---
+
+## Support & Rollback
+
+### Rollback Procedure
+
+If deployment breaks production:
+
+1. In Vercel Dashboard:
+   - Go to Deployments
+   - Find last working deployment
+   - Click "Promote to Production"
+
+2. Or redeploy previous commit:
+   ```bash
+   git revert <bad-commit>
+   git push origin main
+   # Vercel auto-deploys
+   ```
+
+### Getting Help
+
+- **Build Issues:** Check Vercel build logs
+- **Database Issues:** Check Supabase dashboard
+- **Email Issues:** Check Supabase function logs
+- **Error Tracking:** Check Sentry dashboard
+- **Analytics:** Check Clarity dashboard
+
+---
+
+## Additional Resources
+
+- [Vercel Deployment Docs](https://vercel.com/docs)
+- [Supabase Docs](https://supabase.com/docs)
+- [Angular Deployment](https://angular.io/guide/deployment)
+- [Sentry Setup](https://docs.sentry.io/platforms/javascript/guides/angular/)
+- [Clarity Docs](https://clarity.microsoft.com/docs)
+
+---
+
+**Last Updated:** December 20, 2025
+**Status:** Complete Deployment Guide
