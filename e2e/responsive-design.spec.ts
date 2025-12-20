@@ -1,10 +1,9 @@
-import { test, expect, devices } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
 // Test on mobile devices
 test.describe('Responsive Design - Mobile', () => {
-  test.use({ ...devices['iPhone 12'] });
-
   test('home page should be mobile responsive', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 }); // iPhone 12 size
     await page.goto('/');
     
     // Wait for page to load
@@ -20,6 +19,7 @@ test.describe('Responsive Design - Mobile', () => {
   });
 
   test('prayer cards should stack properly on mobile', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 }); // iPhone 12 size
     await page.goto('/');
     
     // Wait for prayers to load
@@ -41,6 +41,7 @@ test.describe('Responsive Design - Mobile', () => {
   });
 
   test('presentation mode should work on mobile', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 }); // iPhone 12 size
     await page.goto('/presentation');
     
     // Wait for page to load
@@ -58,6 +59,7 @@ test.describe('Responsive Design - Mobile', () => {
   });
 
   test('navigation should be accessible on mobile', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 }); // iPhone 12 size
     await page.goto('/');
     
     // Wait for page to load
@@ -86,9 +88,8 @@ test.describe('Responsive Design - Mobile', () => {
 
 // Test on tablet devices
 test.describe('Responsive Design - Tablet', () => {
-  test.use({ ...devices['iPad Pro'] });
-
   test('home page should be tablet responsive', async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 1366 }); // iPad Pro size
     await page.goto('/');
     
     // Wait for page to load
@@ -99,6 +100,7 @@ test.describe('Responsive Design - Tablet', () => {
   });
 
   test('presentation mode should optimize for tablet', async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 1366 }); // iPad Pro size
     await page.goto('/presentation');
     
     // Wait for page to load
