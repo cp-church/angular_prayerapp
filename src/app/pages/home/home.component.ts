@@ -272,6 +272,16 @@ import { Observable } from 'rxjs';
           </ng-container>
         </div>
       </main>
+
+      <!-- Admin Portal Link -->
+      <footer class="mt-8 pb-4 text-center">
+        <a 
+          routerLink="/admin-login" 
+          class="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400 transition-colors"
+        >
+          Admin
+        </a>
+      </footer>
     </div>
 
     <!-- Verification Dialog -->

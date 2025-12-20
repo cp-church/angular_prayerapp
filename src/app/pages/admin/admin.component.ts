@@ -50,8 +50,7 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'time
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
               <svg class="text-red-600 dark:text-red-400" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
               </svg>
               <div>
                 <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Admin Portal</h1>
