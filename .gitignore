@@ -28,6 +28,10 @@ dist-ssr
 *.sw?
 *.env
 
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
 # Database backups - not synced to repository
 backups/
 
