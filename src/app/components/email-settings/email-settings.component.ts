@@ -1,4 +1,4 @@
-import { Component, OnInit, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, Output, EventEmitter, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../services/supabase.service';
@@ -9,6 +9,7 @@ import { EmailTemplatesManagerComponent } from '../email-templates-manager/email
   selector: 'app-email-settings',
   standalone: true,
   imports: [CommonModule, FormsModule, EmailTemplatesManagerComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="space-y-6">
       <!-- Email Verification Section -->
@@ -298,7 +299,8 @@ export class EmailSettingsComponent implements OnInit {
 
   constructor(
     private supabase: SupabaseService,
-    private toast: ToastService
+    private toast: ToastService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
@@ -308,6 +310,7 @@ export class EmailSettingsComponent implements OnInit {
   async loadSettings() {
     try {
       this.loading = true;
+      this.cdr.markForCheck();
       this.error = null;
 
       const { data, error } = await this.supabase.client
@@ -347,14 +350,17 @@ export class EmailSettingsComponent implements OnInit {
         ? String(err.message)
         : 'Unknown error';
       this.error = `Failed to load email settings: ${message}`;
+      this.cdr.markForCheck();
     } finally {
       this.loading = false;
+      this.cdr.markForCheck();
     }
   }
 
   async saveVerificationSettings() {
     try {
       this.savingVerification = true;
+      this.cdr.markForCheck();
       this.error = null;
       this.successVerification = false;
 
@@ -371,11 +377,13 @@ export class EmailSettingsComponent implements OnInit {
       if (error) throw error;
 
       this.successVerification = true;
+      this.cdr.markForCheck();
       this.toast.success('Email verification settings saved!');
       this.onSave.emit();
 
       setTimeout(() => {
         this.successVerification = false;
+        this.cdr.markForCheck();
       }, 3000);
     } catch (err: unknown) {
       console.error('Error saving verification settings:', err);
@@ -383,15 +391,18 @@ export class EmailSettingsComponent implements OnInit {
         ? String(err.message)
         : 'Unknown error';
       this.error = `Failed to save verification settings: ${message}`;
+      this.cdr.markForCheck();
       this.toast.error('Failed to save verification settings');
     } finally {
       this.savingVerification = false;
+      this.cdr.markForCheck();
     }
   }
 
   async saveReminderSettings() {
     try {
       this.savingReminders = true;
+      this.cdr.markForCheck();
       this.error = null;
       this.successReminders = false;
 
@@ -409,11 +420,13 @@ export class EmailSettingsComponent implements OnInit {
       if (error) throw error;
 
       this.successReminders = true;
+      this.cdr.markForCheck();
       this.toast.success('Prayer reminder settings saved!');
       this.onSave.emit();
 
       setTimeout(() => {
         this.successReminders = false;
+        this.cdr.markForCheck();
       }, 3000);
     } catch (err: unknown) {
       console.error('Error saving reminder settings:', err);
@@ -421,9 +434,11 @@ export class EmailSettingsComponent implements OnInit {
         ? String(err.message)
         : 'Unknown error';
       this.error = `Failed to save reminder settings: ${message}`;
+      this.cdr.markForCheck();
       this.toast.error('Failed to save reminder settings');
     } finally {
       this.savingReminders = false;
+      this.cdr.markForCheck();
     }
   }
 

@@ -1,4 +1,4 @@
-import { Component, OnInit, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, Output, EventEmitter, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../services/supabase.service';
@@ -21,9 +21,7 @@ interface AdminUser {
       <div class="flex items-center justify-between mb-6">
         <div class="flex items-center gap-3">
           <svg class="text-red-600 dark:text-red-400" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="8" width="20" height="13" rx="2" ry="2"></rect>
-            <path d="M12 2v6"></path>
-            <path d="M12 8a3 3 0 0 0 3-3V2"></path>
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
           </svg>
           <div>
             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -167,9 +165,7 @@ interface AdminUser {
 
       <div *ngIf="!loading && admins.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
         <svg class="mx-auto mb-2 opacity-50" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="8" width="20" height="13" rx="2" ry="2"></rect>
-          <path d="M12 2v6"></path>
-          <path d="M12 8a3 3 0 0 0 3-3V2"></path>
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
         </svg>
         <p>No admin users found</p>
       </div>
@@ -182,9 +178,7 @@ interface AdminUser {
           <div class="flex-1">
             <div class="flex items-center gap-2 mb-1">
               <svg class="text-red-600 dark:text-red-400" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="8" width="20" height="13" rx="2" ry="2"></rect>
-                <path d="M12 2v6"></path>
-                <path d="M12 8a3 3 0 0 0 3-3V2"></path>
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
               </svg>
               <h4 class="font-medium text-gray-900 dark:text-gray-100">
                 {{ admin.name }}
@@ -291,7 +285,8 @@ export class AdminUserManagementComponent implements OnInit {
 
   constructor(
     private supabase: SupabaseService,
-    private toast: ToastService
+    private toast: ToastService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
@@ -301,6 +296,7 @@ export class AdminUserManagementComponent implements OnInit {
   async loadAdmins() {
     this.loading = true;
     this.error = null;
+    this.cdr.markForCheck();
 
     try {
       const { data, error } = await this.supabase.client
@@ -312,14 +308,17 @@ export class AdminUserManagementComponent implements OnInit {
       if (error) throw error;
 
       this.admins = data || [];
+      this.cdr.markForCheck();
     } catch (err: unknown) {
       const errorMsg = err && typeof err === 'object' && 'message' in err
         ? String(err.message)
         : String(err);
       console.error('Error loading admins:', err);
       this.error = 'Failed to load admin users';
+      this.cdr.markForCheck();
     } finally {
       this.loading = false;
+      this.cdr.markForCheck();
     }
   }
 
@@ -371,18 +370,18 @@ export class AdminUserManagementComponent implements OnInit {
 
       if (upsertError) throw upsertError;
 
-      // Send invitation email (attempt, but don't fail if it errors)
-      try {
-        await this.sendInvitationEmail(email, name);
-      } catch (emailErr) {
+      // Send invitation email in background (don't await)
+      this.sendInvitationEmail(email, name).catch(emailErr => {
         console.warn('Error sending invitation email:', emailErr);
-      }
+      });
 
       this.success = `Admin added successfully! Invitation email sent to ${email}`;
       this.toast.success(`Admin ${name} added successfully`);
       this.newAdminEmail = '';
       this.newAdminName = '';
       this.showAddForm = false;
+      
+      // Reload admins list
       this.loadAdmins();
       this.onSave.emit();
     } catch (err: unknown) {

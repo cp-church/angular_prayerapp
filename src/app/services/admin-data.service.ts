@@ -110,26 +110,15 @@ export class AdminDataService {
 
       const supabaseClient = this.supabase.client;
 
-      // Fetch all data in parallel
+      // PHASE 1: Fetch only pending items immediately (6 quick queries)
+      // These are what users see first and most importantly need on initial load
       const [
         pendingPrayersResult,
         pendingUpdatesResult,
         pendingDeletionRequestsResult,
         pendingStatusChangeRequestsResult,
         pendingUpdateDeletionRequestsResult,
-        pendingPreferenceChangesResult,
-        approvedPrayersCountResult,
-        approvedUpdatesCountResult,
-        deniedPrayersCountResult,
-        deniedUpdatesCountResult,
-        approvedPrayersResult,
-        approvedUpdatesResult,
-        deniedPrayersResult,
-        deniedUpdatesResult,
-        deniedStatusChangeRequestsResult,
-        deniedDeletionRequestsResult,
-        deniedUpdateDeletionRequestsResult,
-        deniedPreferenceChangesResult
+        pendingPreferenceChangesResult
       ] = await Promise.all([
         // Pending prayers
         supabaseClient
@@ -171,8 +160,91 @@ export class AdminDataService {
           .from('pending_preference_changes')
           .select('*')
           .eq('approval_status', 'pending')
-          .order('created_at', { ascending: false }),
-        
+          .order('created_at', { ascending: false })
+      ]);
+
+      // Check for errors
+      if (pendingPrayersResult.error) throw pendingPrayersResult.error;
+      if (pendingUpdatesResult.error) throw pendingUpdatesResult.error;
+
+      // Transform data
+      const pendingUpdates = (pendingUpdatesResult.data || []).map((u: any) => ({
+        ...u,
+        prayer_title: u.prayers?.title
+      }));
+
+      const pendingDeletionRequests = (pendingDeletionRequestsResult.data || []).map((d: any) => ({
+        ...d,
+        prayer_title: d.prayers?.title
+      }));
+
+      const pendingStatusChangeRequests = (pendingStatusChangeRequestsResult.data || []).map((s: any) => ({
+        ...s,
+        prayer_title: s.prayers?.title
+      }));
+
+      // Update with pending data immediately
+      this.dataSubject.next({
+        pendingPrayers: pendingPrayersResult.data || [],
+        pendingUpdates,
+        pendingDeletionRequests,
+        pendingStatusChangeRequests,
+        pendingUpdateDeletionRequests: pendingUpdateDeletionRequestsResult.data || [],
+        pendingPreferenceChanges: pendingPreferenceChangesResult.data || [],
+        approvedPrayers: [],
+        approvedUpdates: [],
+        deniedPrayers: [],
+        deniedUpdates: [],
+        deniedStatusChangeRequests: [],
+        deniedDeletionRequests: [],
+        deniedUpdateDeletionRequests: [],
+        deniedPreferenceChanges: [],
+        approvedPrayersCount: 0,
+        approvedUpdatesCount: 0,
+        deniedPrayersCount: 0,
+        deniedUpdatesCount: 0,
+        loading: false,
+        error: null
+      });
+
+      // PHASE 2: Fetch approved/denied data in background (non-blocking)
+      // These are typically not needed on initial load and can load asynchronously
+      this.loadApprovedAndDeniedDataAsync();
+      
+    } catch (error: any) {
+      console.error('Error fetching admin data:', error);
+      this.dataSubject.next({
+        ...this.dataSubject.value,
+        loading: false,
+        error: error.message || 'Failed to fetch admin data'
+      });
+    } finally {
+      this.isFetching = false;
+    }
+  }
+
+  /**
+   * Load approved and denied data asynchronously in the background.
+   * This doesn't block the initial admin portal load.
+   */
+  private async loadApprovedAndDeniedDataAsync(): Promise<void> {
+    try {
+      const supabaseClient = this.supabase.client;
+
+      const [
+        approvedPrayersCountResult,
+        approvedUpdatesCountResult,
+        deniedPrayersCountResult,
+        deniedUpdatesCountResult,
+        approvedPrayersResult,
+        approvedUpdatesResult,
+        deniedPrayersResult,
+        deniedUpdatesResult,
+        deniedStatusChangeRequestsResult,
+        deniedDeletionRequestsResult,
+        deniedUpdateDeletionRequestsResult,
+        deniedPreferenceChangesResult
+      ] = await Promise.all([
         // Approved counts
         supabaseClient
           .from('prayers')
@@ -246,31 +318,13 @@ export class AdminDataService {
           .order('reviewed_at', { ascending: false })
       ]);
 
-      // Check for errors
-      if (pendingPrayersResult.error) throw pendingPrayersResult.error;
-      if (pendingUpdatesResult.error) throw pendingUpdatesResult.error;
-
-      // Transform data
-      const pendingUpdates = (pendingUpdatesResult.data || []).map((u: any) => ({
-        ...u,
-        prayer_title: u.prayers?.title
-      }));
-
-      const pendingDeletionRequests = (pendingDeletionRequestsResult.data || []).map((d: any) => ({
-        ...d,
-        prayer_title: d.prayers?.title
-      }));
-
-      const pendingStatusChangeRequests = (pendingStatusChangeRequestsResult.data || []).map((s: any) => ({
-        ...s,
-        prayer_title: s.prayers?.title
-      }));
-
+      // Transform approved data
       const approvedUpdates = (approvedUpdatesResult.data || []).map((u: any) => ({
         ...u,
         prayer_title: u.prayers?.title
       }));
 
+      // Transform denied data
       const deniedUpdates = (deniedUpdatesResult.data || []).map((u: any) => ({
         ...u,
         prayer_title: u.prayers?.title
@@ -286,13 +340,9 @@ export class AdminDataService {
         prayer_title: d.prayers?.title
       }));
 
+      // Update with approved/denied data
       this.dataSubject.next({
-        pendingPrayers: pendingPrayersResult.data || [],
-        pendingUpdates,
-        pendingDeletionRequests,
-        pendingStatusChangeRequests,
-        pendingUpdateDeletionRequests: pendingUpdateDeletionRequestsResult.data || [],
-        pendingPreferenceChanges: pendingPreferenceChangesResult.data || [],
+        ...this.dataSubject.value,
         approvedPrayers: approvedPrayersResult.data || [],
         approvedUpdates,
         deniedPrayers: deniedPrayersResult.data || [],
@@ -304,19 +354,11 @@ export class AdminDataService {
         approvedPrayersCount: approvedPrayersCountResult.count || 0,
         approvedUpdatesCount: approvedUpdatesCountResult.count || 0,
         deniedPrayersCount: deniedPrayersCountResult.count || 0,
-        deniedUpdatesCount: deniedUpdatesCountResult.count || 0,
-        loading: false,
-        error: null
+        deniedUpdatesCount: deniedUpdatesCountResult.count || 0
       });
     } catch (error: any) {
-      console.error('Error fetching admin data:', error);
-      this.dataSubject.next({
-        ...this.dataSubject.value,
-        loading: false,
-        error: error.message || 'Failed to fetch admin data'
-      });
-    } finally {
-      this.isFetching = false;
+      console.error('Error fetching approved/denied data:', error);
+      // Don't update error state since this is background loading
     }
   }
 

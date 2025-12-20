@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../services/supabase.service';
@@ -16,6 +16,7 @@ interface TimeoutSettings {
   selector: 'app-session-timeout-settings',
   standalone: true,
   imports: [CommonModule, FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './session-timeout-settings.component.html',
   styleUrls: ['./session-timeout-settings.component.css']
 })
@@ -29,7 +30,8 @@ export class SessionTimeoutSettingsComponent implements OnInit {
 
   constructor(
     private supabaseService: SupabaseService,
-    private toast: ToastService
+    private toast: ToastService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -39,6 +41,7 @@ export class SessionTimeoutSettingsComponent implements OnInit {
   async loadSettings(): Promise<void> {
     try {
       this.loading = true;
+      this.cdr.markForCheck();
 
       // Try loading from localStorage first
       const cached = localStorage.getItem('adminTimeoutSettings');
@@ -51,6 +54,7 @@ export class SessionTimeoutSettingsComponent implements OnInit {
           
           console.log('[SessionTimeoutSettings] Loaded settings from localStorage');
           this.loading = false;
+          this.cdr.markForCheck();
           return;
         } catch (parseError) {
           console.error('Error parsing cached settings:', parseError);
@@ -68,6 +72,7 @@ export class SessionTimeoutSettingsComponent implements OnInit {
       if (fetchError) {
         console.error('Error loading settings:', fetchError);
         this.error = 'Failed to load settings from database';
+        this.cdr.markForCheck();
         return;
       }
 
@@ -79,8 +84,10 @@ export class SessionTimeoutSettingsComponent implements OnInit {
     } catch (err) {
       console.error('Error loading settings:', err);
       this.error = 'Failed to load settings';
+      this.cdr.markForCheck();
     } finally {
       this.loading = false;
+      this.cdr.markForCheck();
     }
   }
 
@@ -88,22 +95,27 @@ export class SessionTimeoutSettingsComponent implements OnInit {
     try {
       if (this.inactivityTimeout < 5) {
         this.error = 'Inactivity timeout must be at least 5 minutes';
+        this.cdr.markForCheck();
         return;
       }
       if (this.maxSessionDuration < 30) {
         this.error = 'Max session duration must be at least 30 minutes';
+        this.cdr.markForCheck();
         return;
       }
       if (this.dbHeartbeatInterval < 1) {
         this.error = 'Database heartbeat interval must be at least 1 minute';
+        this.cdr.markForCheck();
         return;
       }
       if (this.dbHeartbeatInterval >= this.inactivityTimeout) {
         this.error = 'Database heartbeat must be less frequent than inactivity timeout';
+        this.cdr.markForCheck();
         return;
       }
 
       this.loading = true;
+      this.cdr.markForCheck();
 
       const { error: upsertError } = await this.supabaseService.getClient()
         .from('admin_settings')
@@ -120,6 +132,7 @@ export class SessionTimeoutSettingsComponent implements OnInit {
 
       if (upsertError) {
         this.error = 'Failed to save settings to database';
+        this.cdr.markForCheck();
         console.error('Save error:', upsertError);
         return;
       }
@@ -140,14 +153,20 @@ export class SessionTimeoutSettingsComponent implements OnInit {
 
       this.error = null;
       this.saved = true;
+      this.cdr.markForCheck();
       this.toast.success('Settings saved successfully!');
-      setTimeout(() => this.saved = false, 3000);
+      setTimeout(() => {
+        this.saved = false;
+        this.cdr.markForCheck();
+      }, 3000);
     } catch (err) {
       this.error = 'Failed to save settings';
+      this.cdr.markForCheck();
       console.error('Error:', err);
       this.toast.error('Failed to save settings');
     } finally {
       this.loading = false;
+      this.cdr.markForCheck();
     }
   }
 

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { SupabaseService } from '../../services/supabase.service';
@@ -194,7 +194,8 @@ export class PresentationComponent implements OnInit, OnDestroy {
   constructor(
     private router: Router,
     private supabase: SupabaseService,
-    private themeService: ThemeService
+    private themeService: ThemeService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -332,6 +333,7 @@ export class PresentationComponent implements OnInit, OnDestroy {
 
   async loadContent(): Promise<void> {
     this.loading = true;
+    this.cdr.markForCheck();
     
     try {
       if (this.contentType === 'prayers') {
@@ -349,6 +351,7 @@ export class PresentationComponent implements OnInit, OnDestroy {
       console.error('Error loading content:', error);
     } finally {
       this.loading = false;
+      this.cdr.markForCheck();
     }
   }
 
@@ -358,7 +361,13 @@ export class PresentationComponent implements OnInit, OnDestroy {
         .from('prayers')
         .select(`
           *,
-          prayer_updates(*)
+          prayer_updates(
+            id,
+            content,
+            author,
+            created_at,
+            approval_status
+          )
         `)
         .eq('approval_status', 'approved');
       
@@ -384,22 +393,21 @@ export class PresentationComponent implements OnInit, OnDestroy {
             startDate.setDate(now.getDate() - 14);
             break;
           case 'month':
-            startDate.setMonth(now.getMonth() - 1);
+            startDate.setDate(now.getDate() - 30);
             break;
           case 'year':
-            startDate.setFullYear(now.getFullYear() - 1);
+            startDate.setDate(now.getDate() - 365);
             break;
         }
         
         query = query.gte('created_at', startDate.toISOString());
       }
       
-      query = query.order('created_at', { ascending: false });
-      
       const { data, error } = await query;
       
       if (error) throw error;
       
+      // Filter to only include approved updates (client-side filtering needed for left join)
       const prayersWithApprovedUpdates = (data || []).map(prayer => ({
         ...prayer,
         prayer_updates: (prayer.prayer_updates || []).filter((update: any) => 
@@ -407,43 +415,63 @@ export class PresentationComponent implements OnInit, OnDestroy {
         )
       }));
       
-      this.prayers = prayersWithApprovedUpdates;
+      // Sort by most recent activity (prayer creation or latest update)
+      const sortedPrayers = prayersWithApprovedUpdates
+        .map(prayer => ({
+          prayer,
+          latestActivity: Math.max(
+            new Date(prayer.created_at).getTime(),
+            prayer.prayer_updates && prayer.prayer_updates.length > 0
+              ? Math.max(...prayer.prayer_updates.map((u: any) => new Date(u.created_at).getTime()))
+              : 0
+          )
+        }))
+        .sort((a, b) => b.latestActivity - a.latestActivity)
+        .map(({ prayer }) => prayer);
+      
+      this.prayers = sortedPrayers;
+      this.cdr.markForCheck();
     } catch (error) {
       console.error('Error fetching prayers:', error);
       this.prayers = [];
+      this.cdr.markForCheck();
     }
   }
 
   async fetchPrompts(): Promise<void> {
     try {
-      const { data: typesData, error: typesError } = await this.supabase.client
-        .from('prayer_types')
-        .select('name, display_order')
-        .eq('is_active', true)
-        .order('display_order', { ascending: true });
+      // Execute both queries in parallel for better performance
+      const [typesResult, promptsResult] = await Promise.all([
+        this.supabase.client
+          .from('prayer_types')
+          .select('name, display_order')
+          .eq('is_active', true)
+          .order('display_order', { ascending: true }),
+        
+        this.supabase.client
+          .from('prayer_prompts')
+          .select('*')
+          .order('created_at', { ascending: false})
+      ]);
 
-      if (typesError) throw typesError;
+      if (typesResult.error) throw typesResult.error;
+      if (promptsResult.error) throw promptsResult.error;
 
-      const activeTypeNames = new Set((typesData || []).map((t: any) => t.name));
-      const typeOrderMap = new Map(typesData?.map((t: any) => [t.name, t.display_order]) || []);
+      const activeTypeNames = new Set((typesResult.data || []).map((t: any) => t.name));
+      const typeOrderMap = new Map(typesResult.data?.map((t: any) => [t.name, t.display_order]) || []);
 
-      const { data, error } = await this.supabase.client
-        .from('prayer_prompts')
-        .select('*')
-        .order('created_at', { ascending: false});
-
-      if (error) throw error;
-
-      this.prompts = (data || [])
+      this.prompts = (promptsResult.data || [])
         .filter((p: any) => activeTypeNames.has(p.type))
         .sort((a: any, b: any) => {
           const orderA = typeOrderMap.get(a.type) ?? 999;
           const orderB = typeOrderMap.get(b.type) ?? 999;
           return orderA - orderB;
         });
+      this.cdr.markForCheck();
     } catch (error) {
       console.error('Error fetching prompts:', error);
       this.prompts = [];
+      this.cdr.markForCheck();
     }
   }
 
@@ -536,6 +564,7 @@ export class PresentationComponent implements OnInit, OnDestroy {
   nextSlide(): void {
     if (this.items.length === 0) return;
     this.currentIndex = (this.currentIndex + 1) % this.items.length;
+    this.cdr.markForCheck();
     
     if (this.isPlaying) {
       this.startAutoAdvance();
@@ -545,6 +574,7 @@ export class PresentationComponent implements OnInit, OnDestroy {
   previousSlide(): void {
     if (this.items.length === 0) return;
     this.currentIndex = this.currentIndex === 0 ? this.items.length - 1 : this.currentIndex - 1;
+    this.cdr.markForCheck();
     
     if (this.isPlaying) {
       this.startAutoAdvance();
@@ -554,30 +584,35 @@ export class PresentationComponent implements OnInit, OnDestroy {
   async refreshContent(): Promise<void> {
     await this.loadContent();
     this.currentIndex = 0;
+    this.cdr.markForCheck();
   }
 
-  handleContentTypeChange(): void {
+  async handleContentTypeChange(): Promise<void> {
     this.currentIndex = 0;
-    this.loadContent();
+    await this.loadContent();
+    this.cdr.markForCheck();
   }
 
-  handleStatusFilterChange(): void {
+  async handleStatusFilterChange(): Promise<void> {
     this.currentIndex = 0;
-    this.fetchPrayers();
+    await this.fetchPrayers();
+    this.cdr.markForCheck();
   }
 
-  handleTimeFilterChange(): void {
+  async handleTimeFilterChange(): Promise<void> {
     this.currentIndex = 0;
-    this.fetchPrayers();
+    await this.fetchPrayers();
+    this.cdr.markForCheck();
   }
 
-  handleRandomizeChange(): void {
+  async handleRandomizeChange(): Promise<void> {
     if (this.randomize) {
       this.shuffleItems();
     } else {
-      this.loadContent();
+      await this.loadContent();
     }
     this.currentIndex = 0;
+    this.cdr.markForCheck();
   }
 
   shuffleItems(): void {

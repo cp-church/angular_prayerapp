@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnChanges, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PrayerService } from '../../services/prayer.service';
@@ -229,7 +229,8 @@ export class PrayerFormComponent implements OnInit, OnChanges {
   constructor(
     private prayerService: PrayerService,
     private verificationService: VerificationService,
-    private adminAuthService: AdminAuthService
+    private adminAuthService: AdminAuthService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -287,6 +288,7 @@ export class PrayerFormComponent implements OnInit, OnChanges {
 
     try {
       this.isSubmitting = true;
+      this.cdr.markForCheck();
 
       const fullName = `${this.firstName.trim()} ${this.lastName.trim()}`;
       this.saveUserInfo();
@@ -323,6 +325,7 @@ export class PrayerFormComponent implements OnInit, OnChanges {
           expiresAt: verificationResult.expiresAt,
           email: this.formData.email
         };
+        this.cdr.markForCheck();
       } else {
         // No verification required, submit directly
         await this.submitPrayer(prayerData);
@@ -330,6 +333,7 @@ export class PrayerFormComponent implements OnInit, OnChanges {
     } catch (error) {
       console.error('Failed to initiate prayer submission:', error);
       this.isSubmitting = false;
+      this.cdr.markForCheck();
       alert('Failed to submit prayer request. Please try again.');
     }
   }
@@ -340,6 +344,7 @@ export class PrayerFormComponent implements OnInit, OnChanges {
 
       if (success) {
         this.showSuccessMessage = true;
+        this.cdr.markForCheck();
         
         // Reset form but keep name and email
         this.formData = {
@@ -353,6 +358,7 @@ export class PrayerFormComponent implements OnInit, OnChanges {
         // Auto-close after 5 seconds
         setTimeout(() => {
           this.showSuccessMessage = false;
+          this.cdr.markForCheck();
           this.close.emit();
         }, 5000);
       }
@@ -361,6 +367,7 @@ export class PrayerFormComponent implements OnInit, OnChanges {
       throw error;
     } finally {
       this.isSubmitting = false;
+      this.cdr.markForCheck();
     }
   }
 

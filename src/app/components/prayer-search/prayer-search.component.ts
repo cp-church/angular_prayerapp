@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../services/supabase.service';
@@ -77,7 +77,8 @@ export class PrayerSearchComponent implements OnInit {
 
   constructor(
     private supabaseService: SupabaseService,
-    private toast: ToastService
+    private toast: ToastService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -95,6 +96,7 @@ export class PrayerSearchComponent implements OnInit {
       this.searching = true;
       this.error = null;
       this.selectedPrayers = new Set();
+      this.cdr.markForCheck();
 
       const supabaseUrl = this.supabaseService.getSupabaseUrl();
       const supabaseKey = this.supabaseService.getSupabaseKey();
@@ -167,13 +169,16 @@ export class PrayerSearchComponent implements OnInit {
       }
 
       this.searchResults = results;
+      this.cdr.markForCheck();
     } catch (err: unknown) {
       console.error('Error searching prayers:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to search prayers';
       this.error = errorMessage;
       this.toast.error(errorMessage);
+      this.cdr.markForCheck();
     } finally {
       this.searching = false;
+      this.cdr.markForCheck();
     }
   }
 

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -273,7 +273,8 @@ export class EmailTemplatesManagerComponent implements OnInit {
   constructor(
     private supabase: SupabaseService,
     private toast: ToastService,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
@@ -287,6 +288,7 @@ export class EmailTemplatesManagerComponent implements OnInit {
   async loadTemplates() {
     this.loading = true;
     this.error = null;
+    this.cdr.markForCheck();
     try {
       const { data, error } = await this.supabase.client
         .from('email_templates')
@@ -302,14 +304,17 @@ export class EmailTemplatesManagerComponent implements OnInit {
       // Don't auto-select a template - let user choose one
       this.selectedTemplate = null;
       this.editedTemplate = null;
+      this.cdr.markForCheck();
     } catch (err: unknown) {
       const errorMsg = err && typeof err === 'object' && 'message' in err
         ? String(err.message)
         : String(err);
       console.error('Failed to load templates:', err);
       this.error = `Failed to load templates: ${errorMsg}`;
+      this.cdr.markForCheck();
     } finally {
       this.loading = false;
+      this.cdr.markForCheck();
     }
   }
 

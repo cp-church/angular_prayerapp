@@ -34,77 +34,88 @@ export class AnalyticsService {
       const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const monthStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-      // Total page views
-      const { count: total, error: totalError } = await this.supabase.client
-        .from('analytics')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_type', 'page_view');
+      // Execute all queries in parallel for better performance
+      const [
+        totalResult,
+        todayResult,
+        weekResult,
+        monthResult,
+        prayersResult,
+        subscribersResult
+      ] = await Promise.all([
+        // Total page views
+        this.supabase.client
+          .from('analytics')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_type', 'page_view'),
 
-      if (totalError) {
-        console.error('Error fetching total page views:', totalError);
+        // Today's page views
+        this.supabase.client
+          .from('analytics')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_type', 'page_view')
+          .gte('created_at', todayStart.toISOString()),
+
+        // Week's page views
+        this.supabase.client
+          .from('analytics')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_type', 'page_view')
+          .gte('created_at', weekStart.toISOString()),
+
+        // Month's page views
+        this.supabase.client
+          .from('analytics')
+          .select('*', { count: 'exact', head: true })
+          .eq('event_type', 'page_view')
+          .gte('created_at', monthStart.toISOString()),
+
+        // Total prayers count
+        this.supabase.client
+          .from('prayers')
+          .select('*', { count: 'exact', head: true }),
+
+        // Total subscribers
+        this.supabase.client
+          .from('email_subscribers')
+          .select('*', { count: 'exact', head: true })
+      ]);
+
+      // Process results
+      if (totalResult.error) {
+        console.error('Error fetching total page views:', totalResult.error);
       } else {
-        stats.totalPageViews = total || 0;
+        stats.totalPageViews = totalResult.count || 0;
       }
 
-      // Today's page views
-      const { count: today, error: todayError } = await this.supabase.client
-        .from('analytics')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_type', 'page_view')
-        .gte('created_at', todayStart.toISOString());
-
-      if (todayError) {
-        console.error('Error fetching today page views:', todayError);
+      if (todayResult.error) {
+        console.error('Error fetching today page views:', todayResult.error);
       } else {
-        stats.todayPageViews = today || 0;
+        stats.todayPageViews = todayResult.count || 0;
       }
 
-      // Week's page views
-      const { count: week, error: weekError } = await this.supabase.client
-        .from('analytics')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_type', 'page_view')
-        .gte('created_at', weekStart.toISOString());
-
-      if (weekError) {
-        console.error('Error fetching week page views:', weekError);
+      if (weekResult.error) {
+        console.error('Error fetching week page views:', weekResult.error);
       } else {
-        stats.weekPageViews = week || 0;
+        stats.weekPageViews = weekResult.count || 0;
       }
 
-      // Month's page views
-      const { count: month, error: monthError } = await this.supabase.client
-        .from('analytics')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_type', 'page_view')
-        .gte('created_at', monthStart.toISOString());
-
-      if (monthError) {
-        console.error('Error fetching month page views:', monthError);
+      if (monthResult.error) {
+        console.error('Error fetching month page views:', monthResult.error);
       } else {
-        stats.monthPageViews = month || 0;
+        stats.monthPageViews = monthResult.count || 0;
       }
 
-      // Get total prayers count
-      const { count: prayersCount, error: prayersError } = await this.supabase.client
-        .from('prayers')
-        .select('*', { count: 'exact', head: true });
-
-      if (prayersError) {
-        console.error('Error fetching prayers count:', prayersError);
+      if (prayersResult.error) {
+        console.error('Error fetching prayers count:', prayersResult.error);
       } else {
-        stats.totalPrayers = prayersCount || 0;
+        stats.totalPrayers = prayersResult.count || 0;
       }
 
-      // Get total subscribers (both active and inactive)
-      const { count: subscribersCount, error: subscribersError } = await this.supabase.client
-        .from('email_subscribers')
-        .select('*', { count: 'exact', head: true });
-
-      if (subscribersError) {
-        console.error('Error fetching subscribers count:', subscribersError);
+      if (subscribersResult.error) {
+        console.error('Error fetching subscribers count:', subscribersResult.error);
       } else {
-        stats.totalSubscribers = subscribersCount || 0;
+        stats.totalSubscribers = subscribersResult.count || 0;
       }
 
     } catch (error) {

@@ -1,4 +1,4 @@
-import { Component, OnInit, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, Output, EventEmitter, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../services/supabase.service';
@@ -19,6 +19,7 @@ interface BrandingSettings {
   selector: 'app-branding',
   standalone: true,
   imports: [CommonModule, FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
       <div class="flex items-center gap-2 mb-4">
@@ -308,7 +309,7 @@ export class AppBrandingComponent implements OnInit {
   error: string | null = null;
   success = false;
 
-  constructor(private supabase: SupabaseService) {}
+  constructor(private supabase: SupabaseService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
     this.loadSettings();
@@ -316,6 +317,7 @@ export class AppBrandingComponent implements OnInit {
 
   async loadSettings() {
     this.loading = true;
+    this.cdr.markForCheck();
     this.error = null;
 
     try {
@@ -341,6 +343,7 @@ export class AppBrandingComponent implements OnInit {
       this.error = 'Failed to load branding settings';
     } finally {
       this.loading = false;
+      this.cdr.markForCheck();
     }
   }
 
@@ -350,6 +353,7 @@ export class AppBrandingComponent implements OnInit {
     if (!file) return;
 
     this.uploading = true;
+    this.cdr.markForCheck();
     this.error = null;
 
     const reader = new FileReader();
@@ -361,16 +365,19 @@ export class AppBrandingComponent implements OnInit {
         this.darkModeLogoUrl = base64String;
       }
       this.uploading = false;
+      this.cdr.markForCheck();
     };
     reader.onerror = () => {
       this.error = 'Failed to read image file';
       this.uploading = false;
+      this.cdr.markForCheck();
     };
     reader.readAsDataURL(file);
   }
 
   async save() {
     this.saving = true;
+    this.cdr.markForCheck();
     this.error = null;
     this.success = false;
 
@@ -392,16 +399,20 @@ export class AppBrandingComponent implements OnInit {
       if (error) throw error;
 
       this.success = true;
+      this.cdr.markForCheck();
       this.onSave.emit();
 
       setTimeout(() => {
         this.success = false;
+        this.cdr.markForCheck();
       }, 3000);
     } catch (err: any) {
       console.error('Error saving branding settings:', err);
       this.error = 'Failed to save settings. Please try again.';
+      this.cdr.markForCheck();
     } finally {
       this.saving = false;
+      this.cdr.markForCheck();
     }
   }
 }

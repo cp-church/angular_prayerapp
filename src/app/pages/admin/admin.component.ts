@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, HostListener, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
@@ -583,7 +583,8 @@ export class AdminComponent implements OnInit, OnDestroy {
     private router: Router,
     private adminDataService: AdminDataService,
     private analyticsService: AnalyticsService,
-    private adminAuthService: AdminAuthService
+    private adminAuthService: AdminAuthService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   /**
@@ -604,6 +605,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(data => {
         this.adminData = data;
+        this.cdr.markForCheck();
       });
 
     // Initial fetch
@@ -617,12 +619,14 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   async loadAnalytics() {
     this.analyticsStats.loading = true;
+    this.cdr.markForCheck();
     try {
       this.analyticsStats = await this.analyticsService.getStats();
     } catch (error) {
       console.error('Error loading analytics:', error);
     } finally {
       this.analyticsStats.loading = false;
+      this.cdr.markForCheck();
     }
   }
 
