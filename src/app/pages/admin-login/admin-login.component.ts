@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -175,7 +175,8 @@ export class AdminLoginComponent implements OnInit, OnDestroy {
   constructor(
     private adminAuthService: AdminAuthService,
     private supabaseService: SupabaseService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
@@ -186,6 +187,7 @@ export class AdminLoginComponent implements OnInit, OnDestroy {
     if (magicLinkSent === 'true' && savedEmail) {
       this.success = true;
       this.email = savedEmail;
+      this.cdr.markForCheck();
     }
 
     // Check if user is already authenticated
@@ -208,58 +210,51 @@ export class AdminLoginComponent implements OnInit, OnDestroy {
     this.error = '';
     this.success = false;
     this.loading = true;
+    this.cdr.markForCheck();
 
     // Clear any previous success state
     sessionStorage.removeItem('magic_link_sent');
     sessionStorage.removeItem('magic_link_email');
 
     try {
-      // Check if email is admin using Supabase client
-      const { data: adminCheck, error: checkError } = await this.supabaseService
-        .client
-        .from('email_subscribers')
-        .select('is_admin')
-        .eq('email', this.email.toLowerCase().trim())
-        .eq('is_admin', true)
-        .limit(1)
-        .single();
-
-      if (checkError) {
-        // Single may fail if no rows found - that's expected
-        if (checkError.code !== 'PGRST116') { // Not a "no rows found" error
-          console.error('Error checking admin status:', checkError);
-          this.error = 'An error occurred. Please try again.';
-          this.loading = false;
-          return;
-        }
-        // No rows found - not an admin
-        this.error = 'This email address does not have admin access.';
+      console.log('[AdminLogin] Starting magic link send for:', this.email);
+      
+      // Send magic link - set up timeout in case it hangs
+      const timeoutId = setTimeout(() => {
+        console.warn('[AdminLogin] Magic link request timed out');
         this.loading = false;
-        return;
-      }
+        this.error = 'Request timed out. Please try again.';
+        this.cdr.markForCheck();
+      }, 15000);
 
-      if (!adminCheck) {
-        this.error = 'This email address does not have admin access.';
-        this.loading = false;
-        return;
-      }
-
-      // Email is an admin, send magic link
+      // Send magic link directly
       const result = await this.adminAuthService.sendMagicLink(this.email);
       
+      // Clear timeout since request completed
+      clearTimeout(timeoutId);
+      
+      console.log('[AdminLogin] Magic link send result:', result);
+      
       if (result.success) {
+        console.log('[AdminLogin] Magic link sent successfully');
         // Save to sessionStorage to persist across re-renders
         sessionStorage.setItem('magic_link_sent', 'true');
         sessionStorage.setItem('magic_link_email', this.email);
         this.success = true;
+        this.cdr.markForCheck();
       } else {
+        console.error('[AdminLogin] Magic link failed:', result.error);
         this.error = result.error || 'Failed to send magic link. Please try again.';
+        this.cdr.markForCheck();
       }
     } catch (err) {
-      console.error('Error sending magic link:', err);
-      this.error = 'An error occurred. Please try again.';
+      console.error('[AdminLogin] Exception in handleSubmit:', err);
+      this.error = err instanceof Error ? err.message : 'An error occurred. Please try again.';
+      this.cdr.markForCheck();
     } finally {
       this.loading = false;
+      this.cdr.markForCheck();
+      console.log('[AdminLogin] Request complete, loading set to false');
     }
   }
 
