@@ -1,9 +1,8 @@
 import { test, expect, devices } from '@playwright/test';
 
 // Test on mobile devices
-test.use({ ...devices['iPhone 12'] });
-
 test.describe('Responsive Design - Mobile', () => {
+  test.use({ ...devices['iPhone 12'] });
 
   test('home page should be mobile responsive', async ({ page }) => {
     await page.goto('/');
