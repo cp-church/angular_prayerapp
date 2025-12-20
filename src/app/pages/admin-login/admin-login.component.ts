@@ -214,34 +214,26 @@ export class AdminLoginComponent implements OnInit, OnDestroy {
     sessionStorage.removeItem('magic_link_email');
 
     try {
-      // Check if email is admin
-      const adminCheckPromise = this.supabaseService.directQuery<{ is_admin: boolean }>(
-        'email_subscribers',
-        {
-          select: 'is_admin',
-          eq: { 
-            email: this.email.toLowerCase().trim(),
-            is_admin: true
-          },
-          limit: 1
-        }
-      ).then(result => ({
-        data: (result.data && Array.isArray(result.data) && result.data.length > 0) ? result.data[0] : null,
-        error: result.error
-      }));
-
-      const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Admin status check timed out. Please try again.')), 10000)
-      );
-
-      const { data: adminCheck, error: checkError } = await Promise.race([
-        adminCheckPromise,
-        timeoutPromise
-      ]);
+      // Check if email is admin using Supabase client
+      const { data: adminCheck, error: checkError } = await this.supabaseService
+        .client
+        .from('email_subscribers')
+        .select('is_admin')
+        .eq('email', this.email.toLowerCase().trim())
+        .eq('is_admin', true)
+        .limit(1)
+        .single();
 
       if (checkError) {
-        console.error('Error checking admin status:', checkError);
-        this.error = 'An error occurred. Please try again.';
+        // Single may fail if no rows found - that's expected
+        if (checkError.code !== 'PGRST116') { // Not a "no rows found" error
+          console.error('Error checking admin status:', checkError);
+          this.error = 'An error occurred. Please try again.';
+          this.loading = false;
+          return;
+        }
+        // No rows found - not an admin
+        this.error = 'This email address does not have admin access.';
         this.loading = false;
         return;
       }
