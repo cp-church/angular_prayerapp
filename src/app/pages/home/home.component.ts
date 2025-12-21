@@ -15,6 +15,7 @@ import { PromptService } from '../../services/prompt.service';
 import { AdminAuthService } from '../../services/admin-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { VerificationService } from '../../services/verification.service';
+import { AnalyticsService } from '../../services/analytics.service';
 import { Observable } from 'rxjs';
 
 @Component({
@@ -333,8 +334,10 @@ export class HomeComponent implements OnInit {
     public adminAuthService: AdminAuthService,
     private toastService: ToastService,
     private verificationService: VerificationService,
+    private analyticsService: AnalyticsService,
     private cdr: ChangeDetectorRef
   ) {
+    console.log('[HomeComponent] Constructor called');
     // Load logo state from cache immediately to prevent flash
     const windowCache = (window as any).__cachedLogos;
     const useLogo = windowCache?.useLogo || localStorage.getItem('branding_use_logo') === 'true';
@@ -342,6 +345,10 @@ export class HomeComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    console.log('[HomeComponent] ngOnInit called');
+    // Track page view on home component load
+    this.analyticsService.trackPageView();
+
     this.prayers$ = this.prayerService.prayers$;
     this.prompts$ = this.promptService.prompts$;
     this.loading$ = this.prayerService.loading$;
