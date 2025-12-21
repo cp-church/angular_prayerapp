@@ -23,9 +23,6 @@ export class AnalyticsService {
    */
   async trackPageView(): Promise<void> {
     try {
-      console.log('[Analytics] Tracking page view...');
-      console.log('[Analytics] Using Supabase client:', !!this.supabase.client);
-      
       const insertData = {
         event_type: 'page_view',
         event_data: {
@@ -34,19 +31,14 @@ export class AnalyticsService {
           hash: window.location.hash
         }
       };
-      console.log('[Analytics] Insert data:', insertData);
       
       const result = await this.supabase.client.from('analytics').insert(insertData);
       
-      console.log('[Analytics] Insert result:', result);
-      
       if (result.error) {
         console.error('[Analytics] Insert error:', result.error);
-      } else {
-        console.log('[Analytics] Page view tracked successfully');
       }
     } catch (error) {
-      console.error('[Analytics] Tracking failed with exception:', error);
+      console.error('[Analytics] Tracking failed:', error);
     }
   }
 
@@ -73,8 +65,6 @@ export class AnalyticsService {
       
       // Month start (30 days ago from now, in UTC)
       const monthStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-      console.log('[Analytics] Query dates - Today start:', todayStart.toISOString(), 'Week start:', weekStart.toISOString(), 'Month start:', monthStart.toISOString());
 
       // Execute all queries in parallel for better performance
       const [
@@ -127,46 +117,38 @@ export class AnalyticsService {
       if (totalResult.error) {
         console.error('Error fetching total page views:', totalResult.error);
       } else {
-        console.log('[Analytics] Total result:', { count: totalResult.count, data: totalResult.data });
         stats.totalPageViews = totalResult.count || 0;
       }
 
       if (todayResult.error) {
         console.error('Error fetching today page views:', todayResult.error);
       } else {
-        console.log('[Analytics] Today result:', { count: todayResult.count, data: todayResult.data });
         stats.todayPageViews = todayResult.count || 0;
       }
 
       if (weekResult.error) {
         console.error('Error fetching week page views:', weekResult.error);
       } else {
-        console.log('[Analytics] Week result:', { count: weekResult.count, data: weekResult.data });
         stats.weekPageViews = weekResult.count || 0;
       }
 
       if (monthResult.error) {
         console.error('Error fetching month page views:', monthResult.error);
       } else {
-        console.log('[Analytics] Month result:', { count: monthResult.count, data: monthResult.data });
         stats.monthPageViews = monthResult.count || 0;
       }
 
       if (prayersResult.error) {
         console.error('Error fetching prayers count:', prayersResult.error);
       } else {
-        console.log('[Analytics] Prayers result:', { count: prayersResult.count });
         stats.totalPrayers = prayersResult.count || 0;
       }
 
       if (subscribersResult.error) {
         console.error('Error fetching subscribers count:', subscribersResult.error);
       } else {
-        console.log('[Analytics] Subscribers result:', { count: subscribersResult.count });
         stats.totalSubscribers = subscribersResult.count || 0;
       }
-
-      console.log('[Analytics] Final stats:', stats);
 
     } catch (error) {
       console.error('Error fetching analytics stats:', error);

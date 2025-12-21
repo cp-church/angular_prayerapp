@@ -337,7 +337,6 @@ export class HomeComponent implements OnInit {
     private analyticsService: AnalyticsService,
     private cdr: ChangeDetectorRef
   ) {
-    console.log('[HomeComponent] Constructor called');
     // Load logo state from cache immediately to prevent flash
     const windowCache = (window as any).__cachedLogos;
     const useLogo = windowCache?.useLogo || localStorage.getItem('branding_use_logo') === 'true';
@@ -345,7 +344,6 @@ export class HomeComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    console.log('[HomeComponent] ngOnInit called');
     // Track page view on home component load
     this.analyticsService.trackPageView();
 
