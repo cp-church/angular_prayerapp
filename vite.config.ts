@@ -1,16 +1,13 @@
-/// <reference types="vitest" />
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [],
   build: {
     rollupOptions: {
       output: {
         manualChunks(id) {
           // Vendor chunks
-          if (id.includes('node_modules/react')) return 'react-vendor';
           if (id.includes('node_modules/@supabase')) return 'supabase-vendor';
           if (id.includes('node_modules/@vercel')) return 'vercel-vendor';
           // Component chunks for code splitting - keep admin features together
@@ -38,21 +35,5 @@ export default defineConfig({
     sourcemap: false,
     // Optimize CSS
     cssCodeSplit: true,
-  },
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: './src/setupTests.ts',
-    css: true,
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html'],
-      exclude: [
-        'node_modules/',
-        'src/setupTests.ts',
-        '**/*.config.{js,ts}',
-        '**/dist/**',
-      ]
-    }
   }
 })

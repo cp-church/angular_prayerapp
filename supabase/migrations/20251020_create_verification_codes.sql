@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS verification_codes (
     'deletion_request',
     'update_deletion_request',
     'status_change_request',
-    'preference_change'
+    'preference_change',
+    'admin_login'
   )),
   action_data JSONB NOT NULL,  -- Stores the form data to submit after verification
   expires_at TIMESTAMPTZ NOT NULL,

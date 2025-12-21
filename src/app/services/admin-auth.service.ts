@@ -74,19 +74,6 @@ export class AdminAuthService {
           this.sessionStart = Date.now();
           this.persistSessionStart(this.sessionStart);
         }
-
-        // Handle magic link redirect after successful authentication
-        // Check for redirect param on both SIGNED_IN and INITIAL_SESSION (magic link flow)
-        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-          const urlParams = new URLSearchParams(window.location.search);
-          const redirect = urlParams.get('redirect');
-          if (redirect === 'admin') {
-            // Wait for admin status to be set
-            setTimeout(() => {
-              this.router.navigate(['/admin']);
-            }, 200);
-          }
-        }
       } else {
         this.userSubject.next(null);
         this.isAdminSubject.next(false);
@@ -246,29 +233,133 @@ export class AdminAuthService {
   }
 
   /**
-   * Send magic link for admin login
+   * Send MFA code via email for admin login (replaces magic link)
    */
-  async sendMagicLink(email: string): Promise<{ success: boolean; error?: string }> {
+  async sendMfaCode(email: string): Promise<{ success: boolean; error?: string; codeId?: string }> {
     try {
-      const { error } = await this.supabase.client.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}?redirect=admin`
+      console.log('[AdminAuth] Requesting MFA code for:', email);
+      
+      // First, check if email is an admin
+      const isAdmin = await this.isEmailAdmin(email);
+      if (!isAdmin) {
+        return { success: false, error: 'Email address is not authorized for admin access' };
+      }
+
+      // Use existing send-verification-code function with admin_login action
+      const { data, error } = await this.supabase.client.functions.invoke('send-verification-code', {
+        body: {
+          email,
+          actionType: 'admin_login',
+          actionData: { timestamp: new Date().toISOString() }
         }
       });
 
       if (error) {
+        console.error('[AdminAuth] Send verification code error:', error);
         return { success: false, error: error.message };
       }
 
-      return { success: true };
+      if (data.error) {
+        console.error('[AdminAuth] Verification code service error:', data.error);
+        return { success: false, error: data.error };
+      }
+
+      // Store the code ID for verification
+      const codeId = data.codeId;
+      if (codeId) {
+        localStorage.setItem('mfa_code_id', codeId);
+        localStorage.setItem('mfa_user_email', email);
+      }
+
+      console.log('[AdminAuth] MFA code sent successfully via Graph API');
+      return { success: true, codeId };
     } catch (error) {
+      console.error('[AdminAuth] Unexpected error sending MFA code:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   }
+
+  /**
+   * Check if email is in admin list
+   */
+  private async isEmailAdmin(email: string): Promise<boolean> {
+    try {
+      const { data, error } = await this.supabase.client.functions.invoke('check-admin-status', {
+        body: { email }
+      });
+
+      if (error) {
+        console.error('[AdminAuth] Error checking admin status:', error);
+        return false;
+      }
+
+      console.log('[AdminAuth] Admin check result:', data);
+      return data?.is_admin === true;
+    } catch (error) {
+      console.error('[AdminAuth] Exception checking admin status:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Verify MFA code (uses existing verify-code function)
+   */
+  async verifyMfaCode(code: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('[AdminAuth] Verifying MFA code');
+      
+      const codeId = localStorage.getItem('mfa_code_id');
+      const email = localStorage.getItem('mfa_user_email');
+      
+      if (!codeId || !email) {
+        return { success: false, error: 'No MFA session found. Please request a code again.' };
+      }
+
+      // Use existing verify-code function
+      const { data, error } = await this.supabase.client.functions.invoke('verify-code', {
+        body: {
+          codeId,
+          code
+        }
+      });
+
+      if (error) {
+        console.error('[AdminAuth] Verify code error:', error);
+        return { success: false, error: error.message };
+      }
+
+      if (data.error) {
+        console.error('[AdminAuth] Code verification failed:', data.error);
+        return { success: false, error: data.error };
+      }
+
+      // Code verified successfully - now sign in the user with Supabase
+      // We'll use signInWithOtp to create a session, or we can use the approval code system
+      
+      // Set admin session using the approval code system (no Supabase auth needed)
+      this.setApprovalSession(email);
+
+      // Clean up
+      localStorage.removeItem('mfa_code_id');
+      localStorage.removeItem('mfa_user_email');
+      localStorage.setItem('approvalAdminEmail', email);
+      localStorage.setItem('approvalSessionValidated', 'true');
+
+      console.log('[AdminAuth] MFA verification successful, admin session created');
+      return { success: true };
+    } catch (error) {
+      console.error('[AdminAuth] Unexpected error verifying MFA:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+
 
   /**
    * Set approval code session (called when approval code is validated)

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChildren, QueryList, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -22,7 +22,7 @@ import { Subject, takeUntil } from 'rxjs';
             Admin Portal
           </h2>
           <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Sign in with a magic link sent to your email
+            Sign in with a verification code sent to your email
           </p>
         </div>
 
@@ -37,10 +37,10 @@ import { Subject, takeUntil } from 'rxjs';
               </svg>
               <div class="flex-1">
                 <h3 class="text-green-900 dark:text-green-100 font-bold text-lg">
-                  Magic Link Sent! 📧
+                  Verification Code Sent! 📧
                 </h3>
                 <p class="text-green-800 dark:text-green-200 text-sm mt-1">
-                  We've sent a secure sign-in link to:
+                  We've sent a verification code to:
                 </p>
                 <p class="text-green-900 dark:text-green-100 font-semibold text-base mt-2">
                   {{email}}
@@ -48,8 +48,63 @@ import { Subject, takeUntil } from 'rxjs';
               </div>
             </div>
 
-            <!-- Step-by-step instructions -->
-            <div class="mt-4 bg-white dark:bg-gray-800 rounded-md p-4 border border-green-200 dark:border-green-800">
+            <!-- MFA Code Input Form -->
+            <div *ngIf="waitingForMfaCode" class="mt-4">
+              <div class="bg-white dark:bg-gray-800 rounded-md p-4 border border-green-200 dark:border-green-800 space-y-4">
+                <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  Enter Verification Code
+                </h4>
+                <div>
+                  <label class="sr-only">
+                    Verification Code
+                  </label>
+                  <div class="flex gap-2 justify-center" (paste)="handlePaste($event)">
+                    <input
+                      *ngFor="let digit of mfaCode; let i = index"
+                      #codeInput
+                      type="text"
+                      inputmode="numeric"
+                      [attr.maxlength]="codeLength"
+                      [value]="mfaCode[i]"
+                      (input)="handleCodeChange(i, $event)"
+                      (keydown)="handleKeyDown(i, $event)"
+                      [attr.autocomplete]="i === 0 ? 'one-time-code' : 'off'"
+                      [disabled]="loading"
+                      class="w-12 h-14 text-center text-2xl font-semibold border-2 rounded-lg
+                             bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                             border-green-400 dark:border-green-600 focus:border-green-500 focus:ring-2 focus:ring-green-200
+                             disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+
+                <!-- Error Message for Code Verification -->
+                <div *ngIf="error && waitingForMfaCode" class="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                  <!-- AlertCircle Icon -->
+                  <svg class="text-red-600 dark:text-red-400 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span class="text-red-800 dark:text-red-200 text-sm">{{error}}</span>
+                </div>
+
+                <!-- Verify Button -->
+                <button
+                  (click)="handleSubmit($event)"
+                  [disabled]="loading || !isCodeComplete()"
+                  type="button"
+                  class="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <div *ngIf="loading" class="flex items-center justify-center gap-2">
+                    <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Verifying...
+                  </div>
+                  <span *ngIf="!loading">Verify Code</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Step-by-step instructions (when not waiting for code) -->
+            <div *ngIf="!waitingForMfaCode" class="mt-4 bg-white dark:bg-gray-800 rounded-md p-4 border border-green-200 dark:border-green-800">
               <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
                 What to do next:
               </h4>
@@ -60,11 +115,11 @@ import { Subject, takeUntil } from 'rxjs';
                 </li>
                 <li class="flex items-start gap-2">
                   <span class="flex-shrink-0 w-5 h-5 bg-green-600 dark:bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
-                  <span>Click the <strong>"Sign in to Admin Portal"</strong> button in the email</span>
+                  <span>Find the <strong>6-digit verification code</strong> in the email</span>
                 </li>
                 <li class="flex items-start gap-2">
                   <span class="flex-shrink-0 w-5 h-5 bg-green-600 dark:bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
-                  <span>You'll be automatically signed in to the Admin Portal</span>
+                  <span>Enter the code above and click <strong>"Verify Code"</strong></span>
                 </li>
               </ol>
             </div>
@@ -76,7 +131,7 @@ import { Subject, takeUntil } from 'rxjs';
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
               <p>
-                <strong>Don't see the email?</strong> Check your spam/junk folder. The link expires in 60 minutes.
+                <strong>Don't see the email?</strong> Check your spam/junk folder. The code expires in 10 minutes.
               </p>
             </div>
           </div>
@@ -111,12 +166,12 @@ import { Subject, takeUntil } from 'rxjs';
               />
             </div>
             <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              Enter your admin email to receive a secure sign-in link
+              Enter your admin email to receive a verification code
             </p>
           </div>
 
           <!-- Error Message -->
-          <div *ngIf="error" class="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+          <div *ngIf="error && !waitingForMfaCode" class="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
             <!-- AlertCircle Icon -->
             <svg class="text-red-600 dark:text-red-400 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -131,15 +186,15 @@ import { Subject, takeUntil } from 'rxjs';
           >
             <div *ngIf="loading" class="flex items-center gap-2">
               <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              Sending magic link...
+              Sending verification code...
             </div>
-            <span *ngIf="!loading">Send Magic Link</span>
+            <span *ngIf="!loading">Send Verification Code</span>
           </button>
         </form>
 
         <div class="mt-4 text-center">
           <p class="text-xs text-gray-500 dark:text-gray-400">
-            🔒 Passwordless authentication via Supabase Magic Link
+            🔒 Secure authentication via verification code
           </p>
         </div>
 
@@ -165,10 +220,15 @@ import { Subject, takeUntil } from 'rxjs';
   `]
 })
 export class AdminLoginComponent implements OnInit, OnDestroy {
+  @ViewChildren('codeInput') codeInputs!: QueryList<ElementRef<HTMLInputElement>>;
+
   email = '';
+  mfaCode: string[] = [];
+  codeLength = 4; // Will be fetched from settings
   error = '';
   success = false;
   loading = false;
+  waitingForMfaCode = false;
   
   private destroy$ = new Subject<void>();
 
@@ -179,15 +239,27 @@ export class AdminLoginComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef
   ) {}
 
-  ngOnInit() {
-    // Check if we just sent a magic link (persisted across re-renders)
-    const magicLinkSent = sessionStorage.getItem('magic_link_sent');
-    const savedEmail = sessionStorage.getItem('magic_link_email');
+  async ngOnInit() {
+    // Initialize code array immediately so inputs can render
+    this.mfaCode = new Array(this.codeLength).fill('');
     
-    if (magicLinkSent === 'true' && savedEmail) {
+    // Fetch code length from settings
+    await this.fetchCodeLength();
+    
+    // Check if we just sent an MFA code (persisted across re-renders)
+    const mfaSent = sessionStorage.getItem('mfa_email_sent');
+    const savedEmail = sessionStorage.getItem('mfa_email');
+    
+    if (mfaSent === 'true' && savedEmail) {
       this.success = true;
+      this.waitingForMfaCode = true;
       this.email = savedEmail;
       this.cdr.markForCheck();
+      
+      // Focus first input after a short delay
+      setTimeout(() => {
+        this.focusInput(0);
+      }, 100);
     }
 
     // Check if user is already authenticated
@@ -208,43 +280,42 @@ export class AdminLoginComponent implements OnInit, OnDestroy {
   async handleSubmit(event: Event) {
     event.preventDefault();
     this.error = '';
-    this.success = false;
     this.loading = true;
     this.cdr.markForCheck();
 
-    // Clear any previous success state
-    sessionStorage.removeItem('magic_link_sent');
-    sessionStorage.removeItem('magic_link_email');
-
     try {
-      console.log('[AdminLogin] Starting magic link send for:', this.email);
+      // If waiting for MFA code, verify it
+      if (this.waitingForMfaCode) {
+        return this.verifyMfaCode();
+      }
+
+      // Otherwise, send MFA code
+      console.log('[AdminLogin] Starting MFA code send for:', this.email);
       
-      // Send magic link - set up timeout in case it hangs
       const timeoutId = setTimeout(() => {
-        console.warn('[AdminLogin] Magic link request timed out');
+        console.warn('[AdminLogin] MFA code request timed out');
         this.loading = false;
         this.error = 'Request timed out. Please try again.';
         this.cdr.markForCheck();
       }, 15000);
 
-      // Send magic link directly
-      const result = await this.adminAuthService.sendMagicLink(this.email);
+      const result = await this.adminAuthService.sendMfaCode(this.email);
       
-      // Clear timeout since request completed
       clearTimeout(timeoutId);
       
-      console.log('[AdminLogin] Magic link send result:', result);
+      console.log('[AdminLogin] MFA code send result:', result);
       
       if (result.success) {
-        console.log('[AdminLogin] Magic link sent successfully');
-        // Save to sessionStorage to persist across re-renders
-        sessionStorage.setItem('magic_link_sent', 'true');
-        sessionStorage.setItem('magic_link_email', this.email);
+        console.log('[AdminLogin] MFA code sent successfully');
         this.success = true;
+        this.waitingForMfaCode = true;
+        // Save to sessionStorage
+        sessionStorage.setItem('mfa_email_sent', 'true');
+        sessionStorage.setItem('mfa_email', this.email);
         this.cdr.markForCheck();
       } else {
-        console.error('[AdminLogin] Magic link failed:', result.error);
-        this.error = result.error || 'Failed to send magic link. Please try again.';
+        console.error('[AdminLogin] MFA code failed:', result.error);
+        this.error = result.error || 'Failed to send MFA code. Please try again.';
         this.cdr.markForCheck();
       }
     } catch (err) {
@@ -254,15 +325,153 @@ export class AdminLoginComponent implements OnInit, OnDestroy {
     } finally {
       this.loading = false;
       this.cdr.markForCheck();
-      console.log('[AdminLogin] Request complete, loading set to false');
     }
+  }
+
+  private async verifyMfaCode() {
+    try {
+      if (!this.isCodeComplete()) {
+        this.error = 'Please enter the complete code from your email';
+        this.loading = false;
+        this.cdr.markForCheck();
+        return;
+      }
+
+      console.log('[AdminLogin] Verifying MFA code');
+
+      const result = await this.adminAuthService.verifyMfaCode(this.mfaCode.join(''));
+
+      if (result.success) {
+        console.log('[AdminLogin] MFA verification successful');
+        // Clear sessionStorage and navigate
+        sessionStorage.removeItem('mfa_email_sent');
+        sessionStorage.removeItem('mfa_email');
+        this.router.navigate(['/admin']);
+      } else {
+        console.error('[AdminLogin] MFA verification failed:', result.error);
+        this.error = result.error || 'Invalid code. Please try again.';
+        this.mfaCode = new Array(this.codeLength).fill(''); // Clear code for retry
+        this.focusInput(0);
+        this.cdr.markForCheck();
+      }
+    } catch (err) {
+      console.error('[AdminLogin] Exception in verifyMfaCode:', err);
+      this.error = err instanceof Error ? err.message : 'An error occurred. Please try again.';
+      this.cdr.markForCheck();
+    } finally {
+      this.loading = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  private async fetchCodeLength() {
+    try {
+      const { data, error } = await this.supabaseService.client
+        .from('admin_settings')
+        .select('verification_code_length')
+        .eq('id', 1)
+        .maybeSingle();
+
+      if (!error && data) {
+        this.codeLength = data.verification_code_length || 4;
+      } else {
+        this.codeLength = 4;
+      }
+      this.mfaCode = new Array(this.codeLength).fill('');
+    } catch (err) {
+      console.error('[AdminLogin] Error fetching code length:', err);
+      this.codeLength = 4;
+      this.mfaCode = new Array(4).fill('');
+    }
+  }
+
+  handleCodeChange(index: number, event: any): void {
+    const target = event?.target;
+    if (!target) return;
+    
+    const value = target.value;
+    
+    // Handle autofill on iOS/Chromium which pastes the full code into the first input
+    if (value.length > 1) {
+      const digits = value.replace(/\D/g, '').slice(0, this.codeLength);
+      if (digits.length >= this.codeLength) {
+        this.mfaCode = digits.slice(0, this.codeLength).split('');
+        this.error = '';
+        // Reset the first input to show only its digit
+        if (index === 0 && this.codeInputs?.first) {
+          this.codeInputs.first.nativeElement.value = this.mfaCode[0];
+        }
+        this.focusInput(this.codeLength - 1);
+        return;
+      }
+    }
+
+    // Only allow digits
+    if (/^\d$/.test(value)) {
+      this.mfaCode[index] = value;
+      this.error = '';
+      if (index < this.codeLength - 1) {
+        this.focusInput(index + 1);
+      }
+    } else {
+      this.mfaCode[index] = '';
+    }
+  }
+
+  handleKeyDown(index: number, event: any): void {
+    const key = event?.key;
+    if (!key) return;
+    
+    if (key === 'Backspace') {
+      if (!this.mfaCode[index] && index > 0) {
+        this.focusInput(index - 1);
+      }
+      this.mfaCode[index] = '';
+    } else if (key === 'ArrowLeft' && index > 0) {
+      this.focusInput(index - 1);
+    } else if (key === 'ArrowRight' && index < this.codeLength - 1) {
+      this.focusInput(index + 1);
+    } else if (key === 'Enter' && this.isCodeComplete()) {
+      // Verify on Enter if all digits are filled
+      this.handleSubmit(event);
+    }
+  }
+
+  handlePaste(event: any): void {
+    if (!event) return;
+    
+    event.preventDefault();
+    const paste = event.clipboardData?.getData('text') || '';
+    const digits = paste.replace(/\D/g, '').slice(0, this.codeLength);
+    
+    if (digits.length >= this.codeLength) {
+      this.mfaCode = digits.slice(0, this.codeLength).split('');
+      this.focusInput(this.codeLength - 1);
+    }
+  }
+
+  focusInput(index: number) {
+    setTimeout(() => {
+      const inputs = this.codeInputs.toArray();
+      if (inputs[index]) {
+        inputs[index].nativeElement.focus();
+      }
+    }, 0);
+  }
+
+  isCodeComplete(): boolean {
+    return this.mfaCode.every(digit => digit.length === 1);
   }
 
   resetForm() {
     // Clear sessionStorage
-    sessionStorage.removeItem('magic_link_sent');
-    sessionStorage.removeItem('magic_link_email');
+    sessionStorage.removeItem('mfa_email_sent');
+    sessionStorage.removeItem('mfa_email');
     this.success = false;
+    this.waitingForMfaCode = false;
     this.email = '';
+    this.mfaCode = new Array(this.codeLength).fill('');
+    this.error = '';
+    this.cdr.markForCheck();
   }
 }
