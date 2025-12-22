@@ -22,85 +22,91 @@ type AllowanceLevel = 'everyone' | 'original-requestor' | 'admin-only';
         </h3>
       </div>
 
-      <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-        Configure who can submit updates and request deletions for prayer requests.
-      </p>
-
-      <div *ngIf="loading" class="text-center py-4">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+      <div *ngIf="loading" class="flex items-center justify-center py-8">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
 
-      <div *ngIf="!loading" class="space-y-4">
+      <div *ngIf="!loading">
+        <!-- Info Box -->
+        <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 mb-4">
+          <p class="text-sm text-blue-800 dark:text-blue-200">
+            Configure who can submit updates and request deletions for prayer requests.
+          </p>
+        </div>
+
         <!-- Error Message -->
         <div *ngIf="error" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-md p-4 mb-4">
           <p class="text-sm text-red-800 dark:text-red-200">{{ error }}</p>
         </div>
 
-        <!-- Deletions Allowed -->
-        <div>
-          <label for="deletionsAllowed" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Prayer & Update Deletion Policy
-          </label>
-          <div class="relative">
-            <select
-              id="deletionsAllowed"
-              [(ngModel)]="deletionsAllowed"
-              name="deletionsAllowed"
-              aria-label="Policy for prayer and update deletions"
-              class="w-full appearance-none px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10 cursor-pointer"
-            >
-              <option value="everyone">Everyone</option>
-              <option value="original-requestor">Original Requestor Only</option>
-              <option value="admin-only">Admin Only</option>
-            </select>
-            <svg class="pointer-events-none absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 dark:text-gray-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-          </div>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">
-            <strong class="text-gray-700 dark:text-gray-300">Everyone:</strong> Users can request to delete any prayer requests and updates. Deletions require admin approval before taking effect.
-          </p>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-            <strong class="text-gray-700 dark:text-gray-300">Original Requestor Only:</strong> Only the prayer creator can request deletion (verified by email). Admins must approve.
-          </p>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-            <strong class="text-gray-700 dark:text-gray-300">Admin Only:</strong> All delete (trash can) icons are hidden from users. Admins can still delete directly.
-          </p>
-        </div>
+        <!-- Settings Box -->
+        <div class="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-md p-4">
+          <div class="space-y-6">
+            <!-- Deletions Allowed -->
+            <div>
+              <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
+                Prayer & Update Deletion Policy
+              </h4>
+              <div class="relative">
+                <select
+                  id="deletionsAllowed"
+                  [(ngModel)]="deletionsAllowed"
+                  name="deletionsAllowed"
+                  aria-label="Policy for prayer and update deletions"
+                  class="w-full appearance-none px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10 cursor-pointer"
+                >
+                  <option value="everyone">Everyone</option>
+                  <option value="original-requestor">Original Requestor Only</option>
+                  <option value="admin-only">Admin Only</option>
+                </select>
+                <svg class="pointer-events-none absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 dark:text-gray-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                <strong class="text-gray-700 dark:text-gray-300">Everyone:</strong> Users can request to delete any prayer requests and updates. Deletions require admin approval before taking effect.
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                <strong class="text-gray-700 dark:text-gray-300">Original Requestor Only:</strong> Only the prayer creator can request deletion (verified by email). Admins must approve.
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                <strong class="text-gray-700 dark:text-gray-300">Admin Only:</strong> All delete (trash can) icons are hidden from users. Admins can still delete directly.
+              </p>
+            </div>
 
-        <!-- Updates Allowed -->
-        <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
-          <label for="updatesAllowed" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Prayer Update Policy
-          </label>
-          <div class="relative">
-            <select
-              id="updatesAllowed"
-              [(ngModel)]="updatesAllowed"
-              name="updatesAllowed"
-              aria-label="Policy for prayer updates"
-              class="w-full appearance-none px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10 cursor-pointer"
-            >
-              <option value="everyone">Everyone</option>
-              <option value="original-requestor">Original Requestor Only</option>
-              <option value="admin-only">Admin Only</option>
-            </select>
-            <svg class="pointer-events-none absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 dark:text-gray-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
+            <!-- Updates Allowed -->
+            <div>
+              <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
+                Prayer Update Policy
+              </h4>
+              <div class="relative">
+                <select
+                  id="updatesAllowed"
+                  [(ngModel)]="updatesAllowed"
+                  name="updatesAllowed"
+                  aria-label="Policy for prayer updates"
+                  class="w-full appearance-none px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10 cursor-pointer"
+                >
+                  <option value="everyone">Everyone</option>
+                  <option value="original-requestor">Original Requestor Only</option>
+                  <option value="admin-only">Admin Only</option>
+                </select>
+                <svg class="pointer-events-none absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 dark:text-gray-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                <strong class="text-gray-700 dark:text-gray-300">Everyone:</strong> Users can submit updates to any existing prayer requests. Updates require admin approval before being displayed.
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                <strong class="text-gray-700 dark:text-gray-300">Original Requestor Only:</strong> Only the prayer creator can submit updates (verified by email). Admins must approve.
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                <strong class="text-gray-700 dark:text-gray-300">Admin Only:</strong> "Add Update" buttons are hidden from users. Admins can still add updates directly.
+              </p>
+            </div>
           </div>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">
-            <strong class="text-gray-700 dark:text-gray-300">Everyone:</strong> Users can submit updates to any existing prayer requests. Updates require admin approval before being displayed.
-          </p>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-            <strong class="text-gray-700 dark:text-gray-300">Original Requestor Only:</strong> Only the prayer creator can submit updates (verified by email). Admins must approve.
-          </p>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-            <strong class="text-gray-700 dark:text-gray-300">Admin Only:</strong> "Add Update" buttons are hidden from users. Admins can still add updates directly.
-          </p>
         </div>
-
-        <!-- Save Button -->
         <div class="flex justify-end mt-6">
           <button
             (click)="save()"
