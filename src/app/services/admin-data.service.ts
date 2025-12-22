@@ -11,16 +11,6 @@ import type {
   UpdateDeletionRequest 
 } from '../types/prayer';
 
-export interface PendingPreferenceChange {
-  id: string;
-  name: string;
-  email: string;
-  receive_new_prayer_notifications: boolean;
-  created_at: string;
-  denial_reason?: string;
-  reviewed_at?: string;
-}
-
 interface AdminData {
   pendingPrayers: PrayerRequest[];
   pendingUpdates: (PrayerUpdate & { prayer_title?: string })[];
@@ -34,7 +24,6 @@ interface AdminData {
       prayers?: { title?: string };
     };
   })[];
-  pendingPreferenceChanges: PendingPreferenceChange[];
   approvedPrayers: PrayerRequest[];
   approvedUpdates: (PrayerUpdate & { prayer_title?: string })[];
   deniedPrayers: PrayerRequest[];
@@ -49,7 +38,6 @@ interface AdminData {
       prayers?: { title?: string };
     };
   })[];
-  deniedPreferenceChanges: PendingPreferenceChange[];
   approvedPrayersCount: number;
   approvedUpdatesCount: number;
   deniedPrayersCount: number;
@@ -68,7 +56,6 @@ export class AdminDataService {
     pendingDeletionRequests: [],
     pendingStatusChangeRequests: [],
     pendingUpdateDeletionRequests: [],
-    pendingPreferenceChanges: [],
     approvedPrayers: [],
     approvedUpdates: [],
     deniedPrayers: [],
@@ -76,7 +63,6 @@ export class AdminDataService {
     deniedStatusChangeRequests: [],
     deniedDeletionRequests: [],
     deniedUpdateDeletionRequests: [],
-    deniedPreferenceChanges: [],
     approvedPrayersCount: 0,
     approvedUpdatesCount: 0,
     deniedPrayersCount: 0,
@@ -117,8 +103,7 @@ export class AdminDataService {
         pendingUpdatesResult,
         pendingDeletionRequestsResult,
         pendingStatusChangeRequestsResult,
-        pendingUpdateDeletionRequestsResult,
-        pendingPreferenceChangesResult
+        pendingUpdateDeletionRequestsResult
       ] = await Promise.all([
         // Pending prayers
         supabaseClient
@@ -153,13 +138,6 @@ export class AdminDataService {
           .from('update_deletion_requests')
           .select('*, prayer_updates(*, prayers(title))')
           .eq('approval_status', 'pending')
-          .order('created_at', { ascending: false }),
-        
-        // Pending preference changes
-        supabaseClient
-          .from('pending_preference_changes')
-          .select('*')
-          .eq('approval_status', 'pending')
           .order('created_at', { ascending: false })
       ]);
 
@@ -190,7 +168,6 @@ export class AdminDataService {
         pendingDeletionRequests,
         pendingStatusChangeRequests,
         pendingUpdateDeletionRequests: pendingUpdateDeletionRequestsResult.data || [],
-        pendingPreferenceChanges: pendingPreferenceChangesResult.data || [],
         approvedPrayers: [],
         approvedUpdates: [],
         deniedPrayers: [],
@@ -198,7 +175,6 @@ export class AdminDataService {
         deniedStatusChangeRequests: [],
         deniedDeletionRequests: [],
         deniedUpdateDeletionRequests: [],
-        deniedPreferenceChanges: [],
         approvedPrayersCount: 0,
         approvedUpdatesCount: 0,
         deniedPrayersCount: 0,
@@ -242,8 +218,7 @@ export class AdminDataService {
         deniedUpdatesResult,
         deniedStatusChangeRequestsResult,
         deniedDeletionRequestsResult,
-        deniedUpdateDeletionRequestsResult,
-        deniedPreferenceChangesResult
+        deniedUpdateDeletionRequestsResult
       ] = await Promise.all([
         // Approved counts
         supabaseClient
@@ -309,12 +284,6 @@ export class AdminDataService {
           .from('update_deletion_requests')
           .select('*, prayer_updates(*, prayers(title))')
           .eq('approval_status', 'denied')
-          .order('reviewed_at', { ascending: false }),
-        
-        supabaseClient
-          .from('pending_preference_changes')
-          .select('*')
-          .eq('approval_status', 'denied')
           .order('reviewed_at', { ascending: false })
       ]);
 
@@ -350,7 +319,6 @@ export class AdminDataService {
         deniedStatusChangeRequests,
         deniedDeletionRequests,
         deniedUpdateDeletionRequests: deniedUpdateDeletionRequestsResult.data || [],
-        deniedPreferenceChanges: deniedPreferenceChangesResult.data || [],
         approvedPrayersCount: approvedPrayersCountResult.count || 0,
         approvedUpdatesCount: approvedUpdatesCountResult.count || 0,
         deniedPrayersCount: deniedPrayersCountResult.count || 0,
@@ -684,74 +652,6 @@ export class AdminDataService {
     if (error) throw error;
     await this.fetchAdminData(true);
     await this.prayerService.loadPrayers();
-  }
-
-  async approvePreferenceChange(id: string): Promise<void> {
-    const supabaseClient = this.supabase.client;
-    
-    // First get the preference change details before approving
-    const { data: preferenceChange, error: fetchError } = await supabaseClient
-      .from('pending_preference_changes')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (fetchError) throw fetchError;
-    if (!preferenceChange) throw new Error('Preference change not found');
-    
-    const { error } = await supabaseClient
-      .from('pending_preference_changes')
-      .update({ 
-        approval_status: 'approved',
-        reviewed_at: new Date().toISOString()
-      })
-      .eq('id', id);
-
-    if (error) throw error;
-    
-    // Send email notification to user (don't let email failures block approval)
-    this.emailNotification.sendApprovedPreferenceChangeNotification({
-      name: preferenceChange.name,
-      email: preferenceChange.email,
-      receiveNotifications: preferenceChange.receive_new_prayer_notifications
-    }).catch(err => console.error('Failed to send preference approval notification:', err));
-    
-    await this.fetchAdminData(true);
-  }
-
-  async denyPreferenceChange(id: string, reason: string): Promise<void> {
-    const supabaseClient = this.supabase.client;
-    
-    // First get the preference change details before denying
-    const { data: preferenceChange, error: fetchError } = await supabaseClient
-      .from('pending_preference_changes')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (fetchError) throw fetchError;
-    if (!preferenceChange) throw new Error('Preference change not found');
-    
-    const { error } = await supabaseClient
-      .from('pending_preference_changes')
-      .update({ 
-        approval_status: 'denied',
-        reviewed_at: new Date().toISOString(),
-        denial_reason: reason
-      })
-      .eq('id', id);
-
-    if (error) throw error;
-    
-    // Send email notification to user (don't let email failures block denial)
-    this.emailNotification.sendDeniedPreferenceChangeNotification({
-      name: preferenceChange.name,
-      email: preferenceChange.email,
-      receiveNotifications: preferenceChange.receive_new_prayer_notifications,
-      denialReason: reason
-    }).catch(err => console.error('Failed to send preference denial notification:', err));
-    
-    await this.fetchAdminData(true);
   }
 
   silentRefresh(): void {

@@ -542,92 +542,6 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
     }
   }
 
-  async savePreferences(): Promise<void> {
-    if (!this.email.trim()) {
-      this.error = 'Please enter your email address';
-      return;
-    }
-
-    if (!this.name.trim()) {
-      this.error = 'Please enter your name';
-      return;
-    }
-
-    this.saving = true;
-    this.error = null;
-    this.success = null;
-
-    try {
-      // Save user info to localStorage
-      const names = this.name.trim().split(' ');
-      const firstName = names[0] || '';
-      const lastName = names.slice(1).join(' ') || '';
-
-      const userInfo = {
-        firstName,
-        lastName,
-        email: this.email.trim()
-      };
-
-      localStorage.setItem('userInfo', JSON.stringify(userInfo));
-
-      const emailLower = this.email.toLowerCase().trim();
-
-      const preferenceData = {
-        name: this.name.trim(),
-        email: emailLower,
-        receive_new_prayer_notifications: this.receiveNotifications
-      };
-
-      // User is logged in - submit directly without verification
-      await this.submitPreferenceChange(preferenceData);
-    } catch (err) {
-      console.error('Error saving preferences:', err);
-      this.error = err instanceof Error ? err.message : 'Failed to save preferences';
-      this.saving = false;
-    }
-  }
-
-  private async submitPreferenceChange(preferenceData: any): Promise<void> {
-    try {
-      // Submit as pending preference change for admin approval
-      const { data, error } = await this.supabase.client
-        .from('pending_preference_changes')
-        .insert(preferenceData)
-        .select('id')
-        .single();
-
-      if (error) throw error;
-
-      // Send admin notification email (don't let this block the save)
-      try {
-        const requestId = data?.id;
-        await this.emailNotification.sendPreferenceChangeNotification({
-          name: preferenceData.name,
-          email: preferenceData.email,
-          receiveNotifications: preferenceData.receive_new_prayer_notifications,
-          requestId
-        });
-      } catch (emailError) {
-        console.warn('⚠️ Admin notification email failed (but preference was saved):', emailError);
-        // Don't throw - preference was already saved
-      }
-
-      this.success = 
-        '✅ Your preference change has been submitted for approval! ' +
-        'You will receive an email once approved. After approval, your preferences will be automatically updated the next time you open this settings panel.';
-      
-      setTimeout(() => {
-        this.onClose.emit();
-      }, 2500);
-    } catch (err) {
-      console.error('Error saving preferences:', err);
-      this.error = err instanceof Error ? err.message : 'Failed to save preferences';
-    } finally {
-      this.saving = false;
-    }
-  }
-
   private async loadPreferencesAutomatically(emailAddress: string): Promise<void> {
     if (!emailAddress.trim()) return;
     
@@ -636,20 +550,6 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
     if (!emailRegex.test(emailAddress)) return;
 
     try {
-      // Check for pending preference changes first (most recent user intent)
-      const { data: pendingData, error: pendingError } = await this.supabase.client
-        .from('pending_preference_changes')
-        .select('*')
-        .eq('email', emailAddress.toLowerCase().trim())
-        .eq('approval_status', 'pending')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      
-      if (pendingError) {
-        console.error('Error loading pending preferences:', pendingError);
-      }
-      
       // Check for approved preferences in email_subscribers
       const { data: subscriberData, error } = await this.supabase.client
         .from('email_subscribers')
@@ -662,14 +562,7 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
         return;
       }
 
-      // Priority: pending changes > approved subscriber data > defaults
-      if (pendingData) {
-        // User has pending changes, show what they requested
-        if (pendingData.name && pendingData.name.trim()) {
-          this.name = pendingData.name;
-        }
-        this.receiveNotifications = pendingData.receive_new_prayer_notifications;
-      } else if (subscriberData) {
+      if (subscriberData) {
         // User has approved preferences
         if (subscriberData.name && subscriberData.name.trim()) {
           this.name = subscriberData.name;

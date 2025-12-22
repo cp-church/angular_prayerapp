@@ -9,7 +9,6 @@ import { PendingPrayerCardComponent } from '../../components/pending-prayer-card
 import { PendingUpdateCardComponent } from '../../components/pending-update-card/pending-update-card.component';
 import { PendingDeletionCardComponent } from '../../components/pending-deletion-card/pending-deletion-card.component';
 import { PendingUpdateDeletionCardComponent } from '../../components/pending-update-deletion-card/pending-update-deletion-card.component';
-import { PendingPreferenceChangeCardComponent } from '../../components/pending-preference-change-card/pending-preference-change-card.component';
 import { AppBrandingComponent } from '../../components/app-branding/app-branding.component';
 import { PromptManagerComponent } from '../../components/prompt-manager/prompt-manager.component';
 import { PrayerTypesManagerComponent } from '../../components/prayer-types-manager/prayer-types-manager.component';
@@ -21,7 +20,7 @@ import { SessionTimeoutSettingsComponent } from '../../components/session-timeou
 import { SecurityPolicySettingsComponent } from '../../components/security-policy-settings/security-policy-settings.component';
 import { EmailVerificationSettingsComponent } from '../../components/email-verification-settings/email-verification-settings.component';
 
-type AdminTab = 'prayers' | 'updates' | 'deletions' | 'preferences' | 'settings';
+type AdminTab = 'prayers' | 'updates' | 'deletions' | 'settings';
 type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'security';
 
 @Component({
@@ -34,7 +33,6 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'secu
     PendingUpdateCardComponent,
     PendingDeletionCardComponent,
     PendingUpdateDeletionCardComponent,
-    PendingPreferenceChangeCardComponent,
     AppBrandingComponent,
     PromptManagerComponent,
     PrayerTypesManagerComponent,
@@ -94,7 +92,7 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'secu
       <!-- Content -->
       <main class="w-full max-w-6xl mx-auto px-4 py-6">
         <!-- Stats Grid -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mb-8">
+        <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 mb-8">
           <button
             (click)="onTabChange('prayers')"
             [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md p-2 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 ' + (activeTab === 'prayers' ? 'ring-2 ring-blue-500' : '')"
@@ -128,18 +126,6 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'secu
                 {{ (adminData?.pendingDeletionRequests?.length || 0) + (adminData?.pendingUpdateDeletionRequests?.length || 0) }}
               </div>
               <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">Pending Deletions</div>
-            </div>
-          </button>
-
-          <button
-            (click)="onTabChange('preferences')"
-            [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md p-2 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 ' + (activeTab === 'preferences' ? 'ring-2 ring-blue-500' : '')"
-          >
-            <div class="text-center">
-              <div class="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {{ adminData?.pendingPreferenceChanges?.length || 0 }}
-              </div>
-              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">Pending Preferences</div>
             </div>
           </button>
 
@@ -307,36 +293,6 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'secu
             </div>
           </div>
 
-          <!-- Preferences Tab -->
-          <div *ngIf="activeTab === 'preferences'">
-            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-6">
-              Pending Preference Changes ({{ adminData?.pendingPreferenceChanges?.length || 0 }})
-            </h2>
-            
-            <div *ngIf="(adminData?.pendingPreferenceChanges?.length || 0) === 0" 
-                 class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center border border-gray-200 dark:border-gray-700">
-              <svg class="mx-auto mb-4 text-gray-400 dark:text-gray-500" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                <polyline points="22,6 12,13 2,6"></polyline>
-              </svg>
-              <h3 class="text-lg font-medium text-gray-700 dark:text-gray-200 mb-2">
-                No pending preference changes
-              </h3>
-              <p class="text-gray-500 dark:text-gray-400">
-                All notification preference requests have been reviewed.
-              </p>
-            </div>
-
-            <div class="space-y-6">
-              <app-pending-preference-change-card
-                *ngFor="let change of adminData?.pendingPreferenceChanges; trackBy: trackByPreferenceChangeId"
-                [change]="change"
-                (approve)="approvePreferenceChange($event)"
-                (deny)="denyPreferenceChange($event.id, $event.reason)"
-              ></app-pending-preference-change-card>
-            </div>
-          </div>
-
           <!-- Settings Tab -->
           <div *ngIf="activeTab === 'settings'">
             <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-6">
@@ -423,7 +379,7 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'secu
                   <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                 </div>
 
-                <div *ngIf="!analyticsStats.loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div *ngIf="!analyticsStats.loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
                   <!-- Today -->
                   <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
                     <div class="flex items-center gap-2 mb-2">
@@ -643,7 +599,7 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   /**
    * Auto-progress through approval tabs when each section is complete
-   * Priority order: prayers -> updates -> deletions -> preferences
+   * Priority order: prayers -> updates -> deletions
    */
   private autoProgressTabs() {
     if (!this.adminData) return;
@@ -658,9 +614,6 @@ export class AdminComponent implements OnInit, OnDestroy {
         } else if ((this.adminData.pendingDeletions || []).length > 0) {
           // Move to deletions if there are any
           this.onTabChange('deletions');
-        } else if ((this.adminData.pendingPreferences || []).length > 0) {
-          // Move to preferences if there are any
-          this.onTabChange('preferences');
         }
       }
     }
@@ -671,9 +624,6 @@ export class AdminComponent implements OnInit, OnDestroy {
         // Move to deletions if there are any
         if ((this.adminData.pendingDeletions || []).length > 0) {
           this.onTabChange('deletions');
-        } else if ((this.adminData.pendingPreferences || []).length > 0) {
-          // Move to preferences if there are any
-          this.onTabChange('preferences');
         } else if ((this.adminData.pendingPrayers || []).length > 0) {
           // Cycle back to prayers if any exist
           this.onTabChange('prayers');
@@ -684,29 +634,12 @@ export class AdminComponent implements OnInit, OnDestroy {
     else if (this.activeTab === 'deletions') {
       const pendingDeletions = this.adminData.pendingDeletions || [];
       if (pendingDeletions.length === 0) {
-        // Move to preferences if there are any
-        if ((this.adminData.pendingPreferences || []).length > 0) {
-          this.onTabChange('preferences');
-        } else if ((this.adminData.pendingPrayers || []).length > 0) {
-          // Cycle back to prayers if any exist
+        // Cycle back to prayers if any exist
+        if ((this.adminData.pendingPrayers || []).length > 0) {
           this.onTabChange('prayers');
         } else if ((this.adminData.pendingUpdates || []).length > 0) {
           // Cycle to updates if any exist
           this.onTabChange('updates');
-        }
-      }
-    }
-    // If on preferences tab, check if all preferences are done
-    else if (this.activeTab === 'preferences') {
-      const pendingPreferences = this.adminData.pendingPreferences || [];
-      if (pendingPreferences.length === 0) {
-        // Cycle back to prayers or to the next section with items
-        if ((this.adminData.pendingPrayers || []).length > 0) {
-          this.onTabChange('prayers');
-        } else if ((this.adminData.pendingUpdates || []).length > 0) {
-          this.onTabChange('updates');
-        } else if ((this.adminData.pendingDeletions || []).length > 0) {
-          this.onTabChange('deletions');
         }
       }
     }
@@ -774,8 +707,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     return (this.adminData.pendingPrayers?.length || 0) +
            (this.adminData.pendingUpdates?.length || 0) +
            (this.adminData.pendingDeletionRequests?.length || 0) +
-           (this.adminData.pendingUpdateDeletionRequests?.length || 0) +
-           (this.adminData.pendingPreferenceChanges?.length || 0);
+           (this.adminData.pendingUpdateDeletionRequests?.length || 0);
   }
 
   goToHome() {
@@ -874,24 +806,6 @@ export class AdminComponent implements OnInit, OnDestroy {
     }
   }
 
-  async approvePreferenceChange(id: string) {
-    try {
-      await this.adminDataService.approvePreferenceChange(id);
-      this.autoProgressTabs();
-    } catch (error) {
-      console.error('Error approving preference change:', error);
-    }
-  }
-
-  async denyPreferenceChange(id: string, reason: string) {
-    try {
-      await this.adminDataService.denyPreferenceChange(id, reason);
-      this.autoProgressTabs();
-    } catch (error) {
-      console.error('Error denying preference change:', error);
-    }
-  }
-
   // TrackBy functions for ngFor optimization
   trackByPrayerId(index: number, prayer: any): string {
     return prayer.id;
@@ -903,10 +817,6 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   trackByDeletionRequestId(index: number, request: any): string {
     return request.id;
-  }
-
-  trackByPreferenceChangeId(index: number, change: any): string {
-    return change.id;
   }
 
   getAdminEmail(): string {
