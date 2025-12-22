@@ -426,7 +426,8 @@ describe('presentationUtils', () => {
     let mockDocumentElement: HTMLElement;
     let mockLocalStorage: { [key: string]: string };
     let mockMatchMedia: ReturnType<typeof vi.fn>;
-    let mockSetTheme: ReturnType<typeof vi.fn>;
+    let mockSetTheme: ReturnType<typeof vi.fn<(theme: 'light' | 'dark' | 'system') => void>>;
+
 
     beforeEach(() => {
       // Mock document.documentElement
