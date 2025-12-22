@@ -1,10 +1,12 @@
 import { Routes } from '@angular/router';
 import { adminGuard } from './guards/admin.guard';
+import { siteAuthGuard } from './guards/site-auth.guard';
 
 export const routes: Routes = [
   {
     path: '',
-    loadComponent: () => import('./pages/home/home.component').then(m => m.HomeComponent)
+    loadComponent: () => import('./pages/home/home.component').then(m => m.HomeComponent),
+    canActivate: [siteAuthGuard]
   },
   {
     path: 'admin-login',
@@ -13,12 +15,13 @@ export const routes: Routes = [
   {
     path: 'admin',
     loadComponent: () => import('./pages/admin/admin.component').then(m => m.AdminComponent),
-    canActivate: [adminGuard],
+    canActivate: [siteAuthGuard, adminGuard],
     data: { preload: true } // Hint for preloading strategy if implemented
   },
   {
     path: 'presentation',
     loadComponent: () => import('./pages/presentation/presentation.component').then(m => m.PresentationComponent),
+    canActivate: [siteAuthGuard],
     data: { preload: false }
   },
   {

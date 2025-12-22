@@ -44,14 +44,6 @@ import { Observable } from 'rxjs';
                   <span>Admin</span>
                 </button>
                 <button
-                  *ngIf="isAdmin$ | async"
-                  (click)="logout()"
-                  class="flex items-center gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
-                  title="Logout"
-                >
-                  <span class="text-sm">Logout</span>
-                </button>
-                <button
                   (click)="showSettings = true"
                   class="flex items-center gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-2.5 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
                   title="Settings"
@@ -78,8 +70,19 @@ import { Observable } from 'rxjs';
 
               <!-- Tablet/Desktop: two rows -->
               <div class="hidden sm:flex flex-col gap-2">
-                <!-- First row: settings, presentation, new prayer -->
+                <!-- First row: admin, settings, presentation, new prayer -->
                 <div class="flex items-center gap-2 justify-end">
+                  <button
+                    *ngIf="(isAuthenticated$ | async) && (isAdmin$ | async)"
+                    routerLink="/admin"
+                    class="flex items-center gap-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-4 py-2 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors text-base"
+                    title="Admin Portal"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    <span>Admin</span>
+                  </button>
                   <button
                     (click)="showSettings = true"
                     class="flex items-center gap-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-4 py-3 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
@@ -102,32 +105,6 @@ import { Observable } from 'rxjs';
                     class="flex items-center gap-2 bg-blue-600 dark:bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-base"
                   >
                     <span>Add Request</span>
-                  </button>
-                </div>
-                
-                <!-- Second row: admin and logout (right-aligned) -->
-                <div *ngIf="isAdmin$ | async" class="flex items-center gap-2 justify-end">
-                  <button
-                    routerLink="/admin"
-                    class="flex items-center gap-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-4 py-2 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors text-base"
-                    title="Admin Portal"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                    </svg>
-                    <span>Admin</span>
-                  </button>
-                  <button
-                    (click)="logout()"
-                    class="flex items-center gap-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
-                    title="Logout"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                      <polyline points="16 17 21 12 16 7"></polyline>
-                      <line x1="21" y1="12" x2="9" y2="12"></line>
-                    </svg>
-                    <span class="text-base">Logout</span>
                   </button>
                 </div>
               </div>
@@ -274,15 +251,7 @@ import { Observable } from 'rxjs';
         </div>
       </main>
 
-      <!-- Admin Portal Link -->
-      <footer class="mt-8 pb-4 text-center">
-        <a 
-          routerLink="/admin-login" 
-          class="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400 transition-colors"
-        >
-          Admin
-        </a>
-      </footer>
+      <!-- No Footer Links -->
     </div>
 
     <!-- Verification Dialog -->
@@ -304,6 +273,7 @@ export class HomeComponent implements OnInit {
   loading$!: Observable<boolean>;
   error$!: Observable<string | null>;
   isAdmin$!: Observable<boolean>;
+  isAuthenticated$!: Observable<boolean>;
 
   currentPrayersCount = 0;
   answeredPrayersCount = 0;
@@ -352,6 +322,7 @@ export class HomeComponent implements OnInit {
     this.loading$ = this.prayerService.loading$;
     this.error$ = this.prayerService.error$;
     this.isAdmin$ = this.adminAuthService.isAdmin$;
+    this.isAuthenticated$ = this.adminAuthService.isAuthenticated$;
 
     // Subscribe to ALL prayers to update counts (not filtered)
     this.prayerService.allPrayers$.subscribe(prayers => {

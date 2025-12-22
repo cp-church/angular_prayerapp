@@ -3,18 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../services/supabase.service';
 
-type AllowanceLevel = 'everyone' | 'original-requestor' | 'admin-only';
-
-interface BrandingSettings {
-  appTitle: string;
-  appSubtitle: string;
-  useLogo: boolean;
-  lightModeLogoUrl: string;
-  darkModeLogoUrl: string;
-  deletionsAllowed: AllowanceLevel;
-  updatesAllowed: AllowanceLevel;
-}
-
 @Component({
   selector: 'app-branding',
   standalone: true,
@@ -200,66 +188,6 @@ interface BrandingSettings {
           </div>
         </div>
 
-        <!-- Deletions Allowed -->
-          <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
-            <label for="deletionsAllowed" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Prayer & Update Deletion Policy
-            </label>
-            <div class="relative">
-              <select
-                id="deletionsAllowed"
-                [(ngModel)]="deletionsAllowed"                name="deletionsAllowed"
-                aria-label="Policy for prayer and update deletions"                class="w-full appearance-none px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10 cursor-pointer"
-              >
-                <option value="everyone">Everyone</option>
-                <option value="original-requestor">Original Requestor Only</option>
-                <option value="admin-only">Admin Only</option>
-              </select>
-              <svg class="pointer-events-none absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 dark:text-gray-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
-            </div>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">
-              <strong class="text-gray-700 dark:text-gray-300">Everyone:</strong> Users can request to delete any prayer requests and updates. Deletions require admin approval before taking effect.
-            </p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              <strong class="text-gray-700 dark:text-gray-300">Original Requestor Only:</strong> Only the prayer creator can request deletion (verified by email). Admins must approve.
-            </p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              <strong class="text-gray-700 dark:text-gray-300">Admin Only:</strong> All delete (trash can) icons are hidden from users. Admins can still delete directly.
-            </p>
-          </div>
-
-          <!-- Updates Allowed -->
-          <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
-            <label for="updatesAllowed" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Prayer Update Policy
-            </label>
-            <div class="relative">
-              <select
-                id="updatesAllowed"
-                [(ngModel)]="updatesAllowed"
-                class="w-full appearance-none px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10 cursor-pointer"
-              >
-                <option value="everyone">Everyone</option>
-                <option value="original-requestor">Original Requestor Only</option>
-                <option value="admin-only">Admin Only</option>
-              </select>
-              <svg class="pointer-events-none absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 dark:text-gray-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
-            </div>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">
-              <strong class="text-gray-700 dark:text-gray-300">Everyone:</strong> Users can submit updates to any existing prayer requests. Updates require admin approval before being displayed.
-            </p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              <strong class="text-gray-700 dark:text-gray-300">Original Requestor Only:</strong> Only the prayer creator can submit updates (verified by email). Admins must approve.
-            </p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              <strong class="text-gray-700 dark:text-gray-300">Admin Only:</strong> "Add Update" buttons are hidden from users. Admins can still add updates directly.
-            </p>
-          </div>
-
         <!-- Save Button -->
         <div class="flex justify-end gap-3 mt-6">
           <button
@@ -301,15 +229,16 @@ export class AppBrandingComponent implements OnInit {
   useLogo = false;
   lightModeLogoUrl = '';
   darkModeLogoUrl = '';
-  deletionsAllowed: AllowanceLevel = 'everyone';
-  updatesAllowed: AllowanceLevel = 'everyone';
   loading = false;
   saving = false;
   uploading = false;
   error: string | null = null;
   success = false;
 
-  constructor(private supabase: SupabaseService, private cdr: ChangeDetectorRef) {}
+  constructor(
+    private supabase: SupabaseService, 
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit() {
     this.loadSettings();
@@ -323,7 +252,7 @@ export class AppBrandingComponent implements OnInit {
     try {
       const { data, error } = await this.supabase.client
         .from('admin_settings')
-        .select('app_title, app_subtitle, use_logo, light_mode_logo_blob, dark_mode_logo_blob, deletions_allowed, updates_allowed')
+        .select('app_title, app_subtitle, use_logo, light_mode_logo_blob, dark_mode_logo_blob')
         .eq('id', 1)
         .single();
 
@@ -335,8 +264,6 @@ export class AppBrandingComponent implements OnInit {
         if (data.use_logo !== null) this.useLogo = data.use_logo;
         if (data.light_mode_logo_blob) this.lightModeLogoUrl = data.light_mode_logo_blob;
         if (data.dark_mode_logo_blob) this.darkModeLogoUrl = data.dark_mode_logo_blob;
-        if (data.deletions_allowed) this.deletionsAllowed = data.deletions_allowed;
-        if (data.updates_allowed) this.updatesAllowed = data.updates_allowed;
       }
     } catch (err: any) {
       console.error('Error loading branding settings:', err);
@@ -391,8 +318,6 @@ export class AppBrandingComponent implements OnInit {
           use_logo: this.useLogo,
           light_mode_logo_blob: this.lightModeLogoUrl || null,
           dark_mode_logo_blob: this.darkModeLogoUrl || null,
-          deletions_allowed: this.deletionsAllowed,
-          updates_allowed: this.updatesAllowed,
           updated_at: new Date().toISOString()
         });
 
@@ -400,6 +325,7 @@ export class AppBrandingComponent implements OnInit {
 
       this.success = true;
       this.cdr.markForCheck();
+      
       this.onSave.emit();
 
       setTimeout(() => {
@@ -408,7 +334,7 @@ export class AppBrandingComponent implements OnInit {
       }, 3000);
     } catch (err: any) {
       console.error('Error saving branding settings:', err);
-      this.error = 'Failed to save settings. Please try again.';
+      this.error = err?.message || 'Failed to save settings. Please try again.';
       this.cdr.markForCheck();
     } finally {
       this.saving = false;

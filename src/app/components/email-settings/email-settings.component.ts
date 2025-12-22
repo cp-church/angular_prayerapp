@@ -4,137 +4,17 @@ import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../services/supabase.service';
 import { ToastService } from '../../services/toast.service';
 import { EmailTemplatesManagerComponent } from '../email-templates-manager/email-templates-manager.component';
+import { EmailSubscribersComponent } from '../email-subscribers/email-subscribers.component';
 
 @Component({
   selector: 'app-email-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, EmailTemplatesManagerComponent],
+  imports: [CommonModule, FormsModule, EmailTemplatesManagerComponent, EmailSubscribersComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="space-y-6">
-      <!-- Email Verification Section -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
-        <div class="flex items-center gap-2 mb-4">
-          <svg class="text-blue-600 dark:text-blue-400" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-            <polyline points="22,6 12,13 2,6"></polyline>
-          </svg>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Email Verification (2FA)
-          </h3>
-        </div>
-
-        <!-- Email Verification Requirement -->
-        <div class="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-md p-4">
-          <div class="flex items-start gap-3">
-            <div class="flex-1">
-              <label class="flex items-start cursor-pointer">
-                <input
-                  type="checkbox"
-                  [(ngModel)]="requireEmailVerification"
-                  class="mt-0.5 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <span class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">Require Email Verification (2FA)</span>
-              </label>
-              <p class="text-xs text-gray-600 dark:text-gray-400 mt-2 ml-6">
-                When enabled, users must verify their email address with a code before submitting:
-              </p>
-              <ul class="text-xs text-gray-600 dark:text-gray-400 mt-1 ml-6 space-y-1">
-                <li>• Prayer requests</li>
-                <li>• Prayer updates</li>
-                <li>• Deletion requests</li>
-                <li>• Status change requests</li>
-                <li>• Email preference changes</li>
-              </ul>
-              <p class="text-xs text-blue-700 dark:text-blue-300 mt-2 ml-6 font-medium">
-                ✓ Prevents spam and validates email addresses
-              </p>
-
-              <!-- Verification Code Settings -->
-              <div *ngIf="requireEmailVerification" class="mt-4 ml-6 space-y-4">
-                <!-- Code Length -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Verification Code Length
-                  </label>
-                  <div class="relative">
-                    <select
-                      [(ngModel)]="verificationCodeLength"
-                      id="codeLength"
-                      name="codeLength"
-                      aria-label="Verification code length"
-                      class="w-full appearance-none px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10 cursor-pointer"
-                    >
-                      <option [value]="4">4 digits</option>
-                      <option [value]="6">6 digits (recommended)</option>
-                      <option [value]="8">8 digits</option>
-                    </select>
-                    <svg class="pointer-events-none absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 dark:text-gray-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
-                  </div>
-                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Length of verification code sent to users
-                  </p>
-                </div>
-
-                <!-- Code Expiry -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Code Expiration Time
-                  </label>
-                  <div class="relative">
-                    <select
-                      [(ngModel)]="verificationCodeExpiryMinutes"
-                      id="codeExpiry"
-                      name="codeExpiry"
-                      aria-label="Code expiration time in minutes"
-                      class="w-full appearance-none px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10 cursor-pointer"
-                    >
-                      <option [value]="5">5 minutes</option>
-                      <option [value]="10">10 minutes</option>
-                      <option [value]="15">15 minutes (recommended)</option>
-                      <option [value]="20">20 minutes</option>
-                      <option [value]="30">30 minutes</option>
-                      <option [value]="45">45 minutes</option>
-                      <option [value]="60">60 minutes</option>
-                    </select>
-                    <svg class="pointer-events-none absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 dark:text-gray-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
-                  </div>
-                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    How long verification codes remain valid
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div *ngIf="successVerification" class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-md p-4 mt-4" role="status" aria-live="polite" aria-atomic="true">
-          <p class="text-sm text-green-800 dark:text-green-200">
-            Email verification settings saved successfully!
-          </p>
-        </div>
-
-        <div class="flex justify-end mt-6">
-          <button
-            (click)="saveVerificationSettings()"
-            [disabled]="savingVerification"
-            class="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            aria-label="Save verification settings"
-          >
-            <div *ngIf="savingVerification" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            <svg *ngIf="!savingVerification" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-              <polyline points="17 21 17 13 7 13 7 21"></polyline>
-              <polyline points="7 3 7 8 15 8"></polyline>
-            </svg>
-            {{ savingVerification ? 'Saving...' : 'Save Verification Settings' }}
-          </button>
-        </div>
-      </div>
+      <!-- Email Subscribers Component -->
+      <app-email-subscribers></app-email-subscribers>
 
       <!-- Prayer Update Reminders Section -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
@@ -282,16 +162,12 @@ import { EmailTemplatesManagerComponent } from '../email-templates-manager/email
 export class EmailSettingsComponent implements OnInit {
   @Output() onSave = new EventEmitter<void>();
 
-  requireEmailVerification = false;
-  verificationCodeLength = 6;
-  verificationCodeExpiryMinutes = 15;
   enableReminders = false;
   reminderIntervalDays = 7;
   enableAutoArchive = false;
   daysBeforeArchive = 7;
   
   loading = true;
-  savingVerification = false;
   savingReminders = false;
   error: string | null = null;
   successVerification = false;
@@ -315,22 +191,13 @@ export class EmailSettingsComponent implements OnInit {
 
       const { data, error } = await this.supabase.client
         .from('admin_settings')
-        .select('require_email_verification, verification_code_length, verification_code_expiry_minutes, enable_reminders, reminder_interval_days, enable_auto_archive, days_before_archive')
+        .select('enable_reminders, reminder_interval_days, enable_auto_archive, days_before_archive')
         .eq('id', 1)
         .maybeSingle();
 
       if (error) throw error;
 
       if (data) {
-        if (data.require_email_verification !== null && data.require_email_verification !== undefined) {
-          this.requireEmailVerification = data.require_email_verification;
-        }
-        if (data.verification_code_length !== null && data.verification_code_length !== undefined) {
-          this.verificationCodeLength = data.verification_code_length;
-        }
-        if (data.verification_code_expiry_minutes !== null && data.verification_code_expiry_minutes !== undefined) {
-          this.verificationCodeExpiryMinutes = data.verification_code_expiry_minutes;
-        }
         if (data.enable_reminders !== null && data.enable_reminders !== undefined) {
           this.enableReminders = data.enable_reminders;
         }
@@ -353,48 +220,6 @@ export class EmailSettingsComponent implements OnInit {
       this.cdr.markForCheck();
     } finally {
       this.loading = false;
-      this.cdr.markForCheck();
-    }
-  }
-
-  async saveVerificationSettings() {
-    try {
-      this.savingVerification = true;
-      this.cdr.markForCheck();
-      this.error = null;
-      this.successVerification = false;
-
-      const { error } = await this.supabase.client
-        .from('admin_settings')
-        .upsert({
-          id: 1,
-          require_email_verification: this.requireEmailVerification,
-          verification_code_length: this.verificationCodeLength,
-          verification_code_expiry_minutes: this.verificationCodeExpiryMinutes
-        })
-        .select();
-
-      if (error) throw error;
-
-      this.successVerification = true;
-      this.cdr.markForCheck();
-      this.toast.success('Email verification settings saved!');
-      this.onSave.emit();
-
-      setTimeout(() => {
-        this.successVerification = false;
-        this.cdr.markForCheck();
-      }, 3000);
-    } catch (err: unknown) {
-      console.error('Error saving verification settings:', err);
-      const message = err && typeof err === 'object' && 'message' in err
-        ? String(err.message)
-        : 'Unknown error';
-      this.error = `Failed to save verification settings: ${message}`;
-      this.cdr.markForCheck();
-      this.toast.error('Failed to save verification settings');
-    } finally {
-      this.savingVerification = false;
       this.cdr.markForCheck();
     }
   }

@@ -1,9 +1,10 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChildren, QueryList, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { AdminAuthService } from '../../services/admin-auth.service';
 import { SupabaseService } from '../../services/supabase.service';
+import { ThemeService } from '../../services/theme.service';
 import { Subject, takeUntil } from 'rxjs';
 
 @Component({
@@ -11,38 +12,48 @@ import { Subject, takeUntil } from 'rxjs';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterModule],
   template: `
-    <div class="w-full min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center transition-colors">
+    <div class="w-full min-h-screen bg-gradient-to-br from-emerald-50 to-green-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center transition-colors">
       <div class="max-w-md w-full mx-auto space-y-8 p-4 sm:p-8">
         <div class="text-center">
-          <!-- Shield Icon -->
-          <svg class="mx-auto h-12 w-12 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          <!-- Logo or Heart Icon -->
+          <div *ngIf="useLogo && logoUrl" class="flex justify-center mb-4">
+            <img 
+              [src]="logoUrl" 
+              alt="Prayer Community Logo" 
+              class="h-16 w-auto max-w-xs object-contain"
+            />
+          </div>
+          <svg *ngIf="!useLogo || !logoUrl" class="mx-auto h-16 w-16 text-[#2F5F54] dark:text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
           </svg>
-          <h2 class="mt-6 text-3xl font-bold text-gray-900 dark:text-gray-100">
-            Admin Portal
+          <h2 class="mt-6 text-4xl font-bold text-[#2F5F54] dark:text-[#2F5F54]">
+            Prayer Community
           </h2>
           <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Sign in with a verification code sent to your email
+            {{ requireSiteLogin ? 'Sign in to join our community' : 'Secure access with verification code' }}
+          </p>
+          <p class="mt-1 text-xs text-gray-500 dark:text-gray-500 italic">
+            "Where prayer brings us together"
           </p>
         </div>
 
         <!-- Success State -->
         <div *ngIf="success" class="space-y-4">
           <!-- Main success notification -->
-          <div class="bg-green-50 dark:bg-green-900/20 border-2 border-green-300 dark:border-green-700 rounded-lg p-6 shadow-lg">
+          <div class="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border-2 border-emerald-300 dark:border-emerald-700 rounded-lg p-6 shadow-lg">
             <div class="flex items-start gap-3 mb-4">
               <!-- CheckCircle Icon -->
-              <svg class="text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5 w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="text-[#2F5F54] dark:text-emerald-400 flex-shrink-0 mt-0.5 w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
               <div class="flex-1">
-                <h3 class="text-green-900 dark:text-green-100 font-bold text-lg">
-                  Verification Code Sent! 📧
+                <h3 class="text-[#2F5F54] dark:text-emerald-100 font-bold text-lg">
+                  Check Your Email ✉️
                 </h3>
-                <p class="text-green-800 dark:text-green-200 text-sm mt-1">
+                <p class="text-[#3a7566] dark:text-emerald-200 text-sm mt-1">
                   We've sent a verification code to:
                 </p>
-                <p class="text-green-900 dark:text-green-100 font-semibold text-base mt-2">
+                <p class="text-[#2F5F54] dark:text-emerald-100 font-semibold text-base mt-2">
                   {{email}}
                 </p>
               </div>
@@ -50,9 +61,9 @@ import { Subject, takeUntil } from 'rxjs';
 
             <!-- MFA Code Input Form -->
             <div *ngIf="waitingForMfaCode" class="mt-4">
-              <div class="bg-white dark:bg-gray-800 rounded-md p-4 border border-green-200 dark:border-green-800 space-y-4">
+              <div class="bg-white dark:bg-gray-800 rounded-md p-4 border border-emerald-200 dark:border-emerald-800 space-y-4">
                 <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  Enter Verification Code
+                  Enter Your Verification Code
                 </h4>
                 <div>
                   <label class="sr-only">
@@ -72,7 +83,7 @@ import { Subject, takeUntil } from 'rxjs';
                       [disabled]="loading"
                       class="w-12 h-14 text-center text-2xl font-semibold border-2 rounded-lg
                              bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                             border-green-400 dark:border-green-600 focus:border-green-500 focus:ring-2 focus:ring-green-200
+                             border-emerald-400 dark:border-emerald-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200
                              disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
                     />
                   </div>
@@ -92,7 +103,7 @@ import { Subject, takeUntil } from 'rxjs';
                   (click)="handleSubmit($event)"
                   [disabled]="loading || !isCodeComplete()"
                   type="button"
-                  class="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  class="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#2F5F54] hover:bg-[#1a3a2e] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2F5F54] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <div *ngIf="loading" class="flex items-center justify-center gap-2">
                     <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -104,43 +115,43 @@ import { Subject, takeUntil } from 'rxjs';
             </div>
 
             <!-- Step-by-step instructions (when not waiting for code) -->
-            <div *ngIf="!waitingForMfaCode" class="mt-4 bg-white dark:bg-gray-800 rounded-md p-4 border border-green-200 dark:border-green-800">
+            <div *ngIf="!waitingForMfaCode" class="mt-4 bg-white dark:bg-gray-800 rounded-md p-4 border border-emerald-200 dark:border-emerald-800">
               <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
-                What to do next:
+                Here's what to do:
               </h4>
               <ol class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
                 <li class="flex items-start gap-2">
-                  <span class="flex-shrink-0 w-5 h-5 bg-green-600 dark:bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
-                  <span>Open your email inbox and look for an email from Prayer App</span>
+                  <span class="flex-shrink-0 w-5 h-5 bg-[#2F5F54] dark:bg-emerald-500 text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                  <span>Check your email inbox for a message from Prayer Community</span>
                 </li>
                 <li class="flex items-start gap-2">
-                  <span class="flex-shrink-0 w-5 h-5 bg-green-600 dark:bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
-                  <span>Find the <strong>6-digit verification code</strong> in the email</span>
+                  <span class="flex-shrink-0 w-5 h-5 bg-[#2F5F54] dark:bg-emerald-500 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                  <span>Look for the <strong>{{codeLength}}-digit verification code</strong> in the email</span>
                 </li>
                 <li class="flex items-start gap-2">
-                  <span class="flex-shrink-0 w-5 h-5 bg-green-600 dark:bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                  <span class="flex-shrink-0 w-5 h-5 bg-[#2F5F54] dark:bg-emerald-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
                   <span>Enter the code above and click <strong>"Verify Code"</strong></span>
                 </li>
               </ol>
             </div>
 
             <!-- Additional info -->
-            <div class="mt-4 flex items-start gap-2 text-xs text-green-700 dark:text-green-300">
-              <!-- AlertCircle Icon -->
+            <div class="mt-4 flex items-start gap-2 text-xs text-[#3a7566] dark:text-emerald-300">
+              <!-- Info Icon -->
               <svg class="flex-shrink-0 mt-0.5 w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
               <p>
-                <strong>Don't see the email?</strong> Check your spam/junk folder. The code expires in 10 minutes.
+                <strong>No email?</strong> Check your spam folder. The code expires in 10 minutes.
               </p>
             </div>
           </div>
 
           <button
             (click)="resetForm()"
-            class="w-full py-2 text-center text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            class="w-full py-2 text-center text-sm font-medium text-[#2F5F54] dark:text-emerald-400 hover:text-[#1a3a2e] dark:hover:text-emerald-300 border border-emerald-300 dark:border-emerald-600 rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
           >
-            ← Send to a different email
+            ← Try a different email
           </button>
         </div>
 
@@ -148,11 +159,11 @@ import { Subject, takeUntil } from 'rxjs';
         <form *ngIf="!success" class="mt-8 space-y-6" (ngSubmit)="handleSubmit($event)">
           <div>
             <label for="email" class="sr-only">
-              Admin Email Address
+              Email Address
             </label>
             <div class="relative">
               <!-- Mail Icon -->
-              <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#2F5F54] w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
               </svg>
               <input
@@ -161,12 +172,12 @@ import { Subject, takeUntil } from 'rxjs';
                 type="email"
                 required
                 [(ngModel)]="email"
-                class="pl-12 pr-3 py-3 w-full border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                placeholder="Admin Email Address"
+                class="pl-12 pr-3 py-3 w-full border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2F5F54] focus:border-[#2F5F54]"
+                placeholder="Your email address"
               />
             </div>
             <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              Enter your admin email to receive a verification code
+              We'll send you a secure verification code
             </p>
           </div>
 
@@ -182,34 +193,15 @@ import { Subject, takeUntil } from 'rxjs';
           <button
             type="submit"
             [disabled]="loading"
-            class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#2F5F54] hover:bg-[#1a3a2e] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2F5F54] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <div *ngIf="loading" class="flex items-center gap-2">
               <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              Sending verification code...
+              Sending code...
             </div>
             <span *ngIf="!loading">Send Verification Code</span>
           </button>
         </form>
-
-        <div class="mt-4 text-center">
-          <p class="text-xs text-gray-500 dark:text-gray-400">
-            🔒 Secure authentication via verification code
-          </p>
-        </div>
-
-        <div class="mt-6 text-center">
-          <a
-            [routerLink]="['/']"
-            class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          >
-            <!-- ArrowLeft Icon -->
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-            </svg>
-            Back to Main Page
-          </a>
-        </div>
       </div>
     </div>
   `,
@@ -229,19 +221,51 @@ export class AdminLoginComponent implements OnInit, OnDestroy {
   success = false;
   loading = false;
   waitingForMfaCode = false;
+  requireSiteLogin = false; // Track if site-wide protection is enabled
+  useLogo = false;
+  logoUrl = '';
+  private isDarkMode = false;
+  private returnUrl: string = '/';
   
   private destroy$ = new Subject<void>();
 
   constructor(
     private adminAuthService: AdminAuthService,
     private supabaseService: SupabaseService,
+    private themeService: ThemeService,
     private router: Router,
+    private route: ActivatedRoute,
     private cdr: ChangeDetectorRef
   ) {}
 
   async ngOnInit() {
     // Initialize code array immediately so inputs can render
     this.mfaCode = new Array(this.codeLength).fill('');
+    
+    // Detect dark mode from document class
+    this.detectDarkMode();
+    
+    // Watch for theme changes
+    this.watchThemeChanges();
+    
+    // Load logo from cache/localStorage
+    this.loadCachedLogo();
+    
+    // Fetch fresh branding from database (will update cache)
+    await this.fetchBranding();
+    
+    // Get returnUrl from query params
+    this.route.queryParams.subscribe(params => {
+      this.returnUrl = params['returnUrl'] || '/';
+    });
+
+    // Subscribe to site protection status
+    this.adminAuthService.requireSiteLogin$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(requireSiteLogin => {
+        this.requireSiteLogin = requireSiteLogin;
+        this.cdr.markForCheck();
+      });
     
     // Fetch code length from settings
     await this.fetchCodeLength();
@@ -267,7 +291,7 @@ export class AdminLoginComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(isAdmin => {
         if (isAdmin) {
-          this.router.navigate(['/admin']);
+          this.router.navigate(['/']);
         }
       });
   }
@@ -343,10 +367,16 @@ export class AdminLoginComponent implements OnInit, OnDestroy {
 
       if (result.success) {
         console.log('[AdminLogin] MFA verification successful');
-        // Clear sessionStorage and navigate
+        // Clear sessionStorage
         sessionStorage.removeItem('mfa_email_sent');
         sessionStorage.removeItem('mfa_email');
-        this.router.navigate(['/admin']);
+        
+        // Route based on admin status
+        // If user is an admin, go to returnUrl (admin or specified page)
+        // If user is not an admin, go to home page
+        const destination = result.isAdmin ? this.returnUrl : '/';
+        console.log('[AdminLogin] Routing to:', destination, '(isAdmin:', result.isAdmin, ')');
+        this.router.navigate([destination]);
       } else {
         console.error('[AdminLogin] MFA verification failed:', result.error);
         this.error = result.error || 'Invalid code. Please try again.';
@@ -473,5 +503,137 @@ export class AdminLoginComponent implements OnInit, OnDestroy {
     this.mfaCode = new Array(this.codeLength).fill('');
     this.error = '';
     this.cdr.markForCheck();
+  }
+
+  private loadCachedLogo() {
+    // Load from window cache first (set by index.html script)
+    const windowCache = (window as any).__cachedLogos;
+    
+    if (windowCache?.useLogo !== undefined) {
+      this.useLogo = windowCache.useLogo;
+    }
+
+    // Also check localStorage directly
+    const useLogo = localStorage.getItem('branding_use_logo');
+    const lightLogo = localStorage.getItem('branding_light_logo');
+    const darkLogo = localStorage.getItem('branding_dark_logo');
+    
+    if (useLogo) {
+      this.useLogo = useLogo === 'true';
+    }
+
+    if (this.useLogo) {
+      // Store both light and dark logos
+      if (windowCache?.light) {
+        localStorage.setItem('branding_light_logo', windowCache.light);
+      }
+      if (windowCache?.dark) {
+        localStorage.setItem('branding_dark_logo', windowCache.dark);
+      }
+      
+      // Update image URL based on current dark mode state
+      this.updateLogoUrl();
+    }
+    
+    this.cdr.markForCheck();
+  }
+
+  private detectDarkMode() {
+    // Get the effective theme (respect user choice or system preference)
+    const theme = this.themeService.getTheme();
+    
+    if (theme === 'system') {
+      // If system theme is selected, check OS preference
+      this.isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } else {
+      // Otherwise use the user's chosen theme
+      this.isDarkMode = theme === 'dark';
+    }
+  }
+
+  private watchThemeChanges() {
+    // Watch for document class changes (when theme is applied)
+    const observer = new MutationObserver(() => {
+      const isDark = document.documentElement.classList.contains('dark');
+      if (isDark !== this.isDarkMode) {
+        this.isDarkMode = isDark;
+        this.updateLogoUrl();
+      }
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    // Also listen to ThemeService changes for when user selects a theme
+    this.themeService.theme$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(theme => {
+        this.detectDarkMode();
+        this.updateLogoUrl();
+      });
+
+    // Listen for system theme changes when user has system theme selected
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    mediaQuery.addEventListener('change', () => {
+      if (this.themeService.getTheme() === 'system') {
+        this.detectDarkMode();
+        this.updateLogoUrl();
+      }
+    });
+  }
+
+  private updateLogoUrl() {
+    if (!this.useLogo) {
+      this.logoUrl = '';
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const lightLogo = localStorage.getItem('branding_light_logo');
+    const darkLogo = localStorage.getItem('branding_dark_logo');
+
+    this.logoUrl = this.isDarkMode ? (darkLogo || lightLogo || '') : (lightLogo || '');
+    this.cdr.markForCheck();
+  }
+
+  private async fetchBranding() {
+    try {
+      const { data, error } = await this.supabaseService.directQuery<{
+        use_logo: boolean;
+        light_mode_logo_blob: string;
+        dark_mode_logo_blob: string;
+      }>(
+        'admin_settings',
+        {
+          select: 'use_logo, light_mode_logo_blob, dark_mode_logo_blob',
+          eq: { id: 1 },
+          limit: 1
+        }
+      );
+
+      if (!error && data && Array.isArray(data) && data.length > 0) {
+        const settings = data[0];
+        
+        if (settings.use_logo !== null && settings.use_logo !== undefined) {
+          this.useLogo = settings.use_logo;
+          localStorage.setItem('branding_use_logo', String(settings.use_logo));
+        }
+        
+        if (settings.light_mode_logo_blob) {
+          localStorage.setItem('branding_light_logo', settings.light_mode_logo_blob);
+        }
+        
+        if (settings.dark_mode_logo_blob) {
+          localStorage.setItem('branding_dark_logo', settings.dark_mode_logo_blob);
+        }
+
+        // Update the logo URL with fresh data
+        this.updateLogoUrl();
+      }
+    } catch (error) {
+      console.error('Failed to fetch branding settings:', error);
+    }
   }
 }

@@ -22,14 +22,18 @@ const DEFAULT_TIMEOUTS: TimeoutSettings = {
 export class AdminAuthService {
   private userSubject = new BehaviorSubject<User | null>(null);
   private isAdminSubject = new BehaviorSubject<boolean>(false);
+  private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
   private loadingSubject = new BehaviorSubject<boolean>(true);
+  private requireSiteLoginSubject = new BehaviorSubject<boolean>(false);
   private lastActivity = Date.now();
   private sessionStart: number | null = null;
   private timeoutSettings: TimeoutSettings = DEFAULT_TIMEOUTS;
 
   public user$ = this.userSubject.asObservable();
   public isAdmin$ = this.isAdminSubject.asObservable();
+  public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
   public loading$ = this.loadingSubject.asObservable();
+  public requireSiteLogin$ = this.requireSiteLoginSubject.asObservable();
 
   private router = inject(Router);
 
@@ -47,6 +51,7 @@ export class AdminAuthService {
     
     if (approvalEmail && sessionValidated === 'true') {
       this.isAdminSubject.next(true);
+      this.isAuthenticatedSubject.next(true);
       this.sessionStart = this.getPersistedSessionStart() || Date.now();
       this.persistSessionStart(this.sessionStart);
       this.loadingSubject.next(false);
@@ -59,6 +64,7 @@ export class AdminAuthService {
     if (session?.user) {
       this.userSubject.next(session.user);
       await this.checkAdminStatus(session.user);
+      this.isAuthenticatedSubject.next(true);
       this.sessionStart = this.getPersistedSessionStart() || Date.now();
       this.persistSessionStart(this.sessionStart);
     }
@@ -69,6 +75,7 @@ export class AdminAuthService {
       if (session?.user) {
         this.userSubject.next(session.user);
         await this.checkAdminStatus(session.user);
+        this.isAuthenticatedSubject.next(true);
         
         if (!this.sessionStart) {
           this.sessionStart = Date.now();
@@ -77,6 +84,7 @@ export class AdminAuthService {
       } else {
         this.userSubject.next(null);
         this.isAdminSubject.next(false);
+        this.isAuthenticatedSubject.next(false);
         this.sessionStart = null;
         this.persistSessionStart(null);
       }
@@ -110,8 +118,9 @@ export class AdminAuthService {
         inactivity_timeout_minutes: number;
         max_session_duration_minutes: number;
         db_heartbeat_interval_minutes: number;
+        require_site_login: boolean;
       }>>('admin_settings', {
-        select: 'inactivity_timeout_minutes, max_session_duration_minutes, db_heartbeat_interval_minutes',
+        select: 'inactivity_timeout_minutes, max_session_duration_minutes, db_heartbeat_interval_minutes, require_site_login',
         eq: { id: 1 },
         limit: 1,
         timeout: 10000
@@ -123,6 +132,9 @@ export class AdminAuthService {
           maxSessionDurationMinutes: data[0].max_session_duration_minutes || DEFAULT_TIMEOUTS.maxSessionDurationMinutes,
           dbHeartbeatIntervalMinutes: data[0].db_heartbeat_interval_minutes || DEFAULT_TIMEOUTS.dbHeartbeatIntervalMinutes,
         };
+        
+        // Update site protection setting
+        this.requireSiteLoginSubject.next(data[0].require_site_login || false);
         
         localStorage.setItem('adminTimeoutSettings', JSON.stringify(this.timeoutSettings));
         localStorage.setItem('adminTimeoutSettingsTimestamp', Date.now().toString());
@@ -140,10 +152,12 @@ export class AdminAuthService {
       
       if (approvalEmail && sessionValidated === 'true') {
         this.isAdminSubject.next(true);
+        this.isAuthenticatedSubject.next(true);
         return;
       }
       
       this.isAdminSubject.next(false);
+      this.isAuthenticatedSubject.next(false);
       return;
     }
 
@@ -185,9 +199,12 @@ export class AdminAuthService {
   }
 
   private setupSessionTimeouts(): void {
-    // Check every minute for timeouts
+    // Check every minute for timeouts (admin users only)
     interval(60000).subscribe(() => {
       if (!this.userSubject.value) return;
+
+      // Non-admin users stay logged in indefinitely until they manually logout
+      if (!this.isAdminSubject.value) return;
 
       const now = Date.now();
       const inactivityTime = now - this.lastActivity;
@@ -239,10 +256,23 @@ export class AdminAuthService {
     try {
       console.log('[AdminAuth] Requesting MFA code for:', email);
       
-      // First, check if email is an admin
-      const isAdmin = await this.isEmailAdmin(email);
-      if (!isAdmin) {
-        return { success: false, error: 'Email address is not authorized for admin access' };
+      // Check if site-wide protection is enabled by fetching from database
+      const { data: settings } = await this.supabase.client
+        .from('admin_settings')
+        .select('require_site_login')
+        .eq('id', 1)
+        .maybeSingle();
+      
+      const siteProtectionEnabled = settings?.require_site_login || false;
+      console.log('[AdminAuth] Site protection enabled:', siteProtectionEnabled);
+      
+      // If site protection is enabled, allow any email
+      // Otherwise, only allow admin emails
+      if (!siteProtectionEnabled) {
+        const isAdmin = await this.isEmailAdmin(email);
+        if (!isAdmin) {
+          return { success: false, error: 'Email address is not authorized for admin access' };
+        }
       }
 
       // Use existing send-verification-code function with admin_login action
@@ -307,7 +337,7 @@ export class AdminAuthService {
   /**
    * Verify MFA code (uses existing verify-code function)
    */
-  async verifyMfaCode(code: string): Promise<{ success: boolean; error?: string }> {
+  async verifyMfaCode(code: string): Promise<{ success: boolean; error?: string; isAdmin?: boolean }> {
     try {
       console.log('[AdminAuth] Verifying MFA code');
       
@@ -336,11 +366,18 @@ export class AdminAuthService {
         return { success: false, error: data.error };
       }
 
-      // Code verified successfully - now sign in the user with Supabase
-      // We'll use signInWithOtp to create a session, or we can use the approval code system
-      
-      // Set admin session using the approval code system (no Supabase auth needed)
+      // Check if user is an admin
+      const isAdmin = await this.isEmailAdmin(email);
+
+      // Code verified successfully - now sign in the user
       this.setApprovalSession(email);
+
+      // Set admin status only if they're actually an admin
+      if (isAdmin) {
+        this.isAdminSubject.next(true);
+      } else {
+        this.isAdminSubject.next(false);
+      }
 
       // Clean up
       localStorage.removeItem('mfa_code_id');
@@ -348,8 +385,8 @@ export class AdminAuthService {
       localStorage.setItem('approvalAdminEmail', email);
       localStorage.setItem('approvalSessionValidated', 'true');
 
-      console.log('[AdminAuth] MFA verification successful, admin session created');
-      return { success: true };
+      console.log('[AdminAuth] MFA verification successful, session created (isAdmin:', isAdmin, ')');
+      return { success: true, isAdmin };
     } catch (error) {
       console.error('[AdminAuth] Unexpected error verifying MFA:', error);
       return {
@@ -367,6 +404,7 @@ export class AdminAuthService {
   setApprovalSession(email: string): void {
     console.log('[AdminAuth] Setting approval session for:', email);
     this.isAdminSubject.next(true);
+    this.isAuthenticatedSubject.next(true);
     this.sessionStart = Date.now();
     this.persistSessionStart(this.sessionStart);
   }
@@ -379,6 +417,7 @@ export class AdminAuthService {
       await this.supabase.client.auth.signOut();
       this.userSubject.next(null);
       this.isAdminSubject.next(false);
+      this.isAuthenticatedSubject.next(false);
       this.sessionStart = null;
       this.persistSessionStart(null);
       
@@ -387,6 +426,9 @@ export class AdminAuthService {
       localStorage.removeItem('approvalSessionValidated');
       localStorage.removeItem('approvalApprovalType');
       localStorage.removeItem('approvalApprovalId');
+      
+      // Always redirect to login page after logout
+      this.router.navigate(['/admin-login']);
     } catch (error) {
       console.error('Error during logout:', error);
     }
@@ -411,5 +453,27 @@ export class AdminAuthService {
    */
   isLoading(): boolean {
     return this.loadingSubject.value;
+  }
+
+  /**
+   * Reload site protection setting from database
+   */
+  async reloadSiteProtectionSetting(): Promise<void> {
+    try {
+      const { data, error } = await this.supabase.directQuery<Array<{
+        require_site_login: boolean;
+      }>>('admin_settings', {
+        select: 'require_site_login',
+        eq: { id: 1 },
+        limit: 1,
+        timeout: 10000
+      });
+
+      if (!error && data && data[0]) {
+        this.requireSiteLoginSubject.next(data[0].require_site_login || false);
+      }
+    } catch (error) {
+      console.error('Error reloading site protection setting:', error);
+    }
   }
 }

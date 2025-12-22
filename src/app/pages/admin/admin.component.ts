@@ -18,9 +18,12 @@ import { AdminUserManagementComponent } from '../../components/admin-user-manage
 import { PrayerSearchComponent } from '../../components/prayer-search/prayer-search.component';
 import { BackupStatusComponent } from '../../components/backup-status/backup-status.component';
 import { SessionTimeoutSettingsComponent } from '../../components/session-timeout-settings/session-timeout-settings.component';
+import { SecurityPolicySettingsComponent } from '../../components/security-policy-settings/security-policy-settings.component';
+import { SiteProtectionSettingsComponent } from '../../components/site-protection-settings/site-protection-settings.component';
+import { EmailVerificationSettingsComponent } from '../../components/email-verification-settings/email-verification-settings.component';
 
 type AdminTab = 'prayers' | 'updates' | 'deletions' | 'preferences' | 'settings';
-type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'timeouts';
+type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'security';
 
 @Component({
   selector: 'app-admin',
@@ -40,7 +43,10 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'time
     AdminUserManagementComponent,
     PrayerSearchComponent,
     BackupStatusComponent,
-    SessionTimeoutSettingsComponent
+    SessionTimeoutSettingsComponent,
+    SecurityPolicySettingsComponent,
+    SiteProtectionSettingsComponent,
+    EmailVerificationSettingsComponent
   ],
   template: `
     <div class="w-full min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors flex flex-col">
@@ -380,14 +386,13 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'time
                 Tools
               </button>
               <button
-                (click)="onSettingsTabChange('timeouts')"
-                [class]="'px-4 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-2 ' + (activeSettingsTab === 'timeouts' ? 'bg-blue-600 text-white border-b-2 border-blue-600' : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200')"
+                (click)="onSettingsTabChange('security')"
+                [class]="'px-4 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-2 ' + (activeSettingsTab === 'security' ? 'bg-blue-600 text-white border-b-2 border-blue-600' : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200')"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <polyline points="12 6 12 12 16 14"></polyline>
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                 </svg>
-                Timeouts
+                Security
               </button>
             </div>
 
@@ -541,14 +546,23 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'time
               </div>
             </div>
 
-            <!-- Timeouts Tab -->
-            <div *ngIf="activeSettingsTab === 'timeouts'" class="space-y-6">
+            <!-- Security Tab -->
+            <div *ngIf="activeSettingsTab === 'security'">
+              <div class="mb-4">
+                <app-site-protection-settings></app-site-protection-settings>
+              </div>
+              <div class="mb-4">
+                <app-email-verification-settings></app-email-verification-settings>
+              </div>
+              <div class="mb-4">
+                <app-security-policy-settings></app-security-policy-settings>
+              </div>
               <div class="mb-4">
                 <app-session-timeout-settings></app-session-timeout-settings>
               </div>
             </div>
 
-            <div *ngIf="activeSettingsTab !== 'analytics' && activeSettingsTab !== 'content' && activeSettingsTab !== 'email' && activeSettingsTab !== 'users' && activeSettingsTab !== 'tools' && activeSettingsTab !== 'timeouts'" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center border border-gray-200 dark:border-gray-700">
+            <div *ngIf="activeSettingsTab !== 'analytics' && activeSettingsTab !== 'content' && activeSettingsTab !== 'email' && activeSettingsTab !== 'users' && activeSettingsTab !== 'tools' && activeSettingsTab !== 'security'" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center border border-gray-200 dark:border-gray-700">
               <h3 class="text-lg font-medium text-gray-700 dark:text-gray-200 mb-2">
                 {{ activeSettingsTab | titlecase }} Settings
               </h3>

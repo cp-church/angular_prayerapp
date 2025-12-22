@@ -426,6 +426,18 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
               {{ saving ? 'Submitting...' : 'Submit for Approval' }}
             </button>
             <button
+              (click)="logout()"
+              class="flex items-center justify-center gap-2 px-4 py-2 sm:py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors text-sm sm:text-base font-medium"
+              aria-label="Logout"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+              <span>Logout</span>
+            </button>
+            <button
               (click)="onClose.emit()"
               class="px-4 py-2 sm:py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors text-sm sm:text-base font-medium sm:min-w-[100px]"
               aria-label="Close settings"
@@ -880,5 +892,9 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error('Error resending code:', error);
     }
+  }
+
+  async logout(): Promise<void> {
+    await this.adminAuthService.logout();
   }
 }
