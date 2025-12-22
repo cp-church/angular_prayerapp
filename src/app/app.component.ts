@@ -74,8 +74,15 @@ export class AppComponent implements OnInit {
         // Clear URL params
         window.history.replaceState({}, '', window.location.pathname);
         
-        // Navigate to admin
-        this.router.navigate(['/admin']);
+        // Check if user is admin before navigating
+        const isAdmin = await adminAuth.getIsAdmin();
+        if (isAdmin) {
+          // Admin user - navigate to admin portal
+          this.router.navigate(['/admin']);
+        } else {
+          // Non-admin user - stay on main site
+          this.router.navigate(['/']);
+        }
       } else {
         // Code validation failed, go to login
         this.router.navigate(['/admin-login']);

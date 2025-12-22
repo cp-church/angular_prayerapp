@@ -1,8 +1,8 @@
 import { inject } from '@angular/core';
 import { Router, CanActivateFn } from '@angular/router';
 import { AdminAuthService } from '../services/admin-auth.service';
-import { map, take } from 'rxjs/operators';
 import { combineLatest } from 'rxjs';
+import { map, skipWhile } from 'rxjs/operators';
 
 /**
  * Site-wide authentication guard
@@ -12,9 +12,15 @@ export const siteAuthGuard: CanActivateFn = (route, state) => {
   const router = inject(Router);
   const adminAuthService = inject(AdminAuthService);
 
-  return adminAuthService.isAuthenticated$.pipe(
-    take(1),
-    map((isAuthenticated) => {
+  // Wait for loading to complete, then check authentication
+  return combineLatest([
+    adminAuthService.isAuthenticated$,
+    adminAuthService.loading$
+  ]).pipe(
+    // Skip while loading
+    skipWhile(([_, isLoading]) => isLoading),
+    // Take first value after loading is complete
+    map(([isAuthenticated]) => {
       // If user is authenticated, allow access
       if (isAuthenticated) {
         return true;

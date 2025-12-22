@@ -1,6 +1,7 @@
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { map } from 'rxjs/operators';
+import { combineLatest } from 'rxjs';
+import { map, skipWhile } from 'rxjs/operators';
 import { AdminAuthService } from '../services/admin-auth.service';
 
 export const adminGuard = () => {
@@ -16,8 +17,15 @@ export const adminGuard = () => {
     return true;
   }
 
-  return adminAuthService.isAdmin$.pipe(
-    map(isAdmin => {
+  // Wait for loading to complete, then check admin status
+  return combineLatest([
+    adminAuthService.isAdmin$,
+    adminAuthService.loading$
+  ]).pipe(
+    // Skip while loading
+    skipWhile(([_, isLoading]) => isLoading),
+    // Check admin status
+    map(([isAdmin]) => {
       if (!isAdmin) {
         router.navigate(['/admin-login']);
         return false;
