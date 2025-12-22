@@ -340,6 +340,7 @@ export class EmailTemplatesManagerComponent implements OnInit {
     this.saving = true;
     this.error = null;
     this.success = null;
+    this.cdr.markForCheck();
 
     try {
       const { data, error } = await this.supabase.client
@@ -363,6 +364,7 @@ export class EmailTemplatesManagerComponent implements OnInit {
         this.templates = this.templates.map(t => t.id === data.id ? data : t);
         this.success = 'Template saved successfully!';
         this.toast.success('Template saved!');
+        this.cdr.markForCheck();
       }
     } catch (err: unknown) {
       const errorMsg = err && typeof err === 'object' && 'message' in err
@@ -371,8 +373,10 @@ export class EmailTemplatesManagerComponent implements OnInit {
       this.error = 'Failed to save template';
       this.toast.error('Failed to save template');
       console.error(err);
+      this.cdr.markForCheck();
     } finally {
       this.saving = false;
+      this.cdr.markForCheck();
     }
   }
 

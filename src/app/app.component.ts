@@ -85,12 +85,12 @@ export class AppComponent implements OnInit {
         }
       } else {
         // Code validation failed, go to login
-        this.router.navigate(['/admin-login']);
+        this.router.navigate(['/login']);
       }
     } catch (error) {
       // Validation error - user can use normal login page
       console.error('Approval code validation failed:', error);
-      this.router.navigate(['/admin-login']);
+      this.router.navigate(['/login']);
     }
   }
 }

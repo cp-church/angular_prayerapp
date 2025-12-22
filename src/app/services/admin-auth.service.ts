@@ -467,7 +467,7 @@ export class AdminAuthService {
       localStorage.removeItem('approvalApprovalId');
       
       // Always redirect to login page after logout
-      this.router.navigate(['/admin-login']);
+      this.router.navigate(['/login']);
     } catch (error) {
       console.error('Error during logout:', error);
     }

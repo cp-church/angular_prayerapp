@@ -8,7 +8,7 @@ import { ThemeService } from '../../services/theme.service';
 import { Subject, takeUntil } from 'rxjs';
 
 @Component({
-  selector: 'app-admin-login',
+  selector: 'app-login',
   standalone: true,
   imports: [CommonModule, FormsModule, RouterModule],
   template: `
@@ -290,7 +290,7 @@ import { Subject, takeUntil } from 'rxjs';
     }
   `]
 })
-export class AdminLoginComponent implements OnInit, OnDestroy {
+export class LoginComponent implements OnInit, OnDestroy {
   @ViewChildren('codeInput') codeInputs!: QueryList<ElementRef<HTMLInputElement>>;
 
   email = '';

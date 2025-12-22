@@ -6,7 +6,7 @@ import { map, skipWhile } from 'rxjs/operators';
 
 /**
  * Site-wide authentication guard
- * All users must be authenticated to view any page except the admin-login page itself
+ * All users must be authenticated to view any page except the login page itself
  */
 export const siteAuthGuard: CanActivateFn = (route, state) => {
   const router = inject(Router);
@@ -28,7 +28,7 @@ export const siteAuthGuard: CanActivateFn = (route, state) => {
 
       // Not authenticated - redirect to login
       console.log('[SiteAuthGuard] Access denied - redirecting to login');
-      return router.createUrlTree(['/admin-login'], {
+      return router.createUrlTree(['/login'], {
         queryParams: { returnUrl: state.url }
       });
     })

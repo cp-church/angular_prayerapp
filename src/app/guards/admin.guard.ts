@@ -27,7 +27,7 @@ export const adminGuard = () => {
     // Check admin status
     map(([isAdmin]) => {
       if (!isAdmin) {
-        router.navigate(['/admin-login']);
+        router.navigate(['/login']);
         return false;
       }
       return true;

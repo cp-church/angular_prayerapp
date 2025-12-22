@@ -556,7 +556,7 @@ export class HomeComponent implements OnInit {
     }
 
     // Navigate to admin login to re-authenticate with MFA
-    this.router.navigate(['/admin-login'], {
+    this.router.navigate(['/login'], {
       queryParams: { 
         email: userEmail,
         sessionExpired: true
