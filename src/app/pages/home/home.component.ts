@@ -546,11 +546,22 @@ export class HomeComponent implements OnInit {
     if (!userEmail) {
       userEmail = localStorage.getItem('prayerapp_user_email');
     }
+    if (!userEmail) {
+      userEmail = localStorage.getItem('approvalAdminEmail');
+    }
 
     if (!userEmail) {
       this.toastService.error('Email not found. Please log in again.');
       return;
     }
+
+    // Navigate to admin login to re-authenticate with MFA
+    this.router.navigate(['/admin-login'], {
+      queryParams: { 
+        email: userEmail,
+        sessionExpired: true
+      }
+    });
   }
 
   getUserEmail(): string {

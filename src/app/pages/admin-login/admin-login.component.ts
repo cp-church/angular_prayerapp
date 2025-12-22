@@ -61,33 +61,31 @@ import { Subject, takeUntil } from 'rxjs';
 
             <!-- MFA Code Input Form -->
             <div *ngIf="waitingForMfaCode" class="mt-4">
-              <div class="bg-white dark:bg-gray-800 rounded-md p-4 border border-emerald-200 dark:border-emerald-800 space-y-4">
+              <form class="bg-white dark:bg-gray-800 rounded-md p-4 border border-emerald-200 dark:border-emerald-800 space-y-4" (ngSubmit)="handleSubmit($event)" novalidate>
                 <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
                   Enter Your Verification Code
                 </h4>
-                <div>
-                  <label class="sr-only">
-                    Verification Code
-                  </label>
-                  <div class="flex gap-2 justify-center" (paste)="handlePaste($event)">
-                    <input
-                      *ngFor="let digit of mfaCode; let i = index"
-                      #codeInput
-                      type="text"
-                      inputmode="numeric"
-                      [attr.maxlength]="codeLength"
-                      [value]="mfaCode[i]"
-                      (input)="handleCodeChange(i, $event)"
-                      (keydown)="handleKeyDown(i, $event)"
-                      [attr.autocomplete]="i === 0 ? 'one-time-code' : 'off'"
-                      [disabled]="loading"
-                      class="w-12 h-14 text-center text-2xl font-semibold border-2 rounded-lg
-                             bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                             border-emerald-400 dark:border-emerald-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200
-                             disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
-                    />
-                  </div>
-                </div>
+                <input
+                  #codeField
+                  id="mfa-code-input"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="6"
+                  name="mfa-code-input"
+                  [(ngModel)]="mfaCodeInput"
+                  (blur)="sanitizeCodeInput()"
+                  (keydown.enter)="handleSubmit($event)"
+                  autocomplete="one-time-code"
+                  [disabled]="loading"
+                  [readonly]="loading"
+                  placeholder="Code"
+                  autofocus
+                  class="w-full px-4 py-3 text-center text-2xl font-semibold letter-spacing tracking-widest border-2 rounded-lg
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                         border-emerald-400 dark:border-emerald-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200
+                         disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60
+                         transition-opacity duration-200"
+                />
 
                 <!-- Error Message for Code Verification -->
                 <div *ngIf="error && waitingForMfaCode" class="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
@@ -100,9 +98,8 @@ import { Subject, takeUntil } from 'rxjs';
 
                 <!-- Verify Button -->
                 <button
-                  (click)="handleSubmit($event)"
+                  type="submit"
                   [disabled]="loading || !isCodeComplete()"
-                  type="button"
                   class="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#2F5F54] hover:bg-[#1a3a2e] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2F5F54] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <div *ngIf="loading" class="flex items-center justify-center gap-2">
@@ -111,7 +108,17 @@ import { Subject, takeUntil } from 'rxjs';
                   </div>
                   <span *ngIf="!loading">Verify Code</span>
                 </button>
-              </div>
+
+                <!-- Resend Code Button -->
+                <button
+                  (click)="handleResendCode()"
+                  [disabled]="resendLoading"
+                  type="button"
+                  class="w-full py-2 px-4 text-sm font-medium text-[#2F5F54] dark:text-emerald-400 hover:text-[#1a3a2e] dark:hover:text-emerald-300 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {{ resendLoading ? 'Sending...' : 'Resend Code' }}
+                </button>
+              </form>
             </div>
 
             <!-- Step-by-step instructions (when not waiting for code) -->
@@ -216,10 +223,12 @@ export class AdminLoginComponent implements OnInit, OnDestroy {
 
   email = '';
   mfaCode: string[] = [];
+  mfaCodeInput = ''; // Single input field value
   codeLength = 4; // Will be fetched from settings
   error = '';
   success = false;
   loading = false;
+  resendLoading = false;
   waitingForMfaCode = false;
   requireSiteLogin = false; // Track if site-wide protection is enabled
   useLogo = false;
@@ -254,9 +263,18 @@ export class AdminLoginComponent implements OnInit, OnDestroy {
     // Fetch fresh branding from database (will update cache)
     await this.fetchBranding();
     
-    // Get returnUrl from query params
+    // Get returnUrl and sessionExpired flag from query params
     this.route.queryParams.subscribe(params => {
       this.returnUrl = params['returnUrl'] || '/';
+      
+      // If session expired, pre-fill email and show message
+      if (params['email']) {
+        this.email = params['email'];
+      }
+      
+      if (params['sessionExpired'] === 'true') {
+        this.error = 'Your admin session has expired. Please re-authenticate with MFA.';
+      }
     });
 
     // Subscribe to site protection status
@@ -354,6 +372,9 @@ export class AdminLoginComponent implements OnInit, OnDestroy {
 
   private async verifyMfaCode() {
     try {
+      // Sanitize input before checking
+      this.sanitizeCodeInput();
+      
       if (!this.isCodeComplete()) {
         this.error = 'Please enter the complete code from your email';
         this.loading = false;
@@ -394,6 +415,39 @@ export class AdminLoginComponent implements OnInit, OnDestroy {
     }
   }
 
+  async handleResendCode() {
+    try {
+      this.resendLoading = true;
+      this.error = '';
+      this.cdr.markForCheck();
+
+      console.log('[AdminLogin] Resending MFA code to:', this.email);
+
+      // Use the same method as the initial send
+      const result = await this.adminAuthService.sendMfaCode(this.email);
+
+      if (result.success) {
+        console.log('[AdminLogin] Code resent successfully');
+        // Clear current code entry for fresh attempt
+        this.mfaCode = new Array(this.codeLength).fill('');
+        this.error = '';
+        this.focusInput(0);
+        this.cdr.markForCheck();
+      } else {
+        console.error('[AdminLogin] Resend failed:', result.error);
+        this.error = result.error || 'Failed to resend code. Please try again.';
+        this.cdr.markForCheck();
+      }
+    } catch (err) {
+      console.error('[AdminLogin] Exception in handleResendCode:', err);
+      this.error = err instanceof Error ? err.message : 'An error occurred. Please try again.';
+      this.cdr.markForCheck();
+    } finally {
+      this.resendLoading = false;
+      this.cdr.markForCheck();
+    }
+  }
+
   private async fetchCodeLength() {
     try {
       const { data, error } = await this.supabaseService.client
@@ -407,12 +461,23 @@ export class AdminLoginComponent implements OnInit, OnDestroy {
       } else {
         this.codeLength = 4;
       }
-      this.mfaCode = new Array(this.codeLength).fill('');
     } catch (err) {
       console.error('[AdminLogin] Error fetching code length:', err);
       this.codeLength = 4;
-      this.mfaCode = new Array(4).fill('');
     }
+  }
+
+  sanitizeCodeInput(): void {
+    // Clean up the input value - remove non-digits and limit length
+    let value = this.mfaCodeInput.replace(/\D/g, '').slice(0, this.codeLength);
+    this.mfaCodeInput = value;
+    this.mfaCode = value.split('');
+    this.cdr.markForCheck();
+  }
+
+  handleSingleCodeInput(event: any): void {
+    // Deprecated - keeping for backward compatibility
+    this.sanitizeCodeInput();
   }
 
   handleCodeChange(index: number, event: any): void {
@@ -441,10 +506,13 @@ export class AdminLoginComponent implements OnInit, OnDestroy {
       this.mfaCode[index] = value;
       this.error = '';
       if (index < this.codeLength - 1) {
+        // Clear input immediately and move to next field
+        target.value = '';
         this.focusInput(index + 1);
       }
     } else {
       this.mfaCode[index] = '';
+      target.value = '';
     }
   }
 
@@ -453,10 +521,12 @@ export class AdminLoginComponent implements OnInit, OnDestroy {
     if (!key) return;
     
     if (key === 'Backspace') {
-      if (!this.mfaCode[index] && index > 0) {
+      event.preventDefault();
+      this.mfaCode[index] = '';
+      // Move to previous field if current field is empty (or after clearing)
+      if (index > 0) {
         this.focusInput(index - 1);
       }
-      this.mfaCode[index] = '';
     } else if (key === 'ArrowLeft' && index > 0) {
       this.focusInput(index - 1);
     } else if (key === 'ArrowRight' && index < this.codeLength - 1) {
@@ -490,7 +560,7 @@ export class AdminLoginComponent implements OnInit, OnDestroy {
   }
 
   isCodeComplete(): boolean {
-    return this.mfaCode.every(digit => digit.length === 1);
+    return this.mfaCodeInput.length === this.codeLength;
   }
 
   resetForm() {

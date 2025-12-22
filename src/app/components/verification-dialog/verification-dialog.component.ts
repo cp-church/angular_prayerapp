@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, OnChanges, ViewChildren, QueryList, ElementRef } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, OnChanges, ViewChildren, QueryList, ElementRef, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { VerificationService } from '../../services/verification.service';
@@ -42,29 +42,32 @@ import { VerificationService } from '../../services/verification.service';
         </div>
 
         <!-- Code Inputs -->
-        <div class="mb-6">
+        <form class="mb-6" (ngSubmit)="handleVerify()" novalidate>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
             Enter verification code
           </label>
-          <div class="flex gap-2 justify-center" (paste)="handlePaste($event)">
-            <input
-              *ngFor="let digit of code; let i = index"
-              #codeInput
-              type="text"
-              inputmode="numeric"
-              [attr.maxlength]="codeLength"
-              [value]="code[i]"
-              (input)="handleCodeChange(i, $event)"
-              (keydown)="handleKeyDown(i, $event)"
-              [attr.autocomplete]="i === 0 ? 'one-time-code' : 'off'"
-              [disabled]="isVerifying || hasExpired"
-              class="w-12 h-14 text-center text-2xl font-semibold border-2 rounded-lg
-                     bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                     border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-200
-                     disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
-            />
-          </div>
-        </div>
+          <input
+            #codeField
+            id="verification-code-input"
+            type="text"
+            inputmode="numeric"
+            maxlength="6"
+            name="verification-code-input"
+            [(ngModel)]="codeInput"
+            (blur)="sanitizeCodeInput()"
+            (keydown.enter)="handleVerify()"
+            autocomplete="one-time-code"
+            [disabled]="isVerifying || hasExpired"
+            [readonly]="isVerifying"
+            placeholder="code"
+            autofocus
+            class="w-full px-4 py-3 text-center text-2xl font-semibold letter-spacing tracking-widest border-2 rounded-lg
+                   bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                   border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-200
+                   disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60
+                   transition-opacity duration-200"
+          />
+        </form>
 
         <!-- Error Message -->
         <div *ngIf="error" class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -74,15 +77,20 @@ import { VerificationService } from '../../services/verification.service';
         <!-- Actions -->
         <div class="space-y-3">
           <button
-            (click)="handleVerify()"
+            type="submit"
             [disabled]="!isCodeComplete() || isVerifying || timeRemaining === 0"
             class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium
                    disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-            {{ isVerifying ? 'Verifying...' : 'Verify Code' }}
+            <div *ngIf="isVerifying" class="flex items-center justify-center gap-2">
+              <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              Verifying...
+            </div>
+            <span *ngIf="!isVerifying">Verify Code</span>
           </button>
           <button
             (click)="handleResend()"
             [disabled]="isResending"
+            type="button"
             class="w-full text-blue-600 dark:text-blue-400 hover:underline py-2 text-sm font-medium
                    disabled:opacity-50">
             {{ isResending ? 'Sending...' : 'Resend Code' }}
@@ -112,6 +120,7 @@ export class VerificationDialogComponent implements OnInit, OnChanges, OnDestroy
 
   codeLength = 6;
   code: string[] = [];
+  codeInput = ''; // Single input field value
   isVerifying = false;
   isResending = false;
   error: string | null = null;
@@ -120,7 +129,7 @@ export class VerificationDialogComponent implements OnInit, OnChanges, OnDestroy
   private timerInterval: any;
   private previousCodeId = '';
 
-  constructor(private verificationService: VerificationService) {}
+  constructor(private verificationService: VerificationService, private cdr: ChangeDetectorRef) {}
 
   async ngOnInit() {
     await this.fetchCodeLength();
@@ -204,6 +213,19 @@ export class VerificationDialogComponent implements OnInit, OnChanges, OnDestroy
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
+  sanitizeCodeInput(): void {
+    // Clean up the input value - remove non-digits and limit length
+    let value = this.codeInput.replace(/\D/g, '').slice(0, this.codeLength);
+    this.codeInput = value;
+    this.code = value.split('');
+    this.cdr.markForCheck();
+  }
+
+  handleSingleCodeInput(event: any): void {
+    // Deprecated - keeping for backward compatibility
+    this.sanitizeCodeInput();
+  }
+
   handleCodeChange(index: number, event: any): void {
     const target = event?.target;
     if (!target) return;
@@ -230,10 +252,13 @@ export class VerificationDialogComponent implements OnInit, OnChanges, OnDestroy
       this.code[index] = value;
       this.error = null;
       if (index < this.codeLength - 1) {
+        // Clear input immediately and move to next field
+        target.value = '';
         this.focusInput(index + 1);
       }
     } else {
       this.code[index] = '';
+      target.value = '';
     }
   }
 
@@ -242,10 +267,12 @@ export class VerificationDialogComponent implements OnInit, OnChanges, OnDestroy
     if (!key) return;
     
     if (key === 'Backspace') {
-      if (!this.code[index] && index > 0) {
+      event.preventDefault();
+      this.code[index] = '';
+      // Move to previous field if current field is empty (or after clearing)
+      if (index > 0) {
         this.focusInput(index - 1);
       }
-      this.code[index] = '';
     } else if (key === 'ArrowLeft' && index > 0) {
       this.focusInput(index - 1);
     } else if (key === 'ArrowRight' && index < this.codeLength - 1) {
@@ -279,10 +306,13 @@ export class VerificationDialogComponent implements OnInit, OnChanges, OnDestroy
   }
 
   isCodeComplete(): boolean {
-    return this.code.every(digit => digit.length === 1);
+    return this.codeInput.length === this.codeLength;
   }
 
   async handleVerify() {
+    // Sanitize input before checking
+    this.sanitizeCodeInput();
+    
     if (!this.isCodeComplete()) return;
 
     this.isVerifying = true;
