@@ -346,6 +346,7 @@ export class HomeComponent implements OnInit {
     // Subscribe to prompts for count
     this.prompts$.subscribe(prompts => {
       this.promptsCount = prompts.length;
+      this.cdr.markForCheck();
     });
     
     // Subscribe to admin status
