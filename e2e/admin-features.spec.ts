@@ -39,11 +39,11 @@ test.describe('Admin Features - Read-Only', () => {
     await page.goto('/admin/prayers');
     await page.waitForTimeout(2000);
     
-    // Page should load (may require auth)
-    await expect(page.locator('body')).toBeVisible();
+    // Page should load or redirect to login (expected with auth guard)
+    const currentUrl = page.url();
+    expect(currentUrl.includes('admin') || currentUrl.includes('login')).toBeTruthy();
     
     // If not redirected to login, should have prayer management elements
-    const currentUrl = page.url();
     if (!currentUrl.includes('login')) {
       // Check for list or table structure
       const table = page.locator('table');
