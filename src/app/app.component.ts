@@ -46,7 +46,7 @@ export class AppComponent implements OnInit {
       // Lazy load admin auth service
       const { AdminAuthService } = await import('./services/admin-auth.service');
       const adminAuth = this.injector.get(AdminAuthService);
-      adminAuth.setApprovalSession(existingEmail);
+      await adminAuth.setApprovalSession(existingEmail);
       this.router.navigate(['/admin']);
       return;
     }
@@ -69,7 +69,7 @@ export class AppComponent implements OnInit {
         localStorage.setItem('approvalApprovalId', result.approval_id);
 
         // Immediately set admin status
-        adminAuth.setApprovalSession(result.user.email);
+        await adminAuth.setApprovalSession(result.user.email);
 
         // Clear URL params
         window.history.replaceState({}, '', window.location.pathname);

@@ -7,7 +7,6 @@ import { ToastService } from '../../services/toast.service';
 interface TimeoutSettings {
   id: number;
   inactivity_timeout_minutes: number;
-  max_session_duration_minutes: number;
   db_heartbeat_interval_minutes: number;
   updated_at?: string;
 }
@@ -65,31 +64,6 @@ interface TimeoutSettings {
               <div class="bg-blue-50 dark:bg-blue-900/20 rounded p-3 border border-blue-200 dark:border-blue-700">
                 <p class="text-xs text-blue-800 dark:text-blue-200">
                   Current setting: <strong>{{ formatTime(inactivityTimeout) }}</strong>
-                </p>
-              </div>
-            </div>
-
-            <!-- Max Session Duration -->
-            <div class="pt-4 border-t border-gray-300 dark:border-gray-600">
-              <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
-                Maximum Session Duration
-              </h4>
-              <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                Maximum time an admin session can remain active, regardless of user activity. This provides an additional security layer by forcing re-authentication after a long session.
-              </p>
-              <div class="flex items-center gap-4 mb-3">
-                <input
-                  type="number"
-                  min="30"
-                  [(ngModel)]="maxSessionDuration"
-                  (ngModelChange)="onMaxSessionDurationChange($event)"
-                  class="w-20 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <span class="text-gray-600 dark:text-gray-400">minutes</span>
-              </div>
-              <div class="bg-blue-50 dark:bg-blue-900/20 rounded p-3 border border-blue-200 dark:border-blue-700">
-                <p class="text-xs text-blue-800 dark:text-blue-200">
-                  Current setting: <strong>{{ formatTime(maxSessionDuration) }}</strong>
                 </p>
               </div>
             </div>
@@ -159,7 +133,6 @@ interface TimeoutSettings {
 })
 export class SessionTimeoutSettingsComponent implements OnInit {
   inactivityTimeout = 30;
-  maxSessionDuration = 480;
   dbHeartbeatInterval = 1;
   saved = false;
   saving = false;
@@ -187,7 +160,6 @@ export class SessionTimeoutSettingsComponent implements OnInit {
         try {
           const settings = JSON.parse(cached);
           this.inactivityTimeout = settings.inactivityTimeoutMinutes || 30;
-          this.maxSessionDuration = settings.maxSessionDurationMinutes || 480;
           this.dbHeartbeatInterval = settings.dbHeartbeatIntervalMinutes || 1;
           
           console.log('[SessionTimeoutSettings] Loaded settings from localStorage');
@@ -216,7 +188,6 @@ export class SessionTimeoutSettingsComponent implements OnInit {
 
       if (data) {
         this.inactivityTimeout = data.inactivity_timeout_minutes || 30;
-        this.maxSessionDuration = data.max_session_duration_minutes || 480;
         this.dbHeartbeatInterval = data.db_heartbeat_interval_minutes || 1;
       }
     } catch (err) {
@@ -233,11 +204,6 @@ export class SessionTimeoutSettingsComponent implements OnInit {
     try {
       if (this.inactivityTimeout < 5) {
         this.error = 'Inactivity timeout must be at least 5 minutes';
-        this.cdr.markForCheck();
-        return;
-      }
-      if (this.maxSessionDuration < 30) {
-        this.error = 'Max session duration must be at least 30 minutes';
         this.cdr.markForCheck();
         return;
       }
@@ -262,7 +228,6 @@ export class SessionTimeoutSettingsComponent implements OnInit {
           {
             id: 1, // Always use id 1 for single settings row
             inactivity_timeout_minutes: this.inactivityTimeout,
-            max_session_duration_minutes: this.maxSessionDuration,
             db_heartbeat_interval_minutes: this.dbHeartbeatInterval,
             updated_at: new Date().toISOString(),
           },
@@ -280,7 +245,6 @@ export class SessionTimeoutSettingsComponent implements OnInit {
       try {
         const cachedSettings = {
           inactivityTimeoutMinutes: this.inactivityTimeout,
-          maxSessionDurationMinutes: this.maxSessionDuration,
           dbHeartbeatIntervalMinutes: this.dbHeartbeatInterval,
         };
         localStorage.setItem('adminTimeoutSettings', JSON.stringify(cachedSettings));
@@ -321,9 +285,6 @@ export class SessionTimeoutSettingsComponent implements OnInit {
     this.inactivityTimeout = Math.max(5, parseInt(value) || 5);
   }
 
-  onMaxSessionDurationChange(value: string): void {
-    this.maxSessionDuration = Math.max(30, parseInt(value) || 30);
-  }
 
   onDbHeartbeatIntervalChange(value: string): void {
     this.dbHeartbeatInterval = Math.max(1, parseInt(value) || 1);

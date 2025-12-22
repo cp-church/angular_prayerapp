@@ -19,7 +19,6 @@ import { PrayerSearchComponent } from '../../components/prayer-search/prayer-sea
 import { BackupStatusComponent } from '../../components/backup-status/backup-status.component';
 import { SessionTimeoutSettingsComponent } from '../../components/session-timeout-settings/session-timeout-settings.component';
 import { SecurityPolicySettingsComponent } from '../../components/security-policy-settings/security-policy-settings.component';
-import { SiteProtectionSettingsComponent } from '../../components/site-protection-settings/site-protection-settings.component';
 import { EmailVerificationSettingsComponent } from '../../components/email-verification-settings/email-verification-settings.component';
 
 type AdminTab = 'prayers' | 'updates' | 'deletions' | 'preferences' | 'settings';
@@ -45,7 +44,6 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'secu
     BackupStatusComponent,
     SessionTimeoutSettingsComponent,
     SecurityPolicySettingsComponent,
-    SiteProtectionSettingsComponent,
     EmailVerificationSettingsComponent
   ],
   template: `
@@ -548,9 +546,6 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'secu
 
             <!-- Security Tab -->
             <div *ngIf="activeSettingsTab === 'security'">
-              <div class="mb-4">
-                <app-site-protection-settings></app-site-protection-settings>
-              </div>
               <div class="mb-4">
                 <app-email-verification-settings></app-email-verification-settings>
               </div>

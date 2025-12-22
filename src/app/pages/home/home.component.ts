@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { ChangeDetectorRef } from '@angular/core';
 import { PrayerFormComponent } from '../../components/prayer-form/prayer-form.component';
 import { PrayerFiltersComponent, PrayerFilters } from '../../components/prayer-filters/prayer-filters.component';
@@ -16,7 +16,8 @@ import { AdminAuthService } from '../../services/admin-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { VerificationService } from '../../services/verification.service';
 import { AnalyticsService } from '../../services/analytics.service';
-import { Observable } from 'rxjs';
+import { Observable, take } from 'rxjs';
+import type { User } from '@supabase/supabase-js';
 
 @Component({
   selector: 'app-home',
@@ -30,14 +31,23 @@ import { Observable } from 'rxjs';
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div class="flex items-center gap-3">
               <app-logo (logoStatusChange)="hasLogo = $event"></app-logo>
+              <!-- Email Indicator -->
+              <div *ngIf="(user$ | async) as user; else storedEmail" class="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded">
+                {{ user.email }}
+              </div>
+              <ng-template #storedEmail>
+                <div class="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded">
+                  {{ getUserEmail() }}
+                </div>
+              </ng-template>
             </div>
             
             <div class="flex flex-col gap-2">
               <!-- Mobile: all buttons in one row -->
               <div class="flex sm:hidden items-center gap-2 flex-wrap">
                 <button
-                  *ngIf="isAdmin$ | async"
-                  routerLink="/admin"
+                  *ngIf="hasAdminEmail$ | async"
+                  (click)="navigateToAdmin()"
                   class="flex items-center gap-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-2 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors text-sm"
                   title="Admin Portal"
                 >
@@ -73,8 +83,8 @@ import { Observable } from 'rxjs';
                 <!-- First row: admin, settings, presentation, new prayer -->
                 <div class="flex items-center gap-2 justify-end">
                   <button
-                    *ngIf="(isAuthenticated$ | async) && (isAdmin$ | async)"
-                    routerLink="/admin"
+                    *ngIf="hasAdminEmail$ | async"
+                    (click)="navigateToAdmin()"
                     class="flex items-center gap-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-4 py-2 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors text-base"
                     title="Admin Portal"
                   >
@@ -273,7 +283,9 @@ export class HomeComponent implements OnInit {
   loading$!: Observable<boolean>;
   error$!: Observable<string | null>;
   isAdmin$!: Observable<boolean>;
+  hasAdminEmail$!: Observable<boolean>;
   isAuthenticated$!: Observable<boolean>;
+  user$!: Observable<User | null>;
 
   currentPrayersCount = 0;
   answeredPrayersCount = 0;
@@ -305,7 +317,8 @@ export class HomeComponent implements OnInit {
     private toastService: ToastService,
     private verificationService: VerificationService,
     private analyticsService: AnalyticsService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private router: Router
   ) {
     // Load logo state from cache immediately to prevent flash
     const windowCache = (window as any).__cachedLogos;
@@ -322,7 +335,9 @@ export class HomeComponent implements OnInit {
     this.loading$ = this.prayerService.loading$;
     this.error$ = this.prayerService.error$;
     this.isAdmin$ = this.adminAuthService.isAdmin$;
+    this.hasAdminEmail$ = this.adminAuthService.hasAdminEmail$;
     this.isAuthenticated$ = this.adminAuthService.isAuthenticated$;
+    this.user$ = this.adminAuthService.user$;
 
     // Subscribe to ALL prayers to update counts (not filtered)
     this.prayerService.allPrayers$.subscribe(prayers => {
@@ -607,7 +622,24 @@ export class HomeComponent implements OnInit {
   async handleVerified(actionData: any): Promise<void> {
     try {
       if (this.verificationState.actionType === 'update') {
-        await this.submitUpdate(this.verificationState.actionData);
+        // Check if this is an admin re-auth action
+        if (this.verificationState.actionData?.action === 'admin_reauth') {
+          // Re-authenticate admin session - code has been verified by backend
+          // Set up admin session and navigate to admin panel
+          const email = this.verificationState.email;
+          
+          // Use the existing setApprovalSession to activate admin session
+          await this.adminAuthService.setApprovalSession(email);
+          
+          // Clean up MFA session info
+          localStorage.removeItem('mfa_code_id');
+          localStorage.removeItem('mfa_user_email');
+          
+          this.router.navigate(['/admin']);
+          this.toastService.success('Admin session restarted');
+        } else {
+          await this.submitUpdate(this.verificationState.actionData);
+        }
       } else if (this.verificationState.actionType === 'deletion') {
         await this.submitDeletion(this.verificationState.actionData);
       } else if (this.verificationState.actionType === 'update_deletion') {
@@ -691,5 +723,75 @@ export class HomeComponent implements OnInit {
   async logout(): Promise<void> {
     await this.adminAuthService.logout();
     this.toastService.success('Logged out successfully');
+  }
+
+  navigateToAdmin(): void {
+    // Check if admin session is still active
+    this.adminAuthService.isAdmin$.pipe(take(1)).subscribe(isAdmin => {
+      if (isAdmin) {
+        // Session is active, navigate to admin panel
+        this.router.navigate(['/admin']);
+      } else {
+        // Admin session has expired - show MFA modal to re-authenticate
+        // Trigger verification flow similar to requestDeletion
+        this.showAdminMfaModal();
+      }
+    });
+  }
+
+  private showAdminMfaModal(): void {
+    // Get user email from localStorage
+    let userEmail = localStorage.getItem('userEmail');
+    if (!userEmail) {
+      userEmail = localStorage.getItem('prayerapp_user_email');
+    }
+
+    if (!userEmail) {
+      this.toastService.error('Email not found. Please log in again.');
+      return;
+    }
+
+    // Request verification code for admin re-authentication
+    this.verificationService.requestCode(
+      userEmail,
+      'admin_reauth',
+      { action: 'admin_reauth' }
+    ).then(verificationResult => {
+      if (verificationResult) {
+        // Set MFA session info in localStorage for verifyMfaCode to use
+        localStorage.setItem('mfa_code_id', verificationResult.codeId);
+        localStorage.setItem('mfa_user_email', userEmail);
+        
+        this.verificationState = {
+          isOpen: true,
+          codeId: verificationResult.codeId,
+          expiresAt: verificationResult.expiresAt,
+          email: userEmail!,
+          actionType: 'update', // Reuse update action type for now
+          actionData: { action: 'admin_reauth' }
+        };
+        this.cdr.detectChanges();
+      } else {
+        this.toastService.error('Failed to send verification code');
+      }
+    }).catch(error => {
+      console.error('Error requesting verification code:', error);
+      this.toastService.error('Failed to request verification code');
+    });
+  }
+
+  getUserEmail(): string {
+    // Try to get email from localStorage (approval code flow)
+    const approvalEmail = localStorage.getItem('approvalAdminEmail');
+    if (approvalEmail) return approvalEmail;
+    
+    // Try other possible localStorage keys
+    const userEmail = localStorage.getItem('userEmail');
+    if (userEmail) return userEmail;
+    
+    const prayerappEmail = localStorage.getItem('prayerapp_user_email');
+    if (prayerappEmail) return prayerappEmail;
+    
+    return 'Not logged in';
   }
 }

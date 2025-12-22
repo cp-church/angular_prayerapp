@@ -6,13 +6,11 @@ import type { User } from '@supabase/supabase-js';
 
 interface TimeoutSettings {
   inactivityTimeoutMinutes: number;
-  maxSessionDurationMinutes: number;
   dbHeartbeatIntervalMinutes: number;
 }
 
 const DEFAULT_TIMEOUTS: TimeoutSettings = {
   inactivityTimeoutMinutes: 30,
-  maxSessionDurationMinutes: 480, // 8 hours
   dbHeartbeatIntervalMinutes: 1,
 };
 
@@ -22,18 +20,23 @@ const DEFAULT_TIMEOUTS: TimeoutSettings = {
 export class AdminAuthService {
   private userSubject = new BehaviorSubject<User | null>(null);
   private isAdminSubject = new BehaviorSubject<boolean>(false);
+  private hasAdminEmailSubject = new BehaviorSubject<boolean>(false);
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
   private loadingSubject = new BehaviorSubject<boolean>(true);
   private requireSiteLoginSubject = new BehaviorSubject<boolean>(false);
+  private adminSessionExpiredSubject = new BehaviorSubject<boolean>(false);
   private lastActivity = Date.now();
   private sessionStart: number | null = null;
+  private adminSessionStart: number | null = null;
   private timeoutSettings: TimeoutSettings = DEFAULT_TIMEOUTS;
 
   public user$ = this.userSubject.asObservable();
   public isAdmin$ = this.isAdminSubject.asObservable();
+  public hasAdminEmail$ = this.hasAdminEmailSubject.asObservable();
   public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
   public loading$ = this.loadingSubject.asObservable();
   public requireSiteLogin$ = this.requireSiteLoginSubject.asObservable();
+  public adminSessionExpired$ = this.adminSessionExpiredSubject.asObservable();
 
   private router = inject(Router);
 
@@ -50,10 +53,21 @@ export class AdminAuthService {
     const sessionValidated = localStorage.getItem('approvalSessionValidated');
     
     if (approvalEmail && sessionValidated === 'true') {
-      this.isAdminSubject.next(true);
+      // Authenticate the user via approval code
       this.isAuthenticatedSubject.next(true);
       this.sessionStart = this.getPersistedSessionStart() || Date.now();
       this.persistSessionStart(this.sessionStart);
+      
+      // Check if they're also an admin
+      const isAdmin = await this.isEmailAdmin(approvalEmail);
+      if (isAdmin) {
+        this.isAdminSubject.next(true);
+        this.hasAdminEmailSubject.next(true);
+      } else {
+        this.isAdminSubject.next(false);
+        this.hasAdminEmailSubject.next(false);
+      }
+      
       this.loadingSubject.next(false);
       return;
     }
@@ -116,11 +130,10 @@ export class AdminAuthService {
       // Fetch from database
       const { data, error } = await this.supabase.directQuery<Array<{
         inactivity_timeout_minutes: number;
-        max_session_duration_minutes: number;
         db_heartbeat_interval_minutes: number;
         require_site_login: boolean;
       }>>('admin_settings', {
-        select: 'inactivity_timeout_minutes, max_session_duration_minutes, db_heartbeat_interval_minutes, require_site_login',
+        select: 'inactivity_timeout_minutes, db_heartbeat_interval_minutes, require_site_login',
         eq: { id: 1 },
         limit: 1,
         timeout: 10000
@@ -129,12 +142,11 @@ export class AdminAuthService {
       if (!error && data && data[0]) {
         this.timeoutSettings = {
           inactivityTimeoutMinutes: data[0].inactivity_timeout_minutes || DEFAULT_TIMEOUTS.inactivityTimeoutMinutes,
-          maxSessionDurationMinutes: data[0].max_session_duration_minutes || DEFAULT_TIMEOUTS.maxSessionDurationMinutes,
           dbHeartbeatIntervalMinutes: data[0].db_heartbeat_interval_minutes || DEFAULT_TIMEOUTS.dbHeartbeatIntervalMinutes,
         };
         
         // Update site protection setting
-        this.requireSiteLoginSubject.next(data[0].require_site_login || false);
+        this.requireSiteLoginSubject.next(data[0].require_site_login ?? true);
         
         localStorage.setItem('adminTimeoutSettings', JSON.stringify(this.timeoutSettings));
         localStorage.setItem('adminTimeoutSettingsTimestamp', Date.now().toString());
@@ -152,11 +164,13 @@ export class AdminAuthService {
       
       if (approvalEmail && sessionValidated === 'true') {
         this.isAdminSubject.next(true);
+        this.hasAdminEmailSubject.next(true);
         this.isAuthenticatedSubject.next(true);
         return;
       }
       
       this.isAdminSubject.next(false);
+      this.hasAdminEmailSubject.next(false);
       this.isAuthenticatedSubject.next(false);
       return;
     }
@@ -171,12 +185,15 @@ export class AdminAuthService {
 
       if (!error && data && data.length > 0) {
         this.isAdminSubject.next(true);
+        this.hasAdminEmailSubject.next(true);
       } else {
         this.isAdminSubject.next(false);
+        this.hasAdminEmailSubject.next(false);
       }
     } catch (error) {
       console.error('Error checking admin status:', error);
       this.isAdminSubject.next(false);
+      this.hasAdminEmailSubject.next(false);
     }
   }
 
@@ -199,29 +216,31 @@ export class AdminAuthService {
   }
 
   private setupSessionTimeouts(): void {
-    // Check every minute for timeouts (admin users only)
+    // Check every minute for timeouts (admin sessions only)
     interval(60000).subscribe(() => {
-      if (!this.userSubject.value) return;
-
-      // Non-admin users stay logged in indefinitely until they manually logout
       if (!this.isAdminSubject.value) return;
-
+      
+      // Only main site (non-admin) authentication stays active indefinitely
+      // Admin sessions (within /admin) have timeouts
+      
       const now = Date.now();
       const inactivityTime = now - this.lastActivity;
-      const sessionDuration = this.sessionStart ? now - this.sessionStart : 0;
 
-      // Check inactivity timeout
+      // Check inactivity timeout for admin session
       if (inactivityTime > this.timeoutSettings.inactivityTimeoutMinutes * 60000) {
-        this.logout();
-        return;
-      }
-
-      // Check max session duration
-      if (sessionDuration > this.timeoutSettings.maxSessionDurationMinutes * 60000) {
-        this.logout();
+        console.log('[AdminAuth] Admin session expired due to inactivity');
+        this.handleAdminSessionExpired();
         return;
       }
     });
+  }
+
+  private handleAdminSessionExpired(): void {
+    // Don't logout - keep the main site session active
+    // Just mark admin session as expired and require re-authentication for admin panel
+    this.isAdminSubject.next(false);
+    this.adminSessionExpiredSubject.next(true);
+    this.adminSessionStart = null;
   }
 
   private getPersistedSessionStart(): number | null {
@@ -263,7 +282,7 @@ export class AdminAuthService {
         .eq('id', 1)
         .maybeSingle();
       
-      const siteProtectionEnabled = settings?.require_site_login || false;
+      const siteProtectionEnabled = settings?.require_site_login ?? true;
       console.log('[AdminAuth] Site protection enabled:', siteProtectionEnabled);
       
       // If site protection is enabled, allow any email
@@ -370,11 +389,13 @@ export class AdminAuthService {
       const isAdmin = await this.isEmailAdmin(email);
 
       // Code verified successfully - now sign in the user
-      this.setApprovalSession(email);
+      await this.setApprovalSession(email);
 
       // Set admin status only if they're actually an admin
       if (isAdmin) {
         this.isAdminSubject.next(true);
+        this.adminSessionStart = Date.now(); // Start admin session timer
+        this.adminSessionExpiredSubject.next(false);
       } else {
         this.isAdminSubject.next(false);
       }
@@ -401,12 +422,30 @@ export class AdminAuthService {
   /**
    * Set approval code session (called when approval code is validated)
    */
-  setApprovalSession(email: string): void {
+  async setApprovalSession(email: string): Promise<void> {
     console.log('[AdminAuth] Setting approval session for:', email);
-    this.isAdminSubject.next(true);
+    
+    // Always authenticate the user
     this.isAuthenticatedSubject.next(true);
-    this.sessionStart = Date.now();
+    this.sessionStart = Date.now(); // Main site session
     this.persistSessionStart(this.sessionStart);
+    
+    // Check if user is admin
+    const isAdmin = await this.isEmailAdmin(email);
+    
+    if (isAdmin) {
+      this.isAdminSubject.next(true);
+      this.hasAdminEmailSubject.next(true);
+      this.adminSessionStart = Date.now(); // Admin session timer
+      this.adminSessionExpiredSubject.next(false);
+    } else {
+      this.isAdminSubject.next(false);
+      this.hasAdminEmailSubject.next(false);
+    }
+    
+    // Store the email in localStorage for session persistence
+    localStorage.setItem('approvalAdminEmail', email);
+    localStorage.setItem('approvalSessionValidated', 'true');
   }
 
   /**
@@ -470,7 +509,7 @@ export class AdminAuthService {
       });
 
       if (!error && data && data[0]) {
-        this.requireSiteLoginSubject.next(data[0].require_site_login || false);
+        this.requireSiteLoginSubject.next(data[0].require_site_login ?? true);
       }
     } catch (error) {
       console.error('Error reloading site protection setting:', error);

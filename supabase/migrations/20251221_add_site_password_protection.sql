@@ -2,7 +2,7 @@
 -- When enabled, all users must login before accessing any page
 
 ALTER TABLE admin_settings 
-ADD COLUMN IF NOT EXISTS require_site_login BOOLEAN DEFAULT false NOT NULL;
+ADD COLUMN IF NOT EXISTS require_site_login BOOLEAN DEFAULT true NOT NULL;
 
 -- Add comment explaining the feature
 COMMENT ON COLUMN admin_settings.require_site_login IS 
