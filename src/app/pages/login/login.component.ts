@@ -271,7 +271,7 @@ import { Subject, takeUntil } from 'rxjs';
 
           <button
             type="submit"
-            [disabled]="loading"
+            [disabled]="loading || !isValidEmail()"
             class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#2F5F54] hover:bg-[#1a3a2e] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2F5F54] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <div *ngIf="loading" class="flex items-center gap-2">
@@ -658,6 +658,16 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   isCodeComplete(): boolean {
     return this.mfaCodeInput.length === this.codeLength;
+  }
+
+  isValidEmail(): boolean {
+    if (!this.email || this.email.trim() === '') {
+      return false;
+    }
+    
+    // Basic email validation regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(this.email.trim());
   }
 
   resetForm() {
