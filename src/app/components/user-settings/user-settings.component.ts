@@ -271,158 +271,58 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           <!-- Divider -->
           <div class="border-t border-gray-200 dark:border-gray-700"></div>
 
-          <!-- Email Subscription Section Header -->
-          <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3 sm:p-4">
-            <div class="flex items-start gap-2 sm:gap-3">
-              <svg class="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                <polyline points="22,6 12,13 2,6"></polyline>
-              </svg>
-              <div>
-                <h4 class="font-semibold text-gray-900 dark:text-gray-100 mb-1 text-sm sm:text-base">
-                  Prayer Notification Settings
-                </h4>
-                <p class="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
-                  Sign up for prayer notifications or change your existing preference. 
-                  Enter your email below to manage your subscription.
-                </p>
+          <!-- Email Subscription Toggle -->
+          <div class="flex items-start gap-3 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+            <input
+              type="checkbox"
+              id="notifications"
+              [(ngModel)]="receiveNotifications"
+              (ngModelChange)="onNotificationToggle()"
+              [disabled]="saving"
+              name="notifications"
+              aria-label="Receive prayer notifications"
+              class="mt-1 h-4 w-4 text-blue-600 border-gray-300 bg-white dark:bg-gray-800 rounded focus:ring-blue-500 cursor-pointer focus:ring-2 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+            <div class="flex-1">
+              <div class="flex items-center gap-2">
+                <div class="font-medium text-gray-900 dark:text-gray-100 text-sm sm:text-base">
+                  {{ receiveNotifications ? 'Subscribed to Prayer Notifications' : 'Not Subscribed to Prayer Notifications' }}
+                </div>
+                <svg *ngIf="saving" class="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
               </div>
+              <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+                {{ saving ? 'Saving...' : (receiveNotifications ? 'You are receiving prayer notifications' : 'You are not receiving prayer notifications') }}
+              </p>
             </div>
           </div>
 
-          <!-- User Information -->
-          <form #settingsForm="ngForm" class="space-y-4">
-            <div>
-              <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Your Email Address
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                [(ngModel)]="email"
-                (ngModelChange)="onEmailChange()"
-                aria-label="Email address for preferences"
-                aria-describedby="emailHelp"
-                placeholder="your.email@example.com"
-                required
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p id="emailHelp" class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Your preferences will load automatically
-              </p>
+          <!-- Success/Error Messages -->
+          <div *ngIf="success" class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-3" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="flex items-start gap-2">
+              <svg class="text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              <p class="text-sm text-green-800 dark:text-green-200">{{ success }}</p>
             </div>
+          </div>
 
-            <!-- Name Input - Only show after email is entered -->
-            <div *ngIf="email.trim()">
-              <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Your Name
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                [(ngModel)]="name"
-                aria-label="Your name"
-                placeholder="John Doe"
-                required
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+          <!-- Error Message -->
+          <div *ngIf="error" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-3" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="flex items-start gap-2">
+              <svg class="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+              <p class="text-sm text-red-800 dark:text-red-200">{{ error }}</p>
             </div>
-
-            <!-- Notification Preferences -->
-            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
-              <div class="flex items-start gap-2 sm:gap-3">
-                <svg class="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                  <polyline points="22,6 12,13 2,6"></polyline>
-                </svg>
-                <div class="flex-1">
-                  <div class="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      id="notifications"
-                      [(ngModel)]="receiveNotifications"
-                      name="notifications"
-                      aria-label="Receive new prayer notifications"
-                      class="mt-1 h-4 w-4 text-blue-600 border-gray-300 bg-white dark:bg-gray-800 rounded focus:ring-blue-500 cursor-pointer focus:ring-2"
-                    />
-                    <div>
-                      <label for="notifications" class="font-medium text-gray-800 dark:text-gray-100 text-sm sm:text-base cursor-pointer">
-                        Receive new prayer notifications
-                      </label>
-                      <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        Sign up for prayer notifications or change your preference when new prayers are submitted to the prayer list
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- How it Works -->
-            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3 sm:p-4">
-              <div class="flex items-start gap-2">
-                <svg class="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5 w-4 h-4 sm:w-[18px] sm:h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                  <polyline points="22,6 12,13 2,6"></polyline>
-                </svg>
-                <div class="text-xs sm:text-sm text-blue-800 dark:text-blue-200">
-                  <p class="font-medium mb-2">How it works:</p>
-                  <ul class="list-disc list-inside space-y-1 ml-2 mb-3">
-                    <li>Enter your email to automatically load your current preferences</li>
-                    <li>Toggle notifications on/off and click "Submit for Approval"</li>
-                    <li>Admin will review and approve/deny your request</li>
-                    <li>You'll receive an email confirmation once reviewed</li>
-                    <li>After approval, your new settings take effect immediately</li>
-                    <li>Reopen this settings panel to see your updated preferences</li>
-                  </ul>
-                  <p class="font-medium mb-1">You will always receive:</p>
-                  <ul class="list-disc list-inside space-y-1 ml-2">
-                    <li>Approval/denial notifications for prayers you submit</li>
-                    <li>Status update notifications for your prayers</li>
-                  </ul>
-                  <p class="mt-2">
-                    This setting only controls notifications about <strong>other people's new prayers</strong>.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <!-- Success Message -->
-            <div *ngIf="success" class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-3" role="status" aria-live="polite" aria-atomic="true">
-              <div class="flex items-start gap-2">
-                <svg class="text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                </svg>
-                <p class="text-sm text-green-800 dark:text-green-200">{{ success }}</p>
-              </div>
-            </div>
-
-            <!-- Error Message -->
-            <div *ngIf="error" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-3" role="alert" aria-live="assertive" aria-atomic="true">
-              <div class="flex items-start gap-2">
-                <svg class="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                  <line x1="12" y1="9" x2="12" y2="13"></line>
-                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                </svg>
-                <p class="text-sm text-red-800 dark:text-red-200">{{ error }}</p>
-              </div>
-            </div>
-          </form>
+          </div>
 
         <!-- Footer -->
           <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700">
-            <button
-              (click)="savePreferences()"
-              [disabled]="!settingsForm.valid || saving || !email.trim() || !name.trim()"
-              class="flex-1 px-4 py-2 sm:py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors text-sm sm:text-base font-medium"
-              aria-label="Submit preferences for approval"
-            >
-              {{ saving ? 'Submitting...' : 'Submit for Approval' }}
-            </button>
             <button
               (click)="logout()"
               class="flex items-center justify-center gap-2 px-4 py-2 sm:py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors text-sm sm:text-base font-medium"
@@ -786,6 +686,86 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
 
   onEmailChange(): void {
     this.emailChange$.next(this.email);
+  }
+
+  async onNotificationToggle(): Promise<void> {
+    const userInfo = this.getUserInfo();
+    const email = userInfo.email.toLowerCase().trim();
+    
+    if (!email) {
+      this.error = 'Email not found. Please log in again.';
+      return;
+    }
+
+    this.saving = true;
+    this.error = null;
+    this.success = null;
+
+    try {
+      console.log('Toggling notification for email:', email, 'to:', this.receiveNotifications);
+      
+      // Check if subscriber exists
+      const { data: existingSubscriber, error: fetchError } = await this.supabase.client
+        .from('email_subscribers')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('Fetch error:', fetchError);
+        throw fetchError;
+      }
+
+      console.log('Existing subscriber:', existingSubscriber);
+
+      if (existingSubscriber) {
+        // Update existing subscriber
+        console.log('Updating existing subscriber...');
+        const { error: updateError } = await this.supabase.client
+          .from('email_subscribers')
+          .update({ is_active: this.receiveNotifications })
+          .eq('id', existingSubscriber.id);
+
+        if (updateError) {
+          console.error('Update error:', updateError);
+          throw updateError;
+        }
+        console.log('Successfully updated subscriber');
+      } else {
+        // Create new subscriber
+        console.log('Creating new subscriber...');
+        const { error: insertError } = await this.supabase.client
+          .from('email_subscribers')
+          .insert({
+            email,
+            is_active: this.receiveNotifications,
+            name: userInfo.firstName ? `${userInfo.firstName} ${userInfo.lastName}`.trim() : ''
+          });
+
+        if (insertError) {
+          console.error('Insert error:', insertError);
+          throw insertError;
+        }
+        console.log('Successfully created subscriber');
+      }
+
+      this.success = `✅ Notifications ${this.receiveNotifications ? 'enabled' : 'disabled'} successfully!`;
+      this.saving = false;
+      this.cdr.markForCheck();
+      console.log('Success! Clearing message in 3 seconds');
+      setTimeout(() => {
+        this.success = null;
+        this.cdr.markForCheck();
+      }, 3000);
+    } catch (err) {
+      console.error('Error updating notification preference:', err);
+      this.error = err instanceof Error ? err.message : 'Failed to update preference';
+      this.receiveNotifications = !this.receiveNotifications; // Revert toggle on error
+      this.saving = false;
+      this.cdr.markForCheck();
+    } finally {
+      console.log('Setting saving to false');
+    }
   }
 
   private getUserInfo(): { firstName: string; lastName: string; email: string } {
