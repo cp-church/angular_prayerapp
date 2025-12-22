@@ -7,6 +7,7 @@ A modern, responsive web application for managing prayer requests in your church
 **Complete documentation available in [`docs/`](docs/README.md)**
 
 Quick links:
+- **[Recent Changes](docs/CHANGELOG_DECEMBER_2025.md)** - December 2025 updates
 - **[Features Guide](docs/FEATURES.md)** - Complete feature overview and usage
 - **[Deployment Guide](docs/DEPLOYMENT.md)** - Deploy to production with Vercel
 - **[Email Notifications](docs/EMAIL_NOTIFICATIONS.md)** - Email system and configuration

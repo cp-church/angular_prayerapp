@@ -119,6 +119,15 @@ All technical details are consolidated in the main documentation files:
 
 ## 📝 Recent Changes
 
+**December 2025**:
+- ✅ Renamed admin-login component to login (route: `/admin/login` → `/login`)
+- ✅ Fixed presentation timer to update automatically (no mouse movement needed)
+- ✅ Improved timer mobile styling for better UX
+- ✅ Fixed all E2E tests for CI environment
+- ✅ Updated Vitest configuration
+- ✅ Enhanced test resilience for auth redirects
+- 📖 See [CHANGELOG_DECEMBER_2025.md](CHANGELOG_DECEMBER_2025.md) for detailed changes
+
 **November 2025**:
 - ✅ Consolidated documentation from 76 files to 9 core files
 - ✅ Created comprehensive SETUP_GUIDE.md
@@ -138,5 +147,5 @@ All technical details are consolidated in the main documentation files:
 
 ---
 
-**Last Updated**: November 2025  
-**Documentation Version**: 2.0 (Consolidated)
+**Last Updated**: December 2025  
+**Documentation Version**: 2.1 (Dec 2025 Updates)

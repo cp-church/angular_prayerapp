@@ -323,6 +323,7 @@ TestBed.configureTestingModule({
 - [Angular TestBed API](https://angular.io/api/core/testing/TestBed)
 - [Angular Component Testing](https://angular.io/guide/testing-components-scenarios)
 - [Testing Best Practices](https://angular.io/guide/testing-code-coverage)
+- [Playwright Documentation](https://playwright.dev/)
 
 ## CI/CD Integration
 
@@ -332,3 +333,52 @@ Tests run automatically on:
 - Scheduled runs
 
 View results in GitHub Actions tab.
+
+### E2E Tests
+
+End-to-end tests use **Playwright** to test the app in a real browser:
+
+```bash
+# Start the dev server in one terminal
+npm run start
+
+# Run e2e tests in another terminal
+npx playwright test
+
+# Run specific test file
+npx playwright test e2e/home.spec.ts
+
+# Run with UI mode
+npx playwright test --ui
+
+# Debug tests
+npx playwright test --debug
+
+# View test report
+npx playwright show-report
+```
+
+#### E2E Test Configuration
+- **Timeout**: 60 seconds per test (increased for CI stability)
+- **Retries**: 1 retry on failure in CI
+- **Browsers**: Chromium in CI, Chrome/Firefox/Safari locally
+- **Base URL**: `http://localhost:4200`
+
+#### E2E Test Updates (December 2025)
+- Updated routes: `/admin/login` → `/login`
+- Tests now handle auth redirects gracefully
+- Tests work with or without Supabase data
+- Environment variables: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+
+#### Running Tests Locally
+The recommended approach is to run the dev server separately:
+
+```bash
+# Terminal 1: Start dev server
+npm run start
+
+# Terminal 2: Run tests
+npx playwright test
+```
+
+The dev server will be reused for all test runs, avoiding startup overhead.
