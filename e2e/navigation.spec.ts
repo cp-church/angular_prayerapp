@@ -26,20 +26,23 @@ test.describe('Navigation and Routing', () => {
     // Wait for page to load
     await page.waitForTimeout(2000);
     
-    // Look for back/home button or use browser back
-    const backButton = page.locator('button[title*="Back"], a[href="/"]').first();
+    // Look for back/home button
+    const backButton = page.locator('button[title*="Back"], a[href="/"], button:has-text("Home")').first();
     
-    if (await backButton.isVisible()) {
+    const backButtonFound = await backButton.isVisible().catch(() => false);
+    
+    if (backButtonFound) {
       await backButton.click();
       await page.waitForTimeout(1000);
     } else {
       // Use browser back navigation
       await page.goBack();
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(2000);
     }
     
-    // Should be on home page
-    expect(page.url()).not.toContain('presentation');
+    // Should be on home page or not on presentation page
+    const currentUrl = page.url();
+    expect(!currentUrl.includes('presentation') || currentUrl === 'http://localhost:4200/').toBeTruthy();
   });
 
   test('should navigate to admin login', async ({ page }) => {

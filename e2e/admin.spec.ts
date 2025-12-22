@@ -18,24 +18,30 @@ test.describe('Admin Portal', () => {
 
   test('should show validation error for invalid email', async ({ page }) => {
     await page.goto('/login');
+    await page.waitForTimeout(2000);
     
     // Find email input
     const emailInput = page.locator('input[type="email"], input[placeholder*="email" i]').first();
+    await expect(emailInput).toBeVisible();
     
-    if (await emailInput.isVisible()) {
-      // Type invalid email
-      await emailInput.fill('invalid-email');
-      
-      // Try to submit
-      const submitButton = page.locator('button[type="submit"]').first();
-      if (await submitButton.isVisible()) {
-        await submitButton.click();
-        await page.waitForTimeout(500);
-        
-        // Should show error or remain on login page
-        await expect(page.locator('body')).toBeVisible();
-      }
-    }
+    // Find submit button
+    const submitButton = page.locator('button[type="submit"]').first();
+    await expect(submitButton).toBeVisible();
+    
+    // Type invalid email
+    await emailInput.fill('invalid-email');
+    await page.waitForTimeout(500);
+    
+    // Submit button should be disabled for invalid email
+    await expect(submitButton).toBeDisabled();
+    
+    // Clear and enter valid email
+    await emailInput.clear();
+    await emailInput.fill('test@example.com');
+    await page.waitForTimeout(500);
+    
+    // Submit button should now be enabled
+    await expect(submitButton).toBeEnabled();
   });
 
   test('should display admin login form elements', async ({ page }) => {
