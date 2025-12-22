@@ -98,7 +98,7 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'secu
             [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md p-2 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 ' + (activeTab === 'prayers' ? 'ring-2 ring-blue-500' : '')"
           >
             <div class="text-center">
-              <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+              <div class="text-2xl font-bold text-green-600 dark:text-green-400">
                 {{ adminData?.pendingPrayers?.length || 0 }}
               </div>
               <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">Pending Prayers</div>
@@ -144,14 +144,14 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'secu
         </div>
 
         <!-- Alert for pending items -->
-        <div *ngIf="totalPendingCount > 0" class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4 mb-6">
+        <div *ngIf="totalPendingCount > 0" class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-4 mb-6">
           <div class="flex items-center gap-2">
-            <svg class="text-yellow-600 dark:text-yellow-400" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg class="text-green-600 dark:text-green-400" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
               <line x1="12" y1="9" x2="12" y2="13"></line>
               <line x1="12" y1="17" x2="12.01" y2="17"></line>
             </svg>
-            <p class="text-yellow-800 dark:text-yellow-200">
+            <p class="text-green-800 dark:text-green-200">
               You have {{ totalPendingCount }} items pending approval.
             </p>
           </div>
