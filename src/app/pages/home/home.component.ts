@@ -297,7 +297,7 @@ export class HomeComponent implements OnInit {
   error$!: Observable<string | null>;
   isAdmin$!: Observable<boolean>;
   hasAdminEmail$!: Observable<boolean>;
-  isAuthenticated$!: Observable<boolean>;
+  isAuthenticated$!: Observable<User | null>;
   user$!: Observable<User | null>;
 
   currentPrayersCount = 0;
@@ -341,6 +341,14 @@ export class HomeComponent implements OnInit {
     this.hasAdminEmail$ = this.adminAuthService.hasAdminEmail$;
     this.isAuthenticated$ = this.adminAuthService.isAuthenticated$;
     this.user$ = this.adminAuthService.user$;
+
+    // Listen for user activity and attempt to refresh data
+    const activityEvents = ['mousemove', 'click', 'touchstart', 'keydown'];
+    activityEvents.forEach(event => {
+      fromEvent(document, event).subscribe(() => {
+        this.prayerService.attemptRefresh();
+      });
+    });
 
     // Subscribe to ALL prayers to update counts (not filtered)
     this.prayerService.allPrayers$.subscribe(prayers => {

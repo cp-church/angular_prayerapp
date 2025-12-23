@@ -4,6 +4,7 @@ import { SupabaseService } from './supabase.service';
 import { ToastService } from './toast.service';
 import { EmailNotificationService } from './email-notification.service';
 import { VerificationService } from './verification.service';
+import { CacheService } from './cache.service';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export type PrayerStatus = 'current' | 'answered';
@@ -49,6 +50,8 @@ export class PrayerService {
   private errorSubject = new BehaviorSubject<string | null>(null);
   private realtimeChannel: RealtimeChannel | null = null;
   private currentFilters: PrayerFilters = {};
+  private lastRefreshAttempt = 0;
+  private refreshDebounceMs = 5000; // Only retry every 5 seconds
 
   public allPrayers$ = this.allPrayersSubject.asObservable();
   public prayers$ = this.prayersSubject.asObservable();
@@ -59,7 +62,8 @@ export class PrayerService {
     private supabase: SupabaseService,
     private toast: ToastService,
     private emailNotification: EmailNotificationService,
-    private verificationService: VerificationService
+    private verificationService: VerificationService,
+    private cache: CacheService
   ) {
     this.initializePrayers();
   }
@@ -71,7 +75,7 @@ export class PrayerService {
   }
 
   /**
-   * Load prayers from database
+   * Load prayers from database with fallback to cached data on network failure
    */
   async loadPrayers(): Promise<void> {
     try {
@@ -138,18 +142,43 @@ export class PrayerService {
         .map(({ prayer }) => prayer);
 
       this.allPrayersSubject.next(sortedPrayers);
+      this.cache.set('prayers', sortedPrayers);
       this.applyFilters(this.currentFilters);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load prayers';
-      console.error('Failed to load prayers:', err);
-      this.errorSubject.next(errorMessage);
-      this.toast.error('Failed to load prayers');
+      console.error('[PrayerService] Failed to load prayers:', err);
+      
+      // Try to load from cache as fallback
+      const cachedPrayers = this.cache.get<PrayerRequest[]>('prayers');
+      if (cachedPrayers && cachedPrayers.length > 0) {
+        console.log(`[PrayerService] Showing ${cachedPrayers.length} cached prayers`);
+        this.allPrayersSubject.next(cachedPrayers);
+        this.applyFilters(this.currentFilters);
+        this.errorSubject.next(null); // Clear error to show data silently
+      } else {
+        // No cache available
+        this.errorSubject.next(errorMessage);
+        this.toast.error('Failed to load prayers');
+      }
     } finally {
       this.loadingSubject.next(false);
     }
   }
 
   /**
+   * Attempt to refresh data if connectivity restored
+   * Called on user activity (mouse move, clicks)
+   */
+  attemptRefresh(): void {
+    const now = Date.now();
+    if (now - this.lastRefreshAttempt > this.refreshDebounceMs) {
+      this.lastRefreshAttempt = now;
+      this.loadPrayers().catch(err => {
+        console.debug('[PrayerService] Background refresh failed:', err);
+        // Silently fail - keep showing cached data
+      });
+    }
+  }
    * Apply filters to prayers list
    */
   applyFilters(filters: PrayerFilters): void {
