@@ -252,6 +252,7 @@ import type { User } from '@supabase/supabase-js';
               *ngFor="let prayer of prayers$ | async"
               [prayer]="prayer"
               [isAdmin]="(isAdmin$ | async) || false"
+              [activeFilter]="activeFilter"
               (delete)="deletePrayer($event)"
               (addUpdate)="addUpdate($event)"
               (deleteUpdate)="deleteUpdate($event)"

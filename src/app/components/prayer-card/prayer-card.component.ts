@@ -18,6 +18,9 @@ import { PrayerRequest } from '../../services/prayer.service';
             <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-0 inline">
               Prayer for {{ prayer.prayer_for }}
             </h3>
+            <span *ngIf="activeFilter === 'total'" [class]="'px-2 py-1 text-xs font-medium rounded-full ' + getStatusBadgeClasses()">
+              {{ getStatusLabel() }}
+            </span>
             <span class="text-sm text-gray-600 dark:text-gray-400">
               Requested by: <span class="font-medium text-gray-800 dark:text-gray-100">{{ displayRequester() }}</span>
             </span>
@@ -238,6 +241,7 @@ export class PrayerCardComponent implements OnInit {
   @Input() isAdmin = false;
   @Input() deletionsAllowed: 'everyone' | 'email-only' | 'admin-only' = 'everyone';
   @Input() updatesAllowed: 'everyone' | 'email-only' | 'admin-only' = 'everyone';
+  @Input() activeFilter: 'current' | 'answered' | 'archived' | 'total' | 'prompts' = 'total';
   
   @Output() delete = new EventEmitter<string>();
   @Output() addUpdate = new EventEmitter<any>();
@@ -273,6 +277,20 @@ export class PrayerCardComponent implements OnInit {
     } else {
       return '!border-[#C9A961] dark:!border-[#C9A961]';
     }
+  }
+
+  getStatusBadgeClasses(): string {
+    if (this.prayer.status === 'current') {
+      return 'bg-[#0047AB] bg-opacity-20 dark:bg-opacity-30 text-[#0047AB] dark:text-[#4A90E2] border border-[#0047AB]';
+    } else if (this.prayer.status === 'answered') {
+      return 'bg-[#39704D] bg-opacity-20 dark:bg-opacity-30 text-[#39704D] dark:text-[#5FB876] border border-[#39704D]';
+    } else {
+      return 'bg-[#C9A961] bg-opacity-20 dark:bg-opacity-30 text-[#C9A961] dark:text-[#D4AF85] border border-[#C9A961]';
+    }
+  }
+
+  getStatusLabel(): string {
+    return this.prayer.status.charAt(0).toUpperCase() + this.prayer.status.slice(1);
   }
 
   displayRequester(): string {
