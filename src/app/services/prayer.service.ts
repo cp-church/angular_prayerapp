@@ -50,8 +50,8 @@ export class PrayerService {
   private errorSubject = new BehaviorSubject<string | null>(null);
   private realtimeChannel: RealtimeChannel | null = null;
   private currentFilters: PrayerFilters = {};
-  private lastRefreshAttempt = 0;
-  private refreshDebounceMs = 5000; // Only retry every 5 seconds
+  private inactivityTimeout: any = null;
+  private inactivityThresholdMs = 5 * 60 * 1000; // 5 minutes of inactivity
 
   public allPrayers$ = this.allPrayersSubject.asObservable();
   public prayers$ = this.prayersSubject.asObservable();
@@ -72,6 +72,7 @@ export class PrayerService {
     await this.loadPrayers();
     this.setupRealtimeSubscription();
     this.setupVisibilityListener();
+    this.setupInactivityListener();
   }
 
   /**
@@ -166,18 +167,47 @@ export class PrayerService {
   }
 
   /**
-   * Attempt to refresh data if connectivity restored
-   * Called on user activity (mouse move, clicks)
+   * Refresh data when window regains focus or after inactivity
    */
-  attemptRefresh(): void {
-    const now = Date.now();
-    if (now - this.lastRefreshAttempt > this.refreshDebounceMs) {
-      this.lastRefreshAttempt = now;
+  private setupInactivityListener(): void {
+    // Refresh when window regains focus (tab becomes visible again)
+    fromEvent(window, 'focus').subscribe(() => {
+      console.log('[PrayerService] Window regained focus, refreshing data');
       this.loadPrayers().catch(err => {
         console.debug('[PrayerService] Background refresh failed:', err);
         // Silently fail - keep showing cached data
       });
-    }
+    });
+
+    // Track inactivity - reset timer on any user activity
+    const activityEvents = ['mousedown', 'keydown', 'touchstart', 'scroll'];
+    
+    const resetInactivityTimer = () => {
+      clearTimeout(this.inactivityTimeout);
+      this.inactivityTimeout = setTimeout(() => {
+        console.log('[PrayerService] Inactivity detected, next activity will trigger refresh');
+      }, this.inactivityThresholdMs);
+    };
+
+    // Set up initial inactivity timer
+    resetInactivityTimer();
+
+    // Reset timer on any activity
+    activityEvents.forEach(event => {
+      fromEvent(document, event).subscribe(() => {
+        resetInactivityTimer();
+      });
+    });
+
+    // When document gains focus after being in background, trigger refresh
+    fromEvent(document, 'visibilitychange').subscribe(() => {
+      if (!document.hidden) {
+        console.log('[PrayerService] Page became visible, refreshing data');
+        this.loadPrayers().catch(err => {
+          console.debug('[PrayerService] Background refresh failed:', err);
+        });
+      }
+    });
   }
 
   /**

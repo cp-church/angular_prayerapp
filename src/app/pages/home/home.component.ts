@@ -13,7 +13,7 @@ import { VerificationDialogComponent } from '../../components/verification-dialo
 import { PrayerService, PrayerRequest } from '../../services/prayer.service';
 import { PromptService } from '../../services/prompt.service';
 import { AdminAuthService } from '../../services/admin-auth.service';
-import { Observable, fromEvent, take } from 'rxjs';
+import { Observable, take } from 'rxjs';
 import { ToastService } from '../../services/toast.service';
 import { AnalyticsService } from '../../services/analytics.service';
 import type { User } from '@supabase/supabase-js';
@@ -339,14 +339,6 @@ export class HomeComponent implements OnInit {
     this.isAdmin$ = this.adminAuthService.isAdmin$;
     this.hasAdminEmail$ = this.adminAuthService.hasAdminEmail$;
     this.user$ = this.adminAuthService.user$;
-
-    // Listen for user activity and attempt to refresh data
-    const activityEvents = ['mousemove', 'click', 'touchstart', 'keydown'];
-    activityEvents.forEach(event => {
-      fromEvent(document, event).subscribe(() => {
-        this.prayerService.attemptRefresh();
-      });
-    });
 
     // Subscribe to ALL prayers to update counts (not filtered)
     this.prayerService.allPrayers$.subscribe(prayers => {
