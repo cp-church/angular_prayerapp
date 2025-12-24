@@ -49,14 +49,6 @@ This service handles all email notifications using the Supabase edge function `s
 - **Method**: `sendAdminNotification({ type: 'deletion' })`
 - **Content**: Prayer title, deletion reason, requester name
 
-#### 4. Preference Change Request
-- **Trigger**: User submits email notification preference change
-- **Recipients**: All admins with `receive_admin_emails` enabled
-- **Template Key**: `admin_notification_preference_change`
-- **Method**: `sendPreferenceChangeNotification()`
-- **Content**: User name, email, requested preference (subscribe/unsubscribe)
-- **When**: Called in `UserSettingsComponent.savePreferences()`
-
 ### Approval/Denial Response Emails
 
 #### 1. Prayer Approval Notifications
@@ -98,24 +90,6 @@ This service handles all email notifications using the Supabase edge function `s
 - **Template Key**: `denied_update`
 - **Method**: `sendDeniedUpdateNotification()`
 - **Content**: Denial reason, original update content
-
-### 5. Preference Change Approval Notifications
-
-- **Trigger**: Admin approves email preference change
-- **Recipients**: User who requested the change
-- **Template Key**: `approved_preference_change`
-- **Method**: `sendApprovedPreferenceChangeNotification()`
-- **Content**: Confirmation of preference change, welcome message (if subscribing), next steps
-- **When**: Called in `AdminDataService.approvePreferenceChange()`
-
-### 6. Preference Change Denial Notifications
-
-- **Trigger**: Admin denies email preference change
-- **Recipients**: User who requested the change
-- **Template Key**: `denied_preference_change`
-- **Method**: `sendDeniedPreferenceChangeNotification()`
-- **Content**: Denial reason, contact information
-- **When**: Called in `AdminDataService.denyPreferenceChange()`
 
 ## Integration
 
@@ -219,7 +193,6 @@ Templates are stored in the `email_templates` table with these keys:
 - `admin_notification_prayer` - New prayer pending approval
 - `admin_notification_update` - New update pending approval
 - `admin_notification_deletion` - Deletion request pending approval
-- `admin_notification_preference_change` - Email preference change request
 
 #### Approval/Denial Templates
 - `approved_prayer` - New prayer broadcast to subscribers
@@ -227,8 +200,6 @@ Templates are stored in the `email_templates` table with these keys:
 - `approved_update` - Update broadcast to subscribers
 - `prayer_answered` - Answered prayer broadcast (special styling)
 - `denied_update` - Update denial notice to author
-- `approved_preference_change` - Preference change approval confirmation
-- `denied_preference_change` - Preference change denial notice
 
 ### Template Variables
 

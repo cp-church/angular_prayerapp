@@ -265,9 +265,31 @@ export class EmailNotificationService {
         return;
       }
 
-      const subject = `Your Prayer Request Has Been Approved: ${payload.title}`;
-      const body = `Great news! Your prayer request has been approved and is now live on the prayer app.\n\nTitle: ${payload.title}\nFor: ${payload.prayerFor}\n\nYour prayer is now being lifted up by our community. You will receive updates via email when the prayer status changes or when updates are posted.`;
-      const html = this.generateRequesterApprovalHTML(payload);
+      let subject: string;
+      let body: string;
+      let html: string;
+
+      try {
+        const template = await this.getTemplate('requester_approval');
+        if (template) {
+          const variables = {
+            prayerTitle: payload.title,
+            prayerFor: payload.prayerFor,
+            prayerDescription: payload.description,
+            appLink: `${window.location.origin}/`
+          };
+          subject = this.applyTemplateVariables(template.subject, variables);
+          body = this.applyTemplateVariables(template.text_body, variables);
+          html = this.applyTemplateVariables(template.html_body, variables);
+        } else {
+          throw new Error('Template not found');
+        }
+      } catch (error) {
+        console.warn('Failed to load requester_approval template, using fallback:', error);
+        subject = `Your Prayer Request Has Been Approved: ${payload.title}`;
+        body = `Great news! Your prayer request has been approved and is now live on the prayer app.\n\nTitle: ${payload.title}\nFor: ${payload.prayerFor}\n\nYour prayer is now being lifted up by our community. You will receive updates via email when the prayer status changes or when updates are posted.`;
+        html = this.generateRequesterApprovalHTML(payload);
+      }
 
       await this.sendEmail({
         to: [payload.requesterEmail],

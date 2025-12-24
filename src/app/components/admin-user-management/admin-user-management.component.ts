@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../services/supabase.service';
 import { ToastService } from '../../services/toast.service';
+import { EmailNotificationService } from '../../services/email-notification.service';
 
 interface AdminUser {
   email: string;
@@ -286,7 +287,8 @@ export class AdminUserManagementComponent implements OnInit {
   constructor(
     private supabase: SupabaseService,
     private toast: ToastService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private emailService: EmailNotificationService
   ) {}
 
   ngOnInit() {
@@ -396,65 +398,87 @@ export class AdminUserManagementComponent implements OnInit {
   }
 
   async sendInvitationEmail(email: string, name: string) {
-    // Call the send-email edge function
-    const appUrl = window.location.origin;
-    
-    const htmlBody = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
-            .button { display: inline-block; background: #dc2626; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
-            .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1 style="margin: 0;">🙏 Prayer App</h1>
-              <p style="margin: 10px 0 0 0;">Admin Access Granted</p>
-            </div>
-            <div class="content">
-              <h2>Welcome, ${name}!</h2>
-              <p>You've been granted admin access to the Prayer App. As an admin, you can:</p>
-              <ul>
-                <li>Review and approve prayer requests</li>
-                <li>Manage prayer updates and deletions</li>
-                <li>Configure email settings and subscribers</li>
-                <li>Manage prayer prompts and types</li>
-                <li>Access the full admin portal</li>
-              </ul>
-              
-              <p>To sign in to the admin portal:</p>
-              <ol>
-                <li>Go to the admin login page link at the bottom of the main site</li>
-                <li>Enter your email address: <strong>${email}</strong></li>
-                <li>Click "Send Magic Link"</li>
-                <li>Check your email for the secure sign-in link</li>
-              </ol>
-              
-              <div style="text-align: center;">
-                <a href="${appUrl}/admin" class="button">Go to Admin Portal</a>
+    try {
+      // Fetch admin_invitation template from database
+      const template = await this.emailService.getTemplate('admin_invitation');
+      
+      const appUrl = window.location.origin;
+      const adminLink = `${appUrl}/admin`;
+      
+      let subject: string;
+      let htmlBody: string;
+      let textBody: string;
+      
+      if (template) {
+        // Use database template with variable substitution
+        const variables = {
+          name: name,
+          email: email,
+          adminLink: adminLink
+        };
+        
+        subject = this.emailService.applyTemplateVariables(template.subject, variables);
+        htmlBody = this.emailService.applyTemplateVariables(template.html_body, variables);
+        textBody = this.emailService.applyTemplateVariables(template.text_body, variables);
+      } else {
+        // Fallback to hardcoded template if database template not found
+        console.warn('admin_invitation template not found in database, using fallback');
+        subject = 'Admin Access Granted - Prayer App';
+        htmlBody = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+                .button { display: inline-block; background: #dc2626; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
+                .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h1 style="margin: 0;">🙏 Prayer App</h1>
+                  <p style="margin: 10px 0 0 0;">Admin Access Granted</p>
+                </div>
+                <div class="content">
+                  <h2>Welcome, ${name}!</h2>
+                  <p>You've been granted admin access to the Prayer App. As an admin, you can:</p>
+                  <ul>
+                    <li>Review and approve prayer requests</li>
+                    <li>Manage prayer updates and deletions</li>
+                    <li>Configure email settings and subscribers</li>
+                    <li>Manage prayer prompts and types</li>
+                    <li>Access the full admin portal</li>
+                  </ul>
+                  
+                  <p>To sign in to the admin portal:</p>
+                  <ol>
+                    <li>Go to the admin login page link at the bottom of the main site</li>
+                    <li>Enter your email address: <strong>${email}</strong></li>
+                    <li>Click "Send Magic Link"</li>
+                    <li>Check your email for the secure sign-in link</li>
+                  </ol>
+                  
+                  <div style="text-align: center;">
+                    <a href="${adminLink}" class="button">Go to Admin Portal</a>
+                  </div>
+                  
+                  <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+                    <strong>Note:</strong> Prayer App uses passwordless authentication. You'll receive a magic link via email each time you sign in.
+                  </p>
+                </div>
+                <div class="footer">
+                  <p>Prayer App Admin Portal</p>
+                </div>
               </div>
-              
-              <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
-                <strong>Note:</strong> Prayer App uses passwordless authentication. You'll receive a magic link via email each time you sign in.
-              </p>
-            </div>
-            <div class="footer">
-              <p>Prayer App Admin Portal</p>
-            </div>
-          </div>
-        </body>
-      </html>
-    `;
-
-    const textBody = `
+            </body>
+          </html>
+        `;
+        textBody = `
 Welcome to Prayer App Admin Portal!
 
 Hi ${name},
@@ -462,7 +486,7 @@ Hi ${name},
 You've been granted admin access to the Prayer App.
 
 To sign in:
-1. Go to ${appUrl}/admin
+1. Go to ${adminLink}
 2. Enter your email: ${email}
 3. Click "Send Magic Link"
 4. Check your email for the sign-in link
@@ -471,18 +495,20 @@ Prayer App uses passwordless authentication for security.
 
 ---
 Prayer App Admin Portal
-    `;
-
-    const { data, error } = await this.supabase.client.functions.invoke('send-email', {
-      body: {
+        `;
+      }
+      
+      // Send email using the email service
+      await this.emailService.sendEmail({
         to: email,
-        subject: 'Admin Access Granted - Prayer App',
+        subject,
         htmlBody,
         textBody
-      }
-    });
-
-    if (error) throw error;
+      });
+    } catch (error) {
+      console.error('Error sending invitation email:', error);
+      throw error;
+    }
   }
 
   async deleteAdmin(email: string) {
