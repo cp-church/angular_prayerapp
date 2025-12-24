@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, interval } from 'rxjs';
+import { BehaviorSubject, Observable, Subscription, interval, timer } from 'rxjs';
 import { SupabaseService } from './supabase.service';
 import type { User } from '@supabase/supabase-js';
 
@@ -29,6 +29,10 @@ export class AdminAuthService {
   private sessionStart: number | null = null;
   private adminSessionStart: number | null = null;
   private timeoutSettings: TimeoutSettings = DEFAULT_TIMEOUTS;
+  private heartbeatSubscription: Subscription | null = null;
+  private heartbeatInProgress = false;
+  private heartbeatEnabled = false;
+  private lastBlockedCheck = 0;
 
   public user$ = this.userSubject.asObservable();
   public isAdmin$ = this.isAdminSubject.asObservable();
@@ -57,6 +61,7 @@ export class AdminAuthService {
       this.isAuthenticatedSubject.next(true);
       this.sessionStart = this.getPersistedSessionStart() || Date.now();
       this.persistSessionStart(this.sessionStart);
+      this.startDbHeartbeat();
       
       // Check if they're also an admin
       const isAdmin = await this.isEmailAdmin(approvalEmail);
@@ -81,6 +86,7 @@ export class AdminAuthService {
       this.isAuthenticatedSubject.next(true);
       this.sessionStart = this.getPersistedSessionStart() || Date.now();
       this.persistSessionStart(this.sessionStart);
+      this.startDbHeartbeat();
     }
 
     // Listen for auth state changes
@@ -90,6 +96,7 @@ export class AdminAuthService {
         this.userSubject.next(session.user);
         await this.checkAdminStatus(session.user);
         this.isAuthenticatedSubject.next(true);
+        this.startDbHeartbeat();
         
         if (!this.sessionStart) {
           this.sessionStart = Date.now();
@@ -101,11 +108,20 @@ export class AdminAuthService {
         this.isAuthenticatedSubject.next(false);
         this.sessionStart = null;
         this.persistSessionStart(null);
+        this.stopDbHeartbeat();
       }
     });
 
     // Track user activity
     this.trackUserActivity();
+
+    // Refresh lightweight checks when the window regains focus so we don't block rendering
+    window.addEventListener('focus', () => {
+      this.refreshTimeoutSettingsFromDb().catch(error => {
+        console.error('Error refreshing timeout settings on focus:', error);
+      });
+      this.checkBlockedStatusInBackground();
+    });
 
     // Set up session timeout checks
     this.setupSessionTimeouts();
@@ -115,44 +131,64 @@ export class AdminAuthService {
 
   private async loadTimeoutSettings(): Promise<void> {
     try {
-      // Try localStorage first
-      const cached = localStorage.getItem('adminTimeoutSettings');
-      const cacheTimestamp = localStorage.getItem('adminTimeoutSettingsTimestamp');
-      
-      if (cached && cacheTimestamp) {
-        const cacheAge = Date.now() - parseInt(cacheTimestamp, 10);
-        if (cacheAge < 3600000) { // 1 hour
-          this.timeoutSettings = JSON.parse(cached);
-          return;
-        }
-      }
-
-      // Fetch from database
-      const { data, error } = await this.supabase.directQuery<Array<{
-        inactivity_timeout_minutes: number;
-        db_heartbeat_interval_minutes: number;
-        require_site_login: boolean;
-      }>>('admin_settings', {
-        select: 'inactivity_timeout_minutes, db_heartbeat_interval_minutes, require_site_login',
-        eq: { id: 1 },
-        limit: 1,
-        timeout: 10000
+      this.applyCachedTimeoutSettings();
+      this.refreshTimeoutSettingsFromDb().catch(error => {
+        console.error('Error refreshing timeout settings:', error);
       });
-
-      if (!error && data && data[0]) {
-        this.timeoutSettings = {
-          inactivityTimeoutMinutes: data[0].inactivity_timeout_minutes || DEFAULT_TIMEOUTS.inactivityTimeoutMinutes,
-          dbHeartbeatIntervalMinutes: data[0].db_heartbeat_interval_minutes || DEFAULT_TIMEOUTS.dbHeartbeatIntervalMinutes,
-        };
-        
-        // Update site protection setting
-        this.requireSiteLoginSubject.next(data[0].require_site_login ?? true);
-        
-        localStorage.setItem('adminTimeoutSettings', JSON.stringify(this.timeoutSettings));
-        localStorage.setItem('adminTimeoutSettingsTimestamp', Date.now().toString());
-      }
     } catch (error) {
       console.error('Error loading timeout settings:', error);
+    }
+  }
+
+  private applyCachedTimeoutSettings(): void {
+    try {
+      const cached = localStorage.getItem('adminTimeoutSettings');
+      if (!cached) return;
+
+      const parsed = JSON.parse(cached) as Partial<TimeoutSettings> & { requireSiteLogin?: boolean };
+      this.applyTimeoutSettings(parsed);
+    } catch (error) {
+      console.error('Error parsing cached timeout settings:', error);
+    }
+  }
+
+  private async refreshTimeoutSettingsFromDb(): Promise<void> {
+    const { data, error } = await this.supabase.directQuery<Array<{
+      inactivity_timeout_minutes: number;
+      db_heartbeat_interval_minutes: number;
+      require_site_login: boolean;
+    }>>('admin_settings', {
+      select: 'inactivity_timeout_minutes, db_heartbeat_interval_minutes, require_site_login',
+      eq: { id: 1 },
+      limit: 1,
+      timeout: 8000
+    });
+
+    if (!error && data && data[0]) {
+      const settings = {
+        inactivityTimeoutMinutes: data[0].inactivity_timeout_minutes || DEFAULT_TIMEOUTS.inactivityTimeoutMinutes,
+        dbHeartbeatIntervalMinutes: data[0].db_heartbeat_interval_minutes || DEFAULT_TIMEOUTS.dbHeartbeatIntervalMinutes,
+        requireSiteLogin: data[0].require_site_login ?? true
+      };
+
+      this.applyTimeoutSettings(settings);
+      localStorage.setItem('adminTimeoutSettings', JSON.stringify(settings));
+      localStorage.setItem('adminTimeoutSettingsTimestamp', Date.now().toString());
+    }
+  }
+
+  private applyTimeoutSettings(settings: Partial<TimeoutSettings> & { requireSiteLogin?: boolean }): void {
+    this.timeoutSettings = {
+      inactivityTimeoutMinutes: settings.inactivityTimeoutMinutes ?? this.timeoutSettings.inactivityTimeoutMinutes,
+      dbHeartbeatIntervalMinutes: settings.dbHeartbeatIntervalMinutes ?? this.timeoutSettings.dbHeartbeatIntervalMinutes,
+    };
+
+    if (typeof settings.requireSiteLogin === 'boolean') {
+      this.requireSiteLoginSubject.next(settings.requireSiteLogin);
+    }
+
+    if (this.heartbeatEnabled) {
+      this.restartDbHeartbeat();
     }
   }
 
@@ -195,6 +231,42 @@ export class AdminAuthService {
       this.isAdminSubject.next(false);
       this.hasAdminEmailSubject.next(false);
     }
+  }
+
+  checkBlockedStatusInBackground(returnUrl?: string): void {
+    const now = Date.now();
+    if (now - this.lastBlockedCheck < 60000) return; // throttle to avoid spamming
+    this.lastBlockedCheck = now;
+
+    // Fire and forget – do not block UI rendering
+    this.supabase.directQuery<{ is_blocked: boolean }>(
+      'email_subscribers',
+      {
+        select: 'is_blocked',
+        eq: { email: this.userSubject.value?.email?.toLowerCase() || '' },
+        limit: 1,
+        timeout: 5000
+      }
+    ).then(({ data, error }) => {
+      if (error) {
+        console.warn('[AdminAuth] Block check skipped due to error:', error);
+        return;
+      }
+
+      const isBlocked = data && Array.isArray(data) && data.length > 0 && data[0]?.is_blocked;
+      if (isBlocked) {
+        console.log('[AdminAuth] User is blocked - logging out');
+        this.logout();
+        this.router.navigate(['/login'], {
+          queryParams: {
+            returnUrl: returnUrl || '/',
+            blocked: 'true'
+          }
+        });
+      }
+    }).catch(error => {
+      console.warn('[AdminAuth] Block check exception:', error);
+    });
   }
 
   private trackUserActivity(): void {
@@ -438,6 +510,7 @@ export class AdminAuthService {
       this.hasAdminEmailSubject.next(true);
       this.adminSessionStart = Date.now(); // Admin session timer
       this.adminSessionExpiredSubject.next(false);
+      this.startDbHeartbeat();
     } else {
       this.isAdminSubject.next(false);
       this.hasAdminEmailSubject.next(false);
@@ -459,6 +532,7 @@ export class AdminAuthService {
       this.isAuthenticatedSubject.next(false);
       this.sessionStart = null;
       this.persistSessionStart(null);
+      this.stopDbHeartbeat();
       
       // Clear approval code session data
       localStorage.removeItem('approvalAdminEmail');
@@ -510,9 +584,62 @@ export class AdminAuthService {
 
       if (!error && data && data[0]) {
         this.requireSiteLoginSubject.next(data[0].require_site_login ?? true);
+        localStorage.setItem('adminTimeoutSettings', JSON.stringify({
+          ...this.timeoutSettings,
+          requireSiteLogin: data[0].require_site_login ?? true
+        }));
+        localStorage.setItem('adminTimeoutSettingsTimestamp', Date.now().toString());
       }
     } catch (error) {
       console.error('Error reloading site protection setting:', error);
+    }
+  }
+
+  private restartDbHeartbeat(): void {
+    this.stopDbHeartbeat();
+    this.startDbHeartbeat();
+  }
+
+  private startDbHeartbeat(): void {
+    this.heartbeatEnabled = true;
+
+    if (this.heartbeatSubscription) {
+      return;
+    }
+
+    const intervalMs = Math.max(1, this.timeoutSettings.dbHeartbeatIntervalMinutes) * 60000;
+    this.heartbeatSubscription = timer(0, intervalMs).subscribe(() => {
+      this.runDbHeartbeat();
+    });
+  }
+
+  private stopDbHeartbeat(): void {
+    this.heartbeatEnabled = false;
+    if (this.heartbeatSubscription) {
+      this.heartbeatSubscription.unsubscribe();
+      this.heartbeatSubscription = null;
+    }
+  }
+
+  private async runDbHeartbeat(): Promise<void> {
+    if (this.heartbeatInProgress) return;
+    this.heartbeatInProgress = true;
+
+    try {
+      const { error } = await this.supabase.directQuery('admin_settings', {
+        select: 'id',
+        limit: 1,
+        head: true,
+        timeout: 5000
+      });
+
+      if (error) {
+        console.warn('[AdminAuth] Database heartbeat failed:', error);
+      }
+    } catch (error) {
+      console.warn('[AdminAuth] Database heartbeat exception:', error);
+    } finally {
+      this.heartbeatInProgress = false;
     }
   }
 }

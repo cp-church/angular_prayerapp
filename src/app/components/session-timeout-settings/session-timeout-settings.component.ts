@@ -248,6 +248,7 @@ export class SessionTimeoutSettingsComponent implements OnInit {
           dbHeartbeatIntervalMinutes: this.dbHeartbeatInterval,
         };
         localStorage.setItem('adminTimeoutSettings', JSON.stringify(cachedSettings));
+        localStorage.setItem('adminTimeoutSettingsTimestamp', Date.now().toString());
         
         console.log('[SessionTimeoutSettings] Cached updated timeout settings in localStorage');
       } catch (storageError) {
