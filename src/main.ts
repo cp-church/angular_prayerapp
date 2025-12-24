@@ -30,6 +30,30 @@ const initClarityLater = async () => {
 
 initClarityLater();
 
+// Initialize Vercel Analytics
+const initVercelAnalytics = async () => {
+  try {
+    const { inject } = await import('@vercel/analytics');
+    inject();
+  } catch (error) {
+    console.error('Failed to initialize Vercel Analytics:', error);
+  }
+};
+
+initVercelAnalytics();
+
+// Initialize Vercel Speed Insights
+const initVercelSpeedInsights = async () => {
+  try {
+    const { injectSpeedInsights } = await import('@vercel/speed-insights');
+    injectSpeedInsights();
+  } catch (error) {
+    console.error('Failed to initialize Vercel Speed Insights:', error);
+  }
+};
+
+initVercelSpeedInsights();
+
 bootstrapApplication(AppComponent, {
   providers: [
     provideRouter(routes),
