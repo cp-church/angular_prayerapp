@@ -9,6 +9,7 @@ interface EmailSubscriber {
   name: string;
   email: string;
   is_active: boolean;
+  is_blocked: boolean;
   is_admin?: boolean;
   created_at: string;
 }
@@ -263,6 +264,7 @@ interface CSVRow {
                 <span *ngIf="subscriber.is_admin" class="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs rounded-full font-semibold">Admin</span>
                 <span *ngIf="subscriber.is_active" class="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs rounded-full">Active</span>
                 <span *ngIf="!subscriber.is_active" class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded-full">Inactive</span>
+                <span *ngIf="subscriber.is_blocked" class="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs rounded-full font-semibold">Blocked</span>
               </div>
               <p class="text-sm text-gray-600 dark:text-gray-400 truncate">{{ subscriber.email }}</p>
               <p *ngIf="subscriber.is_admin && !subscriber.is_active" class="text-xs text-amber-600 dark:text-amber-400 mt-1">
@@ -278,7 +280,7 @@ interface CSVRow {
                 [class]="subscriber.is_active ? 
                   'p-2 rounded-lg transition-colors text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30' : 
                   'p-2 rounded-lg transition-colors text-gray-400 dark:text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700'"
-                [title]="subscriber.is_active ? 'Deactivate' : 'Activate'"
+                [title]="subscriber.is_active ? 'Stop sending email notifications to this user' : 'Start sending email notifications to this user'"
               >
                 <svg *ngIf="subscriber.is_active" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
@@ -291,9 +293,21 @@ interface CSVRow {
                 </svg>
               </button>
               <button
+                (click)="handleToggleBlocked(subscriber.id, subscriber.is_blocked)"
+                [class]="subscriber.is_blocked ? 
+                  'p-2 rounded-lg transition-colors text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30' : 
+                  'p-2 rounded-lg transition-colors text-gray-400 dark:text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700'"
+                [title]="subscriber.is_blocked ? 'Allow this user to log in to the site' : 'Prevent this user from logging in to the site'"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                </svg>
+              </button>
+              <button
                 (click)="handleDelete(subscriber.id, subscriber.email)"
                 class="p-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-                [title]="subscriber.is_admin ? 'Unsubscribe from emails (keeps admin access)' : 'Delete subscriber'"
+                [title]="subscriber.is_admin ? 'Remove this admin from email list (they keep their admin login access)' : 'Permanently delete this subscriber from the list'"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="3 6 5 6 21 6"></polyline>
@@ -616,6 +630,23 @@ export class EmailSubscribersComponent implements OnInit {
     } catch (err: any) {
       console.error('Error toggling subscriber status:', err);
       this.toast.error('Failed to update subscriber status');
+    }
+  }
+
+  async handleToggleBlocked(id: string, currentStatus: boolean) {
+    try {
+      const { error } = await this.supabase.client
+        .from('email_subscribers')
+        .update({ is_blocked: !currentStatus })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      this.toast.success(currentStatus ? 'User unblocked - login enabled' : 'User blocked - login disabled');
+      await this.handleSearch();
+    } catch (err: any) {
+      console.error('Error toggling user blocked status:', err);
+      this.toast.error('Failed to update user blocked status');
     }
   }
 

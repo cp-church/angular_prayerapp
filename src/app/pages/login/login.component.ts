@@ -353,6 +353,11 @@ export class LoginComponent implements OnInit, OnDestroy {
       if (params['sessionExpired'] === 'true') {
         this.error = 'Your admin session has expired. Please re-authenticate with MFA.';
       }
+      
+      // If user was blocked and logged out
+      if (params['blocked'] === 'true') {
+        this.error = 'This account has been blocked. Please contact an administrator.';
+      }
     });
 
     // Subscribe to site protection status
@@ -478,13 +483,22 @@ export class LoginComponent implements OnInit, OnDestroy {
         
         // Check if user is already in email_subscribers table
         console.log('[AdminLogin] Checking if subscriber:', userEmail);
-        const isSubscriber = await this.checkEmailSubscriber(userEmail);
-        console.log('[AdminLogin] Is subscriber result:', isSubscriber);
-        
-        if (!isSubscriber) {
-          // Show subscriber form for new users
-          console.log('[AdminLogin] Showing subscriber form');
-          this.showSubscriberForm = true;
+        try {
+          const isSubscriber = await this.checkEmailSubscriber(userEmail);
+          console.log('[AdminLogin] Is subscriber result:', isSubscriber);
+          
+          if (!isSubscriber) {
+            // Show subscriber form for new users
+            console.log('[AdminLogin] Showing subscriber form');
+            this.showSubscriberForm = true;
+            this.loading = false;
+            this.cdr.markForCheck();
+            return;
+          }
+        } catch (blockError) {
+          // Handle blocking error
+          console.error('[AdminLogin] User is blocked:', blockError);
+          this.error = blockError instanceof Error ? blockError.message : 'Access denied';
           this.loading = false;
           this.cdr.markForCheck();
           return;
@@ -825,10 +839,11 @@ export class LoginComponent implements OnInit, OnDestroy {
       const { data, error } = await this.supabaseService.directQuery<{
         id: string;
         email: string;
+        is_blocked: boolean;
       }>(
         'email_subscribers',
         {
-          select: 'id, email',
+          select: 'id, email, is_blocked',
           eq: { email: email.toLowerCase() },
           limit: 1
         }
@@ -840,10 +855,20 @@ export class LoginComponent implements OnInit, OnDestroy {
       }
 
       const isSubscriber = data && Array.isArray(data) && data.length > 0;
+      
+      // Check if user is blocked
+      if (isSubscriber && data[0]?.is_blocked) {
+        throw new Error('This account has been blocked. Please contact an administrator.');
+      }
+      
       console.log('[AdminLogin] Subscriber check result:', isSubscriber);
       return isSubscriber || false;
     } catch (err) {
       console.error('[AdminLogin] Exception checking subscriber:', err);
+      // Re-throw if it's a blocking error so it can be displayed to the user
+      if (err instanceof Error && err.message.includes('blocked')) {
+        throw err;
+      }
       return false;
     }
   }

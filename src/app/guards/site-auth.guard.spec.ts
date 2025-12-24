@@ -8,6 +8,10 @@ type MockRouter = {
 type MockAdminAuthService = {
   isAuthenticated$: BehaviorSubject<boolean>;
   loading$: BehaviorSubject<boolean>;
+  logout: ReturnType<typeof vi.fn>;
+};
+type MockSupabaseService = {
+  directQuery: ReturnType<typeof vi.fn>;
 };
 type MockUrlTree = {
   toString: () => string;
@@ -16,9 +20,15 @@ type MockUrlTree = {
 };
 
 let mockAdminAuthService: MockAdminAuthService;
+let mockSupabaseService: MockSupabaseService;
 let mockRouter: MockRouter;
 let mockRoute: any;
 let mockState: any;
+
+// Mock getUserInfo
+vi.mock('../../utils/userInfoStorage', () => ({
+  getUserInfo: vi.fn(() => ({ firstName: '', lastName: '', email: 'test@example.com' }))
+}));
 
 // Mock @angular/core inject function
 vi.mock('@angular/core', async () => {
@@ -32,6 +42,9 @@ vi.mock('@angular/core', async () => {
       }
       if (tokenName === 'AdminAuthService') {
         return mockAdminAuthService;
+      }
+      if (tokenName === 'SupabaseService') {
+        return mockSupabaseService;
       }
       return null;
     },
@@ -51,6 +64,8 @@ vi.mock('rxjs', async () => {
   return {
     ...actual,
     combineLatest: actual.combineLatest,
+    from: actual.from,
+    of: actual.of,
   };
 });
 
@@ -60,6 +75,7 @@ vi.mock('rxjs/operators', async () => {
     ...actual,
     map: actual.map,
     skipWhile: actual.skipWhile,
+    switchMap: actual.switchMap,
   };
 });
 
@@ -69,6 +85,11 @@ describe('siteAuthGuard', () => {
     mockAdminAuthService = {
       isAuthenticated$: new BehaviorSubject<boolean>(false),
       loading$: new BehaviorSubject<boolean>(true),
+      logout: vi.fn(),
+    };
+
+    mockSupabaseService = {
+      directQuery: vi.fn(() => Promise.resolve({ data: [{ is_blocked: false }], error: null })),
     };
 
     mockRouter = {
@@ -87,6 +108,7 @@ describe('siteAuthGuard', () => {
 
     // Mock console.log to prevent noise in test output
     vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -94,7 +116,7 @@ describe('siteAuthGuard', () => {
     vi.clearAllMocks();
   });
 
-  it('should allow access when user is authenticated', async () => {
+  it('should allow access when user is authenticated and not blocked', async () => {
     vi.resetModules();
     const { siteAuthGuard } = await import('./site-auth.guard');
     const { firstValueFrom } = await import('rxjs');
@@ -277,5 +299,84 @@ describe('siteAuthGuard', () => {
       ['/login'],
       { queryParams: { returnUrl: '' } }
     );
+  });
+
+  it('should block access and logout when user is blocked', async () => {
+    mockAdminAuthService.isAuthenticated$.next(true);
+    mockAdminAuthService.loading$.next(false);
+    mockSupabaseService.directQuery = vi.fn(() => 
+      Promise.resolve({ data: [{ is_blocked: true }], error: null })
+    );
+
+    vi.resetModules();
+    const { siteAuthGuard } = await import('./site-auth.guard');
+    const { firstValueFrom } = await import('rxjs');
+
+    const guard$ = siteAuthGuard(mockRoute, mockState);
+
+    const result = await firstValueFrom(guard$);
+    
+    expect(mockAdminAuthService.logout).toHaveBeenCalled();
+    expect(mockRouter.createUrlTree).toHaveBeenCalledWith(
+      ['/login'],
+      { queryParams: { returnUrl: '/admin', blocked: 'true' } }
+    );
+  });
+
+  it('should allow access when database returns no blocking data', async () => {
+    mockAdminAuthService.isAuthenticated$.next(true);
+    mockAdminAuthService.loading$.next(false);
+    mockSupabaseService.directQuery = vi.fn(() => 
+      Promise.resolve({ data: [], error: null })
+    );
+
+    vi.resetModules();
+    const { siteAuthGuard } = await import('./site-auth.guard');
+    const { firstValueFrom } = await import('rxjs');
+
+    const guard$ = siteAuthGuard(mockRoute, mockState);
+
+    const result = await firstValueFrom(guard$);
+    
+    expect(result).toBe(true);
+    expect(mockAdminAuthService.logout).not.toHaveBeenCalled();
+  });
+
+  it('should allow access when blocking check fails', async () => {
+    mockAdminAuthService.isAuthenticated$.next(true);
+    mockAdminAuthService.loading$.next(false);
+    mockSupabaseService.directQuery = vi.fn(() => 
+      Promise.resolve({ data: null, error: new Error('Database error') })
+    );
+
+    vi.resetModules();
+    const { siteAuthGuard } = await import('./site-auth.guard');
+    const { firstValueFrom } = await import('rxjs');
+
+    const guard$ = siteAuthGuard(mockRoute, mockState);
+
+    const result = await firstValueFrom(guard$);
+    
+    expect(result).toBe(true);
+    expect(mockAdminAuthService.logout).not.toHaveBeenCalled();
+  });
+
+  it('should allow access when user has no email in storage', async () => {
+    const { getUserInfo } = await import('../../utils/userInfoStorage');
+    vi.mocked(getUserInfo).mockReturnValueOnce({ firstName: '', lastName: '', email: '' });
+
+    mockAdminAuthService.isAuthenticated$.next(true);
+    mockAdminAuthService.loading$.next(false);
+
+    vi.resetModules();
+    const { siteAuthGuard } = await import('./site-auth.guard');
+    const { firstValueFrom } = await import('rxjs');
+
+    const guard$ = siteAuthGuard(mockRoute, mockState);
+
+    const result = await firstValueFrom(guard$);
+    
+    expect(result).toBe(true);
+    expect(mockSupabaseService.directQuery).not.toHaveBeenCalled();
   });
 });
