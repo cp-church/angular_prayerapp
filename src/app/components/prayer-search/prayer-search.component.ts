@@ -1245,6 +1245,9 @@ export class PrayerSearchComponent implements OnInit {
 
       this.searchResults = this.searchResults.filter(p => p.id !== prayer.id);
       this.selectedPrayers.delete(prayer.id);
+      this.prayerService.loadPrayers().catch(err => {
+        console.debug('[PrayerSearch] Refresh after delete failed:', err);
+      });
       this.toast.success('Prayer deleted successfully');
     } catch (err: unknown) {
       console.error('Error deleting prayer:', err);
