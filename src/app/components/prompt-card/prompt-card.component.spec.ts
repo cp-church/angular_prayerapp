@@ -112,7 +112,7 @@ describe('PromptCardComponent', () => {
     });
 
     it('should apply selected styling when isTypeSelected is true', async () => {
-      const { container } = await render(PromptCardComponent, {
+      await render(PromptCardComponent, {
         componentProperties: {
           prompt: mockPrompt,
           isTypeSelected: true
@@ -125,7 +125,7 @@ describe('PromptCardComponent', () => {
     });
 
     it('should apply default styling when isTypeSelected is false', async () => {
-      const { container } = await render(PromptCardComponent, {
+      await render(PromptCardComponent, {
         componentProperties: {
           prompt: mockPrompt,
           isTypeSelected: false
