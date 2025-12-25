@@ -303,6 +303,92 @@ describe('PrayerDisplayCardComponent', () => {
       expect(updates.length).toBe(1);
       expect(updates[0].id).toBe('u2'); // Most recent of the old ones
     });
+
+    it('should handle single old update correctly', async () => {
+      const singleOldUpdatePrayer = {
+        ...mockPrayer,
+        prayer_updates: [
+          {
+            id: 'u1',
+            content: 'Single Old Update',
+            author: 'Author',
+            created_at: '2023-01-01T10:00:00Z'
+          }
+        ]
+      };
+      
+      const { fixture } = await render(PrayerDisplayCardComponent, {
+        componentProperties: { prayer: singleOldUpdatePrayer }
+      });
+      
+      fixture.componentInstance.showAllUpdates = false;
+      const updates = fixture.componentInstance.getRecentUpdates();
+      
+      // Should return the single update even though it's old
+      expect(updates.length).toBe(1);
+      expect(updates[0].id).toBe('u1');
+    });
+
+    it('should return recent updates when they exist (true branch of line 151)', async () => {
+      const recentPrayer = {
+        ...mockPrayer,
+        prayer_updates: [
+          {
+            id: 'u1',
+            content: 'Recent Update',
+            author: 'Author',
+            created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() // 1 day ago
+          },
+          {
+            id: 'u2',
+            content: 'Another Recent',
+            author: 'Author',
+            created_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString() // 2 days ago
+          }
+        ]
+      };
+      
+      const { fixture } = await render(PrayerDisplayCardComponent, {
+        componentProperties: { prayer: recentPrayer }
+      });
+      
+      fixture.componentInstance.showAllUpdates = false;
+      const updates = fixture.componentInstance.getRecentUpdates();
+      
+      // Should return all recent updates (true branch)
+      expect(updates.length).toBe(2);
+    });
+
+    it('should return most recent when no recent updates exist (false branch of line 151)', async () => {
+      const oldPrayer = {
+        ...mockPrayer,
+        prayer_updates: [
+          {
+            id: 'u1',
+            content: 'Very Old Update',
+            author: 'Author',
+            created_at: '2020-01-01T10:00:00Z'
+          },
+          {
+            id: 'u2',
+            content: 'Another Old Update',
+            author: 'Author',
+            created_at: '2020-01-02T10:00:00Z'
+          }
+        ]
+      };
+      
+      const { fixture } = await render(PrayerDisplayCardComponent, {
+        componentProperties: { prayer: oldPrayer }
+      });
+      
+      fixture.componentInstance.showAllUpdates = false;
+      const updates = fixture.componentInstance.getRecentUpdates();
+      
+      // Should return only most recent (false branch, slice(0, 1))
+      expect(updates.length).toBe(1);
+      expect(updates[0].id).toBe('u2'); // Most recent of old ones
+    });
   });
 
   describe('shouldShowToggleButton', () => {
