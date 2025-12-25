@@ -133,6 +133,34 @@ describe('VerificationDialogComponent', () => {
 
       expect(mockVerificationService.getCodeLength).toHaveBeenCalled();
     });
+
+    it('should not fetch code length when codeId has not changed', async () => {
+      component.isOpen = true;
+      component.codeId = 'code-123';
+      component.ngOnChanges();
+      await Promise.resolve();
+
+      vi.clearAllMocks();
+
+      // Keep same codeId
+      component.isOpen = true;
+      component.codeId = 'code-123';
+      component.ngOnChanges();
+      await Promise.resolve();
+
+      expect(mockVerificationService.getCodeLength).not.toHaveBeenCalled();
+    });
+
+    it('should call focusInput after timeout when dialog opens', async () => {
+      const focusInputSpy = vi.spyOn(component, 'focusInput');
+      component.isOpen = true;
+      component.ngOnChanges();
+
+      // Fast-forward time to trigger setTimeout
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(focusInputSpy).toHaveBeenCalledWith(0);
+    });
   });
 
   describe('timer functionality', () => {
@@ -363,6 +391,32 @@ describe('VerificationDialogComponent', () => {
       await component.handleResend();
       expect(component.isResending).toBe(false);
     });
+
+    it('should handle error during resend with error message', async () => {
+      // Spy on emit to make it throw
+      const emitSpy = vi.spyOn(component.onResend, 'emit').mockImplementation(() => {
+        throw new Error('Resend failed');
+      });
+
+      await component.handleResend();
+
+      expect(component.error).toBe('Resend failed');
+      expect(component.isResending).toBe(false);
+      emitSpy.mockRestore();
+    });
+
+    it('should handle error during resend without error message', async () => {
+      // Spy on emit to make it throw an error without message
+      const emitSpy = vi.spyOn(component.onResend, 'emit').mockImplementation(() => {
+        throw {};
+      });
+
+      await component.handleResend();
+
+      expect(component.error).toBe('Failed to resend code');
+      expect(component.isResending).toBe(false);
+      emitSpy.mockRestore();
+    });
   });
 
   describe('ngOnDestroy', () => {
@@ -403,6 +457,36 @@ describe('VerificationDialogComponent', () => {
       expect(component.code[0]).toBe('5');
     });
 
+    it('should move to next field when entering a single digit', () => {
+      const focusInputSpy = vi.spyOn(component, 'focusInput');
+      const mockEvent = {
+        target: {
+          value: '7'
+        }
+      };
+      
+      // Enter digit in first field (not last)
+      component.handleCodeChange(0, mockEvent);
+      
+      expect(component.code[0]).toBe('7');
+      expect(focusInputSpy).toHaveBeenCalledWith(1);
+    });
+
+    it('should not move to next field when entering digit in last field', () => {
+      const focusInputSpy = vi.spyOn(component, 'focusInput');
+      const mockEvent = {
+        target: {
+          value: '9'
+        }
+      };
+      
+      // Enter digit in last field
+      component.handleCodeChange(5, mockEvent);
+      
+      expect(component.code[5]).toBe('9');
+      expect(focusInputSpy).not.toHaveBeenCalled();
+    });
+
     it('should handle handleCodeChange with autofill', () => {
       const mockEvent = {
         target: {
@@ -411,6 +495,44 @@ describe('VerificationDialogComponent', () => {
       };
       component.handleCodeChange(0, mockEvent);
       expect(component.code).toEqual(['1', '2', '3', '4', '5', '6']);
+    });
+
+    it('should handle handleCodeChange with autofill and reset first input value', () => {
+      const mockFirstInput = {
+        nativeElement: {
+          value: '123456'
+        }
+      };
+      component.codeInputs = {
+        first: mockFirstInput,
+        toArray: () => []
+      } as any;
+      
+      const mockEvent = {
+        target: {
+          value: '123456'
+        }
+      };
+      
+      component.handleCodeChange(0, mockEvent);
+      
+      expect(component.code).toEqual(['1', '2', '3', '4', '5', '6']);
+      expect(mockFirstInput.nativeElement.value).toBe('1');
+    });
+
+    it('should handle autofill with insufficient digits', () => {
+      const mockEvent = {
+        target: {
+          value: '123'  // Only 3 digits, less than codeLength (6)
+        }
+      };
+      
+      component.handleCodeChange(0, mockEvent);
+      
+      // When digits.length < codeLength, exits autofill block and continues to single digit check
+      // '123' doesn't match /^\d$/ regex, so it clears the field
+      expect(component.code[0]).toBe('');
+      expect(mockEvent.target.value).toBe('');
     });
 
     it('should handle handleCodeChange with non-digit', () => {
@@ -434,6 +556,36 @@ describe('VerificationDialogComponent', () => {
       expect(mockEvent.preventDefault).toHaveBeenCalled();
     });
 
+    it('should move to previous field on Backspace when not at first index', () => {
+      const focusInputSpy = vi.spyOn(component, 'focusInput');
+      const mockEvent = {
+        key: 'Backspace',
+        preventDefault: vi.fn()
+      };
+      component.code = ['1', '2', '3', '4', '5', '6'];
+      
+      // Press backspace on index 3 (not first field)
+      component.handleKeyDown(3, mockEvent);
+      
+      expect(component.code[3]).toBe('');
+      expect(focusInputSpy).toHaveBeenCalledWith(2);
+    });
+
+    it('should not move to previous field on Backspace when index is 0', () => {
+      const focusInputSpy = vi.spyOn(component, 'focusInput');
+      const mockEvent = {
+        key: 'Backspace',
+        preventDefault: vi.fn()
+      };
+      component.code = ['1', '2', '3', '4', '5', '6'];
+      
+      // Press backspace on index 0 (first field)
+      component.handleKeyDown(0, mockEvent);
+      
+      expect(component.code[0]).toBe('');
+      expect(focusInputSpy).not.toHaveBeenCalled();
+    });
+
     it('should handle handleKeyDown with ArrowLeft', () => {
       const focusInputSpy = vi.spyOn(component, 'focusInput');
       const mockEvent = {
@@ -454,12 +606,25 @@ describe('VerificationDialogComponent', () => {
 
     it('should handle handleKeyDown with Enter when code is complete', () => {
       const handleVerifySpy = vi.spyOn(component, 'handleVerify');
-      component.codeInput = '123456';
+      component.code = ['1', '2', '3', '4', '5', '6'];
+      component.codeInput = '123456'; // Set codeInput as isCodeComplete checks its length
       const mockEvent = {
         key: 'Enter'
       };
-      component.handleKeyDown(5, mockEvent);
+      // Use middle index to reach the Enter handler in handleKeyDown
+      component.handleKeyDown(3, mockEvent);
       expect(handleVerifySpy).toHaveBeenCalled();
+    });
+
+    it('should not verify on Enter when code is incomplete', () => {
+      const handleVerifySpy = vi.spyOn(component, 'handleVerify');
+      component.code = ['1', '2', '3', '', '', ''];
+      component.codeInput = '123'; // Incomplete code
+      const mockEvent = {
+        key: 'Enter'
+      };
+      component.handleKeyDown(3, mockEvent);
+      expect(handleVerifySpy).not.toHaveBeenCalled();
     });
 
     it('should handle handlePaste', () => {
@@ -509,6 +674,45 @@ describe('VerificationDialogComponent', () => {
       } as any;
       component.focusInput(0);
       // Should not throw error
+      expect(true).toBe(true);
+    });
+
+    it('should call focus on input element when focusInput is called with valid index', async () => {
+      const mockFocus = vi.fn();
+      const mockInput = {
+        nativeElement: {
+          focus: mockFocus
+        }
+      };
+      component.codeInputs = {
+        toArray: () => [mockInput, mockInput]
+      } as any;
+      
+      component.focusInput(1);
+      
+      // Wait for setTimeout to execute
+      await vi.advanceTimersByTimeAsync(0);
+      
+      expect(mockFocus).toHaveBeenCalled();
+    });
+
+    it('should not throw when focusInput is called with out-of-bounds index', async () => {
+      const mockInput = {
+        nativeElement: {
+          focus: vi.fn()
+        }
+      };
+      component.codeInputs = {
+        toArray: () => [mockInput] // Only one input
+      } as any;
+      
+      // Try to focus index 5 which doesn't exist
+      component.focusInput(5);
+      
+      // Wait for setTimeout to execute
+      await vi.advanceTimersByTimeAsync(0);
+      
+      // Should not throw error, just not call focus
       expect(true).toBe(true);
     });
   });
