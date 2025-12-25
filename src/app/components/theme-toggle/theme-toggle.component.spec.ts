@@ -10,6 +10,21 @@ describe('ThemeToggleComponent', () => {
   beforeEach(() => {
     localStorage.clear();
     
+    // Mock window.matchMedia
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation(query => ({
+        matches: query === '(prefers-color-scheme: dark)' ? false : true,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+    
     TestBed.configureTestingModule({
       imports: [ThemeToggleComponent],
       providers: [ThemeService]
@@ -22,6 +37,7 @@ describe('ThemeToggleComponent', () => {
 
   afterEach(() => {
     localStorage.clear();
+    vi.restoreAllMocks();
   });
 
   it('should create', () => {

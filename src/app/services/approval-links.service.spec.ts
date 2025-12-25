@@ -302,4 +302,158 @@ describe('ApprovalLinksService', () => {
       expect(generatedCode).toMatch(/^[0-9a-f]+$/);
     });
   });
+
+  describe('generateCode', () => {
+    it('should generate account_approve code with base64 encoded email', () => {
+      const code = service.generateCode('account_approve', 'test@example.com');
+      
+      expect(code).toContain('account_approve_');
+      expect(code.startsWith('account_approve_')).toBe(true);
+    });
+
+    it('should generate account_deny code with base64 encoded email', () => {
+      const code = service.generateCode('account_deny', 'test@example.com');
+      
+      expect(code).toContain('account_deny_');
+      expect(code.startsWith('account_deny_')).toBe(true);
+    });
+
+    it('should encode email in lowercase', () => {
+      const code1 = service.generateCode('account_approve', 'Test@Example.COM');
+      const code2 = service.generateCode('account_approve', 'test@example.com');
+      
+      // Both should produce the same code due to lowercase normalization
+      const decoded1 = atob(code1.replace('account_approve_', ''));
+      const decoded2 = atob(code2.replace('account_approve_', ''));
+      
+      expect(decoded1).toBe(decoded2);
+    });
+
+    it('should handle special characters in email', () => {
+      const email = 'test+tag@sub.example.com';
+      const code = service.generateCode('account_approve', email);
+      
+      expect(code).toContain('account_approve_');
+      const decodedEmail = atob(code.replace('account_approve_', ''));
+      expect(decodedEmail).toBe(email.toLowerCase());
+    });
+  });
+
+  describe('decodeAccountCode', () => {
+    it('should decode account_approve code', () => {
+      const email = 'admin@example.com';
+      const code = service.generateCode('account_approve', email);
+      
+      const result = service.decodeAccountCode(code);
+      
+      expect(result).toBeTruthy();
+      expect(result?.type).toBe('approve');
+      expect(result?.email).toBe(email);
+    });
+
+    it('should decode account_deny code', () => {
+      const email = 'admin@example.com';
+      const code = service.generateCode('account_deny', email);
+      
+      const result = service.decodeAccountCode(code);
+      
+      expect(result).toBeTruthy();
+      expect(result?.type).toBe('deny');
+      expect(result?.email).toBe(email);
+    });
+
+    it('should return null for invalid code format', () => {
+      const result = service.decodeAccountCode('invalid_code_format');
+      
+      expect(result).toBeNull();
+    });
+
+    it('should return null for empty code', () => {
+      const result = service.decodeAccountCode('');
+      
+      expect(result).toBeNull();
+    });
+
+    it('should return null for malformed base64', () => {
+      const result = service.decodeAccountCode('account_approve_invalid!!!base64');
+      
+      expect(result).toBeNull();
+      expect(consoleErrorSpy).toHaveBeenCalled();
+    });
+
+    it('should handle special characters in decoded email', () => {
+      const email = 'test+tag@sub.example.com';
+      const code = service.generateCode('account_approve', email);
+      
+      const result = service.decodeAccountCode(code);
+      
+      expect(result?.email).toBe(email);
+    });
+
+    it('should be case-insensitive for type prefix', () => {
+      const email = 'test@example.com';
+      const approveCode = service.generateCode('account_approve', email);
+      const denyCode = service.generateCode('account_deny', email);
+      
+      const approveResult = service.decodeAccountCode(approveCode);
+      const denyResult = service.decodeAccountCode(denyCode);
+      
+      expect(approveResult?.type).toBe('approve');
+      expect(denyResult?.type).toBe('deny');
+    });
+
+    it('should handle multiple underscores in email', () => {
+      const email = 'test_user_name@example.com';
+      const code = service.generateCode('account_approve', email);
+      
+      const result = service.decodeAccountCode(code);
+      
+      expect(result?.email).toBe(email);
+    });
+  });
+
+  describe('roundtrip encoding/decoding', () => {
+    it('should encode and decode approve code correctly', () => {
+      const email = 'user@test.com';
+      const code = service.generateCode('account_approve', email);
+      const decoded = service.decodeAccountCode(code);
+      
+      expect(decoded?.type).toBe('approve');
+      expect(decoded?.email).toBe(email);
+    });
+
+    it('should encode and decode deny code correctly', () => {
+      const email = 'user@test.com';
+      const code = service.generateCode('account_deny', email);
+      const decoded = service.decodeAccountCode(code);
+      
+      expect(decoded?.type).toBe('deny');
+      expect(decoded?.email).toBe(email);
+    });
+
+    it('should handle complex emails in roundtrip', () => {
+      const complexEmails = [
+        'simple@test.com',
+        'test+tag@test.com',
+        'test_underscore@test.co.uk',
+        'test.dot@test.com',
+        'test-dash@test.com',
+        'uppercase@TEST.COM'
+      ];
+
+      complexEmails.forEach(email => {
+        const approveCode = service.generateCode('account_approve', email);
+        const approveResult = service.decodeAccountCode(approveCode);
+        
+        expect(approveResult?.email).toBe(email.toLowerCase());
+        expect(approveResult?.type).toBe('approve');
+
+        const denyCode = service.generateCode('account_deny', email);
+        const denyResult = service.decodeAccountCode(denyCode);
+        
+        expect(denyResult?.email).toBe(email.toLowerCase());
+        expect(denyResult?.type).toBe('deny');
+      });
+    });
+  });
 });
