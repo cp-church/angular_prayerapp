@@ -160,6 +160,8 @@ describe('UserSettingsComponent', () => {
       localStorage.setItem('prayerapp_user_first_name', 'Jane');
       localStorage.setItem('prayerapp_user_last_name', 'Smith');
       localStorage.setItem('prayerapp_user_email', 'jane@example.com');
+      
+      component.isOpen = false; // Start closed
 
       const changes: SimpleChanges = {
         isOpen: {
@@ -169,7 +171,8 @@ describe('UserSettingsComponent', () => {
           isFirstChange: () => false
         }
       };
-
+      
+      component.isOpen = true; // Now set to open
       component.ngOnChanges(changes);
 
       expect(component.name).toBe('Jane Smith');
