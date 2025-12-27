@@ -1,6 +1,8 @@
 # Testing Guide
 
-This project uses **Jasmine** and **Karma** for unit and integration testing (Angular default testing framework), with automated testing via GitHub Actions CI/CD pipeline.
+This project uses **Vitest** for unit and integration testing with the V8 coverage provider, with automated testing via GitHub Actions CI/CD pipeline.
+
+> 📊 **For detailed test coverage analysis, see [TEST_COVERAGE_REPORT.md](../TEST_COVERAGE_REPORT.md)**
 
 ## Table of Contents
 - [Quick Start](#quick-start)
@@ -26,15 +28,17 @@ npm install
 # Run tests in watch mode (recommended for development)
 npm test
 
-# Run tests once
-npm run test -- --watch=false
+# Run tests with UI
+npm run test:ui
 
-# Run tests with code coverage
-npm run test -- --code-coverage
-
-# Run tests for specific file
-npm test -- --include='**/prayer.service.spec.ts'
+# Run tests with code coverage report
+npm run test:coverage
 ```
+
+The coverage report will generate:
+- Console output with coverage percentages
+- HTML report in `coverage/index.html` for detailed browsing
+- JSON report in `coverage/coverage-final.json` for tooling
 
 ## Running Tests
 
@@ -44,10 +48,23 @@ Best for development - automatically reruns tests when files change:
 npm test
 ```
 
-### Single Run
-Used in CI/CD pipelines:
+### Coverage Report
+Generate comprehensive coverage analysis:
 ```bash
-npm run test -- --watch=false
+npm run test:coverage
+```
+
+Then open the HTML report:
+```bash
+# macOS
+open coverage/index.html
+
+# Linux
+xdg-open coverage/index.html
+
+# Windows
+start coverage/index.html
+```
 ```
 
 ### Coverage Report

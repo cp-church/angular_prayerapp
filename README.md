@@ -24,7 +24,7 @@ Quick links:
 - **Styling**: Tailwind CSS with dark mode support
 - **Backend**: Supabase (PostgreSQL + Edge Functions + RLS)
 - **Real-time**: RxJS observables and Supabase real-time subscriptions
-- **Testing**: Jasmine + Karma
+- **Testing**: Vitest with V8 coverage
 - **Error Tracking**: Sentry
 - **Analytics**: Microsoft Clarity
 - **Deployment**: Vercel
@@ -134,7 +134,7 @@ The comprehensive documentation includes:
 - **[FEATURES.md](docs/FEATURES.md)** - Detailed feature descriptions and user workflows
 - **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Production deployment with Vercel and environment setup
 - **[EMAIL_NOTIFICATIONS.md](docs/EMAIL_NOTIFICATIONS.md)** - Email system, templates, and configuration
-- **[TESTING.md](docs/TESTING.md)** - Testing approach with Jasmine/Karma and TestBed examples
+- **[TESTING.md](docs/TESTING.md)** - Testing approach with Vitest and comprehensive coverage reports
 - **[PERFORMANCE.md](docs/PERFORMANCE.md)** - Performance optimization, bundle analysis, and best practices
 - **[ACCESSIBILITY.md](docs/ACCESSIBILITY.md)** - WCAG compliance, a11y testing, and color contrast verification
 - **[TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** - Common issues, debugging guides, and solutions
