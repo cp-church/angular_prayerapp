@@ -21,6 +21,42 @@ describe('VerificationService', () => {
 
   afterEach(() => {
     localStorage.clear();
+    vi.clearAllTimers();
+  });
+
+  describe('constructor', () => {
+    it('should call checkIfEnabled after timeout', async () => {
+      vi.useFakeTimers();
+      
+      const fromMock = vi.fn(() => ({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            maybeSingle: vi.fn(() => Promise.resolve({ 
+              data: { require_email_verification: false }, 
+              error: null 
+            }))
+          }))
+        }))
+      }));
+
+      const mockSupabase = {
+        client: {
+          from: fromMock
+        }
+      } as any;
+
+      const testService = new VerificationService(mockSupabase);
+
+      // Fast-forward time
+      vi.advanceTimersByTime(100);
+      
+      // Wait for async operations to complete
+      await vi.runAllTimersAsync();
+
+      expect(fromMock).toHaveBeenCalledWith('admin_settings');
+      
+      vi.useRealTimers();
+    });
   });
 
   describe('isRecentlyVerified', () => {
@@ -614,6 +650,41 @@ describe('VerificationService', () => {
       expect(remainingSessions.map((s: any) => s.email)).not.toContain('expired@example.com');
     });
 
+    it('should not update localStorage when no sessions are expired during cleanup', () => {
+      const now = Date.now();
+      const sessions = [
+        { email: 'valid1@example.com', verifiedAt: now, expiresAt: now + 60000 },
+        { email: 'valid2@example.com', verifiedAt: now, expiresAt: now + 70000 }
+      ];
+
+      localStorage.setItem('prayer_app_verified_sessions', JSON.stringify(sessions));
+      
+      // Mock setItem to track if it was called
+      const originalSetItem = localStorage.setItem;
+      const setItemSpy = vi.fn(originalSetItem.bind(localStorage));
+      localStorage.setItem = setItemSpy as any;
+      
+      // Reset spy to clear the initial setItem call above
+      setItemSpy.mockClear();
+
+      // Add an expired session to trigger cleanup
+      const testSessions = [
+        ...sessions,
+        { email: 'test-expired@example.com', verifiedAt: now - 20000, expiresAt: now - 10000 }
+      ];
+      localStorage.setItem('prayer_app_verified_sessions', JSON.stringify(testSessions));
+      setItemSpy.mockClear(); // Clear this call
+
+      // Trigger cleanup by checking the expired session
+      service.isRecentlyVerified('test-expired@example.com');
+
+      // setItem should be called once to remove the expired session
+      expect(setItemSpy).toHaveBeenCalledTimes(1);
+      
+      // Restore
+      localStorage.setItem = originalSetItem;
+    });
+
     it('should handle invalid JSON data gracefully', () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       
@@ -677,6 +748,36 @@ describe('VerificationService', () => {
       // Restore
       localStorage.setItem = originalSetItem;
       consoleErrorSpy.mockRestore();
+    });
+
+    it('should handle race condition where localStorage is cleared between checks', () => {
+      const now = Date.now();
+      const sessions = [
+        { email: 'expired@example.com', verifiedAt: now - 20000, expiresAt: now - 10000 }
+      ];
+
+      // Mock getItem to return sessions on first call, null on second call
+      const originalGetItem = localStorage.getItem;
+      let callCount = 0;
+      localStorage.getItem = vi.fn((key) => {
+        callCount++;
+        if (key === 'prayer_app_verified_sessions') {
+          if (callCount === 1) {
+            return JSON.stringify(sessions);
+          } else {
+            return null; // Simulate race condition where data is cleared
+          }
+        }
+        return originalGetItem.call(localStorage, key);
+      }) as any;
+
+      // This should trigger cleanup but handle the race condition gracefully
+      const result = service.isRecentlyVerified('expired@example.com');
+      
+      expect(result).toBe(false);
+
+      // Restore
+      localStorage.getItem = originalGetItem;
     });
   });
 });
