@@ -348,10 +348,13 @@ describe('BackupStatusComponent', () => {
         }
       } as any;
 
-      await component.handleManualRestore(mockEvent);
+        // Ensure the File polyfill used in the test environment has a text() method
+        (mockFile as any).text = async () => JSON.stringify(invalidData);
 
-      expect(mockToastService.error).toHaveBeenCalledWith(expect.stringContaining('Invalid backup file format'));
-      expect(component.restoring).toBe(false);
+        await component.handleManualRestore(mockEvent);
+
+        expect(mockToastService.error).toHaveBeenCalledWith(expect.stringContaining('Invalid backup file format'));
+        expect(component.restoring).toBe(false);
     });
 
     it('should restore from valid backup file', async () => {
@@ -385,7 +388,16 @@ describe('BackupStatusComponent', () => {
         })
       });
 
-      const reloadSpy = vi.spyOn(window.location, 'reload').mockImplementation(() => {});
+      // Provide a safe mock for window.location.reload (some environments make it non-configurable)
+      const originalLocation = window.location;
+      try {
+        // Replace location with a shallow copy that contains a reload spy
+        delete (window as any).location;
+      } catch (e) {
+        // ignore
+      }
+      const reloadSpy = vi.fn();
+      (window as any).location = { ...originalLocation, reload: reloadSpy } as any;
 
       await component.handleManualRestore(mockEvent);
 
@@ -394,7 +406,11 @@ describe('BackupStatusComponent', () => {
 
       expect(component.restoring).toBe(false);
 
-      reloadSpy.mockRestore();
+      // restore original location
+      try {
+        delete (window as any).location;
+      } catch (e) {}
+      (window as any).location = originalLocation;
     });
 
     it('should handle restore errors', async () => {
@@ -423,7 +439,13 @@ describe('BackupStatusComponent', () => {
         })
       });
 
-      const reloadSpy = vi.spyOn(window.location, 'reload').mockImplementation(() => {});
+      // Provide a safe mock for window.location.reload (some environments make it non-configurable)
+      const originalLocation2 = window.location;
+      try {
+        delete (window as any).location;
+      } catch (e) {}
+      const reloadSpy2 = vi.fn();
+      (window as any).location = { ...originalLocation2, reload: reloadSpy2 } as any;
 
       await component.handleManualRestore(mockEvent);
 
@@ -432,7 +454,11 @@ describe('BackupStatusComponent', () => {
 
       expect(component.restoring).toBe(false);
 
-      reloadSpy.mockRestore();
+      // restore original location
+      try {
+        delete (window as any).location;
+      } catch (e) {}
+      (window as any).location = originalLocation2;
     });
   });
 });
