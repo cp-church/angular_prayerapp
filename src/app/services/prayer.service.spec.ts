@@ -1,3 +1,329 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { PrayerService, PrayerRequest } from './prayer.service';
+
+describe('PrayerService', () => {
+  let service: PrayerService;
+  let supabase: any;
+  let toast: any;
+  let emailNotification: any;
+  let verificationService: any;
+  let cache: any;
+
+  const makePrayer = (overrides: Partial<PrayerRequest> = {}): PrayerRequest => ({
+    id: '1',
+    title: 'T1',
+    description: 'D1',
+    status: 'current',
+    requester: 'Alice',
+    prayer_for: 'World',
+    email: null,
+    is_anonymous: false,
+    type: 'prayer',
+    date_requested: new Date().toISOString(),
+    date_answered: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    updates: [],
+    ...overrides
+  });
+
+  beforeEach(() => {
+    // Basic mocks
+    supabase = {
+      client: {
+        from: vi.fn(),
+        channel: vi.fn(() => ({ on: () => ({ on: () => ({ subscribe: () => ({}) }) }) })),
+        removeChannel: vi.fn()
+      }
+    };
+
+    toast = { success: vi.fn(), error: vi.fn() };
+    emailNotification = { sendAdminNotification: vi.fn().mockResolvedValue(undefined) };
+    verificationService = {};
+    cache = { get: vi.fn(() => null), set: vi.fn() };
+
+    // Ensure from() returns a safe default to avoid constructor side-effects failing
+    supabase.client.from.mockImplementation((table: string) => ({
+      select: () => ({ eq: () => ({ order: () => Promise.resolve({ data: [], error: null }) }) }),
+      insert: () => Promise.resolve({ data: null, error: null }),
+      delete: () => ({ eq: () => Promise.resolve({ data: null, error: null }) }),
+      update: () => ({ eq: () => Promise.resolve({ data: null, error: null }) }),
+      single: () => Promise.resolve({ data: null, error: null }),
+      maybeSingle: () => Promise.resolve({ data: null, error: null })
+    }));
+
+    service = new PrayerService(supabase, toast, emailNotification, verificationService as any, cache);
+  });
+
+  it('applyFilters filters by status, type, and search', () => {
+    const p1 = makePrayer({ id: 'a', title: 'Hello World', description: 'desc', requester: 'Bob', type: 'prayer', status: 'current' });
+    const p2 = makePrayer({ id: 'b', title: 'Prompt One', description: 'other', requester: 'Alice', type: 'prompt', status: 'answered' });
+
+    (service as any).allPrayersSubject.next([p1, p2]);
+
+    service.applyFilters({ status: 'current' });
+    expect((service as any).prayersSubject.value).toEqual([p1]);
+
+    service.applyFilters({ type: 'prompt' });
+    expect((service as any).prayersSubject.value).toEqual([p2]);
+
+    service.applyFilters({ search: 'hello' });
+    expect((service as any).prayersSubject.value).toEqual([p1]);
+  });
+
+  it('getFilteredPrayers filters by status and search', () => {
+    const p1 = makePrayer({ id: 'a', title: 'FindMe', description: 'desc', requester: 'Bob', prayer_for: 'X', status: 'current' });
+    const p2 = makePrayer({ id: 'b', title: 'Other', description: 'other', requester: 'Alice', prayer_for: 'FindMe', status: 'answered' });
+    (service as any).prayersSubject.next([p1, p2]);
+
+    expect(service.getFilteredPrayers({ status: 'current' })).toEqual([p1]);
+    expect(service.getFilteredPrayers({ search: 'findme' })).toEqual([p1, p2]);
+  });
+
+  it('addPrayer returns true on success and triggers notifications and subscribe flow', async () => {
+    // prayers insert -> returns data with id
+    supabase.client.from.mockImplementation((table: string) => {
+      if (table === 'prayers') {
+        return {
+          insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 'new' }, error: null } ) }) })
+        };
+      }
+      if (table === 'email_subscribers') {
+        return {
+          select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }),
+          insert: () => Promise.resolve({ data: { id: 'e1' }, error: null })
+        };
+      }
+      return { insert: () => Promise.resolve({ data: null, error: null }) };
+    });
+
+    const result = await service.addPrayer({ title: 'T', description: 'D', status: 'current', requester: 'R', prayer_for: 'P', email: 'test@example.com', is_anonymous: false });
+    expect(result).toBe(true);
+    expect(toast.success).toHaveBeenCalled();
+    expect(emailNotification.sendAdminNotification).toHaveBeenCalled();
+  });
+
+  it('addPrayer returns false on DB error and shows toast', async () => {
+    supabase.client.from.mockImplementation((table: string) => {
+      if (table === 'prayers') {
+        return { insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: null, error: new Error('fail') }) }) }) };
+      }
+      return { insert: () => Promise.resolve({ data: null, error: null }) };
+    });
+
+    const result = await service.addPrayer({ title: 'T', description: 'D', status: 'current', requester: 'R', prayer_for: 'P', email: null, is_anonymous: false });
+    expect(result).toBe(false);
+    expect(toast.error).toHaveBeenCalled();
+  });
+
+  it('updatePrayerStatus updates local state on success', async () => {
+    const p = makePrayer({ id: 'u1', status: 'current' });
+    (service as any).prayersSubject.next([p]);
+
+    supabase.client.from.mockImplementation((table: string) => ({ update: () => ({ eq: () => Promise.resolve({ error: null }) }) }));
+
+    const result = await service.updatePrayerStatus('u1', 'answered');
+    expect(result).toBe(true);
+    const updated = (service as any).prayersSubject.value.find((x: any) => x.id === 'u1');
+    expect(updated.status).toBe('answered');
+    expect(updated.date_answered).not.toBeNull();
+    expect(toast.success).toHaveBeenCalled();
+  });
+
+  it('updatePrayerStatus returns false on error', async () => {
+    supabase.client.from.mockImplementation((table: string) => ({ update: () => ({ eq: () => Promise.resolve({ error: new Error('x') }) }) }));
+    const result = await service.updatePrayerStatus('no', 'answered');
+    expect(result).toBe(false);
+    expect(toast.error).toHaveBeenCalled();
+  });
+
+  it('deletePrayer removes prayer on success', async () => {
+    const p = makePrayer({ id: 'del1' });
+    (service as any).prayersSubject.next([p]);
+    supabase.client.from.mockImplementation((table: string) => ({ delete: () => ({ eq: () => Promise.resolve({ error: null }) }) }));
+
+    const result = await service.deletePrayer('del1');
+    expect(result).toBe(true);
+    expect((service as any).prayersSubject.value.find((x: any) => x.id === 'del1')).toBeUndefined();
+    expect(toast.success).toHaveBeenCalled();
+  });
+
+  it('deletePrayerUpdate calls loadPrayers and returns true on success', async () => {
+    supabase.client.from.mockImplementation((table: string) => ({ delete: () => ({ eq: () => Promise.resolve({ error: null }) }) }));
+    const loadSpy = vi.spyOn(service as any, 'loadPrayers').mockResolvedValue(undefined);
+    const result = await service.deletePrayerUpdate('up1');
+    expect(result).toBe(true);
+    expect(loadSpy).toHaveBeenCalled();
+    expect(toast.success).toHaveBeenCalled();
+    loadSpy.mockRestore();
+  });
+
+  it('requestDeletion sends admin notification and returns true', async () => {
+    supabase.client.from.mockImplementation((table: string) => {
+      if (table === 'deletion_requests') {
+        return { insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 'dr1' }, error: null } ) }) }) };
+      }
+      if (table === 'prayers') {
+        return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { title: 'T' }, error: null } ) }) }) };
+      }
+      return { insert: () => Promise.resolve({ data: null, error: null }) };
+    });
+
+    const result = await service.requestDeletion({ prayer_id: 'p1', requester_first_name: 'A', requester_last_name: 'B', requester_email: 'e@x.com', reason: 'r' });
+    expect(result).toBe(true);
+    expect(emailNotification.sendAdminNotification).toHaveBeenCalled();
+    expect(toast.success).toHaveBeenCalled();
+  });
+
+  it('requestDeletion handles insert error and returns false', async () => {
+    supabase.client.from.mockImplementation((table: string) => ({ insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: null, error: new Error('no') }) }) }) }));
+    const result = await service.requestDeletion({ prayer_id: 'p1', requester_first_name: 'A', requester_last_name: 'B', requester_email: 'e@x.com', reason: 'r' });
+    expect(result).toBe(false);
+    expect(toast.error).toHaveBeenCalled();
+  });
+
+  it('loadPrayers formats and sorts prayers and caches them', async () => {
+    const now = new Date();
+    const recentUpdateDate = new Date(now.getTime() - 1000).toISOString();
+    const olderDate = new Date(now.getTime() - 100000).toISOString();
+
+    const prayersData = [
+      {
+        id: 'p1',
+        title: 'Old Prayer',
+        description: null,
+        status: 'current',
+        requester: 'A',
+        prayer_for: 'X',
+        email: null,
+        is_anonymous: false,
+        type: 'prayer',
+        date_requested: olderDate,
+        date_answered: null,
+        created_at: olderDate,
+        updated_at: olderDate,
+        prayer_updates: [
+          { id: 'u1', prayer_id: 'p1', content: 'u', author: 'a', created_at: recentUpdateDate, approval_status: 'approved' }
+        ]
+      },
+      {
+        id: 'p2',
+        title: 'New Prayer',
+        description: 'D',
+        status: 'current',
+        requester: 'B',
+        prayer_for: 'Y',
+        email: null,
+        is_anonymous: false,
+        type: 'prayer',
+        date_requested: now.toISOString(),
+        date_answered: null,
+        created_at: now.toISOString(),
+        updated_at: now.toISOString(),
+        prayer_updates: []
+      }
+    ];
+
+    supabase.client.from.mockImplementation((table: string) => {
+      if (table === 'prayers') {
+        return { select: () => ({ eq: () => ({ order: () => Promise.resolve({ data: prayersData, error: null }) }) }) };
+      }
+      return { select: () => ({ eq: () => Promise.resolve({ data: null, error: null }) }) };
+    });
+
+    const applySpy = vi.spyOn(service as any, 'applyFilters');
+    await (service as any).loadPrayers(false);
+    // cached set called
+    expect(cache.set).toHaveBeenCalled();
+    // allPrayers should be set and sorted (p2 has the most recent created_at so should come first)
+    const all = (service as any).allPrayersSubject.value;
+    expect(all.length).toBe(2);
+    expect(all[0].id).toBe('p2');
+    expect(applySpy).toHaveBeenCalled();
+  });
+
+  it('loadPrayers falls back to cache on error', async () => {
+    supabase.client.from.mockImplementation((table: string) => ({ select: () => ({ eq: () => ({ order: () => Promise.resolve({ data: null, error: new Error('boom') }) }) }) }));
+    const cached = [makePrayer({ id: 'c1' })];
+    cache.get.mockReturnValue(cached);
+
+    await (service as any).loadPrayers(false);
+    expect((service as any).allPrayersSubject.value).toEqual(cached);
+    expect((service as any).errorSubject.value).toBeNull();
+  });
+
+  it('addPrayerUpdate sends admin notification and toasts on success', async () => {
+    supabase.client.from.mockImplementation((table: string) => {
+      if (table === 'prayer_updates') {
+        return { insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 'up' }, error: null } ) }) }) };
+      }
+      if (table === 'prayers') {
+        return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { title: 'T' }, error: null } ) }) }) };
+      }
+      return {};
+    });
+
+    const res = await service.addPrayerUpdate('p1', 'c', 'au');
+    expect(res).toBe(true);
+    expect(toast.success).toHaveBeenCalled();
+    expect(emailNotification.sendAdminNotification).toHaveBeenCalled();
+  });
+
+  it('addUpdate handles detailed update submission', async () => {
+    supabase.client.from.mockImplementation((table: string) => {
+      if (table === 'prayer_updates') {
+        return { insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 'up2' }, error: null } ) }) }) };
+      }
+      if (table === 'prayers') {
+        return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { title: 'Title' }, error: null } ) }) }) };
+      }
+      return {};
+    });
+
+    const res = await service.addUpdate({ prayer_id: 'p1', content: 'c', author: 'a', author_email: 'e', is_anonymous: false, mark_as_answered: false });
+    expect(res).toBe(true);
+    expect(toast.success).toHaveBeenCalled();
+  });
+
+  it('requestUpdateDeletion sends notification and returns true', async () => {
+    supabase.client.from.mockImplementation((table: string) => {
+      if (table === 'update_deletion_requests') {
+        return { insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 'udr1' }, error: null } ) }) }) };
+      }
+      if (table === 'prayer_updates') {
+        return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { content: 'c', author: 'a', prayers: { title: 'T' } }, error: null } ) }) }) };
+      }
+      return {};
+    });
+
+    const res = await service.requestUpdateDeletion({ update_id: 'u1', requester_first_name: 'A', requester_last_name: 'B', requester_email: 'e@x.com', reason: 'r' });
+    expect(res).toBe(true);
+    expect(emailNotification.sendAdminNotification).toHaveBeenCalled();
+    expect(toast.success).toHaveBeenCalled();
+  });
+
+  it('triggerBackgroundRecovery uses cached data and restarts realtime subscription', async () => {
+    const cached = [makePrayer({ id: 'cache1' })];
+    cache.get.mockReturnValue(cached);
+    (service as any).realtimeChannel = null;
+    const setupSpy = vi.spyOn(service as any, 'setupRealtimeSubscription').mockImplementation(() => {});
+    vi.spyOn(service as any, 'loadPrayers').mockResolvedValue(undefined);
+
+    (service as any).triggerBackgroundRecovery();
+    expect((service as any).allPrayersSubject.value).toEqual(cached);
+    expect(setupSpy).toHaveBeenCalled();
+    setupSpy.mockRestore();
+  });
+
+  it('cleanup removes realtime channel and clears timeout', async () => {
+    (service as any).realtimeChannel = { id: 'chan1' };
+    supabase.client.removeChannel = vi.fn().mockResolvedValue(undefined);
+    (service as any).inactivityTimeout = 123 as any;
+    await (service as any).cleanup();
+    expect(supabase.client.removeChannel).toHaveBeenCalled();
+    expect((service as any).realtimeChannel).toBeNull();
+  });
+});
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { firstValueFrom } from 'rxjs';
 import { PrayerService, type PrayerRequest } from './prayer.service';

@@ -294,4 +294,186 @@ describe('LoginComponent', () => {
     expect(mocks.supabaseService.directMutation).toHaveBeenCalled();
     expect(mocks.router.navigate).toHaveBeenCalled();
   });
+
+  it('handleSubmit handles sendMfaCode failure and sets error', async () => {
+    const badMocks = makeMocks();
+    badMocks.adminAuthService.sendMfaCode = vi.fn(async () => ({ success: false, error: 'bad' }));
+    const comp = makeComponent(badMocks);
+    comp.email = 'bad@x.com';
+    await comp.handleSubmit(new Event('submit'));
+    expect(comp.error).toContain('bad');
+    expect(comp.loading).toBe(false);
+  });
+
+  it('handleSubmit catches exceptions from sendMfaCode', async () => {
+    const errMocks = makeMocks();
+    errMocks.adminAuthService.sendMfaCode = vi.fn(async () => { throw new Error('boom'); });
+    const comp = makeComponent(errMocks);
+    comp.email = 'boom@x.com';
+    await comp.handleSubmit(new Event('submit'));
+    expect(comp.error).toContain('boom');
+  });
+
+  it('verifyMfaCode handles verification failure branch', async () => {
+    const vMocks = makeMocks();
+    vMocks.adminAuthService.verifyMfaCode = vi.fn(async () => ({ success: false, error: 'invalid' }));
+    const comp = makeComponent(vMocks);
+    comp.codeLength = 4;
+    comp.mfaCode = ['1','2','3','4'];
+    comp.mfaCodeInput = '1234';
+    // spy focusInput so we can assert it's called when verification fails
+    const focusSpy = vi.spyOn(comp as any, 'focusInput');
+    await (comp as any).verifyMfaCode();
+    expect(comp.error).toContain('invalid');
+    expect(focusSpy).toHaveBeenCalled();
+  });
+
+  it('checkEmailSubscriber throws blocked error surfaces to user', async () => {
+    const comp = makeComponent(mocks);
+    // make directQuery return an object shaped { data, error }
+    mocks.supabaseService.directQuery = vi.fn(async () => ({ data: [{ id: '1', is_blocked: true }], error: null }));
+    await expect(comp['checkEmailSubscriber']('x@y.com')).rejects.toThrow('blocked');
+  });
+
+  it('fetchBranding handles thrown exception gracefully', async () => {
+    const compMocks = makeMocks();
+    compMocks.supabaseService.directQuery = vi.fn(async () => { throw new Error('network'); });
+    const comp = makeComponent(compMocks);
+    // call private method via any
+    await (comp as any).fetchBranding();
+    // nothing thrown and method completes
+    expect(true).toBe(true);
+  });
+
+  it('resetForm clears session and resets state', () => {
+    const comp = makeComponent(mocks);
+    sessionStorage.setItem('mfa_email_sent', 'true');
+    sessionStorage.setItem('mfa_email', 'a@b.com');
+    comp.success = true;
+    comp.waitingForMfaCode = true;
+    comp.email = 'a@b.com';
+    comp.mfaCode = ['1','2'];
+    comp.error = 'err';
+    comp.resetForm();
+    expect(sessionStorage.getItem('mfa_email_sent')).toBeNull();
+    expect(sessionStorage.getItem('mfa_email')).toBeNull();
+    expect(comp.success).toBe(false);
+    expect(comp.waitingForMfaCode).toBe(false);
+    expect(comp.email).toBe('');
+    expect(comp.error).toBe('');
+  });
+
+  it('handleCodeChange handles autofill and moves focus', () => {
+    const comp = makeComponent(mocks);
+    comp.codeLength = 4;
+    // Provide a codeInputs shape with .first and toArray
+    comp.codeInputs = { first: { nativeElement: { value: '' } }, toArray: () => [{ nativeElement: { focus: vi.fn() } }] } as any;
+    const focusSpy = vi.spyOn(comp as any, 'focusInput');
+    comp.handleCodeChange(0, { target: { value: '1234' } });
+    expect(comp.mfaCode.join('')).toBe('1234');
+    expect((comp.codeInputs as any).first.nativeElement.value).toBe('1');
+    expect(focusSpy).toHaveBeenCalledWith(3);
+  });
+
+  it('handleKeyDown handles Backspace and arrow navigation and Enter', async () => {
+    const comp = makeComponent(mocks);
+    comp.codeLength = 4;
+    comp.mfaCode = ['1','2','3','4'];
+    const focusSpy = vi.spyOn(comp as any, 'focusInput');
+    const prevent = vi.fn();
+    comp.handleKeyDown(2, { key: 'Backspace', preventDefault: prevent });
+    expect(prevent).toHaveBeenCalled();
+    expect(comp.mfaCode[2]).toBe('');
+    expect(focusSpy).toHaveBeenCalledWith(1);
+
+    focusSpy.mockClear();
+    comp.handleKeyDown(2, { key: 'ArrowLeft' });
+    expect(focusSpy).toHaveBeenCalledWith(1);
+
+    focusSpy.mockClear();
+    comp.handleKeyDown(1, { key: 'ArrowRight' });
+    expect(focusSpy).toHaveBeenCalledWith(2);
+
+    // Enter when complete should call handleSubmit
+    comp.mfaCodeInput = '1234';
+    const submitSpy = vi.spyOn(comp as any, 'handleSubmit');
+    await comp.handleKeyDown(1, { key: 'Enter' });
+    expect(submitSpy).toHaveBeenCalled();
+  });
+
+  it('handlePaste fills digits and focuses last input', () => {
+    const comp = makeComponent(mocks);
+    comp.codeLength = 4;
+    const focusSpy = vi.spyOn(comp as any, 'focusInput');
+    const event: any = { preventDefault: vi.fn(), clipboardData: { getData: vi.fn(() => '12 34') } };
+    comp.handlePaste(event);
+    expect(comp.mfaCode.join('')).toBe('1234');
+    expect(focusSpy).toHaveBeenCalledWith(3);
+  });
+
+  it('loadCachedLogo and updateLogoUrl set localStorage and logoUrl', () => {
+    // set window cache
+    (globalThis as any).__cachedLogos = { useLogo: true, light: 'LIMG', dark: 'DIMG' };
+    const comp = makeComponent(mocks);
+    // ensure localStorage empty
+    localStorage.clear();
+    (comp as any).loadCachedLogo();
+    // localStorage should now contain branding keys and component should reflect useLogo
+    expect(comp.useLogo).toBe(true);
+    expect(localStorage.getItem('branding_light_logo')).toBe('LIMG');
+    // test updateLogoUrl with dark mode
+    comp.useLogo = true;
+    comp.isDarkMode = true;
+    localStorage.setItem('branding_dark_logo', 'DIMG');
+    (comp as any).updateLogoUrl();
+    expect(comp.logoUrl).toBe('DIMG');
+    // light mode
+    comp.isDarkMode = false;
+    (comp as any).updateLogoUrl();
+    expect(comp.logoUrl).toBe('LIMG');
+  });
+
+  it('detectDarkMode uses system preference when theme is system', () => {
+    const sysMocks = makeMocks();
+    sysMocks.themeService.getTheme = vi.fn(() => 'system');
+    // stub matchMedia to report dark preference
+    vi.stubGlobal('matchMedia', (q: string) => ({ matches: true } as any));
+    const comp = new LoginComponent(
+      sysMocks.adminAuthService,
+      sysMocks.supabaseService,
+      sysMocks.emailNotificationService,
+      sysMocks.themeService,
+      sysMocks.router,
+      sysMocks.route,
+      sysMocks.cdr
+    );
+    (comp as any).detectDarkMode();
+    expect((comp as any).isDarkMode).toBe(true);
+  });
+
+  it('fetchCodeLength sets default on error or missing data', async () => {
+    const badMocks = makeMocks();
+    badMocks.supabaseService.client.from = vi.fn(() => ({ select: vi.fn(() => ({ eq: vi.fn(() => ({ maybeSingle: vi.fn(async () => ({ data: null, error: null }) ) })) })) }));
+    const comp = new LoginComponent(
+      badMocks.adminAuthService,
+      badMocks.supabaseService,
+      badMocks.emailNotificationService,
+      badMocks.themeService,
+      badMocks.router,
+      badMocks.route,
+      badMocks.cdr
+    );
+    await (comp as any).fetchCodeLength();
+    expect(comp.codeLength).toBe(4);
+    // now throw
+    badMocks.supabaseService.client.from = () => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: async () => { throw new Error('db'); }
+        })
+      })
+    }) as any;
+    await (comp as any).fetchCodeLength();
+    expect(comp.codeLength).toBe(4);
+  });
 });
