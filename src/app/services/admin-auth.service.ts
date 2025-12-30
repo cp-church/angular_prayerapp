@@ -116,6 +116,53 @@ export class AdminAuthService {
         console.error('Error refreshing timeout settings on focus:', error);
       });
       this.checkBlockedStatusInBackground();
+      
+      // Re-validate admin status on focus after background suspension (iOS Edge issue)
+      const currentUser = this.userSubject.value;
+      if (currentUser) {
+        this.checkAdminStatus(currentUser).catch(error => {
+          console.error('Error re-validating admin status on focus:', error);
+        });
+      }
+      
+      // Also check approval session is still valid
+      const approvalEmail = localStorage.getItem('approvalAdminEmail');
+      const sessionValidated = localStorage.getItem('approvalSessionValidated');
+      if (approvalEmail && sessionValidated === 'true') {
+        this.isEmailAdmin(approvalEmail).then(isAdmin => {
+          this.isAdminSubject.next(isAdmin);
+          this.hasAdminEmailSubject.next(isAdmin);
+        }).catch(error => {
+          console.error('Error re-validating approval session on focus:', error);
+        });
+      }
+    });
+
+    // Also handle visibilitychange event for iOS app background/foreground transitions
+    // This fires before focus on some iOS browsers
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        console.log('[AdminAuth] App became visible, re-validating admin state');
+        // Re-validate admin status when app returns from background
+        const currentUser = this.userSubject.value;
+        if (currentUser) {
+          this.checkAdminStatus(currentUser).catch(error => {
+            console.error('Error re-validating admin status on visibility change:', error);
+          });
+        }
+        
+        // Check approval session
+        const approvalEmail = localStorage.getItem('approvalAdminEmail');
+        const sessionValidated = localStorage.getItem('approvalSessionValidated');
+        if (approvalEmail && sessionValidated === 'true') {
+          this.isEmailAdmin(approvalEmail).then(isAdmin => {
+            this.isAdminSubject.next(isAdmin);
+            this.hasAdminEmailSubject.next(isAdmin);
+          }).catch(error => {
+            console.error('Error re-validating approval session on visibility change:', error);
+          });
+        }
+      }
     });
 
     // Set up session timeout checks
