@@ -913,24 +913,11 @@ describe('PromptManagerComponent', () => {
       global.FileReader = class MockFileReader {
         onload: any;
         readAsText() {
-          // Call onload with data that will cause parsing to fail
+          // Provide a non-string result so `text.split` in the component throws
           setTimeout(() => {
             if (this.onload) {
-              try {
-                // Create an event that causes the split to throw
-                const mockEvent = {
-                  target: {
-                    result: {
-                      split: () => {
-                        throw new Error('Mock parsing error');
-                      }
-                    }
-                  }
-                };
-                this.onload(mockEvent);
-              } catch (e) {
-                // Error is handled in the component
-              }
+              const mockEvent = { target: { result: {} } } as any;
+              this.onload(mockEvent);
             }
           }, 10);
         }

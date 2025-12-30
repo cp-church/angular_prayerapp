@@ -187,7 +187,9 @@ describe('EmailNotificationService', () => {
     } as any;
 
     mockApprovalLinksService = {
-      createApprovalLink: vi.fn().mockReturnValue('mock-approval-link')
+      createApprovalLink: vi.fn().mockReturnValue('mock-approval-link'),
+      generateCode: vi.fn().mockReturnValue('code-xyz'),
+      generateApprovalLink: vi.fn().mockResolvedValue('http://approve')
     } as any;
 
     // Mock window.location
@@ -902,6 +904,150 @@ describe('EmailNotificationService', () => {
 
       await expect(service.sendAdminNotification(mockPayload)).resolves.not.toThrow();
       expect(consoleErrorSpy).toHaveBeenCalledWith('Error in sendAdminNotification:', expect.any(Error));
+    });
+  });
+
+  describe('private helpers and edge branches', () => {
+    it('sendAccountApprovalNotificationToEmail logs when template missing', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      // mock getTemplate to return null
+      vi.spyOn(service, 'getTemplate' as any).mockResolvedValueOnce(null as any);
+
+      // call private method
+      await (service as any).sendAccountApprovalNotificationToEmail('u@u', 'F', 'L', 'admin@a');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Account approval request template not found');
+    });
+
+    it('sendAdminNotificationToEmail falls back when template missing and uses adminLink from approvalLinks', async () => {
+      const spySend = vi.spyOn(service as any, 'sendEmail').mockResolvedValue(undefined as any);
+
+      // ensure approval link is generated
+      (service as any).approvalLinks = { generateApprovalLink: vi.fn().mockResolvedValue('http://admin.link') };
+
+      // template missing
+      vi.spyOn(service, 'getTemplate' as any).mockResolvedValueOnce(null as any);
+
+      const payload = { type: 'prayer', title: 'T', requester: 'R' } as any;
+
+      await (service as any).sendAdminNotificationToEmail(payload, 'admin@a');
+
+      expect(spySend).toHaveBeenCalledWith(expect.objectContaining({ to: ['admin@a'] }));
+    });
+
+    it('sendAdminNotificationToEmail uses template when present for update and deletion types', async () => {
+      const spySend = vi.spyOn(service as any, 'sendEmail').mockResolvedValue(undefined as any);
+
+      const tpl = { subject: 'S', html_body: '<p>{{updateContent}}</p>', text_body: 't' } as any;
+      // update
+      vi.spyOn(service, 'getTemplate' as any).mockResolvedValueOnce(tpl as any);
+      await (service as any).sendAdminNotificationToEmail({ type: 'update', title: 'T', author: 'A', content: 'C' } as any, 'a@a');
+      expect(spySend).toHaveBeenCalled();
+
+      // deletion
+      vi.spyOn(service, 'getTemplate' as any).mockResolvedValueOnce(tpl as any);
+      await (service as any).sendAdminNotificationToEmail({ type: 'deletion', title: 'T', requester: 'R', reason: 'R' } as any, 'a@a');
+      expect(spySend).toHaveBeenCalled();
+    });
+
+    it('sendAdminNotificationToEmail handles unknown payload type fallback', async () => {
+      const spySend = vi.spyOn(service as any, 'sendEmail').mockResolvedValue(undefined as any);
+
+      vi.spyOn(service, 'getTemplate' as any).mockResolvedValueOnce(null as any);
+
+      await (service as any).sendAdminNotificationToEmail({ type: 'unknown', title: 'X' } as any, 'a@a');
+
+      expect(spySend).toHaveBeenCalledWith(expect.objectContaining({ to: ['a@a'] }));
+    });
+
+    it('template generators return HTML containing expected content and branches', () => {
+      // Approved prayer
+      const ap = { title: 'Title A', prayerFor: 'Community', requester: 'Req', description: 'Desc', status: 'current' } as any;
+      const apHtml = (service as any).generateApprovedPrayerHTML(ap);
+      expect(apHtml).toContain('New Prayer Request');
+      expect(apHtml).toContain(ap.title);
+
+      // Approved update - answered and not answered
+      const updAnswered = { prayerTitle: 'P1', content: 'C1', author: 'Auth', markedAsAnswered: true } as any;
+      const updHtmlAnswered = (service as any).generateApprovedUpdateHTML(updAnswered);
+      expect(updHtmlAnswered).toContain('Answered Prayer');
+      expect(updHtmlAnswered).toContain(updAnswered.prayerTitle);
+
+      const updNotAnswered = { prayerTitle: 'P2', content: 'C2', author: 'Auth2', markedAsAnswered: false } as any;
+      const updHtmlNotAnswered = (service as any).generateApprovedUpdateHTML(updNotAnswered);
+      expect(updHtmlNotAnswered).toContain('Prayer Update');
+      expect(updHtmlNotAnswered).toContain(updNotAnswered.prayerTitle);
+
+      // Requester approval
+      const req = { title: 'Treq', description: 'Dreq', requester: 'R1' } as any;
+      const reqHtml = (service as any).generateRequesterApprovalHTML(req);
+      expect(reqHtml).toContain('Prayer Request Approved');
+      expect(reqHtml).toContain(req.requester);
+
+      // Denied templates
+      const den = { title: 'TD', description: 'DD', requester: 'RR', denialReason: 'No' } as any;
+      const denHtml = (service as any).generateDeniedPrayerHTML(den);
+      expect(denHtml).toContain('Prayer Request Not Approved');
+      expect(denHtml).toContain(den.denialReason);
+
+      const denUpd = { prayerTitle: 'PU', content: 'CU', author: 'AU', denialReason: 'Reason' } as any;
+      const denUpdHtml = (service as any).generateDeniedUpdateHTML(denUpd);
+      expect(denUpdHtml).toContain('Update Status');
+      expect(denUpdHtml).toContain(denUpd.denialReason);
+
+      // Admin notification fallbacks
+      const adminLink = 'http://admin.local';
+      const adminPayload = { type: 'prayer', title: 'AdminTitle', requester: 'Anon', description: 'Desc' } as any;
+      const a1 = (service as any).generateAdminNotificationPrayerHTML(adminPayload, adminLink);
+      expect(a1).toContain('Go to Admin Portal');
+      expect(a1).toContain(adminLink);
+
+      const a2 = (service as any).generateAdminNotificationUpdateHTML(adminPayload, adminLink);
+      expect(a2).toContain('New Prayer Update');
+      expect(a2).toContain(adminLink);
+
+      const a3 = (service as any).generateAdminNotificationDeletionHTML(adminPayload, adminLink);
+      expect(a3).toContain('Deletion Request');
+      expect(a3).toContain(adminLink);
+    });
+
+    it('sendAdminNotificationToEmail uses default adminLink when generateApprovalLink returns null', async () => {
+      const spySend = vi.spyOn(service as any, 'sendEmail').mockResolvedValue(undefined as any);
+      // approvalLinks.generateApprovalLink resolves to null
+      (service as any).approvalLinks = { generateApprovalLink: vi.fn().mockResolvedValue(null) } as any;
+
+      await (service as any).sendAdminNotificationToEmail({ type: 'prayer', title: 'T', requestId: 'rid', requester: 'R' } as any, 'adm@a');
+
+      expect(spySend).toHaveBeenCalled();
+      const sent = spySend.mock.calls[0][0];
+      expect(sent.htmlBody || sent.textBody).toContain('#admin');
+    });
+
+    it('sendAdminNotificationToEmail falls back for update when template missing and uses approval link', async () => {
+      const spySend = vi.spyOn(service as any, 'sendEmail').mockResolvedValue(undefined as any);
+      // approvalLinks.generateApprovalLink returns a real link
+      (service as any).approvalLinks = { generateApprovalLink: vi.fn().mockResolvedValue('http://custom.link') } as any;
+      // template missing
+      vi.spyOn(service, 'getTemplate' as any).mockResolvedValueOnce(null as any);
+
+      await (service as any).sendAdminNotificationToEmail({ type: 'update', title: 'UT', requestId: 'rid', author: 'AU', content: 'C' } as any, 'adm@a');
+
+      expect(spySend).toHaveBeenCalled();
+      const sent = spySend.mock.calls[0][0];
+      expect(sent.htmlBody || sent.textBody).toContain('http://custom.link');
+    });
+
+    it('sendAdminNotificationToEmail falls back for deletion when template missing and uses approval link', async () => {
+      const spySend = vi.spyOn(service as any, 'sendEmail').mockResolvedValue(undefined as any);
+      (service as any).approvalLinks = { generateApprovalLink: vi.fn().mockResolvedValue('http://del.link') } as any;
+      vi.spyOn(service, 'getTemplate' as any).mockResolvedValueOnce(null as any);
+
+      await (service as any).sendAdminNotificationToEmail({ type: 'deletion', title: 'DEL', requestId: 'rid', requester: 'RQ', reason: 'Because' } as any, 'adm@a');
+
+      expect(spySend).toHaveBeenCalled();
+      const sent = spySend.mock.calls[0][0];
+      expect(sent.htmlBody || sent.textBody).toContain('http://del.link');
     });
   });
 });
