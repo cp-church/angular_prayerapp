@@ -60,7 +60,7 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
       <!-- Main Content Display -->
       @if (!loading && items.length > 0) {
       <div 
-        [class]="'h-screen flex flex-col justify-center px-6 py-6 transition-all duration-300 relative z-0 ' + (showControls ? 'pb-28' : 'pb-6')">
+        [class]="'h-screen flex flex-col justify-center px-3 md:px-6 py-6 transition-all duration-300 relative z-0 ' + (showControls ? 'pb-28' : 'pb-6')">
         <div class="w-full max-w-6xl mx-auto h-full">
           <div class="h-full overflow-y-auto flex items-center px-2">
             <app-prayer-display-card

@@ -240,7 +240,10 @@ describe('VerificationService', () => {
         }))
       }));
 
-      supabaseService.client.from = fromMock;
+      Object.defineProperty(supabaseService.client, 'from', {
+        value: fromMock,
+        writable: true
+      });
 
       await service.refreshStatus();
 
@@ -259,7 +262,10 @@ describe('VerificationService', () => {
         }))
       }));
 
-      supabaseService.client.from = fromMock;
+      Object.defineProperty(supabaseService.client, 'from', {
+        value: fromMock,
+        writable: true
+      });
 
       await service.refreshStatus();
 
@@ -281,7 +287,10 @@ describe('VerificationService', () => {
         }))
       }));
 
-      supabaseService.client.from = fromMock;
+      Object.defineProperty(supabaseService.client, 'from', {
+        value: fromMock,
+        writable: true
+      });
 
       await service.refreshStatus();
 
@@ -303,7 +312,10 @@ describe('VerificationService', () => {
         }))
       }));
 
-      supabaseService.client.from = fromMock;
+      Object.defineProperty(supabaseService.client, 'from', {
+        value: fromMock,
+        writable: true
+      });
 
       await service.refreshStatus();
 
@@ -338,7 +350,10 @@ describe('VerificationService', () => {
         error: null
       }));
 
-      supabaseService.client.functions = { invoke: invokeMock } as any;
+      Object.defineProperty(supabaseService.client, 'functions', {
+        value: { invoke: invokeMock },
+        writable: true
+      });
 
       const result = await service.requestCode('test@example.com', 'prayer_submission', { title: 'Test' });
 
@@ -360,7 +375,10 @@ describe('VerificationService', () => {
         error: { message: 'Function failed' }
       }));
 
-      supabaseService.client.functions = { invoke: invokeMock } as any;
+      Object.defineProperty(supabaseService.client, 'functions', {
+        value: { invoke: invokeMock },
+        writable: true
+      });
 
       await expect(
         service.requestCode('test@example.com', 'prayer_submission', {})
@@ -375,7 +393,10 @@ describe('VerificationService', () => {
         error: {} // No message property
       }));
 
-      supabaseService.client.functions = { invoke: invokeMock } as any;
+      Object.defineProperty(supabaseService.client, 'functions', {
+        value: { invoke: invokeMock },
+        writable: true
+      });
 
       await expect(
         service.requestCode('test@example.com', 'prayer_submission', {})
@@ -390,7 +411,10 @@ describe('VerificationService', () => {
         error: null
       }));
 
-      supabaseService.client.functions = { invoke: invokeMock } as any;
+      Object.defineProperty(supabaseService.client, 'functions', {
+        value: { invoke: invokeMock },
+        writable: true
+      });
 
       await expect(
         service.requestCode('invalid-email', 'prayer_submission', {})
@@ -405,7 +429,10 @@ describe('VerificationService', () => {
         error: null
       }));
 
-      supabaseService.client.functions = { invoke: invokeMock } as any;
+      Object.defineProperty(supabaseService.client, 'functions', {
+        value: { invoke: invokeMock },
+        writable: true
+      });
 
       await expect(
         service.requestCode('invalid-email', 'prayer_submission', {})
@@ -420,7 +447,10 @@ describe('VerificationService', () => {
         error: null
       }));
 
-      supabaseService.client.functions = { invoke: invokeMock } as any;
+      Object.defineProperty(supabaseService.client, 'functions', {
+        value: { invoke: invokeMock },
+        writable: true
+      });
 
       await expect(
         service.requestCode('invalid-email', 'prayer_submission', {})
@@ -435,7 +465,10 @@ describe('VerificationService', () => {
         error: null
       }));
 
-      supabaseService.client.functions = { invoke: invokeMock } as any;
+      Object.defineProperty(supabaseService.client, 'functions', {
+        value: { invoke: invokeMock },
+        writable: true
+      });
 
       await expect(
         service.requestCode('test@example.com', 'prayer_submission', {})
@@ -450,7 +483,10 @@ describe('VerificationService', () => {
         error: null
       }));
 
-      supabaseService.client.functions = { invoke: invokeMock } as any;
+      Object.defineProperty(supabaseService.client, 'functions', {
+        value: { invoke: invokeMock },
+        writable: true
+      });
 
       const result = await service.verifyCode('test@example.com', 'code123', '123456');
 
@@ -470,7 +506,10 @@ describe('VerificationService', () => {
         error: null
       }));
 
-      supabaseService.client.functions = { invoke: invokeMock } as any;
+      Object.defineProperty(supabaseService.client, 'functions', {
+        value: { invoke: invokeMock },
+        writable: true
+      });
 
       await service.verifyCode('test@example.com', 'code123', '123456');
 
@@ -484,7 +523,10 @@ describe('VerificationService', () => {
         error: { message: 'Function failed' }
       }));
 
-      supabaseService.client.functions = { invoke: invokeMock } as any;
+      Object.defineProperty(supabaseService.client, 'functions', {
+        value: { invoke: invokeMock },
+        writable: true
+      });
 
       await expect(
         service.verifyCode('test@example.com', 'code123', '123456')
@@ -497,7 +539,10 @@ describe('VerificationService', () => {
         error: {} // No message property
       }));
 
-      supabaseService.client.functions = { invoke: invokeMock } as any;
+      Object.defineProperty(supabaseService.client, 'functions', {
+        value: { invoke: invokeMock },
+        writable: true
+      });
 
       await expect(
         service.verifyCode('test@example.com', 'code123', '123456')
@@ -510,7 +555,10 @@ describe('VerificationService', () => {
         error: null
       }));
 
-      supabaseService.client.functions = { invoke: invokeMock } as any;
+      Object.defineProperty(supabaseService.client, 'functions', {
+        value: { invoke: invokeMock },
+        writable: true
+      });
 
       await expect(
         service.verifyCode('test@example.com', 'code123', 'wrong')
@@ -523,7 +571,10 @@ describe('VerificationService', () => {
         error: null
       }));
 
-      supabaseService.client.functions = { invoke: invokeMock } as any;
+      Object.defineProperty(supabaseService.client, 'functions', {
+        value: { invoke: invokeMock },
+        writable: true
+      });
 
       await expect(
         service.verifyCode('test@example.com', 'code123', '123456')
@@ -544,7 +595,10 @@ describe('VerificationService', () => {
         }))
       }));
 
-      supabaseService.client.from = fromMock;
+      Object.defineProperty(supabaseService.client, 'from', {
+        value: fromMock,
+        writable: true
+      });
 
       const length = await service.getCodeLength();
       expect(length).toBe(8);
@@ -562,7 +616,10 @@ describe('VerificationService', () => {
         }))
       }));
 
-      supabaseService.client.from = fromMock;
+      Object.defineProperty(supabaseService.client, 'from', {
+        value: fromMock,
+        writable: true
+      });
 
       const length = await service.getCodeLength();
       expect(length).toBe(6);
@@ -579,7 +636,10 @@ describe('VerificationService', () => {
         }))
       }));
 
-      supabaseService.client.from = fromMock;
+      Object.defineProperty(supabaseService.client, 'from', {
+        value: fromMock,
+        writable: true
+      });
 
       const length = await service.getCodeLength();
       expect(length).toBe(6);
