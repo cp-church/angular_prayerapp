@@ -894,7 +894,7 @@ describe('PromptManagerComponent', () => {
   });
 
   describe('handleCSVUpload', () => {
-    it('should handle CSV parsing errors gracefully', (done) => {
+    it('should handle CSV parsing errors gracefully', async () => {
       // Set up prayer types for parsing
       component.prayerTypes = [{ id: '1', name: 'Prayer', order: 1 }];
       
@@ -925,16 +925,15 @@ describe('PromptManagerComponent', () => {
       
       component.handleCSVUpload(event);
       
-      // Wait for processing
-      setTimeout(() => {
-        expect(component.error).toBe('Failed to parse CSV file');
-        expect(consoleErrorSpy).toHaveBeenCalled();
-        
-        // Restore
-        global.FileReader = originalFileReader;
-        consoleErrorSpy.mockRestore();
-        done();
-      }, 100);
+      // Wait for processing with proper async handling
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      expect(component.error).toBe('Failed to parse CSV file');
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      
+      // Restore
+      global.FileReader = originalFileReader;
+      consoleErrorSpy.mockRestore();
     });
   });
 });
