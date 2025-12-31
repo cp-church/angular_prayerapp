@@ -330,17 +330,17 @@ interface NewUpdate {
   }
 
   <!-- Bulk Actions -->
-  @if (searchResults.length > 0) {
+  @if (displayPrayers.length > 0) {
   <div class="flex flex-wrap items-start justify-between gap-3 mb-4 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
     <div class="flex items-center gap-3 w-full sm:w-auto">
       <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
         <input
           type="checkbox"
-          [checked]="selectedPrayers.size === searchResults.length && searchResults.length > 0"
+          [checked]="selectedPrayers.size === displayPrayers.length && displayPrayers.length > 0"
           (change)="toggleSelectAll()"
           class="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
         />
-        <span>Select All ({{ searchResults.length }})</span>
+        <span>Select All ({{ displayPrayers.length }})</span>
       </label>
       @if (selectedPrayers.size > 0) {
       <span class="text-sm text-red-600 dark:text-red-400 font-medium">
@@ -1277,6 +1277,7 @@ export class PrayerSearchComponent implements OnInit {
       newSelected.add(prayerId);
     }
     this.selectedPrayers = newSelected;
+    this.cdr.markForCheck();
   }
 
   toggleSelectAll(): void {
@@ -1285,6 +1286,7 @@ export class PrayerSearchComponent implements OnInit {
     } else {
       this.selectedPrayers = new Set(this.displayPrayers.map(p => p.id));
     }
+    this.cdr.markForCheck();
   }
 
   toggleExpandCard(id: string): void {
@@ -1568,6 +1570,7 @@ export class PrayerSearchComponent implements OnInit {
       this.currentPage = 1;
       this.loadPageData();
       this.selectedPrayers = new Set();
+      this.cdr.markForCheck();
       this.prayerService.loadPrayers().catch(err => {
         console.debug('[PrayerSearch] Refresh after bulk delete failed:', err);
       });
@@ -1579,6 +1582,7 @@ export class PrayerSearchComponent implements OnInit {
       this.toast.error(errorMessage);
     } finally {
       this.deleting = false;
+      this.cdr.markForCheck();
     }
   }
 
@@ -1611,10 +1615,17 @@ export class PrayerSearchComponent implements OnInit {
       this.allPrayers = this.allPrayers.map(p =>
         this.selectedPrayers.has(p.id) ? { ...p, status: this.bulkStatus } : p
       );
+      this.searchResults = this.searchResults.map(p =>
+        this.selectedPrayers.has(p.id) ? { ...p, status: this.bulkStatus } : p
+      );
       this.loadPageData();
 
       this.selectedPrayers = new Set();
       this.bulkStatus = '';
+      this.cdr.markForCheck();
+      this.prayerService.loadPrayers().catch(err => {
+        console.debug('[PrayerSearch] Refresh after bulk status update failed:', err);
+      });
       this.toast.success(`${prayerIds.length} prayers updated to ${statusLabel}`);
     } catch (err: unknown) {
       console.error('Error updating prayer statuses:', err);
@@ -1623,6 +1634,7 @@ export class PrayerSearchComponent implements OnInit {
       this.toast.error(errorMessage);
     } finally {
       this.updatingStatus = false;
+      this.cdr.markForCheck();
     }
   }
 
