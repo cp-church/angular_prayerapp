@@ -163,6 +163,27 @@ serve(async (req) => {
       console.log('✅ Code marked as used');
     }
 
+    // Clean up expired codes while we're here
+    const cleanupResponse = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/cleanup_expired_verification_codes`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_SERVICE_ROLE_KEY,
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (!cleanupResponse.ok) {
+      const error = await cleanupResponse.text();
+      console.warn('⚠️ Cleanup function failed (non-critical):', error);
+      // Don't fail the request if cleanup fails - it's not critical
+    } else {
+      console.log('✅ Cleaned up expired verification codes');
+    }
+
     // Return the action data
     return new Response(JSON.stringify({
       success: true,

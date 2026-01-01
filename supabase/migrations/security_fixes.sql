@@ -6,8 +6,8 @@ CREATE OR REPLACE FUNCTION cleanup_expired_verification_codes()
 RETURNS void AS $$
 BEGIN
   DELETE FROM verification_codes
-  WHERE expires_at < NOW() - INTERVAL '24 hours'
-  OR (used_at IS NOT NULL AND used_at < NOW() - INTERVAL '24 hours');
+  WHERE expires_at < NOW()  -- Delete expired codes immediately
+  OR (used_at IS NOT NULL AND used_at < NOW() - INTERVAL '1 hour');  -- Delete used codes after 1 hour
 END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
