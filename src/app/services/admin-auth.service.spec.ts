@@ -359,22 +359,37 @@ describe('AdminAuthService', () => {
       expect(result.error).toContain('No MFA session found');
     });
 
-    it('should handle verification error', async () => {
+    it('should handle verification error with user-friendly message', async () => {
       localStorage.setItem('mfa_code_id', 'code123');
       localStorage.setItem('mfa_user_email', 'test@example.com');
 
       mockSupabaseClient.functions.invoke = vi.fn().mockResolvedValue({
         data: null,
-        error: { message: 'Invalid code' }
+        error: { message: 'Edge Function returned a non-2xx status code' }
       });
 
       const result = await service.verifyMfaCode('000000');
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Invalid code');
+      expect(result.error).toBe('The verification code you entered is incorrect. Please try again.');
     });
 
-    it('should handle service error in response data', async () => {
+    it('should handle service error with specific Invalid verification code message', async () => {
+      localStorage.setItem('mfa_code_id', 'code123');
+      localStorage.setItem('mfa_user_email', 'test@example.com');
+
+      mockSupabaseClient.functions.invoke = vi.fn().mockResolvedValue({
+        data: { error: 'Invalid verification code' },
+        error: null
+      });
+
+      const result = await service.verifyMfaCode('123456');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('The code you entered is incorrect. Please check and try again.');
+    });
+
+    it('should handle generic service error with fallback message', async () => {
       localStorage.setItem('mfa_code_id', 'code123');
       localStorage.setItem('mfa_user_email', 'test@example.com');
 
@@ -386,7 +401,7 @@ describe('AdminAuthService', () => {
       const result = await service.verifyMfaCode('123456');
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Code expired');
+      expect(result.error).toBe('Verification failed. Please try again.');
     });
 
     it('should handle unexpected errors', async () => {

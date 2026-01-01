@@ -493,12 +493,22 @@ export class AdminAuthService {
 
       if (error) {
         console.error('[AdminAuth] Verify code error:', error);
-        return { success: false, error: error.message };
+        // Provide user-friendly error message
+        let errorMessage = 'The verification code you entered is incorrect. Please try again.';
+        if (error.message && error.message.includes('non-2xx')) {
+          errorMessage = 'The verification code you entered is incorrect. Please try again.';
+        }
+        return { success: false, error: errorMessage };
       }
 
       if (data.error) {
         console.error('[AdminAuth] Code verification failed:', data.error);
-        return { success: false, error: data.error };
+        // Use the detailed error from the Edge Function or provide a friendly fallback
+        let errorMessage = 'Verification failed. Please try again.';
+        if (data.error === 'Invalid verification code') {
+          errorMessage = 'The code you entered is incorrect. Please check and try again.';
+        }
+        return { success: false, error: errorMessage };
       }
 
       // Check if user is an admin

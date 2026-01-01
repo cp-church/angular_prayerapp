@@ -70,10 +70,11 @@ import { environment } from '../../../environments/environment';
             <!-- MFA Code Input Form -->
             @if (waitingForMfaCode) {
             <div class="mt-4">
-              <form class="bg-white dark:bg-gray-800 rounded-md p-4 border border-emerald-200 dark:border-emerald-800 space-y-4" (ngSubmit)="handleSubmit($event)" novalidate>
+              <div class="bg-white dark:bg-gray-800 rounded-md p-4 border border-emerald-200 dark:border-emerald-800 space-y-4">
                 <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
                   Enter Your Verification Code
                 </h4>
+                @if (!loading) {
                 <input
                   #codeField
                   id="mfa-code-input"
@@ -82,11 +83,10 @@ import { environment } from '../../../environments/environment';
                   maxlength="6"
                   name="mfa-code-input"
                   [(ngModel)]="mfaCodeInput"
+                  (input)="onCodeInput()"
                   (blur)="sanitizeCodeInput()"
                   (keydown.enter)="handleSubmit($event)"
                   autocomplete="one-time-code"
-                  [disabled]="loading"
-                  [readonly]="loading"
                   placeholder="Code"
                   autofocus
                   class="w-full px-4 py-3 text-center text-2xl font-semibold letter-spacing tracking-widest border-2 rounded-lg
@@ -95,6 +95,14 @@ import { environment } from '../../../environments/environment';
                          disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60
                          transition-opacity duration-200"
                 />
+                }
+                
+                @if (loading) {
+                <div class="w-full py-3 px-4 text-center bg-white dark:bg-gray-700 border-2 border-emerald-400 dark:border-emerald-600 rounded-lg flex items-center justify-center gap-3">
+                  <div class="animate-spin rounded-full h-6 w-6 border-3 border-emerald-400 dark:border-emerald-500 border-t-transparent"></div>
+                  <span class="text-sm font-medium text-[#2F5F54] dark:text-emerald-400">Verifying code...</span>
+                </div>
+                }
 
                 <!-- Error Message for Code Verification -->
                 @if (error && waitingForMfaCode) {
@@ -107,23 +115,6 @@ import { environment } from '../../../environments/environment';
                 </div>
                 }
 
-                <!-- Verify Button -->
-                <button
-                  type="submit"
-                  [disabled]="loading || !isCodeComplete()"
-                  class="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#2F5F54] hover:bg-[#1a3a2e] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2F5F54] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  @if (loading) {
-                  <div class="flex items-center justify-center gap-2">
-                    <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Verifying...
-                  </div>
-                  }
-                  @if (!loading) {
-                  <span>Verify Code</span>
-                  }
-                </button>
-
                 <!-- Resend Code Button -->
                 <button
                   (click)="handleResendCode()"
@@ -133,7 +124,7 @@ import { environment } from '../../../environments/environment';
                 >
                   {{ resendLoading ? 'Sending...' : 'Resend Code' }}
                 </button>
-              </form>
+              </div>
             </div>
             }
 
@@ -271,7 +262,7 @@ import { environment } from '../../../environments/environment';
                 </li>
                 <li class="flex items-start gap-2">
                   <span class="flex-shrink-0 w-5 h-5 bg-[#2F5F54] dark:bg-emerald-500 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
-                  <span>Enter the code above and click <strong>"Verify Code"</strong></span>
+                  <span>Enter the code above and it will verify automatically</span>
                 </li>
               </ol>
             </div>
@@ -527,8 +518,17 @@ export class LoginComponent implements OnInit, OnDestroy {
     }
   }
 
-  private async verifyMfaCode() {
+  async verifyMfaCode() {
     try {
+      // Prevent double submission
+      if (this.loading) {
+        return;
+      }
+      
+      this.loading = true;
+      this.error = '';
+      this.cdr.markForCheck();
+      
       // Sanitize input before checking
       this.sanitizeCodeInput();
       
@@ -684,6 +684,19 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.mfaCodeInput = value;
     this.mfaCode = value.split('');
     this.cdr.markForCheck();
+  }
+
+  onCodeInput(): void {
+    // Sanitize and check if code is complete
+    this.sanitizeCodeInput();
+    
+    // Automatically submit when code is complete (only if not already loading)
+    if (this.isCodeComplete() && !this.loading) {
+      // Use setTimeout to ensure the UI has updated before submission
+      setTimeout(() => {
+        this.verifyMfaCode();
+      }, 0);
+    }
   }
 
   handleSingleCodeInput(event: any): void {

@@ -146,6 +146,55 @@ describe('LoginComponent', () => {
     expect(comp.mfaCode.join('')).toBe('');
   });
 
+  it('onCodeInput triggers verifyMfaCode when code is complete', async () => {
+    const comp = makeComponent(mocks);
+    comp.codeLength = 4;
+    comp.mfaCodeInput = '1234';
+    comp.mfaCode = ['1', '2', '3', '4'];
+    
+    const verifySpy = vi.spyOn(comp as any, 'verifyMfaCode').mockResolvedValue(undefined);
+    
+    comp.onCodeInput();
+    
+    // Wait for setTimeout to execute
+    await new Promise(resolve => setTimeout(resolve, 10));
+    
+    expect(verifySpy).toHaveBeenCalled();
+  });
+
+  it('onCodeInput does not trigger verification if code is incomplete', async () => {
+    const comp = makeComponent(mocks);
+    comp.codeLength = 4;
+    comp.mfaCodeInput = '12';
+    comp.mfaCode = ['1', '2'];
+    
+    const verifySpy = vi.spyOn(comp as any, 'verifyMfaCode').mockResolvedValue(undefined);
+    
+    comp.onCodeInput();
+    
+    // Wait for setTimeout to execute
+    await new Promise(resolve => setTimeout(resolve, 10));
+    
+    expect(verifySpy).not.toHaveBeenCalled();
+  });
+
+  it('onCodeInput does not trigger verification if already loading', async () => {
+    const comp = makeComponent(mocks);
+    comp.codeLength = 4;
+    comp.mfaCodeInput = '1234';
+    comp.mfaCode = ['1', '2', '3', '4'];
+    comp.loading = true;
+    
+    const verifySpy = vi.spyOn(comp as any, 'verifyMfaCode').mockResolvedValue(undefined);
+    
+    comp.onCodeInput();
+    
+    // Wait for setTimeout to execute
+    await new Promise(resolve => setTimeout(resolve, 10));
+    
+    expect(verifySpy).not.toHaveBeenCalled();
+  });
+
   it('verifyMfaCode handles incomplete code', async () => {
     const comp = makeComponent(mocks);
     comp.codeLength = 4;
