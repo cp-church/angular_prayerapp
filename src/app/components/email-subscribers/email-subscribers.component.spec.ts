@@ -806,49 +806,51 @@ describe('EmailSubscribersComponent', () => {
   });
 
   describe('handleCSVUpload', () => {
-    it('should parse CSV file correctly', () => {
+    it('should parse CSV file correctly', async () => {
       const csvContent = 'John Doe,john@example.com\nJane Smith,jane@example.com';
       const file = new File([csvContent], 'test.csv', { type: 'text/csv' });
       
       const event = { target: { files: [file] } } as any;
       component.handleCSVUpload(event);
 
-      // Wait for file read to complete
-      setTimeout(() => {
-        expect(component.csvData.length).toBe(2);
-        expect(component.csvData[0]).toEqual({
-          name: 'John Doe',
-          email: 'john@example.com',
-          valid: true
-        });
-      }, 50);
+      // Wait for FileReader to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      expect(component.csvData.length).toBe(2);
+      expect(component.csvData[0]).toEqual({
+        name: 'John Doe',
+        email: 'john@example.com',
+        valid: true
+      });
     });
 
-    it('should handle invalid email format in CSV', () => {
+    it('should handle invalid email format in CSV', async () => {
       const csvContent = 'John Doe,invalid-email';
       const file = new File([csvContent], 'test.csv');
       
       const event = { target: { files: [file] } } as any;
       component.handleCSVUpload(event);
 
-      setTimeout(() => {
-        expect(component.csvData[0].valid).toBe(false);
-        expect(component.csvData[0].error).toBe('Invalid email format');
-      }, 50);
+      // Wait for FileReader to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      expect(component.csvData[0].valid).toBe(false);
+      expect(component.csvData[0].error).toBe('Invalid email format');
     });
 
-    it('should handle missing name or email in CSV', () => {
+    it('should handle missing name or email in CSV', async () => {
       const csvContent = 'John Doe,\n,jane@example.com';
       const file = new File([csvContent], 'test.csv');
       
       const event = { target: { files: [file] } } as any;
       component.handleCSVUpload(event);
 
-      setTimeout(() => {
-        expect(component.csvData[0].valid).toBe(false);
-        expect(component.csvData[0].error).toBe('Missing name or email');
-        expect(component.csvData[1].valid).toBe(false);
-      }, 50);
+      // Wait for FileReader to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      expect(component.csvData[0].valid).toBe(false);
+      expect(component.csvData[0].error).toBe('Missing name or email');
+      expect(component.csvData[1].valid).toBe(false);
     });
 
     it('should handle empty file input', () => {
@@ -863,7 +865,7 @@ describe('EmailSubscribersComponent', () => {
       expect(component.csvData).toEqual([]);
     });
 
-    it('should clear error when parsing CSV successfully', () => {
+    it('should clear error when parsing CSV successfully', async () => {
       component.error = 'Previous error';
       const csvContent = 'John Doe,john@example.com';
       const file = new File([csvContent], 'test.csv');
@@ -871,9 +873,8 @@ describe('EmailSubscribersComponent', () => {
       const event = { target: { files: [file] } } as any;
       component.handleCSVUpload(event);
 
-      setTimeout(() => {
-        expect(component.error).toBeNull();
-      }, 50);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      expect(component.error).toBeNull();
     });
   });
 
