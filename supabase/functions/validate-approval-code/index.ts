@@ -122,6 +122,15 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Clean up expired approval codes while we're here
+    const cleanupError = await supabase.rpc("cleanup_expired_approval_codes");
+    if (cleanupError) {
+      console.warn("⚠️ Approval code cleanup failed (non-critical):", cleanupError);
+      // Don't fail the request if cleanup fails - it's not critical
+    } else {
+      console.log("✅ Cleaned up expired approval codes");
+    }
+
     // Code is valid! Return the approval details
     const response: ApprovalCodeResponse = {
       success: true,
