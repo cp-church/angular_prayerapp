@@ -222,6 +222,8 @@ describe('LoginComponent', () => {
     vi.spyOn(comp as any, 'checkEmailSubscriber').mockResolvedValue(true);
 
     await (comp as any).verifyMfaCode();
+    // Wait for setTimeout (1 second delay) to complete
+    await new Promise(resolve => setTimeout(resolve, 1100));
     // completed without setting an error
     expect(comp.error).toBeFalsy();
   });
@@ -238,6 +240,8 @@ describe('LoginComponent', () => {
     vi.spyOn(comp as any, 'checkEmailSubscriber').mockResolvedValue(false);
 
     await (comp as any).verifyMfaCode();
+    // Wait for setTimeout (1 second delay) to complete
+    await new Promise(resolve => setTimeout(resolve, 1100));
     // subscriber form or an error state should be set
     expect(comp.showSubscriberForm || comp.error).toBeTruthy();
   });
@@ -261,6 +265,8 @@ describe('LoginComponent', () => {
     vi.spyOn(comp as any, 'checkEmailSubscriber').mockResolvedValue(false);
 
     await (comp as any).verifyMfaCode();
+    // Wait for setTimeout (1 second delay) to complete
+    await new Promise(resolve => setTimeout(resolve, 1100));
     // subscriber form (requiring approval) or an error state should be set
     expect(comp.showSubscriberForm || comp.requiresApproval || comp.error).toBeTruthy();
   });
@@ -977,8 +983,10 @@ describe('LoginComponent', () => {
     vi.spyOn(comp as any, 'checkEmailSubscriber').mockResolvedValue(true);
     
     await (comp as any).verifyMfaCode();
+    // Wait for setTimeout (1 second delay) to complete
+    await new Promise(resolve => setTimeout(resolve, 1100));
     
-    expect(mocks.router.navigate).toHaveBeenCalledWith(['/admin/dashboard']);
+    expect(mocks.router.navigate).toHaveBeenCalledWith(['/']);
   });
 
   it('verifyMfaCode clears sessionStorage after successful verification', async () => {
@@ -1144,6 +1152,8 @@ describe('LoginComponent', () => {
     vi.spyOn(comp as any, 'checkEmailSubscriber').mockRejectedValue('string error');
     
     await (comp as any).verifyMfaCode();
+    // Wait for setTimeout (1 second delay) to complete
+    await new Promise(resolve => setTimeout(resolve, 1100));
     
     expect(comp.error).toBe('Access denied');
     expect(comp.loading).toBe(false);

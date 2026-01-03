@@ -98,9 +98,12 @@ import { environment } from '../../../environments/environment';
                 }
                 
                 @if (loading) {
-                <div class="w-full py-3 px-4 text-center bg-white dark:bg-gray-700 border-2 border-emerald-400 dark:border-emerald-600 rounded-lg flex items-center justify-center gap-3">
-                  <div class="animate-spin rounded-full h-6 w-6 border-3 border-emerald-400 dark:border-emerald-500 border-t-transparent"></div>
-                  <span class="text-sm font-medium text-[#2F5F54] dark:text-emerald-400">Verifying code...</span>
+                <div class="w-full py-4 px-4 text-center bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/30 dark:to-green-900/30 border-2 border-emerald-400 dark:border-emerald-500 rounded-lg flex flex-col items-center justify-center gap-4">
+                  <div class="relative w-12 h-12">
+                    <div class="absolute inset-0 animate-spin rounded-full border-4 border-transparent border-t-emerald-500 dark:border-t-emerald-400 border-r-emerald-500 dark:border-r-emerald-400"></div>
+                    <div class="absolute inset-1 animate-spin rounded-full border-4 border-transparent border-b-emerald-300 dark:border-b-emerald-600" style="animation-direction: reverse; animation-duration: 1.5s;"></div>
+                  </div>
+                  <span class="text-sm font-semibold text-[#2F5F54] dark:text-emerald-300">Verifying code...</span>
                 </div>
                 }
 
@@ -544,72 +547,30 @@ export class LoginComponent implements OnInit, OnDestroy {
       const result = await this.adminAuthService.verifyMfaCode(this.mfaCode.join(''));
 
       if (result.success) {
-        console.log('[AdminLogin] MFA verification successful');
         this.isAdmin = result.isAdmin || false;
         
-        // Preserve email before clearing sessionStorage
+        // Keep loading spinner visible - navigate after brief delay
         const userEmail = this.email;
-        console.log('[AdminLogin] User email:', userEmail);
         
         // Clear sessionStorage
         sessionStorage.removeItem('mfa_email_sent');
         sessionStorage.removeItem('mfa_email');
         
-        // Check if user is already in email_subscribers table
-        console.log('[AdminLogin] Checking if subscriber:', userEmail);
-        try {
-          const isSubscriber = await this.checkEmailSubscriber(userEmail);
-          console.log('[AdminLogin] Is subscriber result:', isSubscriber);
-          
-          if (!isSubscriber) {
-            // User not in email_subscribers - check Planning Center
-            console.log('[AdminLogin] User not a subscriber, checking Planning Center');
-            const pcResult = await lookupPersonByEmail(
-              userEmail,
-              environment.supabaseUrl,
-              environment.supabaseAnonKey
-            );
-            
-            const isInPlanningCenter = pcResult.count > 0;
-            console.log('[AdminLogin] Planning Center result:', { count: pcResult.count, isInPlanningCenter });
-            
-            if (isInPlanningCenter) {
-              // User is in Planning Center - proceed with normal signup (no approval needed)
-              console.log('[AdminLogin] User found in Planning Center, showing subscriber form');
-              this.requiresApproval = false;
-            } else {
-              // User NOT in Planning Center - require admin approval
-              console.log('[AdminLogin] User NOT in Planning Center, requires admin approval');
-              this.requiresApproval = true;
-            }
-            
-            // Show subscriber form for new users
-            console.log('[AdminLogin] Showing subscriber form');
-            this.showSubscriberForm = true;
-            this.loading = false;
-            this.cdr.markForCheck();
-            return;
-          }
-        } catch (blockError) {
-          // Handle blocking error
-          console.error('[AdminLogin] User is blocked:', blockError);
-          this.error = blockError instanceof Error ? blockError.message : 'Access denied';
-          this.loading = false;
-          this.cdr.markForCheck();
-          return;
-        }
-        
-        // Route based on admin status
-        // If user is an admin, go to returnUrl (admin or specified page)
-        // If user is not an admin, go to home page
-        
         // Save user email to localStorage for later use
         saveUserInfo('', '', userEmail.toLowerCase());
         
-        const destination = result.isAdmin ? this.returnUrl : '/';
-        console.log('[AdminLogin] Routing to:', destination, '(isAdmin:', result.isAdmin, ')');
-        this.router.navigate([destination]);
+        // Brief delay then navigate
+        setTimeout(async () => {
+          try {
+            await this.checkEmailSubscriberAndNavigate(userEmail, this.isAdmin);
+          } catch (navError) {
+            console.error('[AdminLogin] Navigation error:', navError);
+            this.loading = false;
+            this.cdr.markForCheck();
+          }
+        }, 1000);
       } else {
+        this.loading = false;
         console.error('[AdminLogin] MFA verification failed:', result.error);
         this.error = result.error || 'Invalid code. Please try again.';
         this.mfaCode = new Array(this.codeLength).fill(''); // Clear code for retry
@@ -617,11 +578,9 @@ export class LoginComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
       }
     } catch (err) {
+      this.loading = false;
       console.error('[AdminLogin] Exception in verifyMfaCode:', err);
       this.error = err instanceof Error ? err.message : 'An error occurred. Please try again.';
-      this.cdr.markForCheck();
-    } finally {
-      this.loading = false;
       this.cdr.markForCheck();
     }
   }
@@ -657,6 +616,43 @@ export class LoginComponent implements OnInit, OnDestroy {
       this.resendLoading = false;
       this.cdr.markForCheck();
     }
+  }
+
+  private async checkEmailSubscriberAndNavigate(userEmail: string, isAdmin: boolean) {
+    try {
+      const isSubscriber = await this.checkEmailSubscriber(userEmail);
+      
+      if (!isSubscriber) {
+        // User not in email_subscribers - check Planning Center
+        const pcResult = await lookupPersonByEmail(
+          userEmail,
+          environment.supabaseUrl,
+          environment.supabaseAnonKey
+        );
+        
+        const isInPlanningCenter = pcResult.count > 0;
+        
+        if (isInPlanningCenter) {
+          this.requiresApproval = false;
+        } else {
+          this.requiresApproval = true;
+        }
+        
+        this.showSubscriberForm = true;
+        this.loading = false;
+        this.cdr.markForCheck();
+        return;
+      }
+    } catch (blockError) {
+      this.error = blockError instanceof Error ? blockError.message : 'Access denied';
+      this.loading = false;
+      this.cdr.markForCheck();
+      return;
+    }
+    
+    // Route to home page for both admin and non-admin users
+    saveUserInfo('', '', userEmail.toLowerCase());
+    this.router.navigate(['/']);
   }
 
   private async fetchCodeLength() {

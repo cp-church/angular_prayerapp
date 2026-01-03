@@ -241,7 +241,7 @@ import type { PrayerTypeRecord } from '../../types/prayer';
 
       <!-- Footer Stats -->
       @if (!loading && types.length > 0) {
-      <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">>
+      <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
         <div class="flex items-center justify-between text-sm">
           <span class="text-gray-600 dark:text-gray-400">
             Total: <span class="font-semibold">{{ types.length }}</span> type(s)
