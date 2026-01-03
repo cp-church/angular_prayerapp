@@ -65,12 +65,17 @@ describe('UserSettingsComponent', () => {
       markForCheck: vi.fn()
     };
 
+    const mockGitHubFeedbackService = {
+      getGitHubConfig: vi.fn(() => Promise.resolve(null))
+    };
+
     component = new UserSettingsComponent(
       mockThemeService,
       mockPrintService,
       mockSupabaseService,
       mockEmailNotificationService,
       mockAdminAuthService,
+      mockGitHubFeedbackService as any,
       mockChangeDetectorRef as ChangeDetectorRef
     );
   });

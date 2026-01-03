@@ -6,8 +6,10 @@ import { SupabaseService } from '../../services/supabase.service';
 import { PrintService } from '../../services/print.service';
 import { EmailNotificationService } from '../../services/email-notification.service';
 import { AdminAuthService } from '../../services/admin-auth.service';
+import { GitHubFeedbackService } from '../../services/github-feedback.service';
 import { Subject, takeUntil, debounceTime, distinctUntilChanged } from 'rxjs';
 import { getUserInfo } from '../../../utils/userInfoStorage';
+import { GitHubFeedbackFormComponent } from '../github-feedback-form/github-feedback-form.component';
 
 type ThemeOption = 'light' | 'dark' | 'system';
 type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
@@ -15,7 +17,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
 @Component({
   selector: 'app-user-settings',
   standalone: true,
-  imports: [NgClass, FormsModule],
+  imports: [NgClass, FormsModule, GitHubFeedbackFormComponent],
   template: `
     <!-- Modal Overlay -->
     @if (isOpen) {
@@ -342,6 +344,14 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           </div>
           }
 
+          <!-- Divider -->
+          <div class="border-t border-gray-200 dark:border-gray-700"></div>
+
+          <!-- GitHub Feedback Form -->
+          @if (githubFeedbackEnabled) {
+          <app-github-feedback-form [userEmail]="getCurrentUserEmail()"></app-github-feedback-form>
+          }
+
         <!-- Footer -->
           <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700">
             <button
@@ -394,6 +404,7 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
   showPromptTypesDropdown = false;
   promptTypes: string[] = [];
   selectedPromptTypes: string[] = [];
+  githubFeedbackEnabled = false;
 
   private destroy$ = new Subject<void>();
   private emailChange$ = new Subject<string>();
@@ -431,6 +442,7 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
     private supabase: SupabaseService,
     private emailNotification: EmailNotificationService,
     private adminAuthService: AdminAuthService,
+    private githubFeedbackService: GitHubFeedbackService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -444,6 +456,9 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
       this.name = `${userInfo.firstName} ${userInfo.lastName}`;
     }
     this.email = userInfo.email;
+
+    // Load GitHub feedback enabled status
+    this.loadGitHubFeedbackStatus();
 
     // Set up email change debounce listener
     this.emailChange$
@@ -507,6 +522,17 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
       }
     } catch (err) {
       console.error('Error fetching prayer types:', err);
+    }
+  }
+
+  async loadGitHubFeedbackStatus(): Promise<void> {
+    try {
+      const config = await this.githubFeedbackService.getGitHubConfig();
+      this.githubFeedbackEnabled = config?.enabled || false;
+      this.cdr.markForCheck();
+    } catch (err) {
+      console.error('Error loading GitHub feedback status:', err);
+      this.githubFeedbackEnabled = false;
     }
   }
 
@@ -685,6 +711,11 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
 
   private getUserInfo(): { firstName: string; lastName: string; email: string } {
     return getUserInfo();
+  }
+
+  getCurrentUserEmail(): string {
+    const userInfo = this.getUserInfo();
+    return userInfo.email || this.email || '';
   }
 
   async logout(): Promise<void> {

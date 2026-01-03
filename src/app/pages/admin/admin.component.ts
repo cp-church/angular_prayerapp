@@ -19,6 +19,7 @@ import { PrayerSearchComponent } from '../../components/prayer-search/prayer-sea
 import { BackupStatusComponent } from '../../components/backup-status/backup-status.component';
 import { SecurityPolicySettingsComponent } from '../../components/security-policy-settings/security-policy-settings.component';
 import { EmailVerificationSettingsComponent } from '../../components/email-verification-settings/email-verification-settings.component';
+import { GitHubSettingsComponent } from '../../components/github-settings/github-settings.component';
 
 type AdminTab = 'prayers' | 'updates' | 'deletions' | 'accounts' | 'settings';
 type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'security';
@@ -42,7 +43,8 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'secu
     PrayerSearchComponent,
     BackupStatusComponent,
     SecurityPolicySettingsComponent,
-    EmailVerificationSettingsComponent
+    EmailVerificationSettingsComponent,
+    GitHubSettingsComponent
   ],
   template: `
     <div class="w-full min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors flex flex-col">
@@ -635,6 +637,9 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'secu
             @if (activeSettingsTab === 'content') {
               <div class="space-y-6">
                 <div class="mb-4">
+                  <app-github-settings (onSave)="handleGitHubSettingsSave()"></app-github-settings>
+                </div>
+                <div class="mb-4">
                   <app-branding (onSave)="handleBrandingSave()"></app-branding>
                 </div>
                 <div class="mb-4">
@@ -850,6 +855,11 @@ export class AdminComponent implements OnInit, OnDestroy {
   handleBrandingSave() {
     // Could refresh data or show notification
     console.log('Branding settings saved');
+  }
+
+  handleGitHubSettingsSave() {
+    // Could refresh data or show notification
+    console.log('GitHub settings saved');
   }
 
   handlePromptManagerSave() {

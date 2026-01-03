@@ -45,10 +45,6 @@ import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy, Change
           
           @if (isPlaying && showTimer) {
           <div class="flex items-center gap-1 md:gap-2 px-2 md:px-3.5 lg:px-4 py-1.5 md:py-2.5 lg:py-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg ml-1 md:ml-2">
-            <svg class="w-3.5 h-3.5 md:w-5 md:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600 dark:text-blue-400">
-              <circle cx="12" cy="12" r="10"></circle>
-              <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
             <span class="text-xs md:text-sm font-mono font-semibold text-blue-900 dark:text-blue-100">
               {{ countdownRemaining }}s
             </span>
