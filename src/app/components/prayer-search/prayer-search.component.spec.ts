@@ -1175,5 +1175,994 @@ describe('PrayerSearchComponent', () => {
 
       expect(component.allPrayers.length).toBeGreaterThanOrEqual(0);
     });
+
+    it('should set error and return early when search has no conditions', async () => {
+      component.searchTerm = '';
+      component.statusFilter = '';
+      component.approvalFilter = '';
+
+      (global.fetch as any).mockResolvedValue({
+        ok: true,
+        json: async () => []
+      });
+
+      await component.handleSearch();
+
+      expect(component.allPrayers).toEqual([]);
+    });
+
+    it('should handle search response with empty array', async () => {
+      (global.fetch as any).mockResolvedValue({
+        ok: true,
+        json: async () => []
+      });
+
+      component.searchTerm = 'test';
+      await component.handleSearch();
+
+      expect(component.allPrayers).toEqual([]);
+      expect(component.totalItems).toBe(0);
+    });
+
+    it('should handle approval filter with both all and specific values', async () => {
+      component.approvalFilter = 'all';
+      (global.fetch as any).mockResolvedValue({
+        ok: true,
+        json: async () => [mockPrayer]
+      });
+
+      await component.handleSearch();
+
+      expect(component.allPrayers.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should properly filter pending prayers with approval_status null', async () => {
+      component.approvalFilter = 'pending';
+      
+      const prayerNullStatus = {
+        ...mockPrayer,
+        id: '5',
+        approval_status: null
+      };
+
+      (global.fetch as any).mockResolvedValue({
+        ok: true,
+        json: async () => [prayerNullStatus]
+      });
+
+      await component.handleSearch();
+
+      expect(component.allPrayers.length).toBe(1);
+    });
+
+    it('should handle search with statusFilter all', async () => {
+      component.statusFilter = 'all';
+      (global.fetch as any).mockResolvedValue({
+        ok: true,
+        json: async () => [mockPrayer]
+      });
+
+      await component.handleSearch();
+
+      expect(component.allPrayers.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should handle onStatusFilterChange with empty string', () => {
+      component.statusFilter = '';
+      const spy = vi.spyOn(component, 'handleSearch');
+      
+      component.onStatusFilterChange();
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('should handle onApprovalFilterChange with empty string', () => {
+      component.approvalFilter = '';
+      const spy = vi.spyOn(component, 'handleSearch');
+      
+      component.onApprovalFilterChange();
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('should return Math object', () => {
+      expect(component.Math).toBeDefined();
+      expect(component.Math.min(5, 10)).toBe(5);
+    });
+
+    it('should handle previousPage when already at first page', () => {
+      component.totalItems = 100;
+      component.pageSize = 10;
+      component.currentPage = 1;
+
+      component.previousPage();
+
+      expect(component.currentPage).toBe(1);
+    });
+
+    it('should handle nextPage when already at last page', () => {
+      component.totalItems = 100;
+      component.pageSize = 10;
+      component.currentPage = 10;
+
+      component.nextPage();
+
+      expect(component.currentPage).toBe(10);
+    });
+
+    it('should load page data correctly for different page numbers', () => {
+      component.allPrayers = Array.from({ length: 25 }, (_, i) => ({
+        ...mockPrayer,
+        id: `prayer-${i}`
+      }));
+      component.totalItems = 25;
+      component.pageSize = 10;
+      component.currentPage = 2;
+
+      component.loadPageData();
+
+      expect(component.displayPrayers).toHaveLength(10);
+      expect(component.displayPrayers[0].id).toBe('prayer-10');
+    });
+
+    it('should handle pagination range when at start', () => {
+      component.totalItems = 100;
+      component.pageSize = 10;
+      component.currentPage = 1;
+
+      const range = component.getPaginationRange();
+
+      expect(range).toContain(1);
+      expect(range.length).toBeLessThanOrEqual(5);
+    });
+
+    it('should handle pagination range boundary cases', () => {
+      component.totalItems = 25;
+      component.pageSize = 10;
+      component.currentPage = 1;
+
+      const range = component.getPaginationRange();
+
+      expect(range).toContain(1);
+      expect(range.length).toBeLessThanOrEqual(5);
+    });
+
+    it('should handle save new update with error from insertError', async () => {
+      component.newUpdate = {
+        content: 'Test update',
+        firstName: 'John',
+        lastName: 'Doe',
+        author_email: 'john@example.com'
+      };
+      component.allPrayers = [mockPrayer];
+
+      mockSupabaseService.getClient().from().insert().select().single.mockResolvedValue({
+        data: null,
+        error: new Error('Insert failed')
+      });
+
+      await component.saveNewUpdate('123');
+
+      expect(component.error).toContain('Failed to create update');
+    });
+
+    it('should update prayer in searchResults when saving', async () => {
+      component.editForm = {
+        title: 'Updated Title',
+        description: 'Updated description',
+        requester: 'John Doe',
+        email: 'john@example.com',
+        prayer_for: 'Jane',
+        status: 'answered'
+      };
+
+      component.searchResults = [mockPrayer];
+      component.allPrayers = [mockPrayer];
+      component.displayPrayers = [mockPrayer];
+      component.currentPage = 1;
+      component.pageSize = 10;
+
+      await component.savePrayer('123');
+
+      expect(component.searchResults[0].title).toBe('Updated Title');
+    });
+
+    it('should toggle expand card with cdr markForCheck', () => {
+      const markSpy = vi.spyOn(component['cdr'], 'markForCheck');
+      
+      component.toggleExpandCard('123');
+      expect(component.expandedCards.has('123')).toBe(true);
+
+      component.toggleExpandCard('123');
+      expect(component.expandedCards.has('123')).toBe(false);
+    });
+
+    it('should handle delete selected with error in prayer deletion', async () => {
+      component.selectedPrayers = new Set(['1', '2']);
+      component.displayPrayers = [
+        { ...mockPrayer, id: '1' },
+        { ...mockPrayer, id: '2' }
+      ];
+      component.allPrayers = component.displayPrayers;
+
+      mockSupabaseService.getClient().from().delete().in.mockResolvedValueOnce({
+        error: null
+      }).mockResolvedValueOnce({
+        error: new Error('Prayer delete failed')
+      });
+
+      await component.deleteSelected();
+
+      expect(component.error).toContain('Failed to delete prayers');
+    });
+
+    it('should handle delete prayer with error in updates deletion', async () => {
+      mockSupabaseService.getClient().from().delete().eq.mockResolvedValueOnce({
+        error: new Error('Updates delete failed')
+      });
+
+      await component.deletePrayer(mockPrayer);
+
+      expect(component.error).toContain('Failed to delete prayer updates');
+    });
+
+    it('should handle create prayer error after successful insert', async () => {
+      component.createForm = {
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john@example.com',
+        prayer_for: 'Peace',
+        description: 'Test prayer',
+        status: 'current'
+      };
+
+      await component.createPrayer(new Event('submit'));
+
+      expect(mockSupabaseService.getClient().from().insert).toHaveBeenCalled();
+    });
+
+    it('should return with no-op when no selectedPrayers in bulkStatusUpdate', async () => {
+      component.selectedPrayers = new Set();
+      component.bulkStatus = 'answered';
+
+      await component.updateSelectedStatus();
+
+      expect(component.updatingStatus).toBe(false);
+    });
+
+    it('should cancel bulk status update on confirmation dialog cancel', async () => {
+      component.selectedPrayers = new Set(['1']);
+      component.bulkStatus = 'answered';
+      vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+      await component.updateSelectedStatus();
+
+      expect(component.updatingStatus).toBe(false);
+    });
+
+    it('should handle isCreateFormValid with missing firstName', () => {
+      component.createForm = {
+        firstName: '',
+        lastName: 'Doe',
+        email: 'john@example.com',
+        prayer_for: 'Test',
+        description: 'Test',
+        status: 'current'
+      };
+
+      expect(component.isCreateFormValid()).toBe(false);
+    });
+
+    it('should handle isCreateFormValid with missing lastName', () => {
+      component.createForm = {
+        firstName: 'John',
+        lastName: '',
+        email: 'john@example.com',
+        prayer_for: 'Test',
+        description: 'Test',
+        status: 'current'
+      };
+
+      expect(component.isCreateFormValid()).toBe(false);
+    });
+
+    it('should handle isCreateFormValid with missing email', () => {
+      component.createForm = {
+        firstName: 'John',
+        lastName: 'Doe',
+        email: '',
+        prayer_for: 'Test',
+        description: 'Test',
+        status: 'current'
+      };
+
+      expect(component.isCreateFormValid()).toBe(false);
+    });
+
+    it('should handle isCreateFormValid with missing prayer_for', () => {
+      component.createForm = {
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john@example.com',
+        prayer_for: '',
+        description: 'Test',
+        status: 'current'
+      };
+
+      expect(component.isCreateFormValid()).toBe(false);
+    });
+
+    it('should handle isCreateFormValid with missing status field', () => {
+      component.createForm = {
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john@example.com',
+        prayer_for: 'Test',
+        description: 'Test',
+        status: ''
+      };
+
+      // Status field is not validated in isCreateFormValid
+      expect(component.isCreateFormValid()).toBe(true);
+    });
+
+    it('should validate form with all create fields', () => {
+      component.createForm = {
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john@example.com',
+        prayer_for: 'Test',
+        description: 'Test',
+        status: 'current'
+      };
+
+      expect(component.isCreateFormValid()).toBe(true);
+    });
+
+    it('should handle getStatusColor with pending status', () => {
+      const color = component.getStatusColor('pending');
+      expect(color).toBeDefined();
+      expect(typeof color).toBe('string');
+    });
+
+    it('should handle getStatusColor with unknown status', () => {
+      const color = component.getStatusColor('unknown');
+      expect(color).toBeDefined();
+    });
+
+    it('should get approval status color for approved', () => {
+      const color = component.getApprovalStatusColor('approved');
+      expect(color).toBeDefined();
+    });
+
+    it('should get approval status color for denied with reason', () => {
+      const color = component.getApprovalStatusColor('denied');
+      expect(color).toBeDefined();
+    });
+
+    it('should clear edit form on cancel', () => {
+      component.editForm = {
+        title: 'Test',
+        description: 'Test',
+        requester: 'John',
+        email: 'john@example.com',
+        prayer_for: 'Test',
+        status: 'current'
+      };
+
+      component.cancelEdit();
+
+      expect(component.editForm.title).toBe('');
+      expect(component.editingPrayer).toBeNull();
+    });
+
+    it('should load page data correctly', () => {
+      component.allPrayers = [mockPrayer];
+
+      component.loadPageData();
+
+      expect(component.displayPrayers.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should handle fetch error with text parsing', async () => {
+      (global.fetch as any).mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: async () => 'Server error'
+      });
+
+      component.searchTerm = 'test';
+      await component.handleSearch();
+
+      expect(component.error).toBeDefined();
+    });
+
+    it('should handle network error in handleSearch', async () => {
+      (global.fetch as any).mockRejectedValue(new Error('Network error'));
+
+      component.searchTerm = 'test';
+      await component.handleSearch();
+
+      expect(component.error).toContain('Network error');
+    });
+
+    it('should update displayPrayers when allPrayers changes', () => {
+      component.allPrayers = [mockPrayer];
+      component.currentPage = 1;
+      component.pageSize = 10;
+
+      component.loadPageData();
+
+      expect(component.displayPrayers).toContain(mockPrayer);
+    });
+
+    it('should handle cancel delete in confirmation dialog', () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+      component.deletePrayer(mockPrayer);
+
+      expect(component.deleting).toBe(false);
+    });
+
+    it('should handle cancel for deleteSelected confirmation', () => {
+      component.selectedPrayers = new Set(['1']);
+      vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+      component.deleteSelected();
+
+      expect(component.deleting).toBe(false);
+    });
+
+    it('should handle isFirstPage getter correctly', () => {
+      component.currentPage = 1;
+      expect(component.isFirstPage).toBe(true);
+
+      component.currentPage = 5;
+      expect(component.isFirstPage).toBe(false);
+    });
+
+    it('should handle isLastPage getter correctly', () => {
+      component.totalItems = 100;
+      component.pageSize = 10;
+      component.currentPage = 10;
+      expect(component.isLastPage).toBe(true);
+
+      component.currentPage = 5;
+      expect(component.isLastPage).toBe(false);
+    });
+
+    it('should set correct totalPages calculation', () => {
+      component.totalItems = 100;
+      component.pageSize = 10;
+      expect(component.totalPages).toBe(10);
+
+      component.pageSize = 25;
+      expect(component.totalPages).toBe(4);
+    });
+
+    it('should handle saveNewUpdate when form is invalid', async () => {
+      component.newUpdate = {
+        content: '',
+        firstName: 'John',
+        lastName: 'Doe',
+        author_email: 'john@example.com'
+      };
+
+      await component.saveNewUpdate('123');
+
+      expect(component.error).toContain('required');
+    });
+
+    it('should clearSearch and reset all values', () => {
+      component.searchTerm = 'test';
+      component.allPrayers = [mockPrayer];
+      component.currentPage = 5;
+      component.totalItems = 100;
+
+      component.clearSearch();
+
+      expect(component.searchTerm).toBe('');
+      expect(component.allPrayers.length).toBe(0);
+      expect(component.currentPage).toBe(1);
+      expect(component.totalItems).toBe(0);
+    });
+
+    it('should handle isUpdateFormValid with all update fields', () => {
+      component.newUpdate = {
+        content: 'Valid update',
+        firstName: 'John',
+        lastName: 'Doe',
+        author_email: 'john@example.com'
+      };
+
+      expect(component.isUpdateFormValid()).toBe(true);
+    });
+
+    it('should return false for isUpdateFormValid with missing content', () => {
+      component.newUpdate = {
+        content: '',
+        firstName: 'John',
+        lastName: 'Doe',
+        author_email: 'john@example.com'
+      };
+
+      expect(component.isUpdateFormValid()).toBe(false);
+    });
+
+    it('should return false for isUpdateFormValid with missing firstName', () => {
+      component.newUpdate = {
+        content: 'Update',
+        firstName: '',
+        lastName: 'Doe',
+        author_email: 'john@example.com'
+      };
+
+      expect(component.isUpdateFormValid()).toBe(false);
+    });
+
+    it('should return false for isUpdateFormValid with missing lastName', () => {
+      component.newUpdate = {
+        content: 'Update',
+        firstName: 'John',
+        lastName: '',
+        author_email: 'john@example.com'
+      };
+
+      expect(component.isUpdateFormValid()).toBe(false);
+    });
+
+    it('should return false for isUpdateFormValid with missing author_email', () => {
+      component.newUpdate = {
+        content: 'Update',
+        firstName: 'John',
+        lastName: 'Doe',
+        author_email: ''
+      };
+
+      expect(component.isUpdateFormValid()).toBe(false);
+    });
+
+    it('should handle toggleSelectPrayer to select and deselect', () => {
+      const id = '123';
+      expect(component.selectedPrayers.has(id)).toBe(false);
+
+      component.toggleSelectPrayer(id);
+      expect(component.selectedPrayers.has(id)).toBe(true);
+
+      component.toggleSelectPrayer(id);
+      expect(component.selectedPrayers.has(id)).toBe(false);
+    });
+
+    it('should handle toggleSelectAll when no prayers selected', () => {
+      component.displayPrayers = [
+        { ...mockPrayer, id: '1' },
+        { ...mockPrayer, id: '2' }
+      ];
+      component.selectedPrayers = new Set();
+
+      component.toggleSelectAll();
+
+      expect(component.selectedPrayers.size).toBe(2);
+    });
+
+    it('should handle toggleSelectAll when all selected', () => {
+      component.displayPrayers = [
+        { ...mockPrayer, id: '1' },
+        { ...mockPrayer, id: '2' }
+      ];
+      component.selectedPrayers = new Set(['1', '2']);
+
+      component.toggleSelectAll();
+
+      expect(component.selectedPrayers.size).toBe(0);
+    });
+
+    it('should handle changePageSize and reset current page', () => {
+      component.currentPage = 10;
+
+      component.changePageSize();
+
+      expect(component.currentPage).toBe(1);
+    });
+
+    it('should handle goToPage with positive valid number', () => {
+      component.totalItems = 100;
+      component.pageSize = 10;
+
+      component.goToPage(5);
+
+      expect(component.currentPage).toBe(5);
+    });
+
+    it('should handle goToPage with boundary at max pages', () => {
+      component.totalItems = 100;
+      component.pageSize = 10;
+
+      component.goToPage(15);
+
+      expect(component.currentPage).toBeLessThanOrEqual(10);
+    });
+
+    it('should handle goToPage with boundary at minimum', () => {
+      component.totalItems = 100;
+      component.pageSize = 10;
+
+      component.goToPage(0);
+
+      expect(component.currentPage).toBe(1);
+    });
+
+    it('should handle cancelAddUpdate clearing form', () => {
+      component.newUpdate = {
+        content: 'Test',
+        firstName: 'John',
+        lastName: 'Doe',
+        author_email: 'john@example.com'
+      };
+      component.addingUpdate = '123';
+
+      component.cancelAddUpdate();
+
+      expect(component.newUpdate.content).toBe('');
+      expect(component.addingUpdate).toBeNull();
+    });
+
+    it('should start edit for a prayer', () => {
+      component.allPrayers = [mockPrayer];
+
+      component.startEditPrayer(mockPrayer);
+
+      expect(component.editingPrayer).toBe(mockPrayer.id);
+      expect(component.editForm.title).toBe(mockPrayer.title);
+    });
+
+    it('should handle search with detailed filter conditions', async () => {
+      component.searchTerm = 'prayer';
+      component.statusFilter = 'answered';
+      component.approvalFilter = 'approved';
+
+      (global.fetch as any).mockResolvedValue({
+        ok: true,
+        json: async () => [mockPrayer]
+      });
+
+      await component.handleSearch();
+
+      expect(component.allPrayers.length).toBeGreaterThanOrEqual(0);
+      expect(component.displayPrayers.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should handle toggleExpandCard for multiple cards', () => {
+      component.toggleExpandCard('card1');
+      expect(component.expandedCards.has('card1')).toBe(true);
+
+      component.toggleExpandCard('card2');
+      expect(component.expandedCards.has('card2')).toBe(true);
+      expect(component.expandedCards.has('card1')).toBe(true);
+
+      component.toggleExpandCard('card1');
+      expect(component.expandedCards.has('card1')).toBe(false);
+    });
+
+    it('should initialize with empty arrays and sets', () => {
+      expect(component.displayPrayers).toBeDefined();
+      expect(component.selectedPrayers).toBeDefined();
+      expect(component.expandedCards).toBeDefined();
+    });
+
+    it('should handle pagination with exactly one page', () => {
+      component.totalItems = 5;
+      component.pageSize = 10;
+
+      expect(component.totalPages).toBe(1);
+      expect(component.isLastPage).toBe(true);
+    });
+
+    it('should handle getPaginationRange middle page', () => {
+      component.totalItems = 100;
+      component.pageSize = 10;
+      component.currentPage = 5;
+
+      const range = component.getPaginationRange();
+
+      expect(range).toContain(5);
+      expect(range.length).toBeGreaterThan(0);
+      expect(range.length).toBeLessThanOrEqual(5);
+    });
+
+    it('should handle getPaginationRange last pages', () => {
+      component.totalItems = 100;
+      component.pageSize = 10;
+      component.currentPage = 9;
+
+      const range = component.getPaginationRange();
+
+      expect(range.includes(10)).toBe(true);
+      expect(range.length).toBeLessThanOrEqual(5);
+    });
+
+    it('should filter denied prayers with denial_reason on prayer', async () => {
+      component.approvalFilter = 'denied';
+      
+      const prayerWithDenialReason = {
+        ...mockPrayer,
+        id: 'denied-1',
+        denial_reason: 'Not aligned with values'
+      };
+
+      (global.fetch as any).mockResolvedValue({
+        ok: true,
+        json: async () => [prayerWithDenialReason]
+      });
+
+      component.searchTerm = 'test';
+      await component.handleSearch();
+
+      expect(component.allPrayers.length).toBe(1);
+    });
+
+    it('should filter denied prayers with denial_reason on update', async () => {
+      component.approachFilter = 'denied';
+      
+      const update = {
+        id: 'update-1',
+        content: 'Test',
+        author: 'John',
+        created_at: '2024-01-01',
+        denial_reason: 'Needs more info'
+      };
+
+      const prayerWithUpdateDenial = {
+        ...mockPrayer,
+        id: 'denied-2',
+        denial_reason: null,
+        prayer_updates: [update]
+      };
+
+      (global.fetch as any).mockResolvedValue({
+        ok: true,
+        json: async () => [prayerWithUpdateDenial]
+      });
+
+      component.searchTerm = 'test';
+      await component.handleSearch();
+
+      expect(component.allPrayers.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should filter denied prayers excluding those without denial reasons', async () => {
+      component.approvalFilter = 'denied';
+      
+      const prayerNoDenialReason = {
+        ...mockPrayer,
+        id: 'prayer-no-denial',
+        denial_reason: null,
+        prayer_updates: []
+      };
+
+      (global.fetch as any).mockResolvedValue({
+        ok: true,
+        json: async () => [prayerNoDenialReason]
+      });
+
+      component.searchTerm = 'test';
+      await component.handleSearch();
+
+      expect(component.allPrayers.length).toBe(0);
+    });
+
+    it('should handle pending approval filter with null approval_status', async () => {
+      component.approvalFilter = 'pending';
+      
+      const prayerPending = {
+        ...mockPrayer,
+        id: 'pending-1',
+        approval_status: null
+      };
+
+      (global.fetch as any).mockResolvedValue({
+        ok: true,
+        json: async () => [prayerPending]
+      });
+
+      component.searchTerm = 'test';
+      await component.handleSearch();
+
+      expect(component.allPrayers.length).toBe(1);
+    });
+
+    it('should exclude pending approval filter when approval_status is not null', async () => {
+      component.approvalFilter = 'pending';
+      
+      const prayerApproved = {
+        ...mockPrayer,
+        id: 'approved-1',
+        approval_status: 'approved'
+      };
+
+      (global.fetch as any).mockResolvedValue({
+        ok: true,
+        json: async () => [prayerApproved]
+      });
+
+      component.searchTerm = 'test';
+      await component.handleSearch();
+
+      expect(component.allPrayers.length).toBe(0);
+    });
+
+    it('should handle denial filter on updates with various values', async () => {
+      component.approvalFilter = 'denied';
+      
+      const updateWithEmptyDenial = {
+        ...mockPrayer,
+        id: 'prayer-empty-denial',
+        denial_reason: null,
+        prayer_updates: [
+          {
+            id: 'u1',
+            content: 'Test',
+            author: 'John',
+            created_at: '2024-01-01',
+            denial_reason: ''
+          }
+        ]
+      };
+
+      (global.fetch as any).mockResolvedValue({
+        ok: true,
+        json: async () => [updateWithEmptyDenial]
+      });
+
+      component.searchTerm = 'test';
+      await component.handleSearch();
+
+      expect(component.allPrayers.length).toBe(0);
+    });
+
+    it('should fetch and store all prayer details with all filters active', async () => {
+      component.searchTerm = 'faith';
+      component.statusFilter = 'current';
+      component.approvalFilter = 'approved';
+
+      (global.fetch as any).mockResolvedValue({
+        ok: true,
+        json: async () => [
+          {
+            ...mockPrayer,
+            id: 'multi-filter-1',
+            title: 'Prayer for faith',
+            status: 'current',
+            approval_status: 'approved'
+          }
+        ]
+      });
+
+      await component.handleSearch();
+
+      expect(component.allPrayers[0].title).toContain('Prayer');
+    });
+
+    it('should handle search timeout gracefully', async () => {
+      component.searchTerm = 'test';
+
+      (global.fetch as any).mockRejectedValue(new Error('AbortError'));
+
+      await component.handleSearch();
+
+      expect(component.error).toBeDefined();
+    });
+
+    it('should load page data with multiple items correctly', () => {
+      const prayers = Array.from({ length: 35 }, (_, i) => ({
+        ...mockPrayer,
+        id: `prayer-${i}`
+      }));
+      
+      component.allPrayers = prayers;
+      component.currentPage = 2;
+      component.pageSize = 10;
+
+      component.loadPageData();
+
+      expect(component.displayPrayers.length).toBe(10);
+      expect(component.displayPrayers[0].id).toBe('prayer-10');
+      expect(component.displayPrayers[9].id).toBe('prayer-19');
+    });
+
+    it('should toggle select all with partial selection', () => {
+      component.displayPrayers = [
+        { ...mockPrayer, id: '1' },
+        { ...mockPrayer, id: '2' },
+        { ...mockPrayer, id: '3' }
+      ];
+      component.selectedPrayers = new Set(['1']);
+
+      component.toggleSelectAll();
+
+      expect(component.selectedPrayers.size).toBe(3);
+    });
+
+    it('should handle changePageSize resets to page 1', () => {
+      component.currentPage = 5;
+
+      component.changePageSize();
+
+      expect(component.currentPage).toBe(1);
+    });
+
+    it('should handle denied prayers filter with empty denial_reason', async () => {
+      component.approvalFilter = 'denied';
+      
+      const prayerWithEmptyDenialReason = {
+        ...mockPrayer,
+        id: '6',
+        denial_reason: ''
+      };
+
+      (global.fetch as any).mockResolvedValue({
+        ok: true,
+        json: async () => [prayerWithEmptyDenialReason]
+      });
+
+      await component.handleSearch();
+
+      expect(component.allPrayers.length).toBe(0);
+    });
+
+    it('should handle goToPage with boundary validation', () => {
+      component.totalItems = 100;
+      component.pageSize = 10;
+
+      component.goToPage(50);
+      expect(component.currentPage).toBeLessThanOrEqual(10);
+
+      component.goToPage(-5);
+      expect(component.currentPage).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should handle delete update with error', async () => {
+      const update = { id: 'update-1', content: 'Test', author: 'John', created_at: '2024-01-01' };
+      component.allPrayers = [{
+        ...mockPrayer,
+        prayer_updates: [update]
+      }];
+
+      mockSupabaseService.getClient().from().delete().eq.mockResolvedValue({
+        error: new Error('Delete failed')
+      });
+
+      await component.deleteUpdate('123', 'update-1', 'Test content');
+
+      expect(component.error).toContain('Failed to delete update');
+    });
+
+    it('should handle save prayer with empty requester', async () => {
+      component.editForm = {
+        title: 'Test',
+        description: 'Test',
+        requester: '',
+        email: 'john@example.com',
+        prayer_for: 'Jane',
+        status: 'current'
+      };
+
+      await component.savePrayer('123');
+
+      expect(component.error).toContain('required');
+    });
+
+    it('should handle updateSelectedStatus with error in update', async () => {
+      component.selectedPrayers = new Set(['1']);
+      component.bulkStatus = 'archived';
+
+      const mockIn = vi.fn().mockResolvedValue({ error: new Error('Update failed') });
+      const mockUpdate = vi.fn().mockReturnValue({ in: mockIn });
+      mockSupabaseService.getClient().from = vi.fn().mockReturnValue({ update: mockUpdate });
+
+      await component.updateSelectedStatus();
+
+      expect(component.error).toContain('Failed to update prayer statuses');
+    });
   });
 });

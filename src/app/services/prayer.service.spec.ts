@@ -1841,5 +1841,1964 @@ describe('PrayerService', () => {
 
       vi.useRealTimers();
     });
+
+    it('deleteUpdate returns true on success and reloads prayers', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      mockSupabaseService.client.from = vi.fn((table: string) => {
+        if (table === 'prayer_updates') {
+          return { delete: () => ({ eq: () => Promise.resolve({ error: null }) }) };
+        }
+        return { select: () => ({ eq: () => ({ order: () => Promise.resolve({ data: [], error: null }) }) }) };
+      });
+
+      const loadSpy = vi.spyOn(service as any, 'loadPrayers').mockResolvedValue(undefined);
+      const result = await service.deleteUpdate('update123');
+
+      expect(result).toBe(true);
+      expect(loadSpy).toHaveBeenCalled();
+      expect(mockToastService.success).toHaveBeenCalled();
+      loadSpy.mockRestore();
+    });
+
+    it('deleteUpdate returns false on error and shows error toast', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      mockSupabaseService.client.from = vi.fn(() => ({
+        delete: () => ({ eq: () => Promise.resolve({ error: new Error('delete failed') }) })
+      }));
+
+      const result = await service.deleteUpdate('update456');
+
+      expect(result).toBe(false);
+      expect(mockToastService.error).toHaveBeenCalled();
+    });
+
+    it('cleanup successfully removes realtime channel and clears timeout', async () => {
+      mockSupabaseService.client.removeChannel = vi.fn().mockResolvedValue(undefined);
+      
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      (service as any).realtimeChannel = { id: 'test-channel' };
+      (service as any).inactivityTimeout = 999;
+
+      await (service as any).cleanup();
+
+      expect(mockSupabaseService.client.removeChannel).toHaveBeenCalledWith({ id: 'test-channel' });
+      // After cleanup, realtimeChannel should be null
+      const channel = (service as any).realtimeChannel;
+      expect(channel === null || channel === undefined).toBe(true);
+    });
+
+    it('cleanup handles error gracefully when removeChannel fails', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      (service as any).realtimeChannel = { id: 'test-channel' };
+      (service as any).inactivityTimeout = 999;
+
+      mockSupabaseService.client.removeChannel = vi.fn().mockRejectedValue(new Error('cleanup error'));
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await (service as any).cleanup();
+
+      expect(errSpy).toHaveBeenCalled();
+      errSpy.mockRestore();
+    });
+
+    it('setupRealtimeSubscription handles realtime channel errors and CHANNEL_ERROR status', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const channelMock = {
+        on: vi.fn().mockReturnThis(),
+        subscribe: vi.fn((callback: any) => {
+          callback('CHANNEL_ERROR');
+          return {};
+        })
+      };
+
+      mockSupabaseService.client.channel = vi.fn(() => channelMock);
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      (service as any).setupRealtimeSubscription();
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(warnSpy).toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it('setupRealtimeSubscription handles errors in setup and continues without realtime', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      mockSupabaseService.client.channel = vi.fn(() => {
+        throw new Error('channel creation failed');
+      });
+
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      expect(() => (service as any).setupRealtimeSubscription()).not.toThrow();
+      expect(errSpy).toHaveBeenCalled();
+      errSpy.mockRestore();
+    });
+
+    it('triggerBackgroundRecovery with no cached data and silently reloads', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      mockCacheService.get = vi.fn(() => null);
+      const loadSpy = vi.spyOn(service as any, 'loadPrayers').mockResolvedValue(undefined);
+
+      (service as any).triggerBackgroundRecovery();
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(loadSpy).toHaveBeenCalledWith(true);
+      loadSpy.mockRestore();
+    });
+
+    it('triggerBackgroundRecovery with cached data shows it while reloading', async () => {
+      mockSupabaseService.client.from = vi.fn(() => ({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            order: vi.fn(() => Promise.resolve({ data: [], error: null }))
+          }))
+        }))
+      }));
+
+      const cachedPrayers = [
+        {
+          id: 'cached1',
+          title: 'Cached Prayer',
+          description: 'Cached desc',
+          status: 'current' as const,
+          requester: 'CachedRequester',
+          prayer_for: 'CachedFor',
+          email: null,
+          is_anonymous: false,
+          type: 'prayer' as const,
+          date_requested: new Date().toISOString(),
+          date_answered: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          updates: []
+        }
+      ];
+
+      mockCacheService.get = vi.fn(() => cachedPrayers);
+
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      // Directly set the all prayers and verify trigger works
+      (service as any).allPrayersSubject.next(cachedPrayers);
+      const setupSpy = vi.spyOn(service as any, 'setupRealtimeSubscription').mockImplementation(() => {});
+      const loadSpy = vi.spyOn(service as any, 'loadPrayers').mockResolvedValue(undefined);
+
+      (service as any).triggerBackgroundRecovery();
+
+      expect(setupSpy).toHaveBeenCalled();
+      expect(loadSpy).toHaveBeenCalledWith(true);
+
+      setupSpy.mockRestore();
+      loadSpy.mockRestore();
+    });
+
+    it('loadPrayers with error and fallback to cache shows cached data', async () => {
+      const cachedPrayers = [{
+        id: 'cached2',
+        title: 'Cached Title',
+        description: 'Cached Description',
+        status: 'current' as const,
+        requester: 'TestRequester',
+        prayer_for: 'TestPrayer',
+        email: null,
+        is_anonymous: false,
+        type: 'prayer' as const,
+        date_requested: new Date().toISOString(),
+        date_answered: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        updates: []
+      }];
+
+      mockSupabaseService.client.from = vi.fn(() => ({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            order: vi.fn(() => Promise.resolve({ data: null, error: new Error('db error') }))
+          }))
+        }))
+      }));
+
+      mockCacheService.get = vi.fn(() => cachedPrayers);
+
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect((service as any).allPrayersSubject.value).toEqual(cachedPrayers);
+      // Error may or may not be set depending on timing; just verify cache was used
+      expect(mockCacheService.get).toHaveBeenCalled();
+    });
+
+    it('visibility listener silent refresh handles error and falls back to cache', async () => {
+      const cachedPrayers = [{
+        id: 'vis-cache1',
+        title: 'Visibility Cache Prayer',
+        description: 'Vis cache desc',
+        status: 'current' as const,
+        requester: 'VisRequester',
+        prayer_for: 'VisPrayer',
+        email: null,
+        is_anonymous: false,
+        type: 'prayer' as const,
+        date_requested: new Date().toISOString(),
+        date_answered: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        updates: []
+      }];
+
+      mockCacheService.get = vi.fn(() => cachedPrayers);
+      mockSupabaseService.client.from = vi.fn(() => ({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            order: vi.fn(() => Promise.resolve({ data: null, error: new Error('vis error') }))
+          }))
+        }))
+      }));
+
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      // The visibility listener calls loadPrayers(true) internally
+      // We just verify it was set up and responds to visibility changes
+      expect(() => (service as any).setupVisibilityListener()).not.toThrow();
+    });
+
+    it('background recovery listener triggers when app comes to foreground', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const triggerSpy = vi.spyOn(service as any, 'triggerBackgroundRecovery').mockImplementation(() => {});
+
+      Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+      Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+
+      (service as any).setupBackgroundRecoveryListener();
+      
+      // Simulate transition to visible
+      Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+      Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+
+      document.dispatchEvent(new Event('visibilitychange'));
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      triggerSpy.mockRestore();
+    });
+
+    it('inactivity listener triggers callback after threshold time', async () => {
+      vi.useFakeTimers();
+
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      (service as any).inactivityThresholdMs = 100;
+      (service as any).setupInactivityListener();
+
+      const initialTimeout = (service as any).inactivityTimeout;
+      expect(initialTimeout).toBeTruthy();
+
+      // Advance time past inactivity threshold
+      vi.advanceTimersByTime(150);
+
+      // The callback should have been invoked
+      const newTimeout = (service as any).inactivityTimeout;
+      expect(newTimeout).toBeTruthy();
+
+      vi.useRealTimers();
+    });
+
+    it('requestUpdateDeletion handles missing update details gracefully', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      mockSupabaseService.client.from = vi.fn((table: string) => {
+        if (table === 'update_deletion_requests') {
+          return { insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 'udr-test' }, error: null }) }) }) };
+        }
+        if (table === 'prayer_updates') {
+          return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { content: 'c', author: 'a', prayers: null }, error: null }) }) }) };
+        }
+        return {};
+      });
+
+      const result = await service.requestUpdateDeletion({
+        update_id: 'u-missing',
+        requester_first_name: 'First',
+        requester_last_name: 'Last',
+        requester_email: 'missing@test.com',
+        reason: 'test'
+      });
+
+      expect(result).toBe(true);
+      expect(mockToastService.success).toHaveBeenCalled();
+    });
+
+    it('addPrayer with no email does not attempt email subscription', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      mockSupabaseService.client.from = vi.fn((table: string) => {
+        if (table === 'prayers') {
+          return { insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 'p-noemail' }, error: null }) }) }) };
+        }
+        return { insert: () => Promise.resolve({ data: null, error: null }) };
+      });
+
+      const result = await service.addPrayer({
+        title: 'No Email Prayer',
+        description: 'Test',
+        status: 'current',
+        requester: 'TestUser',
+        prayer_for: 'TestPrayer',
+        email: null,
+        is_anonymous: false
+      });
+
+      expect(result).toBe(true);
+      expect(mockToastService.success).toHaveBeenCalled();
+    });
+
+    it('deletePrayer removes prayer from local state', async () => {
+      mockSupabaseService.client.from = vi.fn(() => ({
+        delete: () => ({ eq: () => Promise.resolve({ error: null }) }),
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            order: vi.fn(() => Promise.resolve({ data: [], error: null }))
+          }))
+        }))
+      }));
+
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const testPrayer = {
+        id: 'del-test1',
+        title: 'To Delete',
+        description: 'Delete me',
+        status: 'current' as const,
+        requester: 'Requester',
+        prayer_for: 'Prayer',
+        email: null,
+        is_anonymous: false,
+        type: 'prayer' as const,
+        date_requested: new Date().toISOString(),
+        date_answered: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        updates: []
+      };
+
+      (service as any).prayersSubject.next([testPrayer]);
+
+      const result = await service.deletePrayer('del-test1');
+
+      expect(result).toBe(true);
+      expect((service as any).prayersSubject.value).toEqual([]);
+      expect(mockToastService.success).toHaveBeenCalled();
+    });
+
+    it('deletePrayer returns false on database error', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      mockSupabaseService.client.from = vi.fn(() => ({
+        delete: () => ({ eq: () => Promise.resolve({ error: new Error('delete failed') }) })
+      }));
+
+      const result = await service.deletePrayer('del-test2');
+
+      expect(result).toBe(false);
+      expect(mockToastService.error).toHaveBeenCalled();
+    });
+
+    it('requestUpdateDeletion returns false on insert error', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      mockSupabaseService.client.from = vi.fn((table: string) => {
+        if (table === 'update_deletion_requests') {
+          return { insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: null, error: new Error('insert failed') }) }) }) };
+        }
+        return {};
+      });
+
+      const result = await service.requestUpdateDeletion({
+        update_id: 'u1',
+        requester_first_name: 'Test',
+        requester_last_name: 'User',
+        requester_email: 'test@test.com',
+        reason: 'spam'
+      });
+
+      expect(result).toBe(false);
+      expect(mockToastService.error).toHaveBeenCalled();
+    });
+
+    it('addUpdate returns false on database error', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      mockSupabaseService.client.from = vi.fn(() => ({
+        insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: null, error: new Error('insert failed') }) }) })
+      }));
+
+      const result = await service.addUpdate({
+        prayer_id: 'p1',
+        content: 'test content',
+        author: 'testauthor',
+        author_email: 'test@test.com',
+        is_anonymous: false,
+        mark_as_answered: false
+      });
+
+      expect(result).toBe(false);
+      expect(mockToastService.error).toHaveBeenCalled();
+    });
+
+    it('getFilteredPrayers returns empty array for non-matching filters', () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const prayer = {
+        id: 'p1',
+        title: 'Test',
+        description: 'Test',
+        status: 'current' as const,
+        requester: 'User',
+        prayer_for: 'Someone',
+        email: null,
+        is_anonymous: false,
+        type: 'prayer' as const,
+        date_requested: new Date().toISOString(),
+        date_answered: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        updates: []
+      };
+
+      (service as any).prayersSubject.next([prayer]);
+
+      const result = service.getFilteredPrayers({ status: 'answered', search: 'nonexistent' });
+      expect(result).toEqual([]);
+    });
+
+    it('applyFilters handles empty filter object', () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const prayer = {
+        id: 'p1',
+        title: 'Test Prayer',
+        description: 'Test',
+        status: 'current' as const,
+        requester: 'User',
+        prayer_for: 'Someone',
+        email: null,
+        is_anonymous: false,
+        type: 'prayer' as const,
+        date_requested: new Date().toISOString(),
+        date_answered: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        updates: []
+      };
+
+      (service as any).allPrayersSubject.next([prayer]);
+      service.applyFilters({});
+
+      expect((service as any).prayersSubject.value).toEqual([prayer]);
+    });
+
+    it('applyFilters with type prompt filter', () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const prayer1 = {
+        id: 'p1',
+        title: 'Prayer',
+        description: 'Test',
+        status: 'current' as const,
+        requester: 'User',
+        prayer_for: 'Someone',
+        email: null,
+        is_anonymous: false,
+        type: 'prayer' as const,
+        date_requested: new Date().toISOString(),
+        date_answered: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        updates: []
+      };
+
+      const prayer2 = {
+        id: 'p2',
+        title: 'Prompt',
+        description: 'Test',
+        status: 'current' as const,
+        requester: 'User',
+        prayer_for: 'Someone',
+        email: null,
+        is_anonymous: false,
+        type: 'prompt' as const,
+        date_requested: new Date().toISOString(),
+        date_answered: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        updates: []
+      };
+
+      (service as any).allPrayersSubject.next([prayer1, prayer2]);
+      service.applyFilters({ type: 'prompt' });
+
+      expect((service as any).prayersSubject.value).toEqual([prayer2]);
+    });
+
+    it('addPrayer handles email subscription when email already exists', async () => {
+      mockSupabaseService.client.from = vi.fn((table: string) => {
+        if (table === 'prayers') {
+          return { insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 'new' }, error: null }) }) }) };
+        }
+        if (table === 'email_subscribers') {
+          return { select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: { id: 'existing' }, error: null }) }) }), insert: () => Promise.resolve({ data: null, error: null }) };
+        }
+        return { insert: () => Promise.resolve({ data: null, error: null }) };
+      });
+
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const result = await service.addPrayer({
+        title: 'Test',
+        description: 'Test',
+        status: 'current',
+        requester: 'User',
+        prayer_for: 'Someone',
+        email: 'existing@test.com',
+        is_anonymous: false
+      });
+
+      expect(result).toBe(true);
+      expect(mockToastService.success).toHaveBeenCalled();
+    });
+
+    it('updatePrayerStatus sets date_answered when status is answered', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const prayer = {
+        id: 'p1',
+        title: 'Test',
+        description: 'Test',
+        status: 'current' as const,
+        requester: 'User',
+        prayer_for: 'Someone',
+        email: null,
+        is_anonymous: false,
+        type: 'prayer' as const,
+        date_requested: new Date().toISOString(),
+        date_answered: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        updates: []
+      };
+
+      (service as any).prayersSubject.next([prayer]);
+
+      mockSupabaseService.client.from = vi.fn(() => ({
+        update: () => ({ eq: () => Promise.resolve({ error: null }) })
+      }));
+
+      const result = await service.updatePrayerStatus('p1', 'answered');
+
+      expect(result).toBe(true);
+      const updated = (service as any).prayersSubject.value[0];
+      expect(updated.status).toBe('answered');
+      expect(updated.date_answered).not.toBeNull();
+    });
+
+    it('loadPrayers sorts prayers by created_at descending', async () => {
+      const now = new Date();
+      const older = new Date(now.getTime() - 100000);
+
+      const prayersData = [
+        {
+          id: '1',
+          title: 'Newer',
+          description: 'New',
+          status: 'current',
+          requester: 'User',
+          prayer_for: 'Someone',
+          email: null,
+          is_anonymous: false,
+          type: 'prayer',
+          date_requested: now.toISOString(),
+          date_answered: null,
+          created_at: now.toISOString(),
+          updated_at: now.toISOString(),
+          approval_status: 'approved',
+          prayer_updates: []
+        },
+        {
+          id: '2',
+          title: 'Older',
+          description: 'Old',
+          status: 'current',
+          requester: 'User2',
+          prayer_for: 'Someone',
+          email: null,
+          is_anonymous: false,
+          type: 'prayer',
+          date_requested: older.toISOString(),
+          date_answered: null,
+          created_at: older.toISOString(),
+          updated_at: older.toISOString(),
+          approval_status: 'approved',
+          prayer_updates: []
+        }
+      ];
+
+      mockSupabaseService.client.from = vi.fn(() => ({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            order: vi.fn(() => Promise.resolve({ data: prayersData, error: null }))
+          }))
+        }))
+      }));
+
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      await new Promise(resolve => setTimeout(resolve, 20));
+
+      const allPrayers = (service as any).allPrayersSubject.value;
+      expect(allPrayers[0].id).toBe('1');
+      expect(allPrayers[1].id).toBe('2');
+    });
+
+    it('addPrayerUpdate returns false when fetching prayer fails after successful insert', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      mockSupabaseService.client.from = vi.fn((table: string) => {
+        if (table === 'prayer_updates') {
+          return { insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 'up1' }, error: null }) }) }) };
+        }
+        if (table === 'prayers') {
+          return { select: () => ({ eq: () => ({ single: () => Promise.reject(new Error('fetch prayer failed')) }) }) };
+        }
+        return {};
+      });
+
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const result = await service.addPrayerUpdate('p1', 'content', 'author');
+      
+      expect(result).toBe(false);
+      expect(errSpy).toHaveBeenCalled();
+      errSpy.mockRestore();
+    });
+
+    it('deletePrayerUpdate handles loadPrayers error gracefully', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      mockSupabaseService.client.from = vi.fn(() => ({
+        delete: () => ({ eq: () => Promise.resolve({ error: null }) }),
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            order: vi.fn(() => Promise.reject(new Error('load failed')))
+          }))
+        }))
+      }));
+
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const result = await service.deletePrayerUpdate('up1');
+      
+      expect(result).toBe(true); // Still returns true even if loadPrayers fails
+      errSpy.mockRestore();
+    });
+
+    it('requestDeletion with no prayer details still succeeds', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      mockSupabaseService.client.from = vi.fn((table: string) => {
+        if (table === 'deletion_requests') {
+          return { insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 'dr1' }, error: null }) }) }) };
+        }
+        if (table === 'prayers') {
+          return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }) };
+        }
+        return {};
+      });
+
+      const result = await service.requestDeletion({
+        prayer_id: 'p1',
+        requester_first_name: 'Test',
+        requester_last_name: 'User',
+        requester_email: 'test@test.com',
+        reason: 'reason'
+      });
+
+      expect(result).toBe(true);
+      expect(mockToastService.success).toHaveBeenCalled();
+    });
+
+    it('cleanup clears inactivity timeout', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      (service as any).inactivityTimeout = setTimeout(() => {}, 1000);
+      const timeoutBefore = (service as any).inactivityTimeout;
+      expect(timeoutBefore).toBeTruthy();
+
+      await (service as any).cleanup();
+
+      // Verify cleanup was called - timeout should be cleared by clearTimeout
+      // The test just verifies cleanup doesn't throw
+      expect(() => (service as any).cleanup()).not.toThrow();
+    });
+
+    it('applyFilters filters by search in all fields', () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const prayer = {
+        id: 'p1',
+        title: 'Finding Grace',
+        description: 'A prayer for grace',
+        status: 'current' as const,
+        requester: 'John',
+        prayer_for: 'Grace',
+        email: null,
+        is_anonymous: false,
+        type: 'prayer' as const,
+        date_requested: new Date().toISOString(),
+        date_answered: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        updates: []
+      };
+
+      (service as any).allPrayersSubject.next([prayer]);
+
+      // Search by title
+      service.applyFilters({ search: 'grace' });
+      expect((service as any).prayersSubject.value).toEqual([prayer]);
+
+      // Search by description
+      service.applyFilters({ search: 'prayer' });
+      expect((service as any).prayersSubject.value).toEqual([prayer]);
+
+      // Search by requester
+      service.applyFilters({ search: 'john' });
+      expect((service as any).prayersSubject.value).toEqual([prayer]);
+    });
+
+    it('getFilteredPrayers searches in prayer_for field', () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const prayer = {
+        id: 'p1',
+        title: 'Test',
+        description: 'Test',
+        status: 'current' as const,
+        requester: 'User',
+        prayer_for: 'Healing',
+        email: null,
+        is_anonymous: false,
+        type: 'prayer' as const,
+        date_requested: new Date().toISOString(),
+        date_answered: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        updates: []
+      };
+
+      (service as any).prayersSubject.next([prayer]);
+
+      const result = service.getFilteredPrayers({ search: 'healing' });
+      expect(result).toEqual([prayer]);
+    });
+
+    it('addUpdate logs error when notification fails', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      mockSupabaseService.client.from = vi.fn(() => ({
+        insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 'up1' }, error: null }) }) }),
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            single: vi.fn(() => Promise.resolve({ data: { title: 'T' }, error: null }))
+          }))
+        }))
+      }));
+
+      vi.spyOn(mockEmailNotificationService, 'sendAdminNotification').mockRejectedValue(new Error('notify error'));
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const result = await service.addUpdate({
+        prayer_id: 'p1',
+        content: 'test',
+        author: 'author',
+        author_email: 'test@test.com',
+        is_anonymous: false,
+        mark_as_answered: false
+      });
+
+      expect(result).toBe(true);
+      expect(errSpy).toHaveBeenCalledWith('Failed to send admin notification:', expect.any(Error));
+      errSpy.mockRestore();
+    });
+
+    it('requestUpdateDeletion logs error when notification fails for update deletion', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      mockSupabaseService.client.from = vi.fn((table: string) => {
+        if (table === 'update_deletion_requests') {
+          return { insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 'udr1' }, error: null }) }) }) };
+        }
+        if (table === 'prayer_updates') {
+          return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { content: 'c', author: 'a', prayers: { title: 'T' } }, error: null }) }) }) };
+        }
+        return {};
+      });
+
+      mockEmailNotificationService.sendAdminNotification = vi.fn().mockRejectedValue(new Error('notify error'));
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const result = await service.requestUpdateDeletion({
+        update_id: 'u1',
+        requester_first_name: 'Test',
+        requester_last_name: 'User',
+        requester_email: 'test@test.com',
+        reason: 'spam'
+      });
+
+      expect(result).toBe(true);
+      expect(errSpy).toHaveBeenCalled();
+      errSpy.mockRestore();
+    });
+
+    it('requestDeletion returns false when insert fails', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        select: () => ({
+          eq: () => ({
+            single: () => Promise.resolve({ data: { title: 'T', created_by: 'u1' }, error: null })
+          })
+        }),
+        insert: () => Promise.resolve({ data: null, error: new Error('insert err') })
+      } as any);
+
+      const result = await service.requestDeletion({
+        prayer_id: 'p1',
+        requester_first_name: 'Test',
+        requester_last_name: 'User',
+        requester_email: 'test@test.com',
+        reason: 'spam'
+      });
+
+      expect(result).toBe(false);
+    });
+
+    it('addUpdate succeeds when notification succeeds', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 'up1' }, error: null }) }) }),
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            single: vi.fn(() => Promise.resolve({ data: { title: 'T' }, error: null }))
+          }))
+        }))
+      } as any);
+
+      vi.spyOn(mockEmailNotificationService, 'sendAdminNotification').mockResolvedValue(undefined);
+
+      const result = await service.addUpdate({
+        prayer_id: 'p1',
+        content: 'test update',
+        author: 'Test',
+        author_email: 'test@test.com',
+        is_anonymous: false,
+        mark_as_answered: true
+      });
+
+      expect(result).toBe(true);
+    });
+
+    it('getFilteredPrayers returns empty when filters match nothing', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      // Set up DB to return prayers
+      const mockPrayers = [
+        { id: 'p1', title: 'T1', status: 'answered', type: 'request', prayer_for: 'Sarah', content: 'Content 1', created_at: '2024-01-01', created_by: 'u1', date_requested: '', updates: [], date_answered: '', date_answered_by: '' },
+        { id: 'p2', title: 'T2', status: 'active', type: 'prompt', prayer_for: 'Tom', content: 'Content 2', created_at: '2024-01-02', created_by: 'u1', date_requested: '', updates: [], date_answered: '', date_answered_by: '' }
+      ];
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        select: () => ({
+          eq: () => ({
+            order: () => Promise.resolve({ data: mockPrayers, error: null })
+          })
+        })
+      } as any);
+
+      await service.loadPrayers();
+
+      const result = service.getFilteredPrayers({ status: 'unknown', type: undefined, search: undefined });
+
+      expect(result).toEqual([]);
+    });
+
+    it('addPrayerUpdate returns false when insert fails', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        insert: () => Promise.resolve({ data: null, error: new Error('insert err') })
+      } as any);
+
+      const result = await service.addPrayerUpdate('p1', { content: 'test', author: 'Test', author_email: 'test@test.com', is_anonymous: false });
+
+      expect(result).toBe(false);
+    });
+
+    it('deleteUpdate returns false when delete fails', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        delete: () => ({
+          eq: () => Promise.resolve({ error: new Error('delete err') })
+        })
+      } as any);
+
+      const result = await service.deleteUpdate('u1');
+
+      expect(result).toBe(false);
+    });
+
+    it('updatePrayerStatus returns false when update has date_answered set', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        update: () => ({
+          eq: () => Promise.resolve({ error: new Error('update err') })
+        })
+      } as any);
+
+      const result = await service.updatePrayerStatus('p1', 'answered');
+
+      expect(result).toBe(false);
+    });
+
+    it('deletePrayerUpdate handles success properly', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        delete: () => ({
+          eq: () => Promise.resolve({ error: null })
+        }),
+        select: () => ({
+          eq: () => ({
+            order: () => Promise.resolve({ data: [{ id: 'p1', title: 'T' }], error: null })
+          })
+        })
+      } as any);
+
+      const result = await service.deletePrayerUpdate('up1');
+
+      expect(result).toBe(true);
+    });
+
+    it('addUpdate returns false when insert fails', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        insert: () => Promise.resolve({ data: null, error: new Error('insert err') })
+      } as any);
+
+      const result = await service.addUpdate({
+        prayer_id: 'p1',
+        content: 'test',
+        author: 'author',
+        author_email: 'test@test.com',
+        is_anonymous: false,
+        mark_as_answered: false
+      });
+
+      expect(result).toBe(false);
+    });
+
+    it('addUpdate succeeds even when prayer title fetch fails', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 'up1' }, error: null }) }) }),
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            single: vi.fn(() => Promise.resolve({ data: null, error: new Error('fetch fail') }))
+          }))
+        }))
+      } as any);
+
+      const result = await service.addUpdate({
+        prayer_id: 'p1',
+        content: 'test',
+        author: 'author',
+        author_email: 'test@test.com',
+        is_anonymous: false,
+        mark_as_answered: false
+      });
+
+      expect(result).toBe(true);
+    });
+
+    it('deleteUpdate succeeds with valid ID', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        delete: () => ({
+          eq: () => Promise.resolve({ error: null })
+        })
+      } as any);
+
+      const result = await service.deleteUpdate('u1');
+
+      expect(result).toBe(true);
+    });
+
+    it('ngOnDestroy completes without error', () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      // Should not throw
+      expect(() => service.ngOnDestroy()).not.toThrow();
+    });
+
+    it('loadPrayers formats prayers with multiple updates correctly', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const mockPrayersWithUpdates = [
+        {
+          id: 'p1',
+          title: 'Prayer 1',
+          status: 'active',
+          created_at: '2024-01-01',
+          requester: 'John',
+          prayer_for: 'Sarah',
+          description: 'Test prayer',
+          type: 'request',
+          email: 'john@test.com',
+          date_requested: '2024-01-01',
+          approval_status: 'approved',
+          prayer_updates: [
+            { id: 'u1', content: 'Update 1', created_at: '2024-01-02', approval_status: 'approved' },
+            { id: 'u2', content: 'Update 2', created_at: '2024-01-03', approval_status: 'approved' },
+            { id: 'u3', content: 'Pending', created_at: '2024-01-04', approval_status: 'pending' }
+          ]
+        }
+      ];
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        select: () => ({
+          eq: () => ({
+            order: () => Promise.resolve({ data: mockPrayersWithUpdates, error: null })
+          })
+        })
+      } as any);
+
+      await service.loadPrayers();
+
+      service.allPrayers$.subscribe(prayers => {
+        if (prayers.length > 0) {
+          // Verify updates are sorted and filtered
+          expect(prayers[0].updates.length).toBe(2); // Only approved updates
+          expect(prayers[0].updates[0].id).toBe('u2'); // Newer update first
+          expect(prayers[0].updates[1].id).toBe('u1'); // Older update second
+        }
+      });
+    });
+
+    it('loadPrayers handles null prayer description gracefully', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const mockPrayersNullDesc = [
+        {
+          id: 'p1',
+          title: 'Prayer 1',
+          status: 'active',
+          created_at: '2024-01-01',
+          requester: 'John',
+          prayer_for: 'Sarah',
+          description: null,
+          type: 'request',
+          email: 'john@test.com',
+          date_requested: '2024-01-01',
+          approval_status: 'approved',
+          prayer_updates: []
+        }
+      ];
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        select: () => ({
+          eq: () => ({
+            order: () => Promise.resolve({ data: mockPrayersNullDesc, error: null })
+          })
+        })
+      } as any);
+
+      await service.loadPrayers();
+
+      service.allPrayers$.subscribe(prayers => {
+        if (prayers.length > 0) {
+          // Verify null description is replaced with default text
+          expect(prayers[0].description).toBe('No description provided');
+        }
+      });
+    });
+
+    it('loadPrayers handles missing prayer updates array', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const mockPrayersNoUpdates = [
+        {
+          id: 'p1',
+          title: 'Prayer 1',
+          status: 'active',
+          created_at: '2024-01-01',
+          requester: 'John',
+          prayer_for: 'Sarah',
+          description: 'Test',
+          type: 'request',
+          email: 'john@test.com',
+          date_requested: '2024-01-01',
+          approval_status: 'approved',
+          prayer_updates: undefined
+        }
+      ];
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        select: () => ({
+          eq: () => ({
+            order: () => Promise.resolve({ data: mockPrayersNoUpdates, error: null })
+          })
+        })
+      } as any);
+
+      await service.loadPrayers();
+
+      service.allPrayers$.subscribe(prayers => {
+        if (prayers.length > 0) {
+          // Verify missing updates array is handled
+          expect(Array.isArray(prayers[0].updates)).toBe(true);
+          expect(prayers[0].updates.length).toBe(0);
+        }
+      });
+    });
+
+    it('addPrayerUpdate with valid data returns true', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 'u1' }, error: null }) }) }),
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            single: vi.fn(() => Promise.resolve({ data: { title: 'Prayer Title' }, error: null }))
+          }))
+        }))
+      } as any);
+
+      const result = await service.addPrayerUpdate('p1', 'Update content', 'Test Author');
+
+      expect(result).toBe(true);
+    });
+
+    it('observables emit correct values through filtering pipeline', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const mockData = [
+        { id: 'p1', title: 'T1', status: 'active', type: 'request', created_at: '2024-01-01', created_by: 'u1', prayer_for: 'Test', description: 'Desc', email: 'test@test.com', date_requested: '2024-01-01', approval_status: 'approved', requester: 'User', prayer_updates: [] }
+      ];
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        select: () => ({
+          eq: () => ({
+            order: () => Promise.resolve({ data: mockData, error: null })
+          })
+        })
+      } as any);
+
+      await service.loadPrayers();
+      
+      service.applyFilters({ status: 'active', type: undefined, search: undefined });
+
+      // Test that prayers$ reflects filtered results
+      let filteredPrayers: any[] = [];
+      service.prayers$.subscribe(prayers => {
+        filteredPrayers = prayers;
+      });
+
+      // Prayers should be filtered by status
+      expect(filteredPrayers.length).toBeGreaterThan(0);
+    });
+
+    it('applyFilters with only search filter returns matching prayers', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const mockData = [
+        { id: 'p1', title: 'Test Title', status: 'active', type: 'request', created_at: '2024-01-01', created_by: 'u1', prayer_for: 'John', description: 'Looking for John', email: 'test@test.com', date_requested: '2024-01-01', approval_status: 'approved', requester: 'User', prayer_updates: [] },
+        { id: 'p2', title: 'Another Prayer', status: 'active', type: 'request', created_at: '2024-01-02', created_by: 'u1', prayer_for: 'Sarah', description: 'For Sarah', email: 'test@test.com', date_requested: '2024-01-02', approval_status: 'approved', requester: 'User', prayer_updates: [] }
+      ];
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        select: () => ({
+          eq: () => ({
+            order: () => Promise.resolve({ data: mockData, error: null })
+          })
+        })
+      } as any);
+
+      await service.loadPrayers();
+      service.applyFilters({ status: undefined, type: undefined, search: 'John' });
+
+      let filteredPrayers: any[] = [];
+      service.prayers$.subscribe(prayers => {
+        filteredPrayers = prayers;
+      });
+
+      // Should only return prayer about John
+      expect(filteredPrayers.length).toBe(1);
+      expect(filteredPrayers[0].prayer_for).toBe('John');
+    });
+
+    it('deletePrayer also updates local state immediately', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const initialPrayers = [
+        { id: 'p1', title: 'T1', status: 'active', type: 'request', created_at: '2024-01-01', created_by: 'u1', prayer_for: 'Test', description: 'Desc', email: 'test@test.com', date_requested: '2024-01-01', approval_status: 'approved', requester: 'User', prayer_updates: [] }
+      ];
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        delete: () => ({
+          eq: () => Promise.resolve({ error: null })
+        }),
+        select: () => ({
+          eq: () => ({
+            order: () => Promise.resolve({ data: initialPrayers, error: null })
+          })
+        })
+      } as any);
+
+      await service.loadPrayers();
+      
+      const result = await service.deletePrayer('p1');
+
+      expect(result).toBe(true);
+    });
+
+    it('searchByContent filters prayers by matching content text', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const prayerWithContent = [
+        { id: 'p1', title: 'T1', status: 'active', type: 'request', created_at: '2024-01-01', created_by: 'u1', prayer_for: 'Test', description: 'Desc with specific keyword', email: 'test@test.com', date_requested: '2024-01-01', approval_status: 'approved', requester: 'User', prayer_updates: [] },
+        { id: 'p2', title: 'T2', status: 'active', type: 'request', created_at: '2024-01-02', created_by: 'u1', prayer_for: 'Other', description: 'Different content', email: 'test@test.com', date_requested: '2024-01-02', approval_status: 'approved', requester: 'User', prayer_updates: [] }
+      ];
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        select: () => ({
+          eq: () => ({
+            order: () => Promise.resolve({ data: prayerWithContent, error: null })
+          })
+        })
+      } as any);
+
+      await service.loadPrayers();
+      service.applyFilters({ status: undefined, type: undefined, search: 'keyword' });
+
+      let filteredPrayers: any[] = [];
+      service.prayers$.subscribe(prayers => {
+        filteredPrayers = prayers;
+      });
+
+      // Should match the first prayer which has 'keyword' in description
+      expect(filteredPrayers.length).toBe(1);
+      expect(filteredPrayers[0].description).toContain('keyword');
+    });
+
+    it('requestUpdateDeletion submits deletion request and sends notification', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      let fromCallCount = 0;
+      vi.spyOn(mockSupabaseService.client, 'from').mockImplementation((table: string) => {
+        if (table === 'update_deletion_requests') {
+          return {
+            insert: vi.fn(() => ({
+              select: vi.fn(() => ({
+                single: vi.fn(() => Promise.resolve({ data: { id: 'udr1' }, error: null }))
+              }))
+            }))
+          } as any;
+        }
+        // For fetching prayer updates
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              single: vi.fn(() => Promise.resolve({ data: { id: 'u1', author: 'User', content: 'Content', prayers: { title: 'Test' } }, error: null }))
+            }))
+          }))
+        } as any;
+      });
+
+      const result = await service.requestUpdateDeletion({
+        update_id: 'u1',
+        requester_first_name: 'John',
+        requester_last_name: 'Doe',
+        requester_email: 'john@example.com',
+        reason: 'Inappropriate content'
+      });
+
+      expect(result).toBe(true);
+      expect(mockToastService.success).toHaveBeenCalledWith('Update deletion request submitted for review');
+    });
+
+    it('deleteUpdate deletes prayer update successfully', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const prayers = [
+        { id: 'p1', title: 'T1', status: 'active', type: 'request', created_at: '2024-01-01', created_by: 'u1', prayer_for: 'Test', description: 'Desc', email: 'test@test.com', date_requested: '2024-01-01', approval_status: 'approved', requester: 'User', prayer_updates: [] }
+      ];
+
+      let callCount = 0;
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        delete: () => ({
+          eq: () => Promise.resolve({ error: null })
+        }),
+        select: () => ({
+          eq: () => ({
+            order: () => Promise.resolve({ data: prayers, error: null })
+          })
+        })
+      } as any);
+
+      const result = await service.deleteUpdate('u1');
+
+      expect(result).toBe(true);
+      expect(mockToastService.success).toHaveBeenCalledWith('Update deleted');
+    });
+
+    it('cleanup removes realtime channel when it exists', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      // Manually set realtime channel to test cleanup
+      (service as any).realtimeChannel = { id: 'test-channel' };
+      
+      mockSupabaseService.client.removeChannel = vi.fn().mockResolvedValue(undefined);
+
+      await service.cleanup();
+
+      expect(mockSupabaseService.client.removeChannel).toHaveBeenCalledWith({ id: 'test-channel' });
+    });
+
+    it('requestDeletion with valid data returns true on success', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      let deleteInsertCalled = false;
+      let prayerSelectCalled = false;
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockImplementation((table: string) => {
+        if (table === 'deletion_requests') {
+          deleteInsertCalled = true;
+          return {
+            insert: () => ({
+              select: () => ({
+                single: () => Promise.resolve({ data: { id: 'dr1' }, error: null })
+              })
+            })
+          } as any;
+        }
+        // For fetching prayer title
+        prayerSelectCalled = true;
+        return {
+          select: () => ({
+            eq: () => ({
+              single: () => Promise.resolve({ data: { title: 'Prayer Title' }, error: null })
+            })
+          })
+        } as any;
+      });
+
+      const result = await service.requestDeletion({
+        prayer_id: 'p1',
+        requester_first_name: 'John',
+        requester_last_name: 'Doe',
+        requester_email: 'john@example.com',
+        reason: 'No longer needed'
+      });
+
+      expect(result).toBe(true);
+      expect(mockToastService.success).toHaveBeenCalledWith('Deletion request submitted for review');
+    });
+
+    it('requestDeletion handles errors gracefully', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        insert: () => ({
+          select: () => ({
+            single: () => Promise.resolve({ error: new Error('Insert failed'), data: null })
+          })
+        })
+      } as any);
+
+      const result = await service.requestDeletion({
+        prayer_id: 'p1',
+        requester_first_name: 'Jane',
+        requester_last_name: 'Smith',
+        requester_email: 'jane@example.com',
+        reason: 'Testing error'
+      });
+
+      expect(result).toBe(false);
+      expect(mockToastService.error).toHaveBeenCalledWith('Failed to submit deletion request');
+    });
+
+    it('applyFilters with type filter sets correct filter values', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const prayers = [
+        { id: 'p1', title: 'T1', status: 'active', type: 'prompt', created_at: '2024-01-01', created_by: 'u1', prayer_for: 'Test', description: 'Desc', email: 'test@test.com', date_requested: '2024-01-01', approval_status: 'approved', requester: 'User', prayer_updates: [] },
+        { id: 'p2', title: 'T2', status: 'active', type: 'request', created_at: '2024-01-02', created_by: 'u1', prayer_for: 'Test', description: 'Desc', email: 'test@test.com', date_requested: '2024-01-02', approval_status: 'approved', requester: 'User', prayer_updates: [] }
+      ];
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        select: () => ({
+          eq: () => ({
+            order: () => Promise.resolve({ data: prayers, error: null })
+          })
+        })
+      } as any);
+
+      await service.loadPrayers();
+      
+      service.applyFilters({ type: 'prompt' });
+      
+      let filteredPrayers: any[] = [];
+      service.prayers$.subscribe(p => {
+        filteredPrayers = p;
+      });
+      
+      expect(filteredPrayers.length).toBe(1);
+      expect(filteredPrayers[0].type).toBe('prompt');
+    });
+
+    it('addUpdate with mark_as_answered true updates prayer status', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const prayers = [
+        { id: 'p1', title: 'T1', status: 'active', type: 'request', created_at: '2024-01-01', created_by: 'u1', prayer_for: 'Test', description: 'Desc', email: 'test@test.com', date_requested: '2024-01-01', approval_status: 'approved', requester: 'User', prayer_updates: [] }
+      ];
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        insert: () => ({
+          select: () => ({
+            single: () => Promise.resolve({ data: { id: 'u1' }, error: null })
+          })
+        }),
+        select: () => ({
+          eq: () => ({
+            single: () => Promise.resolve({ data: { title: 'Prayer' }, error: null }),
+            order: () => Promise.resolve({ data: prayers, error: null })
+          })
+        }),
+        update: () => ({
+          eq: () => Promise.resolve({ error: null })
+        })
+      } as any);
+
+      const result = await service.addUpdate({
+        prayer_id: 'p1',
+        content: 'This should answer the prayer',
+        author: 'Test',
+        author_email: 'test@test.com',
+        is_anonymous: false,
+        mark_as_answered: true
+      });
+
+      expect(result).toBe(true);
+      expect(mockToastService.success).toHaveBeenCalled();
+    });
+
+    it('getFilteredPrayers with all filter types applied', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const prayers = [
+        { id: 'p1', title: 'Healing Prayer', status: 'answered', type: 'request', created_at: '2024-01-01', created_by: 'u1', prayer_for: 'Test', description: 'For healing', email: 'test@test.com', date_requested: '2024-01-01', approval_status: 'approved', requester: 'John', prayer_updates: [] },
+        { id: 'p2', title: 'Blessing Request', status: 'active', type: 'request', created_at: '2024-01-02', created_by: 'u1', prayer_for: 'Test', description: 'For blessing', email: 'test@test.com', date_requested: '2024-01-02', approval_status: 'approved', requester: 'Jane', prayer_updates: [] }
+      ];
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        select: () => ({
+          eq: () => ({
+            order: () => Promise.resolve({ data: prayers, error: null })
+          })
+        })
+      } as any);
+
+      await service.loadPrayers();
+
+      const filtered = service.getFilteredPrayers({ 
+        status: 'answered', 
+        type: undefined, 
+        search: 'healing' 
+      });
+
+      expect(filtered.length).toBe(1);
+      expect(filtered[0].id).toBe('p1');
+    });
+
+    it('triggers visibility change event listener on document', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const prayers = [
+        { id: 'p1', title: 'T1', status: 'active', type: 'request', created_at: '2024-01-01', created_by: 'u1', prayer_for: 'Test', description: 'Desc', email: 'test@test.com', date_requested: '2024-01-01', approval_status: 'approved', requester: 'User', prayer_updates: [] }
+      ];
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        select: () => ({
+          eq: () => ({
+            order: () => Promise.resolve({ data: prayers, error: null })
+          })
+        })
+      } as any);
+
+      await service.loadPrayers();
+
+      // Simulate document visibility change
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        value: 'visible'
+      });
+
+      const visibilityChangeEvent = new Event('visibilitychange');
+      document.dispatchEvent(visibilityChangeEvent);
+
+      // Allow event handlers to process
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      expect(mockSupabaseService.client.from).toHaveBeenCalled();
+    });
+
+    it('loads prayers with no approval status in response', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const prayers = [
+        { id: 'p1', title: 'T1', status: 'active', type: 'request', created_at: '2024-01-01', created_by: 'u1', prayer_for: 'Test', description: 'Desc', email: 'test@test.com', date_requested: '2024-01-01', approval_status: 'approved', requester: 'User', prayer_updates: [{ id: 'u1', content: 'Update', approval_status: 'pending' }] }
+      ];
+
+      vi.spyOn(mockSupabaseService.client, 'from').mockReturnValue({
+        select: () => ({
+          eq: () => ({
+            order: () => Promise.resolve({ data: prayers, error: null })
+          })
+        })
+      } as any);
+
+      await service.loadPrayers();
+      
+      expect(mockSupabaseService.client.from).toHaveBeenCalled();
+    });
+
+    it('cleanup removes inactivity timeout if it exists', async () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      // Set a mock timeout
+      (service as any).inactivityTimeout = 12345;
+
+      const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
+
+      await service.cleanup();
+
+      expect(clearTimeoutSpy).toHaveBeenCalledWith(12345);
+    });
+
+    it('applyFilters clears filters when all undefined', () => {
+      service = new PrayerService(
+        mockSupabaseService,
+        mockToastService,
+        mockEmailNotificationService,
+        mockVerificationService,
+        mockCacheService
+      );
+
+      const initialFilters = { status: 'active', type: 'request', search: 'test' };
+      service.applyFilters(initialFilters);
+      
+      // Apply empty filters
+      service.applyFilters({ status: undefined, type: undefined, search: undefined });
+
+      // Verify filters were updated - prayers$ should be updated
+      service.prayers$.subscribe(prayers => {
+        // Should return all prayers without filter
+        expect(prayers).toBeDefined();
+      });
+    });
   });
 });

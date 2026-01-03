@@ -759,4 +759,607 @@ describe('PresentationComponent', () => {
       vi.useRealTimers();
     });
   });
+
+  describe('mouse handling - middle zone', () => {
+    it('handleMouseMove does nothing when mouse is between 75-80% of screen', () => {
+      component.initialPeriodElapsed = true;
+      const initialValue = true;
+      component.showControls = initialValue;
+      vi.stubGlobal('innerHeight', 100);
+      // Mouse at 77% (between 75 and 80)
+      component.handleMouseMove({ clientY: 77 } as MouseEvent);
+      // Should not change since it's in the deadzone
+      expect(component.showControls).toBe(initialValue);
+    });
+  });
+
+  describe('timeFilter branches', () => {
+    it('fetchPrayers applies timeFilter twoweeks correctly', async () => {
+      const now = new Date();
+      const recent = { id: 'r', created_at: now.toISOString(), prayer_updates: [] };
+      const q = createQuery({ data: [recent], error: null });
+      mockSupabase.client.from = vi.fn().mockReturnValue(q);
+      component.contentType = 'prayers';
+      component.timeFilter = 'twoweeks';
+      await component.fetchPrayers();
+      expect(component.prayers.length).toBe(1);
+    });
+
+    it('fetchPrayers applies timeFilter year correctly', async () => {
+      const now = new Date();
+      const recent = { id: 'r', created_at: now.toISOString(), prayer_updates: [] };
+      const q = createQuery({ data: [recent], error: null });
+      mockSupabase.client.from = vi.fn().mockReturnValue(q);
+      component.contentType = 'prayers';
+      component.timeFilter = 'year';
+      await component.fetchPrayers();
+      expect(component.prayers.length).toBe(1);
+    });
+
+    it('fetchPrayers skips timeFilter when all is selected', async () => {
+      const now = new Date();
+      const recent = { id: 'r', created_at: now.toISOString(), prayer_updates: [] };
+      const q = createQuery({ data: [recent], error: null });
+      mockSupabase.client.from = vi.fn().mockReturnValue(q);
+      component.contentType = 'prayers';
+      component.timeFilter = 'all';
+      await component.fetchPrayers();
+      expect(component.prayers.length).toBe(1);
+    });
+  });
+
+  describe('status filter edge cases', () => {
+    it('fetchPrayers with only current filter true', async () => {
+      const current = { id: 'c', status: 'current', created_at: new Date().toISOString(), prayer_updates: [] };
+      const q = createQuery({ data: [current], error: null });
+      mockSupabase.client.from = vi.fn().mockReturnValue(q);
+      component.contentType = 'prayers';
+      component.statusFilters = { current: true, answered: false };
+      await component.fetchPrayers();
+      expect(component.prayers.length).toBe(1);
+    });
+
+    it('fetchPrayers with only answered filter true', async () => {
+      const answered = { id: 'a', status: 'answered', created_at: new Date().toISOString(), prayer_updates: [] };
+      const q = createQuery({ data: [answered], error: null });
+      mockSupabase.client.from = vi.fn().mockReturnValue(q);
+      component.contentType = 'prayers';
+      component.statusFilters = { current: false, answered: true };
+      await component.fetchPrayers();
+      expect(component.prayers.length).toBe(1);
+    });
+  });
+
+  describe('touch and mouse handlers', () => {
+    it('onTouchMove updates touchEnd value', () => {
+      component.touchEnd = null;
+      component.onTouchMove({ touches: [{ clientX: 123 }] } as unknown as TouchEvent);
+      expect(component.touchEnd).toBe(123);
+    });
+
+    it('onTouchStart sets touchEnd to null', () => {
+      component.touchEnd = 100;
+      component.onTouchStart({ touches: [{ clientX: 50 }] } as unknown as TouchEvent);
+      expect(component.touchEnd).toBeNull();
+    });
+
+    it('handleMouseMove with mouse at bottom shows controls', () => {
+      component.initialPeriodElapsed = true;
+      component.showControls = false;
+      vi.stubGlobal('innerHeight', 100);
+      
+      component.handleMouseMove({ clientY: 85 } as MouseEvent); // 85% of screen
+      
+      expect(component.showControls).toBe(true);
+    });
+
+    it('handleMouseMove with mouse at top hides controls', () => {
+      component.initialPeriodElapsed = true;
+      component.showControls = true;
+      vi.stubGlobal('innerHeight', 100);
+      
+      component.handleMouseMove({ clientY: 50 } as MouseEvent); // 50% of screen, less than 75%
+      
+      expect(component.showControls).toBe(false);
+    });
+  });
+
+  describe('prayer timer functionality', () => {
+    it('startPrayerTimer unsubscribes from existing timer subscription', () => {
+      vi.useFakeTimers();
+      const oldUnsubscribeSpy = vi.fn();
+      component.prayerTimerSubscription = { unsubscribe: oldUnsubscribeSpy } as any;
+      component.prayerTimerMinutes = 0.001;
+      
+      component.startPrayerTimer();
+      
+      expect(oldUnsubscribeSpy).toHaveBeenCalled();
+      
+      vi.useRealTimers();
+    });
+
+    it('startPrayerTimer closes settings modal', () => {
+      vi.useFakeTimers();
+      component.showSettings = true;
+      component.prayerTimerMinutes = 0.001;
+      
+      component.startPrayerTimer();
+      
+      expect(component.showSettings).toBe(false);
+      
+      vi.useRealTimers();
+    });
+
+    it('startPrayerTimer sets prayerTimerActive to true', () => {
+      vi.useFakeTimers();
+      component.prayerTimerActive = false;
+      component.prayerTimerMinutes = 0.001;
+      
+      component.startPrayerTimer();
+      
+      expect(component.prayerTimerActive).toBe(true);
+      
+      vi.useRealTimers();
+    });
+
+    it('startPrayerTimer converts minutes to seconds', () => {
+      vi.useFakeTimers();
+      component.prayerTimerMinutes = 2;
+      component.prayerTimerRemaining = 0;
+      
+      component.startPrayerTimer();
+      
+      expect(component.prayerTimerRemaining).toBe(120); // 2 minutes = 120 seconds
+      
+      vi.useRealTimers();
+    });
+  });
+
+  describe('more duration and interval tests', () => {
+    it('calculateCurrentDuration handles prayer with no prayer_updates property', () => {
+      component.smartMode = true;
+      component.displayDuration = 5;
+      component.prayers = [{ id: 'p1', description: 'x'.repeat(60) } as any]; // no prayer_updates
+      component.currentIndex = 0;
+      
+      const duration = component.calculateCurrentDuration();
+      
+      expect(duration).toBeGreaterThanOrEqual(10);
+      expect(duration).toBeLessThanOrEqual(120);
+    });
+
+    it('calculateCurrentDuration includes multiple recent updates', () => {
+      component.smartMode = true;
+      component.displayDuration = 5;
+      const now = new Date();
+      component.prayers = [{
+        id: 'p1',
+        description: 'x'.repeat(60),
+        prayer_updates: [
+          { id: 'u1', content: 'y'.repeat(100), created_at: now.toISOString() },
+          { id: 'u2', content: 'y'.repeat(100), created_at: new Date(now.getTime() - 1000).toISOString() },
+          { id: 'u3', content: 'y'.repeat(100), created_at: new Date(now.getTime() - 2000).toISOString() },
+          { id: 'u4', content: 'y'.repeat(100), created_at: new Date(now.getTime() - 3000).toISOString() }
+        ]
+      } as any];
+      component.currentIndex = 0;
+      
+      const duration = component.calculateCurrentDuration();
+      
+      // Should include description + top 3 recent updates
+      expect(duration).toBeGreaterThanOrEqual(10);
+      expect(duration).toBeLessThanOrEqual(120);
+    });
+
+    it('clearIntervals unsubscribes from countdownSubscription', () => {
+      const unsubscribeSpy = vi.fn();
+      component.autoAdvanceInterval = null;
+      component.countdownSubscription = { unsubscribe: unsubscribeSpy } as any;
+      
+      component.clearIntervals();
+      
+      expect(unsubscribeSpy).toHaveBeenCalled();
+      expect(component.countdownSubscription).toBeNull();
+    });
+
+    it('startAutoAdvance unsubscribes existing countdownSubscription before creating new one', () => {
+      vi.useFakeTimers();
+      const oldUnsubscribeSpy = vi.fn();
+      component.countdownSubscription = { unsubscribe: oldUnsubscribeSpy } as any;
+      component.prayers = [{ id: 'a' } as any];
+      component.displayDuration = 1;
+      
+      component.startAutoAdvance();
+      
+      expect(oldUnsubscribeSpy).toHaveBeenCalled();
+      
+      vi.useRealTimers();
+    });
+  });
+
+  describe('fetch and sort operations', () => {
+    it('fetchPrayers sorts prayers by latest activity with updates', async () => {
+      const oldest = new Date('2024-01-01');
+      const newer = new Date('2024-01-15');
+      
+      const prayer1 = {
+        id: 'p1',
+        created_at: oldest.toISOString(),
+        prayer_updates: [{ id: 'u1', created_at: newer.toISOString(), approval_status: 'approved' }]
+      };
+      const prayer2 = {
+        id: 'p2',
+        created_at: newer.toISOString(),
+        prayer_updates: []
+      };
+      
+      const q = createQuery({ data: [prayer1, prayer2], error: null });
+      mockSupabase.client.from = vi.fn().mockReturnValue(q);
+      component.contentType = 'prayers';
+      
+      await component.fetchPrayers();
+      
+      // prayer1 should be first because its update is newer than prayer2's creation
+      expect(component.prayers[0].id).toBe('p1');
+      expect(component.prayers[1].id).toBe('p2');
+    });
+
+    it('fetchPrayers filters prayer_updates by approval_status', async () => {
+      const prayerWithMixedUpdates = {
+        id: 'p1',
+        created_at: new Date().toISOString(),
+        prayer_updates: [
+          { id: 'u1', content: 'approved', created_at: new Date().toISOString(), approval_status: 'approved' },
+          { id: 'u2', content: 'pending', created_at: new Date().toISOString(), approval_status: 'pending' },
+          { id: 'u3', content: 'approved2', created_at: new Date().toISOString(), approval_status: 'approved' }
+        ]
+      };
+      const q = createQuery({ data: [prayerWithMixedUpdates], error: null });
+      mockSupabase.client.from = vi.fn().mockReturnValue(q);
+      component.contentType = 'prayers';
+      
+      await component.fetchPrayers();
+      
+      expect(component.prayers.length).toBe(1);
+      expect(component.prayers[0].prayer_updates.length).toBe(2); // Only approved updates
+    });
+
+    it('shuffleArray does not modify input array', () => {
+      const original = [1, 2, 3, 4, 5];
+      const copy = [...original];
+      
+      component.shuffleArray(original);
+      
+      expect(original).toEqual(copy);
+    });
+
+    it('previousSlide wraps to end when at index 0', () => {
+      component.prayers = [{ id: 'a' }, { id: 'b' }, { id: 'c' }] as any;
+      component.isPlaying = false;
+      component.currentIndex = 0;
+      
+      component.previousSlide();
+      
+      expect(component.currentIndex).toBe(2);
+    });
+  });
+
+  describe('state mutation tests', () => {
+    it('loadContent sets loading to true and false', async () => {
+      const fetchSpy = vi.spyOn(component, 'fetchPrayers').mockImplementation(() => Promise.resolve());
+      component.contentType = 'prayers';
+      
+      expect(component.loading).toBe(true); // was true from constructor
+      const promise = component.loadContent();
+      // loading is set to true immediately
+      expect(component.loading).toBe(true);
+      
+      await promise;
+      
+      expect(component.loading).toBe(false);
+    });
+
+    it('nextSlide calls cdr.markForCheck', () => {
+      const markSpy = vi.spyOn(component['cdr'], 'markForCheck');
+      component.prayers = [{ id: 'a' }, { id: 'b' }] as any;
+      component.isPlaying = false;
+      component.currentIndex = 0;
+      
+      component.nextSlide();
+      
+      expect(markSpy).toHaveBeenCalled();
+    });
+
+    it('previousSlide calls cdr.markForCheck', () => {
+      const markSpy = vi.spyOn(component['cdr'], 'markForCheck');
+      component.prayers = [{ id: 'a' }, { id: 'b' }] as any;
+      component.isPlaying = false;
+      component.currentIndex = 1;
+      
+      component.previousSlide();
+      
+      expect(markSpy).toHaveBeenCalled();
+    });
+
+    it('handleStatusFilterChange calls cdr.markForCheck', async () => {
+      const markSpy = vi.spyOn(component['cdr'], 'markForCheck');
+      const fetchSpy = vi.spyOn(component, 'fetchPrayers').mockImplementation(() => Promise.resolve());
+      
+      await component.handleStatusFilterChange();
+      
+      expect(markSpy).toHaveBeenCalled();
+    });
+
+    it('handleTimeFilterChange calls cdr.markForCheck', async () => {
+      const markSpy = vi.spyOn(component['cdr'], 'markForCheck');
+      const fetchSpy = vi.spyOn(component, 'fetchPrayers').mockImplementation(() => Promise.resolve());
+      
+      await component.handleTimeFilterChange();
+      
+      expect(markSpy).toHaveBeenCalled();
+    });
+
+    it('handleContentTypeChange calls cdr.markForCheck', async () => {
+      const markSpy = vi.spyOn(component['cdr'], 'markForCheck');
+      const loadSpy = vi.spyOn(component, 'loadContent').mockImplementation(() => Promise.resolve());
+      
+      await component.handleContentTypeChange();
+      
+      expect(markSpy).toHaveBeenCalled();
+    });
+
+    it('refreshContent calls cdr.markForCheck', async () => {
+      const markSpy = vi.spyOn(component['cdr'], 'markForCheck');
+      const loadSpy = vi.spyOn(component, 'loadContent').mockImplementation(() => Promise.resolve());
+      
+      await component.refreshContent();
+      
+      expect(markSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('additional error and edge case handling', () => {
+    it('fetchPrayers with contentType not prayers does not filter by status', async () => {
+      const q = createQuery({ data: [{ id: '1', created_at: new Date().toISOString(), prayer_updates: [] }], error: null });
+      mockSupabase.client.from = vi.fn().mockReturnValue(q);
+      component.contentType = 'prompts';
+      await component.fetchPrayers();
+      expect(component.prayers.length).toBe(1);
+    });
+
+    it('fetchPrayers with contentType not prayers does not apply timeFilter', async () => {
+      const q = createQuery({ data: [{ id: '1', created_at: new Date().toISOString(), prayer_updates: [] }], error: null });
+      mockSupabase.client.from = vi.fn().mockReturnValue(q);
+      component.contentType = 'prompts';
+      component.timeFilter = 'week';
+      await component.fetchPrayers();
+      expect(component.prayers.length).toBe(1);
+    });
+
+    it('calculateCurrentDuration handles prayer with empty prayer_updates', () => {
+      component.smartMode = true;
+      component.displayDuration = 5;
+      component.prayers = [{ id: 'p1', description: 'x'.repeat(60), prayer_updates: [] } as any];
+      component.currentIndex = 0;
+      
+      const duration = component.calculateCurrentDuration();
+      
+      expect(duration).toBeGreaterThanOrEqual(10);
+    });
+
+    it('calculateCurrentDuration handles prayer with no description', () => {
+      component.smartMode = true;
+      component.displayDuration = 5;
+      component.prayers = [{ id: 'p1', prayer_updates: [] } as any];
+      component.currentIndex = 0;
+      
+      const duration = component.calculateCurrentDuration();
+      
+      expect(duration).toBeGreaterThanOrEqual(10);
+    });
+
+    it('calculateCurrentDuration for prompt with no description', () => {
+      component.smartMode = true;
+      component.displayDuration = 5;
+      component.prompts = [{ id: 'pr1', type: 'encouragement' } as any];
+      component.prayers = [];
+      component.contentType = 'prompts';
+      component.currentIndex = 0;
+      
+      const duration = component.calculateCurrentDuration();
+      
+      expect(duration).toBeGreaterThanOrEqual(10);
+    });
+
+    it('items returns prayers when contentType is prayers', () => {
+      const prayers = [{ id: 'p1', prayer_for: 'John' } as any];
+      const prompts = [{ id: 'pr1', type: 'encouragement' } as any];
+      component.prayers = prayers;
+      component.prompts = prompts;
+      component.contentType = 'prayers';
+      
+      expect(component.items).toEqual(prayers);
+    });
+
+    it('items returns prompts when contentType is prompts', () => {
+      const prayers = [{ id: 'p1', prayer_for: 'John' } as any];
+      const prompts = [{ id: 'pr1', type: 'encouragement' } as any];
+      component.prayers = prayers;
+      component.prompts = prompts;
+      component.contentType = 'prompts';
+      
+      expect(component.items).toEqual(prompts);
+    });
+
+    it('items returns combined prayers and prompts when contentType is both', () => {
+      const prayers = [{ id: 'p1', prayer_for: 'John' } as any];
+      const prompts = [{ id: 'pr1', type: 'encouragement' } as any];
+      component.prayers = prayers;
+      component.prompts = prompts;
+      component.contentType = 'both';
+      
+      const items = component.items;
+      expect(items).toHaveLength(2);
+      expect(items[0].id).toBe('p1');
+      expect(items[1].id).toBe('pr1');
+    });
+
+    it('currentItem returns item at currentIndex', () => {
+      component.prayers = [{ id: 'a' } as any, { id: 'b' } as any, { id: 'c' } as any];
+      component.contentType = 'prayers';
+      component.currentIndex = 1;
+      
+      expect(component.currentItem.id).toBe('b');
+    });
+
+    it('fetchPrompts handles error in type fetch', async () => {
+      const qError = createQuery({ data: null, error: { message: 'types error' } });
+      mockSupabase.client.from = vi.fn().mockReturnValue(qError);
+      
+      await component.fetchPrompts();
+      
+      expect(component.prompts).toEqual([]);
+    });
+
+    it('fetchPrompts handles error in prompts fetch', async () => {
+      const qTypes = createQuery({ data: [{ name: 't1', display_order: 1 }], error: null });
+      const qPromptsError = createQuery({ data: null, error: { message: 'prompts error' } });
+      let callCount = 0;
+      mockSupabase.client.from = vi.fn().mockImplementation(() => {
+        callCount++;
+        return callCount === 1 ? qTypes : qPromptsError;
+      });
+      
+      await component.fetchPrompts();
+      
+      expect(component.prompts).toEqual([]);
+    });
+
+    it('onTouchStart with single tap sets lastTap', () => {
+      component.lastTap = 0;
+      component.onTouchStart({ touches: [{ clientX: 50 }] } as unknown as TouchEvent);
+      expect(component.lastTap).toBeGreaterThan(0);
+    });
+
+    it('onTouchStart resets lastTap to 0 on double tap', () => {
+      component.lastTap = Date.now() - 100;
+      component.showControls = true;
+      component.onTouchStart({ touches: [{ clientX: 50 }] } as unknown as TouchEvent);
+      expect(component.lastTap).toBe(0);
+    });
+
+    it('clearIntervals sets autoAdvanceInterval to null', () => {
+      component.autoAdvanceInterval = setTimeout(() => {}, 1000);
+      component.countdownSubscription = null;
+      
+      component.clearIntervals();
+      
+      expect(component.autoAdvanceInterval).toBeNull();
+    });
+
+    it('handleKeyboard ignores unknown keys', () => {
+      const nextSpy = vi.spyOn(component, 'nextSlide');
+      component.handleKeyboard({ key: 'Unknown', preventDefault: () => {} } as unknown as KeyboardEvent);
+      expect(nextSpy).not.toHaveBeenCalled();
+    });
+
+    it('handleKeyboard with space key calls preventDefault and nextSlide', () => {
+      const preventSpy = vi.fn();
+      const nextSpy = vi.spyOn(component, 'nextSlide');
+      component.handleKeyboard({ key: ' ', preventDefault: preventSpy } as unknown as KeyboardEvent);
+      expect(preventSpy).toHaveBeenCalled();
+      expect(nextSpy).toHaveBeenCalled();
+    });
+
+    it('applyTheme with light theme removes dark class', () => {
+      component.theme = 'light';
+      const root = document.documentElement;
+      root.classList.add('dark');
+      component.applyTheme();
+      expect(root.classList.contains('dark')).toBe(false);
+    });
+
+    it('loadTheme uses default theme when localStorage is empty', () => {
+      localStorage.removeItem('theme');
+      const applySpy = vi.spyOn(component, 'applyTheme');
+      component.theme = 'light';
+      component.loadTheme();
+      expect(applySpy).toHaveBeenCalled();
+    });
+
+    it('ngOnDestroy clears all intervals and timers', () => {
+      component.autoAdvanceInterval = setTimeout(() => {}, 1000);
+      component.countdownSubscription = { unsubscribe: vi.fn() } as any;
+      component.initialTimerHandle = setTimeout(() => {}, 1000);
+      component.prayerTimerSubscription = { unsubscribe: vi.fn() } as any;
+      
+      component.ngOnDestroy();
+      
+      expect(component.autoAdvanceInterval).toBeNull();
+      expect(component.countdownSubscription).toBeNull();
+    });
+
+    it('loadContent catches errors from fetchPrayers', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.spyOn(component, 'fetchPrayers').mockRejectedValue(new Error('Fetch error'));
+      component.contentType = 'prayers';
+      await component.loadContent();
+      expect(consoleSpy).toHaveBeenCalled();
+      expect(component.loading).toBe(false);
+      consoleSpy.mockRestore();
+    });
+
+    it('setupControlsAutoHide treats device as mobile when touch present', () => {
+      (globalThis as any).ontouchstart = true;
+      component.initialPeriodElapsed = false;
+      component.showControls = true;
+      component.setupControlsAutoHide();
+      expect(component.initialPeriodElapsed).toBe(true);
+      delete (globalThis as any).ontouchstart;
+    });
+
+    it('handleMouseMove does nothing during initial period', () => {
+      component.initialPeriodElapsed = false;
+      component.showControls = false;
+      vi.stubGlobal('innerHeight', 100);
+      component.handleMouseMove({ clientY: 90 } as MouseEvent);
+      expect(component.showControls).toBe(false);
+    });
+
+    it('fetchPrayers with both status filters false results in no status filter applied', async () => {
+      const q = createQuery({ data: [], error: null });
+      mockSupabase.client.from = vi.fn().mockReturnValue(q);
+      component.contentType = 'prayers';
+      component.statusFilters = { current: false, answered: false };
+      await component.fetchPrayers();
+      expect(component.prayers).toEqual([]);
+    });
+
+    it('onTouchEnd does nothing when touchStart is null', () => {
+      component.prayers = [{ id: '1' } as any];
+      component.touchStart = null;
+      component.touchEnd = 100;
+      component.currentIndex = 0;
+      component.onTouchEnd();
+      expect(component.currentIndex).toBe(0);
+    });
+
+    it('onTouchEnd does nothing when touchEnd is null', () => {
+      component.prayers = [{ id: '1' } as any];
+      component.touchStart = 100;
+      component.touchEnd = null;
+      component.currentIndex = 0;
+      component.onTouchEnd();
+      expect(component.currentIndex).toBe(0);
+    });
+
+    it('onTouchEnd does nothing when swipe distance is too small', () => {
+      component.prayers = [{ id: '1' }, { id: '2' }] as any;
+      component.touchStart = 100;
+      component.touchEnd = 95;
+      component.currentIndex = 0;
+      component.onTouchEnd();
+      expect(component.currentIndex).toBe(0);
+    });
+  });
 });

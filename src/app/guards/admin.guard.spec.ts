@@ -57,6 +57,9 @@ vi.mock('rxjs/operators', async () => {
 
 describe('adminGuard', () => {
   beforeEach(async () => {
+    // Use fake timers for tests
+    vi.useFakeTimers();
+
     // Create mock services
     mockAdminAuthService = {
       isAdmin$: new BehaviorSubject<boolean>(false),
@@ -92,6 +95,7 @@ describe('adminGuard', () => {
   afterEach(() => {
     // Restore original location
     window.location = originalLocation;
+    vi.useRealTimers();
     vi.clearAllMocks();
   });
 
@@ -237,5 +241,169 @@ describe('adminGuard', () => {
     const result = await firstValueFrom(guard$);
     expect(result).toBe(false);
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);
+  });
+
+  it('should handle timeout error from loading state', async () => {
+    window.location.search = '';
+
+    vi.resetModules();
+    const { adminGuard } = await import('./admin.guard');
+    const { firstValueFrom } = await import('rxjs');
+
+    const guard$ = adminGuard();
+
+    if (typeof guard$ === 'boolean') {
+      throw new Error('Guard should return an Observable');
+    }
+
+    // Don't set loading to false - let the timeout trigger (5 seconds)
+    // This will trigger the catchError handler
+    const resultPromise = firstValueFrom(guard$).catch((err) => {
+      // The timeout will cause an error to be caught and handled
+      return false;
+    });
+
+    // Advance timers to trigger the timeout
+    await vi.advanceTimersByTimeAsync(5100);
+
+    const result = await resultPromise;
+    expect(result).toBe(false);
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);
+  });
+
+  it('should handle error in combineLatest operator', async () => {
+    window.location.search = '';
+
+    vi.resetModules();
+    const { adminGuard } = await import('./admin.guard');
+    const { firstValueFrom } = await import('rxjs');
+
+    const guard$ = adminGuard();
+
+    if (typeof guard$ === 'boolean') {
+      throw new Error('Guard should return an Observable');
+    }
+
+    // Make loading$ emit an error
+    const resultPromise = firstValueFrom(guard$);
+
+    // Emit an error from loading$
+    mockAdminAuthService.loading$.error(new Error('Test error'));
+
+    try {
+      await resultPromise;
+    } catch (err) {
+      // Error expected
+    }
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);
+  });
+
+  it('should return false on catchError', async () => {
+    window.location.search = '';
+
+    vi.resetModules();
+    const { adminGuard } = await import('./admin.guard');
+    const { firstValueFrom } = await import('rxjs');
+
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const guard$ = adminGuard();
+
+    if (typeof guard$ === 'boolean') {
+      throw new Error('Guard should return an Observable');
+    }
+
+    // Simulate a timeout by letting the 5s timer expire
+    // The catchError will handle it and navigate to /login
+    const resultPromise = firstValueFrom(guard$).catch(() => false);
+
+    // Advance timers to trigger timeout
+    await vi.advanceTimersByTimeAsync(5100);
+
+    const result = await resultPromise;
+    expect(result).toBe(false);
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);
+    expect(consoleErrorSpy).toHaveBeenCalled();
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('should check approval code in constructor', async () => {
+    window.location.search = '?code=approval-123&state=xyz';
+
+    vi.resetModules();
+    const { adminGuard } = await import('./admin.guard');
+
+    const result = adminGuard();
+
+    // Should return true immediately
+    expect(result).toBe(true);
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
+  });
+
+  it('should handle multiple isAdmin emissions while loading', async () => {
+    window.location.search = '';
+
+    vi.resetModules();
+    const { adminGuard } = await import('./admin.guard');
+    const { firstValueFrom } = await import('rxjs');
+
+    const guard$ = adminGuard();
+
+    if (typeof guard$ === 'boolean') {
+      throw new Error('Guard should return an Observable');
+    }
+
+    const resultPromise = firstValueFrom(guard$);
+
+    // Emit multiple values while loading is true
+    mockAdminAuthService.isAdmin$.next(true);
+    mockAdminAuthService.isAdmin$.next(false);
+    mockAdminAuthService.isAdmin$.next(true);
+
+    // Now complete loading - should use the final isAdmin value
+    mockAdminAuthService.loading$.next(false);
+
+    const result = await resultPromise;
+    expect(result).toBe(true);
+  });
+
+  it('should handle admin status change after loading completes', async () => {
+    window.location.search = '';
+
+    vi.resetModules();
+    const { adminGuard } = await import('./admin.guard');
+    const { firstValueFrom } = await import('rxjs');
+
+    const guard$ = adminGuard();
+
+    if (typeof guard$ === 'boolean') {
+      throw new Error('Guard should return an Observable');
+    }
+
+    mockAdminAuthService.loading$.next(false);
+    mockAdminAuthService.isAdmin$.next(true);
+
+    const result = await firstValueFrom(guard$);
+    expect(result).toBe(true);
+
+    // Verify that the router.navigate was NOT called for allowed access
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
+  });
+
+  it('should immediately return true for approval code regardless of admin status', async () => {
+    window.location.search = '?code=test-approval-code';
+    mockAdminAuthService.isAdmin$.next(false);
+    mockAdminAuthService.loading$.next(true);
+
+    vi.resetModules();
+    const { adminGuard } = await import('./admin.guard');
+
+    const result = adminGuard();
+
+    // Should return true without checking admin status
+    expect(result).toBe(true);
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
   });
 });

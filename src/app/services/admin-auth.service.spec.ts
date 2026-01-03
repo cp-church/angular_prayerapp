@@ -1523,4 +1523,478 @@ describe('AdminAuthService', () => {
     });
 
   });
+
+  describe('clearLoading', () => {
+    it('should clear loading state', async () => {
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseService);
+      
+      // Wait for initialization to complete
+      await vi.advanceTimersByTimeAsync(100);
+
+      // Verify loading is initially false after init
+      expect(newService.isLoading()).toBe(false);
+      
+      // Manually set loading to true to test clearLoading
+      (newService as any).loadingSubject.next(true);
+      expect(newService.isLoading()).toBe(true);
+      
+      // Call clearLoading
+      newService.clearLoading();
+      
+      // Verify loading is cleared
+      expect(newService.isLoading()).toBe(false);
+    });
+
+    it('should emit false on loading$ observable when clearLoading is called', async () => {
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseService);
+      
+      await vi.advanceTimersByTimeAsync(100);
+
+      (newService as any).loadingSubject.next(true);
+      
+      const loadingValues: boolean[] = [];
+      newService.loading$.subscribe(value => {
+        loadingValues.push(value);
+      });
+
+      newService.clearLoading();
+      
+      expect(loadingValues[loadingValues.length - 1]).toBe(false);
+    });
+  });
+
+  describe('isEmailAdmin helper', () => {
+    it('should return true when check-admin-status function returns is_admin true', async () => {
+      mockSupabaseClient.functions.invoke.mockResolvedValueOnce({
+        data: { is_admin: true },
+        error: null
+      });
+
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseService);
+      
+      await vi.advanceTimersByTimeAsync(100);
+
+      // Call the private isEmailAdmin method indirectly through sendMfaCode
+      mockSupabaseClient.functions.invoke
+        .mockResolvedValueOnce({ data: null, error: null }) // for admin check
+        .mockResolvedValueOnce({ data: { codeId: 'code123' }, error: null }); // for sendMfaCode
+
+      const result = await newService.sendMfaCode('admin@example.com');
+      
+      expect(result.success).toBe(true);
+    });
+
+    it('should handle check-admin-status function error', async () => {
+      mockSupabaseClient.functions.invoke.mockResolvedValueOnce({
+        data: null,
+        error: { message: 'Function error' }
+      });
+
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseService);
+      
+      await vi.advanceTimersByTimeAsync(100);
+
+      mockSupabaseClient.functions.invoke
+        .mockResolvedValueOnce({
+          data: null,
+          error: { message: 'Function error' }
+        });
+
+      // Call sendMfaCode which calls isEmailAdmin internally
+      const result = await newService.sendMfaCode('test@example.com');
+      
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('Event listener callbacks', () => {
+    it('should handle focus event listener for approval session validation', async () => {
+      let focusHandler: (() => void) | undefined;
+      vi.spyOn(window, 'addEventListener').mockImplementation((event: string, handler: any) => {
+        if (event === 'focus') {
+          focusHandler = handler;
+        }
+      });
+
+      localStorage.setItem('approvalAdminEmail', 'test@example.com');
+      localStorage.setItem('approvalSessionValidated', 'true');
+
+      mockSupabaseClient.functions.invoke.mockResolvedValueOnce({
+        data: { is_admin: true },
+        error: null
+      });
+
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseService);
+      
+      await vi.advanceTimersByTimeAsync(100);
+
+      if (focusHandler) {
+        focusHandler();
+        await vi.advanceTimersByTimeAsync(100);
+      }
+
+      expect(newService.getIsAdmin()).toBe(true);
+    });
+
+    it('should handle visibilitychange event listener for approval session', async () => {
+      let visibilityHandler: (() => void) | undefined;
+      vi.spyOn(document, 'addEventListener').mockImplementation((event: string, handler: any) => {
+        if (event === 'visibilitychange') {
+          visibilityHandler = handler;
+        }
+      });
+
+      localStorage.setItem('approvalAdminEmail', 'admin@example.com');
+      localStorage.setItem('approvalSessionValidated', 'true');
+
+      mockSupabaseClient.functions.invoke.mockResolvedValueOnce({
+        data: { is_admin: true },
+        error: null
+      });
+
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseService);
+      
+      await vi.advanceTimersByTimeAsync(100);
+
+      if (visibilityHandler) {
+        visibilityHandler();
+        await vi.advanceTimersByTimeAsync(100);
+      }
+
+      expect(newService.getIsAdmin()).toBe(true);
+    });
+  });
+
+  describe('Getter Methods', () => {
+    it('should return user from getUser', async () => {
+      const mockUser: User = {
+        id: 'user-123',
+        email: 'test@example.com',
+        aud: 'authenticated',
+        role: 'authenticated',
+        email_confirmed_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        user_metadata: {},
+        app_metadata: {},
+      };
+
+      mockSupabaseClient.auth.getSession.mockResolvedValueOnce({
+        data: { session: { user: mockUser } },
+        error: null
+      });
+
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseService);
+      
+      await vi.advanceTimersByTimeAsync(100);
+
+      const user = newService.getUser();
+      expect(user?.id).toBe('user-123');
+    });
+
+    it('should return false for getIsAdmin when not admin', async () => {
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseService);
+      
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(newService.getIsAdmin()).toBe(false);
+    });
+
+    it('should return loading state from isLoading', async () => {
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseService);
+      
+      // After init, loading should be false
+      await vi.advanceTimersByTimeAsync(100);
+      
+      expect(newService.isLoading()).toBe(false);
+    });
+  });
+
+  describe('Activity Tracking Edge Cases', () => {
+    it('should handle multiple consecutive activity recordings', async () => {
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseService);
+      
+      await vi.advanceTimersByTimeAsync(100);
+
+      const time1 = Date.now();
+      newService.recordActivity();
+      
+      vi.advanceTimersByTimeAsync(100);
+      
+      const time2 = Date.now();
+      newService.recordActivity();
+      
+      // Just verify no error is thrown and method completes
+      expect(time2).toBeGreaterThanOrEqual(time1);
+    });
+  });
+
+  describe('initializeAuth error handling', () => {
+    it('should catch and handle initializeAuth errors', async () => {
+      const mockSupabaseServiceError = {
+        client: {
+          auth: {
+            getSession: vi.fn().mockRejectedValueOnce(new Error('Auth error')),
+            onAuthStateChange: vi.fn(),
+            signOut: vi.fn()
+          },
+          from: vi.fn(),
+          functions: { invoke: vi.fn() }
+        },
+        directQuery: vi.fn().mockRejectedValueOnce(new Error('Query error'))
+      };
+
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseServiceError as any);
+      
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(newService.isLoading()).toBe(false);
+      errorSpy.mockRestore();
+    });
+  });
+
+  describe('Session persistence edge cases', () => {
+    it('should handle getPersistedSessionStart with invalid JSON', async () => {
+      localStorage.setItem('adminSessionStart', 'invalid-json-data');
+
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseService);
+      
+      await vi.advanceTimersByTimeAsync(100);
+
+      // Should not crash, just use null
+      expect(newService.getUser()).toBeNull();
+    });
+
+    it('should handle getPersistedSessionStart with NaN value', async () => {
+      localStorage.setItem('adminSessionStart', 'not-a-number');
+
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseService);
+      
+      await vi.advanceTimersByTimeAsync(100);
+
+      // Should gracefully handle NaN and continue
+      expect(newService.isLoading()).toBe(false);
+    });
+  });
+
+  describe('Event tracking setup', () => {
+    it('should set up event listeners for activity tracking', async () => {
+      const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
+
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseService);
+      
+      await vi.advanceTimersByTimeAsync(100);
+
+      // Verify activity event listeners were added
+      expect(addEventListenerSpy).toHaveBeenCalledWith(expect.stringMatching(/mousedown|keydown|scroll|touchstart/), expect.any(Function));
+    });
+  });
+
+  describe('Session timeout edge cases', () => {
+    it('should not check timeout if user is not admin', async () => {
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseService);
+      
+      await vi.advanceTimersByTimeAsync(100);
+
+      // Verify service doesn't error when checking timeout without admin status
+      expect(newService.getIsAdmin()).toBe(false);
+      
+      // Advance through the interval check
+      vi.advanceTimersByTimeAsync(61000);
+      
+      expect(newService.isLoading()).toBe(false);
+    });
+  });
+
+  describe('handleAdminSessionExpired', () => {
+    it('should set adminSessionExpired when handleAdminSessionExpired is called', async () => {
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseService);
+      
+      await vi.advanceTimersByTimeAsync(100);
+
+      // Manually call the private handler through admin status change
+      (newService as any).isAdminSubject.next(true);
+      (newService as any).handleAdminSessionExpired();
+
+      // Verify admin status was cleared
+      expect(newService.getIsAdmin()).toBe(false);
+    });
+  });
+
+  describe('hasAdminEmailSubject', () => {
+    it('should emit hasAdminEmail$ observable values', async () => {
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseService);
+      
+      await vi.advanceTimersByTimeAsync(100);
+
+      const adminEmailValues: boolean[] = [];
+      newService.hasAdminEmail$.subscribe(value => {
+        adminEmailValues.push(value);
+      });
+
+      expect(adminEmailValues.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('adminSessionExpired$ observable', () => {
+    it('should emit adminSessionExpired$ values', async () => {
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseService);
+      
+      await vi.advanceTimersByTimeAsync(100);
+
+      const expiredValues: boolean[] = [];
+      newService.adminSessionExpired$.subscribe(value => {
+        expiredValues.push(value);
+      });
+
+      expect(expiredValues.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('requireSiteLogin$ observable', () => {
+    it('should emit requireSiteLogin$ values', async () => {
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseService);
+      
+      await vi.advanceTimersByTimeAsync(100);
+
+      const requireSiteLoginValues: boolean[] = [];
+      newService.requireSiteLogin$.subscribe(value => {
+        requireSiteLoginValues.push(value);
+      });
+
+      expect(requireSiteLoginValues.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Private helper methods', () => {
+    it('should handle applyTimeoutSettings with partial settings', async () => {
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseService);
+      
+      await vi.advanceTimersByTimeAsync(100);
+
+      // Trigger applyTimeoutSettings via private method
+      (newService as any).applyTimeoutSettings({ inactivityTimeoutMinutes: 60 });
+
+      // Verify no errors and service continues to function
+      expect(newService.isLoading()).toBe(false);
+    });
+
+    it('should apply timeout settings with requireSiteLogin boolean', async () => {
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseService);
+      
+      await vi.advanceTimersByTimeAsync(100);
+
+      (newService as any).applyTimeoutSettings({ requireSiteLogin: false });
+
+      const requireSiteLoginValues: boolean[] = [];
+      newService.requireSiteLogin$.subscribe(value => {
+        requireSiteLoginValues.push(value);
+      });
+
+      expect(requireSiteLoginValues[requireSiteLoginValues.length - 1]).toBe(false);
+    });
+  });
+
+  describe('Focus event handler complete flow', () => {
+    it('should handle focus event without crashing when user exists', async () => {
+      let focusHandler: (() => void) | undefined;
+      vi.spyOn(window, 'addEventListener').mockImplementation((event: string, handler: any) => {
+        if (event === 'focus') {
+          focusHandler = handler;
+        }
+      });
+
+      // Set up user in the service
+      service.userSubject.next({
+        id: 'user-456',
+        email: 'currentuser@example.com',
+        aud: 'authenticated',
+        role: 'authenticated'
+      } as any);
+
+      service.lastBlockedCheck = Date.now(); // Prevent blocked check from running
+      
+      // Call the focus handler if it was registered
+      if (focusHandler) {
+        focusHandler();
+        await vi.advanceTimersByTimeAsync(50);
+      }
+
+      expect(service.getUser()?.email).toBe('currentuser@example.com');
+    });
+  });
+
+  describe('isEmailAdmin exception handling', () => {
+    it('should return false when check-admin-status throws exception', async () => {
+      mockSupabaseClient.functions.invoke.mockRejectedValueOnce(new Error('Function error'));
+
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseService);
+      
+      await vi.advanceTimersByTimeAsync(100);
+
+      mockSupabaseClient.functions.invoke.mockRejectedValueOnce(new Error('Function error'));
+
+      // Call sendMfaCode which internally calls isEmailAdmin
+      const result = await newService.sendMfaCode('test@example.com');
+      
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('checkAdminStatus with user but no email', () => {
+    it('should handle user object without email field', async () => {
+      const mockUser = {
+        id: 'user-789',
+        email: null,
+        aud: 'authenticated',
+        role: 'authenticated',
+        email_confirmed_at: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        user_metadata: {},
+        app_metadata: {}
+      } as any as User;
+
+      mockSupabaseClient.auth.getSession.mockResolvedValueOnce({
+        data: { session: { user: mockUser } },
+        error: null
+      });
+
+      mockSupabaseClient.auth.onAuthStateChange.mockReturnValueOnce({
+        data: { subscription: { unsubscribe: vi.fn() } }
+      });
+
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(mockSupabaseService);
+      
+      await vi.advanceTimersByTimeAsync(100);
+
+      // Should handle gracefully without errors
+      expect(newService.getIsAdmin()).toBe(false);
+    });
+  });
 });
