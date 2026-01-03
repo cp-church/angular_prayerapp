@@ -762,4 +762,113 @@ describe('UserSettingsComponent', () => {
       consoleSpy.mockRestore();
     });
   });
+
+  describe('loadGitHubFeedbackStatus', () => {
+    it('should load GitHub feedback enabled status from config', async () => {
+      const mockGitHubFeedbackService = {
+        getGitHubConfig: vi.fn(() => Promise.resolve({ enabled: true }))
+      };
+
+      component['githubFeedbackService'] = mockGitHubFeedbackService as any;
+
+      await component['loadGitHubFeedbackStatus']();
+
+      expect(component.githubFeedbackEnabled).toBe(true);
+      expect(mockChangeDetectorRef.markForCheck).toHaveBeenCalled();
+    });
+
+    it('should default to false when config is null', async () => {
+      const mockGitHubFeedbackService = {
+        getGitHubConfig: vi.fn(() => Promise.resolve(null))
+      };
+
+      component['githubFeedbackService'] = mockGitHubFeedbackService as any;
+
+      await component['loadGitHubFeedbackStatus']();
+
+      expect(component.githubFeedbackEnabled).toBe(false);
+      expect(mockChangeDetectorRef.markForCheck).toHaveBeenCalled();
+    });
+
+    it('should handle error when loading GitHub config', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const mockGitHubFeedbackService = {
+        getGitHubConfig: vi.fn(() => Promise.reject(new Error('Network error')))
+      };
+
+      component['githubFeedbackService'] = mockGitHubFeedbackService as any;
+
+      await component['loadGitHubFeedbackStatus']();
+
+      expect(component.githubFeedbackEnabled).toBe(false);
+      expect(consoleSpy).toHaveBeenCalledWith('Error loading GitHub feedback status:', expect.any(Error));
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('getCurrentUserEmail', () => {
+    it('should return email from userInfo when available', () => {
+      localStorage.setItem('prayerapp_user_email', 'user@example.com');
+      const email = component.getCurrentUserEmail();
+      expect(email).toBe('user@example.com');
+    });
+
+    it('should return fallback email from component property when userInfo email is empty', () => {
+      localStorage.removeItem('prayerapp_user_email');
+      component.email = 'fallback@example.com';
+      const email = component.getCurrentUserEmail();
+      expect(email).toBe('fallback@example.com');
+    });
+
+    it('should return empty string when no email available', () => {
+      localStorage.removeItem('prayerapp_user_email');
+      component.email = '';
+      const email = component.getCurrentUserEmail();
+      expect(email).toBe('');
+    });
+  });
+
+  describe('getCurrentUserName', () => {
+    it('should return full name when both firstName and lastName are available', () => {
+      localStorage.setItem('prayerapp_user_first_name', 'John');
+      localStorage.setItem('prayerapp_user_last_name', 'Doe');
+      const name = component.getCurrentUserName();
+      expect(name).toBe('John Doe');
+    });
+
+    it('should return only firstName when lastName is empty', () => {
+      localStorage.setItem('prayerapp_user_first_name', 'John');
+      localStorage.removeItem('prayerapp_user_last_name');
+      const name = component.getCurrentUserName();
+      expect(name).toBe('John');
+    });
+
+    it('should return only lastName when firstName is empty', () => {
+      localStorage.removeItem('prayerapp_user_first_name');
+      localStorage.setItem('prayerapp_user_last_name', 'Doe');
+      const name = component.getCurrentUserName();
+      expect(name).toBe('Doe');
+    });
+
+    it('should return empty string when both firstName and lastName are empty', () => {
+      localStorage.removeItem('prayerapp_user_first_name');
+      localStorage.removeItem('prayerapp_user_last_name');
+      const name = component.getCurrentUserName();
+      expect(name).toBe('');
+    });
+
+    it('should trim whitespace from name', () => {
+      localStorage.setItem('prayerapp_user_first_name', '  John  ');
+      localStorage.removeItem('prayerapp_user_last_name');
+      const name = component.getCurrentUserName();
+      expect(name).toBe('John');
+    });
+  });
+
+  describe('logout', () => {
+    it('should call adminAuthService logout', async () => {
+      await component.logout();
+      expect(mockAdminAuthService.logout).toHaveBeenCalled();
+    });
+  });
 });

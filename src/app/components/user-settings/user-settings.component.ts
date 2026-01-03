@@ -349,7 +349,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
 
           <!-- GitHub Feedback Form -->
           @if (githubFeedbackEnabled) {
-          <app-github-feedback-form [userEmail]="getCurrentUserEmail()"></app-github-feedback-form>
+          <app-github-feedback-form [userEmail]="getCurrentUserEmail()" [userName]="getCurrentUserName()"></app-github-feedback-form>
           }
 
         <!-- Footer -->
@@ -474,6 +474,32 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
       });
   }
 
+  private async loadUserNameFromDatabase(email: string): Promise<void> {
+    try {
+      const { data, error } = await this.supabase.client
+        .from('email_subscribers')
+        .select('first_name, last_name')
+        .eq('email', email.toLowerCase())
+        .maybeSingle();
+
+      if (!error && data) {
+        const firstName = data.first_name || '';
+        const lastName = data.last_name || '';
+        if (firstName || lastName) {
+          this.name = `${firstName}${lastName ? ' ' + lastName : ''}`.trim();
+          // Also save to localStorage for future use
+          if (firstName && lastName) {
+            const userInfo = this.getUserInfo();
+            const util = await import('../../../utils/userInfoStorage');
+            util.saveUserInfo(firstName, lastName, userInfo.email);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error loading user name from database:', err);
+    }
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['isOpen'] && this.isOpen) {
       this.loadPromptTypes();
@@ -487,6 +513,11 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
         this.name = `${userInfo.firstName} ${userInfo.lastName}`;
       }
       this.email = userInfo.email;
+      
+      // Load user name from database if not in localStorage
+      if ((!userInfo.firstName || !userInfo.lastName) && userInfo.email) {
+        this.loadUserNameFromDatabase(userInfo.email);
+      }
       
       // Don't set receiveNotifications here - let the database load set it
       // Only set to true if there's no email (no database lookup will happen)
@@ -716,6 +747,19 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
   getCurrentUserEmail(): string {
     const userInfo = this.getUserInfo();
     return userInfo.email || this.email || '';
+  }
+
+  getCurrentUserName(): string {
+    // First try to use the name property which is updated from localStorage and database
+    if (this.name) {
+      return this.name;
+    }
+    
+    // Fallback to getUserInfo from localStorage
+    const userInfo = this.getUserInfo();
+    const firstName = userInfo.firstName || '';
+    const lastName = userInfo.lastName || '';
+    return (firstName + (lastName ? ' ' + lastName : '')).trim();
   }
 
   async logout(): Promise<void> {

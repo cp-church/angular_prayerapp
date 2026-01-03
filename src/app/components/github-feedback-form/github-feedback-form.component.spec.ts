@@ -46,6 +46,11 @@ describe('GitHubFeedbackFormComponent', () => {
       expect(component.userEmail).toBe('test@example.com');
     });
 
+    it('should have userName property', () => {
+      component.userName = 'John Doe';
+      expect(component.userName).toBe('John Doe');
+    });
+
     it('should initialize destroy subject', () => {
       expect(component['destroy$']).toBeDefined();
     });
@@ -140,6 +145,19 @@ describe('GitHubFeedbackFormComponent', () => {
       expect(callArgs.body).toBe('Test Description');
     });
 
+    it('should call GitHub service with user name in payload', async () => {
+      component.userEmail = 'john@example.com';
+      component.userName = 'John Doe';
+      component.feedbackTitle = 'Test';
+      component.feedbackDescription = 'Description';
+
+      await component.onSubmit();
+
+      const callArgs = mockGitHubFeedbackService.createGitHubIssue.mock.calls[0][0];
+      expect(callArgs.userName).toBe('John Doe');
+      expect(callArgs.userEmail).toBe('john@example.com');
+    });
+
     it('should reset form after successful submission', async () => {
       component.feedbackTitle = 'Test';
       component.feedbackDescription = 'Description';
@@ -231,7 +249,7 @@ describe('GitHubFeedbackFormComponent', () => {
       expect(component.successMessage).toBe('');
     });
 
-    it('should include GitHub link in success response', async () => {
+    it('should store issue URL from service response', async () => {
       component.feedbackTitle = 'Test';
       component.feedbackDescription = 'Description';
 

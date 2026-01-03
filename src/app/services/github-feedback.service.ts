@@ -16,6 +16,7 @@ export interface GitHubIssuePayload {
   body: string;
   type: 'bug' | 'feature' | 'suggestion';
   userEmail?: string;
+  userName?: string;
 }
 
 @Injectable({
@@ -117,6 +118,7 @@ export class GitHubFeedbackService {
 
       const body = `
 **Type:** ${payload.type}
+**User Name:** ${payload.userName || payload.userEmail || 'Anonymous'}
 **User Email:** ${payload.userEmail || 'Anonymous'}
 
 ---

@@ -162,7 +162,8 @@ describe('GitHubFeedbackService', () => {
         title: 'Test Bug',
         body: 'This is a test bug',
         type: 'bug' as const,
-        userEmail: 'test@example.com'
+        userEmail: 'test@example.com',
+        userName: 'John Doe'
       };
 
       const result = await service.createGitHubIssue(payload);
@@ -205,7 +206,8 @@ describe('GitHubFeedbackService', () => {
         title: 'Test',
         body: 'Test',
         type: 'suggestion' as const,
-        userEmail: 'test@example.com'
+        userEmail: 'test@example.com',
+        userName: 'Test User'
       };
 
       const result = await service.createGitHubIssue(payload);
@@ -219,7 +221,8 @@ describe('GitHubFeedbackService', () => {
         title: 'Test Bug',
         body: 'Test',
         type: 'bug' as const,
-        userEmail: 'test@example.com'
+        userEmail: 'test@example.com',
+        userName: 'Test User'
       };
 
       await service.createGitHubIssue(payload);
@@ -237,12 +240,31 @@ describe('GitHubFeedbackService', () => {
         title: 'Test',
         body: 'Test',
         type: 'suggestion' as const,
-        userEmail: 'test@example.com'
+        userEmail: 'test@example.com',
+        userName: 'Test User'
       };
 
       const result = await service.createGitHubIssue(payload);
 
       expect(result.success).toBe(false);
+    });
+
+    it('should include user name in issue body', async () => {
+      const payload = {
+        title: 'Test Feature',
+        body: 'Test body content',
+        type: 'feature' as const,
+        userEmail: 'jane@example.com',
+        userName: 'Jane Smith'
+      };
+
+      await service.createGitHubIssue(payload);
+
+      const callArgs = (global.fetch as any).mock.calls[0];
+      const requestBody = JSON.parse(callArgs[1].body);
+
+      expect(requestBody.body).toContain('Jane Smith');
+      expect(requestBody.body).toContain('jane@example.com');
     });
   });
 

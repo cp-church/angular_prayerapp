@@ -129,16 +129,6 @@ import { Subject, takeUntil } from 'rxjs';
           <div class="flex-1">
             <p class="text-sm text-green-800 dark:text-green-200 font-medium">Thank you for your feedback!</p>
             <p class="text-xs text-green-700 dark:text-green-300 mt-1">Your submission has been received and will be reviewed by our team.</p>
-            @if (issueUrl) {
-            <a
-              [href]="issueUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-xs text-green-700 dark:text-green-300 hover:underline mt-1 inline-block"
-            >
-              View on GitHub →
-            </a>
-            }
           </div>
         </div>
       </div>
@@ -163,6 +153,7 @@ import { Subject, takeUntil } from 'rxjs';
 })
 export class GitHubFeedbackFormComponent implements OnDestroy {
   @Input() userEmail: string = '';
+  @Input() userName: string = '';
 
   feedbackType: 'suggestion' | 'feature' | 'bug' = 'suggestion';
   feedbackTitle: string = '';
@@ -201,7 +192,8 @@ export class GitHubFeedbackFormComponent implements OnDestroy {
         title: this.feedbackTitle.trim(),
         body: this.feedbackDescription.trim(),
         type: this.feedbackType,
-        userEmail: this.userEmail
+        userEmail: this.userEmail,
+        userName: this.userName
       });
 
       if (result.success) {
