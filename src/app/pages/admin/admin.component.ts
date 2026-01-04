@@ -87,7 +87,7 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'secu
                   <line x1="19" y1="12" x2="5" y2="12"></line>
                   <polyline points="12 19 5 12 12 5"></polyline>
                 </svg>
-                Main
+                Main Site
               </button>
             </div>
           </div>
@@ -584,19 +584,19 @@ type SettingsTab = 'analytics' | 'email' | 'users' | 'content' | 'tools' | 'secu
                   </div>
 
                   <!-- Archived Prayers -->
-                  <div class="bg-slate-50 dark:bg-slate-900/20 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+                  <div class="bg-[#C9A961] bg-opacity-15 dark:bg-opacity-25 rounded-lg p-4 border border-[#C9A961]">
                     <div class="flex items-center gap-2 mb-2">
-                      <svg class="text-slate-600 dark:text-slate-400" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <svg class="text-[#6B5D45] dark:text-[#D4AF85]" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="3" y="5" width="18" height="16" rx="2"></rect>
                         <path d="M7 15h10"></path>
                         <path d="M7 7h10"></path>
                       </svg>
-                      <div class="text-sm font-medium text-slate-900 dark:text-slate-100">Archived</div>
+                      <div class="text-sm font-medium text-[#6B5D45] dark:text-[#D4AF85]">Archived</div>
                     </div>
-                    <div class="text-3xl font-bold text-slate-600 dark:text-slate-400">
+                    <div class="text-3xl font-bold text-[#6B5D45] dark:text-[#D4AF85]">
                       {{ analyticsStats.archivedPrayers.toLocaleString() }}
                     </div>
-                    <div class="text-xs text-slate-600/70 dark:text-slate-400/70 mt-1">archived prayers</div>
+                    <div class="text-xs text-[#6B5D45] dark:text-[#D4AF85] mt-1 opacity-70">archived prayers</div>
                   </div>
 
                   <!-- Subscribers -->

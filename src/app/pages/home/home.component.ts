@@ -51,7 +51,7 @@ import type { User } from '@supabase/supabase-js';
                   @if (hasAdminEmail$ | async) {
                     <button
                       (click)="navigateToAdmin()"
-                      class="flex items-center gap-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-2 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors text-sm"
+                      class="flex items-center gap-1 border border-red-600 dark:border-red-500 text-red-600 dark:text-red-500 px-2 py-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors text-sm"
                       title="Admin Portal"
                     >
                       <span>Admin</span>
@@ -107,7 +107,7 @@ import type { User } from '@supabase/supabase-js';
                     @if (hasAdminEmail$ | async) {
                       <button
                         (click)="navigateToAdmin()"
-                        class="flex items-center gap-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-4 py-2 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors text-base"
+                        class="flex items-center gap-2 border border-red-600 dark:border-red-500 text-red-600 dark:text-red-500 px-4 py-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors text-base"
                         title="Admin Portal"
                       >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
