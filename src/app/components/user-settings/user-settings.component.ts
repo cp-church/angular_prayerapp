@@ -290,6 +290,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
 
           <!-- Email Subscription Toggle -->
           <div class="flex items-start gap-3 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+            @if (preferencesLoaded) {
             <input
               type="checkbox"
               id="notifications"
@@ -300,10 +301,18 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
               aria-label="Receive prayer notifications"
               class="mt-1 h-4 w-4 text-blue-600 border-gray-300 bg-white dark:bg-gray-800 rounded focus:ring-blue-500 cursor-pointer focus:ring-2 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
             />
+            } @else {
+            <!-- Loading skeleton -->
+            <div class="mt-1 h-4 w-4 bg-gray-300 dark:bg-gray-600 rounded animate-pulse flex-shrink-0"></div>
+            }
             <div class="flex-1">
               <div class="flex items-center gap-2">
                 <div class="font-medium text-gray-900 dark:text-gray-100 text-sm sm:text-base">
+                  @if (preferencesLoaded) {
                   {{ receiveNotifications ? 'Subscribed to Prayer Notifications' : 'Not Subscribed to Prayer Notifications' }}
+                  } @else {
+                  <span class="inline-block h-5 w-48 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></span>
+                  }
                 </div>
                 @if (saving) {
                 <svg class="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -313,7 +322,11 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                 }
               </div>
               <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+                @if (preferencesLoaded && receiveNotifications !== null) {
                 {{ saving ? 'Saving...' : (receiveNotifications ? 'You are receiving prayer notifications' : 'You are not receiving prayer notifications') }}
+                } @else {
+                <span class="inline-block h-4 w-64 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></span>
+                }
               </p>
             </div>
           </div>
@@ -391,11 +404,12 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
 
   name = '';
   email = '';
-  receiveNotifications = true;
+  receiveNotifications: boolean | null = null;
   theme: ThemeOption = 'system';
   saving = false;
   error: string | null = null;
   success: string | null = null;
+  preferencesLoaded = false;
   
   isPrinting = false;
   isPrintingPrompts = false;
@@ -506,6 +520,7 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
       
       // Mark that we're doing initial load
       this.isInitialLoad = true;
+      this.preferencesLoaded = false;
       
       // Load user info from localStorage
       const userInfo = this.getUserInfo();
@@ -519,18 +534,16 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
         this.loadUserNameFromDatabase(userInfo.email);
       }
       
-      // Don't set receiveNotifications here - let the database load set it
-      // Only set to true if there's no email (no database lookup will happen)
-      if (!userInfo.email.trim()) {
-        this.receiveNotifications = true;
-      }
-      
       this.error = null;
       this.success = null;
       
       // If we have an email, try to load preferences from database
       if (userInfo.email.trim()) {
         this.loadPreferencesAutomatically(userInfo.email);
+      } else {
+        // No email - set default and mark as loaded
+        this.receiveNotifications = true;
+        this.preferencesLoaded = true;
       }
       
       // Reset flag after a short delay
@@ -622,11 +635,17 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
   }
 
   private async loadPreferencesAutomatically(emailAddress: string): Promise<void> {
-    if (!emailAddress.trim()) return;
+    if (!emailAddress.trim()) {
+      this.preferencesLoaded = true;
+      return;
+    }
     
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(emailAddress)) return;
+    if (!emailRegex.test(emailAddress)) {
+      this.preferencesLoaded = true;
+      return;
+    }
 
     try {
       // Check for approved preferences in email_subscribers
@@ -638,6 +657,8 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
 
       if (error) {
         console.error('Error loading subscriber preferences:', error);
+        this.receiveNotifications = true; // Default to true on error
+        this.preferencesLoaded = true;
         return;
       }
 
@@ -651,8 +672,13 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
         // New user - set defaults
         this.receiveNotifications = true;
       }
+      
+      this.preferencesLoaded = true;
+      this.cdr.markForCheck();
     } catch (err) {
       console.error('Error loading preferences:', err);
+      this.receiveNotifications = true; // Default to true on error
+      this.preferencesLoaded = true;
     }
   }
 
