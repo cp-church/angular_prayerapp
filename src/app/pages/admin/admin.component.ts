@@ -957,11 +957,15 @@ export class AdminComponent implements OnInit, OnDestroy {
       await this.adminDataService.editPrayer(id, updates);
       // Then show the dialog asking if they want to send notification
       this.sendDialogPrayerId = id;
-      // Get the prayer title from current data
-      const prayer = this.adminData?.pendingPrayers?.find((p: any) => p.id === id);
-      if (prayer) {
-        this.sendDialogPrayerTitle = prayer.title;
+      // Get the prayer title - prefer the updated title if provided, otherwise get from current data
+      let title = updates?.title;
+      if (!title) {
+        const prayer = this.adminData?.pendingPrayers?.find((p: any) => p.id === id);
+        if (prayer) {
+          title = prayer.title;
+        }
       }
+      this.sendDialogPrayerTitle = title;
       this.sendDialogType = 'prayer';
       this.showSendNotificationDialog = true;
       this.cdr.markForCheck();
@@ -1004,11 +1008,15 @@ export class AdminComponent implements OnInit, OnDestroy {
       await this.adminDataService.editUpdate(id, updates);
       // Then show the dialog asking if they want to send notification
       this.sendDialogUpdateId = id;
-      // Get the prayer title from current data
-      const update = this.adminData?.pendingUpdates?.find((u: any) => u.id === id);
-      if (update) {
-        this.sendDialogPrayerTitle = update.prayer_title || update.prayers?.title;
+      // Get the prayer title - use the prayer_title if available, otherwise get from current data
+      let title = updates?.prayer_title;
+      if (!title) {
+        const update = this.adminData?.pendingUpdates?.find((u: any) => u.id === id);
+        if (update) {
+          title = update.prayer_title || update.prayers?.title;
+        }
       }
+      this.sendDialogPrayerTitle = title;
       this.sendDialogType = 'update';
       this.showSendNotificationDialog = true;
       this.cdr.markForCheck();

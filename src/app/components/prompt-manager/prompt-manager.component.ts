@@ -1,4 +1,4 @@
-import { Component, OnInit, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, Output, EventEmitter, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../services/supabase.service';
 import { ToastService } from '../../services/toast.service';
@@ -494,7 +494,8 @@ export class PromptManagerComponent implements OnInit {
 
   constructor(
     private supabase: SupabaseService,
-    private toast: ToastService
+    private toast: ToastService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
@@ -529,6 +530,7 @@ export class PromptManagerComponent implements OnInit {
 
     try {
       this.searching = true;
+      this.cdr.markForCheck();
       this.error = null;
       this.success = null;
       this.hasSearched = true;
@@ -568,6 +570,7 @@ export class PromptManagerComponent implements OnInit {
       this.error = `Failed to search prompts: ${message}`;
     } finally {
       this.searching = false;
+      this.cdr.markForCheck();
     }
   }
 

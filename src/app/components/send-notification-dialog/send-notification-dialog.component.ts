@@ -30,9 +30,11 @@ export type NotificationType = 'prayer' | 'update';
             </p>
           </div>
 
-          @if (notificationType === 'update' && prayerTitle) {
+          @if (prayerTitle) {
             <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 mb-4">
-              <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Prayer:</p>
+              <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {{ notificationType === 'prayer' ? 'Prayer:' : 'Prayer:' }}
+              </p>
               <p class="text-sm text-gray-600 dark:text-gray-400">{{ prayerTitle }}</p>
             </div>
           }

@@ -1106,6 +1106,7 @@ export class PrayerSearchComponent implements OnInit {
   sendDialogType: NotificationType = 'prayer';
   sendDialogPrayerTitle?: string;
   private sendDialogPrayerId?: string;
+  private sendDialogUpdateId?: string;
   
   // Pagination properties
   currentPage = 1;
@@ -1452,6 +1453,7 @@ export class PrayerSearchComponent implements OnInit {
 
     try {
       this.saving = true;
+      this.cdr.markForCheck();
       this.error = null;
 
       // Combine first and last name
@@ -1517,6 +1519,7 @@ export class PrayerSearchComponent implements OnInit {
 
     try {
       this.saving = true;
+      this.cdr.markForCheck();
       this.error = null;
 
       const { error: updateError } = await this.supabaseService.getClient()
@@ -1702,6 +1705,7 @@ export class PrayerSearchComponent implements OnInit {
 
     try {
       this.savingUpdate = true;
+      this.cdr.markForCheck();
       this.error = null;
 
       // Combine first and last name
@@ -1738,6 +1742,14 @@ export class PrayerSearchComponent implements OnInit {
       this.addingUpdate = null;
       this.toast.success('Update added successfully');
       
+      // Show dialog asking if they want to send notification
+      const prayerTitle = this.allPrayers.find(p => p.id === prayerId)?.title || 'Prayer';
+      this.sendDialogPrayerId = prayerId;
+      this.sendDialogUpdateId = data.id;
+      this.sendDialogPrayerTitle = prayerTitle;
+      this.sendDialogType = 'update';
+      this.showSendNotificationDialog = true;
+      
       // Trigger reload on main site
       this.prayerService.loadPrayers();
     } catch (err: unknown) {
@@ -1747,6 +1759,7 @@ export class PrayerSearchComponent implements OnInit {
       this.toast.error(errorMessage);
     } finally {
       this.savingUpdate = false;
+      this.cdr.markForCheck();
     }
   }
 
@@ -1851,6 +1864,9 @@ export class PrayerSearchComponent implements OnInit {
       if (this.sendDialogType === 'prayer' && this.sendDialogPrayerId) {
         await this.adminDataService.sendBroadcastNotificationForNewPrayer(this.sendDialogPrayerId);
         this.toast.success('Notification emails sent to subscribers');
+      } else if (this.sendDialogType === 'update' && this.sendDialogUpdateId) {
+        await this.adminDataService.sendBroadcastNotificationForNewUpdate(this.sendDialogUpdateId);
+        this.toast.success('Update notification emails sent to subscribers');
       }
     } catch (error) {
       console.error('Error sending notification:', error);
@@ -1863,6 +1879,7 @@ export class PrayerSearchComponent implements OnInit {
   onDeclineSendNotification() {
     this.showSendNotificationDialog = false;
     this.sendDialogPrayerId = undefined;
+    this.sendDialogUpdateId = undefined;
     this.sendDialogPrayerTitle = undefined;
     this.cdr.markForCheck();
   }
