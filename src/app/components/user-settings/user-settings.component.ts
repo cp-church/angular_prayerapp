@@ -286,9 +286,6 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
             </div>
           </div>
 
-          <!-- Divider -->
-          <div class="border-t border-gray-200 dark:border-gray-700"></div>
-
           <!-- Email Subscription Toggle -->
           <div class="flex items-start gap-3 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
             @if (preferencesLoaded) {
@@ -358,9 +355,6 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           </div>
           }
 
-          <!-- Divider -->
-          <div class="border-t border-gray-200 dark:border-gray-700"></div>
-
           <!-- GitHub Feedback Form -->
           @if (githubFeedbackEnabled) {
           <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
@@ -369,7 +363,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           }
 
         <!-- Footer -->
-          <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700">
+          <div class="flex flex-row gap-2 sm:gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 -mx-4 sm:-mx-6 px-4 sm:px-6">
             <button
               (click)="logout()"
               class="flex items-center justify-center gap-2 px-4 py-2 sm:py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors text-sm sm:text-base font-medium"
