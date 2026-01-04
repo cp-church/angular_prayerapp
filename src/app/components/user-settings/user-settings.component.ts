@@ -363,7 +363,9 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
 
           <!-- GitHub Feedback Form -->
           @if (githubFeedbackEnabled) {
-          <app-github-feedback-form [userEmail]="getCurrentUserEmail()" [userName]="getCurrentUserName()"></app-github-feedback-form>
+          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
+            <app-github-feedback-form [userEmail]="getCurrentUserEmail()" [userName]="getCurrentUserName()"></app-github-feedback-form>
+          </div>
           }
 
         <!-- Footer -->
