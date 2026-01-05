@@ -392,6 +392,20 @@ export class PresentationComponent implements OnInit, OnDestroy {
         }
       }
       
+      // Don't filter by date at database level - we need all prayers to check their updates
+      const { data, error } = await query;
+      
+      if (error) throw error;
+      
+      // Filter to only include approved updates (client-side filtering needed for left join)
+      let prayersWithApprovedUpdates = (data || []).map(prayer => ({
+        ...prayer,
+        prayer_updates: (prayer.prayer_updates || []).filter((update: any) => 
+          update.approval_status === 'approved'
+        )
+      }));
+      
+      // Apply time filter client-side to include prayers with recent updates
       if (this.contentType === 'prayers' && this.timeFilter !== 'all') {
         const now = new Date();
         const startDate = new Date();
@@ -411,20 +425,19 @@ export class PresentationComponent implements OnInit, OnDestroy {
             break;
         }
         
-        query = query.gte('created_at', startDate.toISOString());
+        const startTime = startDate.getTime();
+        
+        // Keep prayers where either the prayer OR any approved update is within the time range
+        prayersWithApprovedUpdates = prayersWithApprovedUpdates.filter(prayer => {
+          const prayerTime = new Date(prayer.created_at).getTime();
+          if (prayerTime >= startTime) return true;
+          
+          // Check if any approved update is within the time range
+          return prayer.prayer_updates.some((update: any) => 
+            new Date(update.created_at).getTime() >= startTime
+          );
+        });
       }
-      
-      const { data, error } = await query;
-      
-      if (error) throw error;
-      
-      // Filter to only include approved updates (client-side filtering needed for left join)
-      const prayersWithApprovedUpdates = (data || []).map(prayer => ({
-        ...prayer,
-        prayer_updates: (prayer.prayer_updates || []).filter((update: any) => 
-          update.approval_status === 'approved'
-        )
-      }));
       
       // Sort by most recent activity (prayer creation or latest update)
       const sortedPrayers = prayersWithApprovedUpdates

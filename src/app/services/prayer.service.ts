@@ -7,7 +7,7 @@ import { VerificationService } from './verification.service';
 import { CacheService } from './cache.service';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
-export type PrayerStatus = 'current' | 'answered';
+export type PrayerStatus = 'current' | 'answered' | 'archived';
 
 export interface PrayerUpdate {
   id: string;

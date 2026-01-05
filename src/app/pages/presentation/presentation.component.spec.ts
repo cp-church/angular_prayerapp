@@ -91,7 +91,7 @@ describe('PresentationComponent', () => {
     component.displayDuration = 1; // 1 second for quick test
     component.togglePlay();
     expect(component.isPlaying).toBe(true);
-    expect(component.autoAdvanceInterval).toBeTruthy();
+    expect((component as any).autoAdvanceInterval).toBeTruthy();
 
     // advance timers to trigger nextSlide
     vi.advanceTimersByTime(1100);
@@ -132,7 +132,7 @@ describe('PresentationComponent', () => {
     vi.useFakeTimers();
     // Create a mock subscription
     const mockUnsubscribe = vi.fn();
-    component.prayerTimerSubscription = { unsubscribe: mockUnsubscribe } as any;
+    (component as any).prayerTimerSubscription = { unsubscribe: mockUnsubscribe } as any;
     
     component.prayerTimerMinutes = 0.001;
     component.startPrayerTimer();
@@ -158,17 +158,17 @@ describe('PresentationComponent', () => {
       delete (globalThis as any).ontouchstart;
     }
     component.showControls = true;
-    component.initialPeriodElapsed = false;
+    (component as any).initialPeriodElapsed = false;
     component.setupControlsAutoHide();
     // advance timers to execute the hide callback
     vi.runAllTimers();
-    expect(component.initialPeriodElapsed).toBe(true);
+    expect((component as any).initialPeriodElapsed).toBe(true);
     expect(component.showControls).toBe(false);
     vi.useRealTimers();
   });
 
   it('handleMouseMove respects initialPeriodElapsed and toggles showControls', () => {
-    component.initialPeriodElapsed = true; // skip initial guard
+    (component as any).initialPeriodElapsed = true; // skip initial guard
     // pretend window height is 100
     vi.stubGlobal('innerHeight', 100);
     // mouse near bottom -> show
@@ -186,11 +186,11 @@ describe('PresentationComponent', () => {
     component.currentIndex = 0;
 
     // single tap sets lastTap, double tap toggles showControls
-    component.lastTap = Date.now() - 1000; // older than threshold
+    (component as any).lastTap = Date.now() - 1000; // older than threshold
     // first tap
     component.onTouchStart({ touches: [{ clientX: 10 }] } as unknown as TouchEvent);
     // immediate second tap within threshold -> simulate by setting lastTap to recent
-    component.lastTap = Date.now() - 100; // within threshold
+    (component as any).lastTap = Date.now() - 100; // within threshold
     component.onTouchStart({ touches: [{ clientX: 10 }] } as unknown as TouchEvent);
     // toggled (should be boolean)
     expect(typeof component.showControls).toBe('boolean');
@@ -275,8 +275,7 @@ describe('PresentationComponent', () => {
     expect(component.prompts).toEqual([]);
   });
 });
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { PresentationComponent } from './presentation.component';
+
 import { Router } from '@angular/router';
 import { SupabaseService } from '../../services/supabase.service';
 import { ThemeService } from '../../services/theme.service';
@@ -403,7 +402,7 @@ describe('PresentationComponent', () => {
       component.displayDuration = 1;
       component.nextSlide();
       expect(component.currentIndex).toBe(1);
-      expect(component.autoAdvanceInterval).toBeTruthy(); // startAutoAdvance should have been called
+      expect((component as any).autoAdvanceInterval).toBeTruthy(); // startAutoAdvance should have been called
 
       component.previousSlide();
       expect(component.currentIndex).toBe(0);
@@ -534,16 +533,16 @@ describe('PresentationComponent', () => {
   it('setupControlsAutoHide treats device as mobile when touch present', () => {
     // simulate mobile by defining ontouchstart
     (globalThis as any).ontouchstart = true;
-    component.initialPeriodElapsed = false;
+    (component as any).initialPeriodElapsed = false;
     component.showControls = true;
     component.setupControlsAutoHide();
     // on mobile, initialPeriodElapsed should be set immediately and controls remain visible
-    expect(component.initialPeriodElapsed).toBe(true);
+    expect((component as any).initialPeriodElapsed).toBe(true);
     delete (globalThis as any).ontouchstart;
   });
 
   it('handleMouseMove does nothing during initial period', () => {
-    component.initialPeriodElapsed = false;
+    (component as any).initialPeriodElapsed = false;
     component.showControls = false;
     vi.stubGlobal('innerHeight', 100);
     component.handleMouseMove({ clientY: 90 } as MouseEvent);
@@ -762,7 +761,7 @@ describe('PresentationComponent', () => {
 
   describe('mouse handling - middle zone', () => {
     it('handleMouseMove does nothing when mouse is between 75-80% of screen', () => {
-      component.initialPeriodElapsed = true;
+      (component as any).initialPeriodElapsed = true;
       const initialValue = true;
       component.showControls = initialValue;
       vi.stubGlobal('innerHeight', 100);
@@ -832,19 +831,19 @@ describe('PresentationComponent', () => {
 
   describe('touch and mouse handlers', () => {
     it('onTouchMove updates touchEnd value', () => {
-      component.touchEnd = null;
+      (component as any).touchEnd = null;
       component.onTouchMove({ touches: [{ clientX: 123 }] } as unknown as TouchEvent);
-      expect(component.touchEnd).toBe(123);
+      expect((component as any).touchEnd).toBe(123);
     });
 
     it('onTouchStart sets touchEnd to null', () => {
-      component.touchEnd = 100;
+      (component as any).touchEnd = 100;
       component.onTouchStart({ touches: [{ clientX: 50 }] } as unknown as TouchEvent);
-      expect(component.touchEnd).toBeNull();
+      expect((component as any).touchEnd).toBeNull();
     });
 
     it('handleMouseMove with mouse at bottom shows controls', () => {
-      component.initialPeriodElapsed = true;
+      (component as any).initialPeriodElapsed = true;
       component.showControls = false;
       vi.stubGlobal('innerHeight', 100);
       
@@ -854,7 +853,7 @@ describe('PresentationComponent', () => {
     });
 
     it('handleMouseMove with mouse at top hides controls', () => {
-      component.initialPeriodElapsed = true;
+      (component as any).initialPeriodElapsed = true;
       component.showControls = true;
       vi.stubGlobal('innerHeight', 100);
       
@@ -868,7 +867,7 @@ describe('PresentationComponent', () => {
     it('startPrayerTimer unsubscribes from existing timer subscription', () => {
       vi.useFakeTimers();
       const oldUnsubscribeSpy = vi.fn();
-      component.prayerTimerSubscription = { unsubscribe: oldUnsubscribeSpy } as any;
+      (component as any).prayerTimerSubscription = { unsubscribe: oldUnsubscribeSpy } as any;
       component.prayerTimerMinutes = 0.001;
       
       component.startPrayerTimer();
@@ -953,19 +952,19 @@ describe('PresentationComponent', () => {
 
     it('clearIntervals unsubscribes from countdownSubscription', () => {
       const unsubscribeSpy = vi.fn();
-      component.autoAdvanceInterval = null;
-      component.countdownSubscription = { unsubscribe: unsubscribeSpy } as any;
+      (component as any).autoAdvanceInterval = null;
+      (component as any).countdownSubscription = { unsubscribe: unsubscribeSpy } as any;
       
       component.clearIntervals();
       
       expect(unsubscribeSpy).toHaveBeenCalled();
-      expect(component.countdownSubscription).toBeNull();
+      expect((component as any).countdownSubscription).toBeNull();
     });
 
     it('startAutoAdvance unsubscribes existing countdownSubscription before creating new one', () => {
       vi.useFakeTimers();
       const oldUnsubscribeSpy = vi.fn();
-      component.countdownSubscription = { unsubscribe: oldUnsubscribeSpy } as any;
+      (component as any).countdownSubscription = { unsubscribe: oldUnsubscribeSpy } as any;
       component.prayers = [{ id: 'a' } as any];
       component.displayDuration = 1;
       
@@ -979,8 +978,9 @@ describe('PresentationComponent', () => {
 
   describe('fetch and sort operations', () => {
     it('fetchPrayers sorts prayers by latest activity with updates', async () => {
-      const oldest = new Date('2024-01-01');
-      const newer = new Date('2024-01-15');
+      const now = new Date();
+      const oldest = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000); // 10 days ago
+      const newer = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000); // 5 days ago
       
       const prayer1 = {
         id: 'p1',
@@ -996,6 +996,7 @@ describe('PresentationComponent', () => {
       const q = createQuery({ data: [prayer1, prayer2], error: null });
       mockSupabase.client.from = vi.fn().mockReturnValue(q);
       component.contentType = 'prayers';
+      component.timeFilter = 'all'; // Don't filter by time for this test
       
       await component.fetchPrayers();
       
@@ -1021,7 +1022,45 @@ describe('PresentationComponent', () => {
       await component.fetchPrayers();
       
       expect(component.prayers.length).toBe(1);
-      expect(component.prayers[0].prayer_updates.length).toBe(2); // Only approved updates
+      expect(component.prayers[0]?.prayer_updates?.length).toBe(2); // Only approved updates
+    });
+
+    it('fetchPrayers includes old prayers with recent updates when using time filter', async () => {
+      const now = new Date();
+      const oldDate = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000); // 60 days ago
+      const recentDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000); // 5 days ago
+      
+      const oldPrayerWithRecentUpdate = {
+        id: 'p1',
+        created_at: oldDate.toISOString(),
+        prayer_updates: [{ 
+          id: 'u1', 
+          created_at: recentDate.toISOString(), 
+          approval_status: 'approved' 
+        }]
+      };
+      const recentPrayer = {
+        id: 'p2',
+        created_at: recentDate.toISOString(),
+        prayer_updates: []
+      };
+      const oldPrayerWithoutUpdates = {
+        id: 'p3',
+        created_at: oldDate.toISOString(),
+        prayer_updates: []
+      };
+      
+      const q = createQuery({ data: [oldPrayerWithRecentUpdate, recentPrayer, oldPrayerWithoutUpdates], error: null });
+      mockSupabase.client.from = vi.fn().mockReturnValue(q);
+      component.contentType = 'prayers';
+      component.timeFilter = 'month'; // 30 days
+      
+      await component.fetchPrayers();
+      
+      // Should include p1 (old prayer with recent update) and p2 (recent prayer)
+      // Should exclude p3 (old prayer without recent updates)
+      expect(component.prayers.length).toBe(2);
+      expect(component.prayers.map(p => p.id).sort()).toEqual(['p1', 'p2']);
     });
 
     it('shuffleArray does not modify input array', () => {
@@ -1236,25 +1275,25 @@ describe('PresentationComponent', () => {
     });
 
     it('onTouchStart with single tap sets lastTap', () => {
-      component.lastTap = 0;
+      (component as any).lastTap = 0;
       component.onTouchStart({ touches: [{ clientX: 50 }] } as unknown as TouchEvent);
-      expect(component.lastTap).toBeGreaterThan(0);
+      expect((component as any).lastTap).toBeGreaterThan(0);
     });
 
     it('onTouchStart resets lastTap to 0 on double tap', () => {
-      component.lastTap = Date.now() - 100;
+      (component as any).lastTap = Date.now() - 100;
       component.showControls = true;
       component.onTouchStart({ touches: [{ clientX: 50 }] } as unknown as TouchEvent);
-      expect(component.lastTap).toBe(0);
+      expect((component as any).lastTap).toBe(0);
     });
 
     it('clearIntervals sets autoAdvanceInterval to null', () => {
-      component.autoAdvanceInterval = setTimeout(() => {}, 1000);
-      component.countdownSubscription = null;
+      (component as any).autoAdvanceInterval = setTimeout(() => {}, 1000);
+      (component as any).countdownSubscription = null;
       
       component.clearIntervals();
       
-      expect(component.autoAdvanceInterval).toBeNull();
+      expect((component as any).autoAdvanceInterval).toBeNull();
     });
 
     it('handleKeyboard ignores unknown keys', () => {
@@ -1288,15 +1327,15 @@ describe('PresentationComponent', () => {
     });
 
     it('ngOnDestroy clears all intervals and timers', () => {
-      component.autoAdvanceInterval = setTimeout(() => {}, 1000);
-      component.countdownSubscription = { unsubscribe: vi.fn() } as any;
-      component.initialTimerHandle = setTimeout(() => {}, 1000);
-      component.prayerTimerSubscription = { unsubscribe: vi.fn() } as any;
+      (component as any).autoAdvanceInterval = setTimeout(() => {}, 1000);
+      (component as any).countdownSubscription = { unsubscribe: vi.fn() } as any;
+      (component as any).initialTimerHandle = setTimeout(() => {}, 1000);
+      (component as any).prayerTimerSubscription = { unsubscribe: vi.fn() } as any;
       
       component.ngOnDestroy();
       
-      expect(component.autoAdvanceInterval).toBeNull();
-      expect(component.countdownSubscription).toBeNull();
+      expect((component as any).autoAdvanceInterval).toBeNull();
+      expect((component as any).countdownSubscription).toBeNull();
     });
 
     it('loadContent catches errors from fetchPrayers', async () => {
@@ -1311,15 +1350,15 @@ describe('PresentationComponent', () => {
 
     it('setupControlsAutoHide treats device as mobile when touch present', () => {
       (globalThis as any).ontouchstart = true;
-      component.initialPeriodElapsed = false;
+      (component as any).initialPeriodElapsed = false;
       component.showControls = true;
       component.setupControlsAutoHide();
-      expect(component.initialPeriodElapsed).toBe(true);
+      expect((component as any).initialPeriodElapsed).toBe(true);
       delete (globalThis as any).ontouchstart;
     });
 
     it('handleMouseMove does nothing during initial period', () => {
-      component.initialPeriodElapsed = false;
+      (component as any).initialPeriodElapsed = false;
       component.showControls = false;
       vi.stubGlobal('innerHeight', 100);
       component.handleMouseMove({ clientY: 90 } as MouseEvent);
@@ -1337,8 +1376,8 @@ describe('PresentationComponent', () => {
 
     it('onTouchEnd does nothing when touchStart is null', () => {
       component.prayers = [{ id: '1' } as any];
-      component.touchStart = null;
-      component.touchEnd = 100;
+      (component as any).touchStart = null;
+      (component as any).touchEnd = 100;
       component.currentIndex = 0;
       component.onTouchEnd();
       expect(component.currentIndex).toBe(0);
@@ -1346,8 +1385,8 @@ describe('PresentationComponent', () => {
 
     it('onTouchEnd does nothing when touchEnd is null', () => {
       component.prayers = [{ id: '1' } as any];
-      component.touchStart = 100;
-      component.touchEnd = null;
+      (component as any).touchStart = 100;
+      (component as any).touchEnd = null;
       component.currentIndex = 0;
       component.onTouchEnd();
       expect(component.currentIndex).toBe(0);
@@ -1355,8 +1394,8 @@ describe('PresentationComponent', () => {
 
     it('onTouchEnd does nothing when swipe distance is too small', () => {
       component.prayers = [{ id: '1' }, { id: '2' }] as any;
-      component.touchStart = 100;
-      component.touchEnd = 95;
+      (component as any).touchStart = 100;
+      (component as any).touchEnd = 95;
       component.currentIndex = 0;
       component.onTouchEnd();
       expect(component.currentIndex).toBe(0);

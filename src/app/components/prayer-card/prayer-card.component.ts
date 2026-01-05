@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PrayerRequest } from '../../services/prayer.service';
 import { SupabaseService } from '../../services/supabase.service';
+import { UserSessionService } from '../../services/user-session.service';
 
 @Component({
   selector: 'app-prayer-card',
@@ -281,7 +282,10 @@ export class PrayerCardComponent implements OnInit {
   // Update deletion request form fields
   updateDeleteReason = '';
 
-  constructor(private supabase: SupabaseService) {}
+  constructor(
+    private supabase: SupabaseService,
+    private userSessionService: UserSessionService
+  ) {}
 
   ngOnInit(): void {
     // Any initialization logic
@@ -360,7 +364,10 @@ export class PrayerCardComponent implements OnInit {
 
   async handleAddUpdate(): Promise<void> {
     const userEmail = this.getCurrentUserEmail();
-    let authorName = this.updateIsAnonymous ? 'Anonymous' : await this.fetchUserNameFromDatabase(userEmail);
+    
+    // Get user name from UserSessionService cache
+    const userSession = this.userSessionService.getCurrentSession();
+    let authorName = this.updateIsAnonymous ? 'Anonymous' : (userSession?.fullName || this.getCurrentUserName());
     
     const updateData = {
       prayer_id: this.prayer.id,
@@ -474,23 +481,6 @@ export class PrayerCardComponent implements OnInit {
     const firstName = localStorage.getItem('userFirstName') || '';
     const lastName = localStorage.getItem('userLastName') || '';
     return `${firstName} ${lastName}`.trim();
-  }
-
-  private async fetchUserNameFromDatabase(email: string): Promise<string> {
-    try {
-      const { data, error } = await this.supabase.client
-        .from('email_subscribers')
-        .select('name')
-        .eq('email', email.toLowerCase().trim())
-        .maybeSingle();
-
-      if (!error && data?.name) {
-        return data.name;
-      }
-    } catch (err) {
-      console.error('Error fetching user name from database:', err);
-    }
-    return this.getCurrentUserName();
   }
 
   handleUpdateDeletionRequest(): void {

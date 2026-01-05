@@ -1,7 +1,8 @@
-import { Component, Input, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { GitHubFeedbackService } from '../../services/github-feedback.service';
+import { UserSessionService } from '../../services/user-session.service';
 import { Subject, takeUntil } from 'rxjs';
 
 @Component({
@@ -152,9 +153,6 @@ import { Subject, takeUntil } from 'rxjs';
   styles: []
 })
 export class GitHubFeedbackFormComponent implements OnDestroy {
-  @Input() userEmail: string = '';
-  @Input() userName: string = '';
-
   feedbackType: 'suggestion' | 'feature' | 'bug' = 'suggestion';
   feedbackTitle: string = '';
   feedbackDescription: string = '';
@@ -167,6 +165,7 @@ export class GitHubFeedbackFormComponent implements OnDestroy {
 
   constructor(
     private githubFeedbackService: GitHubFeedbackService,
+    private userSessionService: UserSessionService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -188,12 +187,20 @@ export class GitHubFeedbackFormComponent implements OnDestroy {
     this.cdr.markForCheck();
 
     try {
+      // Wait for user session to be available
+      const userSession = await this.userSessionService.waitForSession();
+      if (!userSession) {
+        this.errorMessage = 'User session not available. Please try again.';
+        this.cdr.markForCheck();
+        return;
+      }
+
       const result = await this.githubFeedbackService.createGitHubIssue({
         title: this.feedbackTitle.trim(),
         body: this.feedbackDescription.trim(),
         type: this.feedbackType,
-        userEmail: this.userEmail,
-        userName: this.userName
+        userEmail: userSession.email,
+        userName: userSession.fullName
       });
 
       if (result.success) {

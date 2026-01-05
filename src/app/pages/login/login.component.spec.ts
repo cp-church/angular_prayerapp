@@ -26,12 +26,16 @@ const makeMocks = () => {
       })),
       rpc: vi.fn(async () => ({ data: 'ok', error: null }))
     },
-    directQuery: vi.fn(async () => ([{ use_logo: true, light_mode_logo_blob: 'L', dark_mode_logo_blob: 'D' }], null)),
+    directQuery: vi.fn(async () => ({ data: [{ use_logo: true, light_mode_logo_blob: 'LIGHT_URL', dark_mode_logo_blob: 'DARK_URL' }], error: null })),
     directMutation: vi.fn(async () => ({ data: [{ id: '1' }], error: null }))
   };
 
   const emailNotificationService: any = {
     sendAccountApprovalNotification: vi.fn(async () => true)
+  };
+
+  const userSessionService: any = {
+    waitForSession: vi.fn(async () => ({}))
   };
 
   const themeService: any = {
@@ -49,7 +53,7 @@ const makeMocks = () => {
 
   const cdr: any = { markForCheck: vi.fn() };
 
-  return { adminAuthService, supabaseService, emailNotificationService, themeService, router, route, cdr, requireSiteLogin$, isAdmin$ };
+  return { adminAuthService, supabaseService, emailNotificationService, userSessionService, themeService, router, route, cdr, requireSiteLogin$, isAdmin$ };
 };
 
 const mockMatchMedia = (matches = false) => ({
@@ -65,6 +69,7 @@ const makeComponent = (mocks: any) => {
     mocks.adminAuthService,
     mocks.supabaseService,
     mocks.emailNotificationService,
+    mocks.userSessionService,
     mocks.themeService,
     mocks.router,
     mocks.route,
@@ -85,11 +90,7 @@ describe('LoginComponent', () => {
     vi.resetAllMocks();
     // ensure global matchMedia exists for tests
     vi.stubGlobal('matchMedia', (query: string) => mockMatchMedia());
-    // re-initialize mocked module export for saveUserInfo so it's a spy
-    const storage = await import('../../../utils/userInfoStorage');
-    if (storage && typeof storage.saveUserInfo === 'function') {
-      storage.saveUserInfo = vi.fn();
-    }
+    // Note: saveUserInfo is already mocked as a spy in the utils/userInfoStorage module
   });
 
   it('ngOnInit initializes values and subscribes to observables', async () => {
@@ -207,10 +208,10 @@ describe('LoginComponent', () => {
   it('verifyMfaCode routes when verification successful and user is subscriber', async () => {
     // mock verify to success and checkEmailSubscriber to true
     mocks.adminAuthService.verifyMfaCode = vi.fn(async () => ({ success: true, isAdmin: false }));
-    mocks.supabaseService.directQuery = vi.fn(async () => ([{ id: 'sub' }], null));
+    mocks.supabaseService.directQuery = vi.fn(async () => ({ data: [{ id: 'sub' }], error: null }));
     // mock lookupPersonByEmail to return no results
     const pc = await import('../../../lib/planning-center');
-    (pc.lookupPersonByEmail as any).mockResolvedValue({ count: 0 });
+    (pc.lookupPersonByEmail as any).mockResolvedValue({ count: 0, people: [] });
 
     const comp = makeComponent(mocks);
     comp.email = 'test@example.com';
@@ -230,7 +231,7 @@ describe('LoginComponent', () => {
 
   it('verifyMfaCode shows subscriber form when not a subscriber and found in Planning Center', async () => {
     mocks.adminAuthService.verifyMfaCode = vi.fn(async () => ({ success: true, isAdmin: false }));
-    vi.spyOn((await import('../../../lib/planning-center')), 'lookupPersonByEmail').mockResolvedValue({ count: 1 });
+    vi.spyOn((await import('../../../lib/planning-center')), 'lookupPersonByEmail').mockResolvedValue({ count: 1, people: [] });
     const comp = makeComponent(mocks);
     comp.email = 'new@example.com';
     comp.mfaCode = ['1', '2', '3', '4'];
@@ -248,11 +249,12 @@ describe('LoginComponent', () => {
 
   it('verifyMfaCode shows subscriber form requiring approval when not in Planning Center', async () => {
     mocks.adminAuthService.verifyMfaCode = vi.fn(async () => ({ success: true, isAdmin: false }));
-    vi.spyOn((await import('../../../lib/planning-center')), 'lookupPersonByEmail').mockResolvedValue({ count: 0 });
+    vi.spyOn((await import('../../../lib/planning-center')), 'lookupPersonByEmail').mockResolvedValue({ count: 0, people: [] });
     const comp = new LoginComponent(
       mocks.adminAuthService,
       mocks.supabaseService,
       mocks.emailNotificationService,
+      mocks.userSessionService,
       mocks.themeService,
       mocks.router,
       mocks.route,
@@ -276,6 +278,7 @@ describe('LoginComponent', () => {
       mocks.adminAuthService,
       mocks.supabaseService,
       mocks.emailNotificationService,
+      mocks.userSessionService,
       mocks.themeService,
       mocks.router,
       mocks.route,
@@ -295,6 +298,7 @@ describe('LoginComponent', () => {
       mocks.adminAuthService,
       mocks.supabaseService,
       mocks.emailNotificationService,
+      mocks.userSessionService,
       mocks.themeService,
       mocks.router,
       mocks.route,
@@ -315,6 +319,7 @@ describe('LoginComponent', () => {
       mocks.adminAuthService,
       mocks.supabaseService,
       mocks.emailNotificationService,
+      mocks.userSessionService,
       mocks.themeService,
       mocks.router,
       mocks.route,
@@ -336,6 +341,7 @@ describe('LoginComponent', () => {
       mocks.adminAuthService,
       mocks.supabaseService,
       mocks.emailNotificationService,
+      mocks.userSessionService,
       mocks.themeService,
       mocks.router,
       mocks.route,
@@ -492,12 +498,12 @@ describe('LoginComponent', () => {
     expect(localStorage.getItem('branding_light_logo')).toBe('LIGHT_FROM_CACHE');
     // test updateLogoUrl with dark mode
     comp.useLogo = true;
-    comp.isDarkMode = true;
+    (comp as any).isDarkMode = true;
     localStorage.setItem('branding_dark_logo', 'DARK_FROM_CACHE');
     (comp as any).updateLogoUrl();
     expect(comp.logoUrl).toBe('DARK_FROM_CACHE');
     // light mode
-    comp.isDarkMode = false;
+    (comp as any).isDarkMode = false;
     (comp as any).updateLogoUrl();
     expect(comp.logoUrl).toBe('LIGHT_FROM_CACHE');
     // cleanup - remove window cache to not affect other tests
@@ -513,6 +519,7 @@ describe('LoginComponent', () => {
       sysMocks.adminAuthService,
       sysMocks.supabaseService,
       sysMocks.emailNotificationService,
+      sysMocks.userSessionService,
       sysMocks.themeService,
       sysMocks.router,
       sysMocks.route,
@@ -529,6 +536,7 @@ describe('LoginComponent', () => {
       badMocks.adminAuthService,
       badMocks.supabaseService,
       badMocks.emailNotificationService,
+      badMocks.userSessionService,
       badMocks.themeService,
       badMocks.router,
       badMocks.route,
@@ -559,6 +567,7 @@ describe('LoginComponent', () => {
       compMocks.adminAuthService,
       compMocks.supabaseService,
       compMocks.emailNotificationService,
+      compMocks.userSessionService,
       compMocks.themeService,
       compMocks.router,
       compMocks.route,
@@ -583,6 +592,7 @@ describe('LoginComponent', () => {
       compMocks.adminAuthService,
       compMocks.supabaseService,
       compMocks.emailNotificationService,
+      compMocks.userSessionService,
       compMocks.themeService,
       compMocks.router,
       compMocks.route,
@@ -616,6 +626,7 @@ describe('LoginComponent', () => {
       queryMocks.adminAuthService,
       queryMocks.supabaseService,
       queryMocks.emailNotificationService,
+      queryMocks.userSessionService,
       queryMocks.themeService,
       queryMocks.router,
       queryMocks.route,
@@ -635,6 +646,7 @@ describe('LoginComponent', () => {
       queryMocks.adminAuthService,
       queryMocks.supabaseService,
       queryMocks.emailNotificationService,
+      queryMocks.userSessionService,
       queryMocks.themeService,
       queryMocks.router,
       queryMocks.route,
@@ -654,6 +666,7 @@ describe('LoginComponent', () => {
       queryMocks.adminAuthService,
       queryMocks.supabaseService,
       queryMocks.emailNotificationService,
+      queryMocks.userSessionService,
       queryMocks.themeService,
       queryMocks.router,
       queryMocks.route,
@@ -671,6 +684,7 @@ describe('LoginComponent', () => {
       queryMocks.adminAuthService,
       queryMocks.supabaseService,
       queryMocks.emailNotificationService,
+      queryMocks.userSessionService,
       queryMocks.themeService,
       queryMocks.router,
       queryMocks.route,
@@ -693,6 +707,7 @@ describe('LoginComponent', () => {
       queryMocks.adminAuthService,
       queryMocks.supabaseService,
       queryMocks.emailNotificationService,
+      queryMocks.userSessionService,
       queryMocks.themeService,
       queryMocks.router,
       queryMocks.route,
@@ -715,6 +730,7 @@ describe('LoginComponent', () => {
       authMocks.adminAuthService,
       authMocks.supabaseService,
       authMocks.emailNotificationService,
+      authMocks.userSessionService,
       authMocks.themeService,
       authMocks.router,
       authMocks.route,
@@ -743,6 +759,7 @@ describe('LoginComponent', () => {
       themeMocks.adminAuthService,
       themeMocks.supabaseService,
       themeMocks.emailNotificationService,
+      themeMocks.userSessionService,
       themeMocks.themeService,
       themeMocks.router,
       themeMocks.route,
@@ -780,6 +797,7 @@ describe('LoginComponent', () => {
       themeMocks.adminAuthService,
       themeMocks.supabaseService,
       themeMocks.emailNotificationService,
+      themeMocks.userSessionService,
       themeMocks.themeService,
       themeMocks.router,
       themeMocks.route,
@@ -827,7 +845,7 @@ describe('LoginComponent', () => {
   it('updateLogoUrl prioritizes dark logo in dark mode, falls back to light', () => {
     const comp = makeComponent(mocks);
     comp.useLogo = true;
-    comp.isDarkMode = true;
+    (comp as any).isDarkMode = true;
     localStorage.setItem('branding_dark_logo', 'DARK_URL');
     localStorage.setItem('branding_light_logo', 'LIGHT_URL');
     (comp as any).updateLogoUrl();
@@ -978,7 +996,7 @@ describe('LoginComponent', () => {
     comp.mfaCode = ['1','2','3','4'];
     comp.mfaCodeInput = '1234';
     comp.codeLength = 4;
-    comp.returnUrl = '/admin/dashboard';
+    (comp as any).returnUrl = '/admin/dashboard';
     comp.isAdmin = false;
     vi.spyOn(comp as any, 'checkEmailSubscriber').mockResolvedValue(true);
     
@@ -1078,6 +1096,7 @@ describe('LoginComponent', () => {
       themeMocks.adminAuthService,
       themeMocks.supabaseService,
       themeMocks.emailNotificationService,
+      themeMocks.userSessionService,
       themeMocks.themeService,
       themeMocks.router,
       themeMocks.route,
@@ -1113,6 +1132,7 @@ describe('LoginComponent', () => {
       compMocks.adminAuthService,
       compMocks.supabaseService,
       compMocks.emailNotificationService,
+      compMocks.userSessionService,
       compMocks.themeService,
       compMocks.router,
       compMocks.route,

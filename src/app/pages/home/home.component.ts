@@ -13,6 +13,7 @@ import { VerificationDialogComponent } from '../../components/verification-dialo
 import { PrayerService, PrayerRequest } from '../../services/prayer.service';
 import { PromptService } from '../../services/prompt.service';
 import { AdminAuthService } from '../../services/admin-auth.service';
+import { UserSessionService } from '../../services/user-session.service';
 import { Observable, take, Subject, takeUntil } from 'rxjs';
 import { ToastService } from '../../services/toast.service';
 import { AnalyticsService } from '../../services/analytics.service';
@@ -35,9 +36,9 @@ import type { User } from '@supabase/supabase-js';
             </div>
             
             <!-- Email Indicator - Top Right -->
-            @if ((user$ | async); as user) {
+            @if ((userSessionService.userSession$ | async); as session) {
               <div class="text-[10px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded">
-                {{ user.email }}
+                {{ session.email }}
               </div>
             } @else {
               <div class="text-[10px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded">
@@ -92,9 +93,9 @@ import type { User } from '@supabase/supabase-js';
             <!-- Email and buttons stacked on right -->
             <div class="flex flex-col items-end gap-2">
               <!-- Email Indicator -->
-              @if ((user$ | async); as user) {
+              @if ((userSessionService.userSession$ | async); as session) {
                 <div class="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded">
-                  {{ user.email }}
+                  {{ session.email }}
                 </div>
               } @else {
                 <div class="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded">
@@ -324,7 +325,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   error$!: Observable<string | null>;
   isAdmin$!: Observable<boolean>;
   hasAdminEmail$!: Observable<boolean>;
-  user$!: Observable<User | null>;
 
   currentPrayersCount = 0;
   answeredPrayersCount = 0;
@@ -347,6 +347,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     public prayerService: PrayerService,
     public promptService: PromptService,
     public adminAuthService: AdminAuthService,
+    public userSessionService: UserSessionService,
     private toastService: ToastService,
     private analyticsService: AnalyticsService,
     private cdr: ChangeDetectorRef,
@@ -368,7 +369,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.error$ = this.prayerService.error$;
     this.isAdmin$ = this.adminAuthService.isAdmin$;
     this.hasAdminEmail$ = this.adminAuthService.hasAdminEmail$;
-    this.user$ = this.adminAuthService.user$;
 
     // Subscribe to ALL prayers to update counts (not filtered) - with cleanup
     this.prayerService.allPrayers$
@@ -612,11 +612,14 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   getUserEmail(): string {
-    // Try to get email from localStorage (approval code flow)
+    // Get email from cached UserSessionService
+    const cachedEmail = this.userSessionService.getUserEmail();
+    if (cachedEmail) return cachedEmail;
+    
+    // Fall back to localStorage if service doesn't have it yet
     const approvalEmail = localStorage.getItem('approvalAdminEmail');
     if (approvalEmail) return approvalEmail;
     
-    // Try other possible localStorage keys
     const userEmail = localStorage.getItem('userEmail');
     if (userEmail) return userEmail;
     

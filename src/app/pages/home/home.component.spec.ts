@@ -3,8 +3,8 @@ import { BehaviorSubject, of } from 'rxjs';
 import { HomeComponent } from './home.component';
 
 const makeMocks = () => {
-  const prayersSubject = new BehaviorSubject([]);
-  const promptsSubject = new BehaviorSubject([]);
+  const prayersSubject = new BehaviorSubject<any[]>([]);
+  const promptsSubject = new BehaviorSubject<any[]>([]);
   const prayerService: any = {
     prayers$: prayersSubject.asObservable(),
     prompts$: of([]),
@@ -30,8 +30,13 @@ const makeMocks = () => {
   const adminAuthService: any = {
     isAdmin$: new BehaviorSubject(false).asObservable(),
     hasAdminEmail$: of(false),
-    user$: of(null),
     logout: vi.fn(() => Promise.resolve())
+  };
+
+  const userSessionService: any = {
+    userSession$: new BehaviorSubject(null).asObservable(),
+    getUserEmail: vi.fn(() => null),
+    getUserFullName: vi.fn(() => null)
   };
 
   const toastService: any = {
@@ -51,7 +56,7 @@ const makeMocks = () => {
     navigate: vi.fn()
   };
 
-  return { prayerService, promptService, adminAuthService, toastService, analyticsService, cdr, router, prayersSubject, promptsSubject };
+  return { prayerService, promptService, adminAuthService, userSessionService, toastService, analyticsService, cdr, router, prayersSubject, promptsSubject };
 };
 
 describe('HomeComponent', () => {
@@ -72,6 +77,7 @@ describe('HomeComponent', () => {
       mocks.prayerService,
       mocks.promptService,
       mocks.adminAuthService,
+      mocks.userSessionService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -80,25 +86,28 @@ describe('HomeComponent', () => {
     expect(comp.hasLogo).toBe(true);
   });
 
-  it('getUserEmail returns Not logged in when no localStorage keys', () => {
+  it('getUserEmail returns cached email from UserSessionService if available', () => {
+    const mockServiceWithEmail = { getUserEmail: () => 'cached@example.com' };
     const comp = new HomeComponent(
       mocks.prayerService,
       mocks.promptService,
       mocks.adminAuthService,
+      mockServiceWithEmail as any,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
       mocks.router
     );
-    expect(comp.getUserEmail()).toBe('Not logged in');
+    expect(comp.getUserEmail()).toBe('cached@example.com');
   });
 
-  it('getUserEmail returns approvalAdminEmail if set', () => {
+  it('getUserEmail falls back to localStorage when service returns null', () => {
     localStorage.setItem('approvalAdminEmail', 'a@b.com');
     const comp = new HomeComponent(
       mocks.prayerService,
       mocks.promptService,
       mocks.adminAuthService,
+      mocks.userSessionService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -107,32 +116,18 @@ describe('HomeComponent', () => {
     expect(comp.getUserEmail()).toBe('a@b.com');
   });
 
-  it('getUserEmail returns userEmail when set', () => {
-    localStorage.setItem('userEmail', 'user@example.com');
+  it('getUserEmail returns Not logged in when service and localStorage are empty', () => {
     const comp = new HomeComponent(
       mocks.prayerService,
       mocks.promptService,
       mocks.adminAuthService,
+      mocks.userSessionService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
       mocks.router
     );
-    expect(comp.getUserEmail()).toBe('user@example.com');
-  });
-
-  it('getUserEmail returns prayerapp_user_email when set and others missing', () => {
-    localStorage.setItem('prayerapp_user_email', 'pa@example.com');
-    const comp = new HomeComponent(
-      mocks.prayerService,
-      mocks.promptService,
-      mocks.adminAuthService,
-      mocks.toastService,
-      mocks.analyticsService,
-      mocks.cdr,
-      mocks.router
-    );
-    expect(comp.getUserEmail()).toBe('pa@example.com');
+    expect(comp.getUserEmail()).toBe('Not logged in');
   });
 
   it('ngOnInit wires observables and updates counts and promptsCount', () => {
@@ -141,6 +136,7 @@ describe('HomeComponent', () => {
       prayerService,
       mocks.promptService,
       mocks.adminAuthService,
+      mocks.userSessionService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -174,6 +170,7 @@ describe('HomeComponent', () => {
       mocks.prayerService,
       mocks.promptService,
       mocks.adminAuthService,
+      mocks.userSessionService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -190,6 +187,7 @@ describe('HomeComponent', () => {
       mocks.prayerService,
       mocks.promptService,
       mocks.adminAuthService,
+      mocks.userSessionService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -205,6 +203,7 @@ describe('HomeComponent', () => {
       mocks.prayerService,
       mocks.promptService,
       mocks.adminAuthService,
+      mocks.userSessionService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -223,6 +222,7 @@ describe('HomeComponent', () => {
       mocks.prayerService,
       mocks.promptService,
       mocks.adminAuthService,
+      mocks.userSessionService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -239,6 +239,7 @@ describe('HomeComponent', () => {
       mocks.prayerService,
       mocks.promptService,
       mocks.adminAuthService,
+      mocks.userSessionService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -255,6 +256,7 @@ describe('HomeComponent', () => {
       mocks.prayerService,
       mocks.promptService,
       mocks.adminAuthService,
+      mocks.userSessionService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -271,6 +273,7 @@ describe('HomeComponent', () => {
       mocks.prayerService,
       mocks.promptService,
       mocks.adminAuthService,
+      mocks.userSessionService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -292,6 +295,7 @@ describe('HomeComponent', () => {
       mocks.prayerService,
       mocks.promptService,
       mocks.adminAuthService,
+      mocks.userSessionService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -311,6 +315,7 @@ describe('HomeComponent', () => {
       mocks.prayerService,
       mocks.promptService,
       mocks.adminAuthService,
+      mocks.userSessionService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -336,6 +341,7 @@ describe('HomeComponent', () => {
       mocks.prayerService,
       mocks.promptService,
       mocks.adminAuthService,
+      mocks.userSessionService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -350,6 +356,7 @@ describe('HomeComponent', () => {
       mocks.prayerService,
       mocks.promptService,
       mocks.adminAuthService,
+      mocks.userSessionService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -369,6 +376,7 @@ describe('HomeComponent', () => {
       mocks.prayerService,
       mocks.promptService,
       mocks.adminAuthService,
+      mocks.userSessionService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -409,6 +417,7 @@ describe('HomeComponent', () => {
       mocks.prayerService,
       mocks.promptService,
       mocks.adminAuthService,
+      mocks.userSessionService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -430,6 +439,7 @@ describe('HomeComponent', () => {
       mocks.prayerService,
       mocks.promptService,
       mocks.adminAuthService,
+      mocks.userSessionService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -448,6 +458,7 @@ describe('HomeComponent', () => {
       mocks.prayerService,
       mocks.promptService,
       mocks.adminAuthService,
+      mocks.userSessionService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -465,6 +476,7 @@ describe('HomeComponent', () => {
       mocks.prayerService,
       mocks.promptService,
       adminServiceTrue,
+      mocks.userSessionService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -479,6 +491,7 @@ describe('HomeComponent', () => {
       mocks.prayerService,
       mocks.promptService,
       adminServiceFalse,
+      mocks.userSessionService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,

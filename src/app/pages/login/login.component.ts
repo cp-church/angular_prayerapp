@@ -4,9 +4,9 @@ import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { AdminAuthService } from '../../services/admin-auth.service';
 import { SupabaseService } from '../../services/supabase.service';
 import { ThemeService } from '../../services/theme.service';
+import { UserSessionService } from '../../services/user-session.service';
 import { EmailNotificationService } from '../../services/email-notification.service';
 import { Subject, takeUntil } from 'rxjs';
-import { saveUserInfo } from '../../../utils/userInfoStorage';
 import { lookupPersonByEmail } from '../../../lib/planning-center';
 import { environment } from '../../../environments/environment';
 
@@ -387,6 +387,7 @@ export class LoginComponent implements OnInit, OnDestroy {
     private adminAuthService: AdminAuthService,
     private supabaseService: SupabaseService,
     private emailNotificationService: EmailNotificationService,
+    private userSessionService: UserSessionService,
     private themeService: ThemeService,
     private router: Router,
     private route: ActivatedRoute,
@@ -458,8 +459,18 @@ export class LoginComponent implements OnInit, OnDestroy {
     // Check if user is already authenticated
     this.adminAuthService.isAdmin$
       .pipe(takeUntil(this.destroy$))
-      .subscribe(isAdmin => {
+      .subscribe(async (isAdmin) => {
         if (isAdmin) {
+          try {
+            const { data: { session } } = await this.supabaseService.client.auth.getSession();
+            const email = session?.user?.email;
+            if (email) {
+              await this.userSessionService.loadUserSession(email);
+            }
+          } catch (sessionError) {
+            console.warn('[AdminLogin] Failed to load user session:', sessionError);
+            // Continue anyway - session might load asynchronously
+          }
           this.router.navigate(['/']);
         }
       });
@@ -556,8 +567,7 @@ export class LoginComponent implements OnInit, OnDestroy {
         sessionStorage.removeItem('mfa_email_sent');
         sessionStorage.removeItem('mfa_email');
         
-        // Save user email to localStorage for later use
-        saveUserInfo('', '', userEmail.toLowerCase());
+        // UserSessionService will cache user info to userSession localStorage
         
         // Brief delay then navigate
         setTimeout(async () => {
@@ -650,8 +660,15 @@ export class LoginComponent implements OnInit, OnDestroy {
       return;
     }
     
+    // Load user session directly (bypasses subscription timing issues) and wait for it to be persisted
+    try {
+      await this.userSessionService.loadUserSession(userEmail);
+    } catch (sessionError) {
+      console.warn('[AdminLogin] Failed to load user session:', sessionError);
+      // Continue anyway - session might load asynchronously
+    }
+    
     // Route to home page for both admin and non-admin users
-    saveUserInfo('', '', userEmail.toLowerCase());
     this.router.navigate(['/']);
   }
 
@@ -1089,13 +1106,18 @@ export class LoginComponent implements OnInit, OnDestroy {
 
       console.log('[AdminLogin] Subscriber saved successfully');
       
-      // Save user info to localStorage for later use
-      saveUserInfo(this.firstName.trim(), this.lastName.trim(), this.email.toLowerCase());
-      
       this.showSubscriberForm = false;
       this.firstName = '';
       this.lastName = '';
       this.loading = false;
+      
+      // Load user session directly before navigating
+      try {
+        await this.userSessionService.loadUserSession(this.email);
+      } catch (sessionError) {
+        console.warn('[AdminLogin] Failed to load user session:', sessionError);
+        // Continue anyway - session might load asynchronously
+      }
       
       // Now route to the appropriate page
       const destination = this.isAdmin ? this.returnUrl : '/';

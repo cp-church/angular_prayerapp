@@ -3,6 +3,7 @@ import { ChangeDetectorRef } from '@angular/core';
 import { PrayerFormComponent } from './prayer-form.component';
 import { PrayerService } from '../../services/prayer.service';
 import { AdminAuthService } from '../../services/admin-auth.service';
+import { UserSessionService } from '../../services/user-session.service';
 import { SupabaseService } from '../../services/supabase.service';
 import { BehaviorSubject } from 'rxjs';
 import type { User } from '@supabase/supabase-js';
@@ -11,6 +12,7 @@ describe('PrayerFormComponent', () => {
   let component: PrayerFormComponent;
   let mockPrayerService: any;
   let mockAdminAuthService: any;
+  let mockUserSessionService: any;
   let mockChangeDetectorRef: any;
   let mockSupabaseService: any;
   let mockUser: User | null;
@@ -40,6 +42,23 @@ describe('PrayerFormComponent', () => {
     mockAdminAuthService = {
       user$: new BehaviorSubject<User | null>(mockUser),
       isAdmin$: new BehaviorSubject<boolean>(false)
+    };
+
+    mockUserSessionService = {
+      userSession$: new BehaviorSubject({
+        email: 'test@example.com',
+        firstName: 'John',
+        lastName: 'Doe',
+        fullName: 'John Doe',
+        isActive: true
+      }),
+      getCurrentSession: vi.fn(() => ({
+        email: 'test@example.com',
+        firstName: 'John',
+        lastName: 'Doe',
+        fullName: 'John Doe',
+        isActive: true
+      }))
     };
 
     mockChangeDetectorRef = {
@@ -74,6 +93,7 @@ describe('PrayerFormComponent', () => {
     component = new PrayerFormComponent(
       mockPrayerService,
       mockAdminAuthService,
+      mockUserSessionService,
       mockSupabaseService,
       mockChangeDetectorRef as ChangeDetectorRef
     );
@@ -360,6 +380,7 @@ describe('PrayerFormComponent', () => {
     it('should get user name from localStorage', async () => {
       localStorage.setItem('prayerapp_user_first_name', 'Jane');
       localStorage.setItem('prayerapp_user_last_name', 'Smith');
+      mockUserSessionService.getCurrentSession.mockReturnValue(null);
       mockPrayerService.addPrayer.mockResolvedValue(true);
 
       component.currentUserEmail = 'test@example.com';
@@ -378,6 +399,7 @@ describe('PrayerFormComponent', () => {
     it('should handle empty name gracefully', async () => {
       localStorage.removeItem('prayerapp_user_first_name');
       localStorage.removeItem('prayerapp_user_last_name');
+      mockUserSessionService.getCurrentSession.mockReturnValue(null);
       mockPrayerService.addPrayer.mockResolvedValue(true);
 
       component.currentUserEmail = 'test@example.com';
@@ -396,6 +418,7 @@ describe('PrayerFormComponent', () => {
     it('should handle only first name', async () => {
       localStorage.setItem('prayerapp_user_first_name', 'Jane');
       localStorage.removeItem('prayerapp_user_last_name');
+      mockUserSessionService.getCurrentSession.mockReturnValue(null);
       mockPrayerService.addPrayer.mockResolvedValue(true);
 
       component.currentUserEmail = 'test@example.com';
@@ -433,306 +456,5 @@ describe('PrayerFormComponent', () => {
     });
   });
 
-  describe('fetchUserNameFromDatabase', () => {
-    it('should fetch user name from database successfully', async () => {
-      const maybeSingleFn = vi.fn().mockResolvedValue({
-        data: { name: 'Jane Smith' },
-        error: null
-      });
-
-      const eqFn = vi.fn().mockReturnValue({
-        maybeSingle: maybeSingleFn
-      });
-
-      const selectFn = vi.fn().mockReturnValue({
-        eq: eqFn
-      });
-
-      const fromFn = vi.fn().mockReturnValue({
-        select: selectFn
-      });
-
-      mockSupabaseService.client.from = fromFn;
-
-      const result = await (component as any).fetchUserNameFromDatabase('test@example.com');
-
-      expect(fromFn).toHaveBeenCalledWith('email_subscribers');
-      expect(selectFn).toHaveBeenCalledWith('name');
-      expect(eqFn).toHaveBeenCalledWith('email', 'test@example.com');
-      expect(result).toBe('Jane Smith');
-    });
-
-    it('should trim and lowercase email when querying database', async () => {
-      const maybeSingleFn = vi.fn().mockResolvedValue({
-        data: { name: 'Jane Smith' },
-        error: null
-      });
-
-      const eqFn = vi.fn().mockReturnValue({
-        maybeSingle: maybeSingleFn
-      });
-
-      const selectFn = vi.fn().mockReturnValue({
-        eq: eqFn
-      });
-
-      const fromFn = vi.fn().mockReturnValue({
-        select: selectFn
-      });
-
-      mockSupabaseService.client.from = fromFn;
-
-      await (component as any).fetchUserNameFromDatabase('  TEST@EXAMPLE.COM  ');
-
-      expect(eqFn).toHaveBeenCalledWith('email', 'test@example.com');
-    });
-
-    it('should fallback to localStorage when database returns no data', async () => {
-      const maybeSingleFn = vi.fn().mockResolvedValue({
-        data: null,
-        error: null
-      });
-
-      const eqFn = vi.fn().mockReturnValue({
-        maybeSingle: maybeSingleFn
-      });
-
-      const selectFn = vi.fn().mockReturnValue({
-        eq: eqFn
-      });
-
-      const fromFn = vi.fn().mockReturnValue({
-        select: selectFn
-      });
-
-      mockSupabaseService.client.from = fromFn;
-
-      localStorage.setItem('prayerapp_user_first_name', 'John');
-      localStorage.setItem('prayerapp_user_last_name', 'Doe');
-
-      const result = await (component as any).fetchUserNameFromDatabase('test@example.com');
-
-      expect(result).toBe('John Doe');
-    });
-
-    it('should fallback to localStorage when database has error', async () => {
-      const maybeSingleFn = vi.fn().mockResolvedValue({
-        data: null,
-        error: { message: 'Database error' }
-      });
-
-      const eqFn = vi.fn().mockReturnValue({
-        maybeSingle: maybeSingleFn
-      });
-
-      const selectFn = vi.fn().mockReturnValue({
-        eq: eqFn
-      });
-
-      const fromFn = vi.fn().mockReturnValue({
-        select: selectFn
-      });
-
-      mockSupabaseService.client.from = fromFn;
-
-      localStorage.setItem('prayerapp_user_first_name', 'John');
-      localStorage.setItem('prayerapp_user_last_name', 'Doe');
-
-      const result = await (component as any).fetchUserNameFromDatabase('test@example.com');
-
-      expect(result).toBe('John Doe');
-    });
-
-    it('should handle database query exception and fallback to localStorage', async () => {
-      const maybeSingleFn = vi.fn().mockRejectedValue(new Error('Network error'));
-
-      const eqFn = vi.fn().mockReturnValue({
-        maybeSingle: maybeSingleFn
-      });
-
-      const selectFn = vi.fn().mockReturnValue({
-        eq: eqFn
-      });
-
-      const fromFn = vi.fn().mockReturnValue({
-        select: selectFn
-      });
-
-      mockSupabaseService.client.from = fromFn;
-
-      localStorage.setItem('prayerapp_user_first_name', 'John');
-      localStorage.setItem('prayerapp_user_last_name', 'Doe');
-
-      const result = await (component as any).fetchUserNameFromDatabase('test@example.com');
-
-      expect(result).toBe('John Doe');
-    });
-
-    it('should return empty string when no database data and no localStorage', async () => {
-      const maybeSingleFn = vi.fn().mockResolvedValue({
-        data: null,
-        error: null
-      });
-
-      const eqFn = vi.fn().mockReturnValue({
-        maybeSingle: maybeSingleFn
-      });
-
-      const selectFn = vi.fn().mockReturnValue({
-        eq: eqFn
-      });
-
-      const fromFn = vi.fn().mockReturnValue({
-        select: selectFn
-      });
-
-      mockSupabaseService.client.from = fromFn;
-
-      localStorage.removeItem('prayerapp_user_first_name');
-      localStorage.removeItem('prayerapp_user_last_name');
-
-      const result = await (component as any).fetchUserNameFromDatabase('test@example.com');
-
-      expect(result).toBe('');
-    });
-  });
-
-  describe('async handleSubmit with database name lookup', () => {
-    it('should use database name when available', async () => {
-      const maybeSingleFn = vi.fn().mockResolvedValue({
-        data: { name: 'Database Name' },
-        error: null
-      });
-
-      const eqFn = vi.fn().mockReturnValue({
-        maybeSingle: maybeSingleFn
-      });
-
-      const selectFn = vi.fn().mockReturnValue({
-        eq: eqFn
-      });
-
-      mockSupabaseService.client.from = vi.fn().mockReturnValue({
-        select: selectFn
-      });
-
-      mockPrayerService.addPrayer.mockResolvedValue(true);
-
-      component.currentUserEmail = 'test@example.com';
-      component.formData.prayer_for = 'My Friend';
-      component.formData.description = 'Please pray for healing';
-      component.formData.is_anonymous = false;
-
-      await component.handleSubmit();
-
-      expect(mockPrayerService.addPrayer).toHaveBeenCalledWith(
-        expect.objectContaining({
-          requester: 'Database Name'
-        })
-      );
-    });
-
-    it('should use localStorage fallback when database has no data', async () => {
-      const maybeSingleFn = vi.fn().mockResolvedValue({
-        data: null,
-        error: null
-      });
-
-      const eqFn = vi.fn().mockReturnValue({
-        maybeSingle: maybeSingleFn
-      });
-
-      const selectFn = vi.fn().mockReturnValue({
-        eq: eqFn
-      });
-
-      mockSupabaseService.client.from = vi.fn().mockReturnValue({
-        select: selectFn
-      });
-
-      mockPrayerService.addPrayer.mockResolvedValue(true);
-      localStorage.setItem('prayerapp_user_first_name', 'Local');
-      localStorage.setItem('prayerapp_user_last_name', 'User');
-
-      component.currentUserEmail = 'test@example.com';
-      component.formData.prayer_for = 'My Friend';
-      component.formData.description = 'Please pray for healing';
-      component.formData.is_anonymous = false;
-
-      await component.handleSubmit();
-
-      expect(mockPrayerService.addPrayer).toHaveBeenCalledWith(
-        expect.objectContaining({
-          requester: 'Local User'
-        })
-      );
-    });
-
-    it('should respect anonymous flag even with database name available', async () => {
-      const maybeSingleFn = vi.fn().mockResolvedValue({
-        data: { name: 'Database Name' },
-        error: null
-      });
-
-      const eqFn = vi.fn().mockReturnValue({
-        maybeSingle: maybeSingleFn
-      });
-
-      const selectFn = vi.fn().mockReturnValue({
-        eq: eqFn
-      });
-
-      mockSupabaseService.client.from = vi.fn().mockReturnValue({
-        select: selectFn
-      });
-
-      mockPrayerService.addPrayer.mockResolvedValue(true);
-
-      component.currentUserEmail = 'test@example.com';
-      component.formData.prayer_for = 'My Friend';
-      component.formData.description = 'Please pray for healing';
-      component.formData.is_anonymous = true;
-
-      await component.handleSubmit();
-
-      expect(mockPrayerService.addPrayer).toHaveBeenCalledWith(
-        expect.objectContaining({
-          is_anonymous: true,
-          requester: 'Database Name' // Name is still retrieved, but email should not be stored
-        })
-      );
-    });
-
-    it('should handle database error gracefully during submission', async () => {
-      const maybeSingleFn = vi.fn().mockRejectedValue(new Error('Database error'));
-
-      const eqFn = vi.fn().mockReturnValue({
-        maybeSingle: maybeSingleFn
-      });
-
-      const selectFn = vi.fn().mockReturnValue({
-        eq: eqFn
-      });
-
-      mockSupabaseService.client.from = vi.fn().mockReturnValue({
-        select: selectFn
-      });
-
-      mockPrayerService.addPrayer.mockResolvedValue(true);
-      localStorage.setItem('prayerapp_user_first_name', 'Fallback');
-      localStorage.setItem('prayerapp_user_last_name', 'User');
-
-      component.currentUserEmail = 'test@example.com';
-      component.formData.prayer_for = 'My Friend';
-      component.formData.description = 'Please pray for healing';
-
-      await component.handleSubmit();
-
-      expect(mockPrayerService.addPrayer).toHaveBeenCalledWith(
-        expect.objectContaining({
-          requester: 'Fallback User'
-        })
-      );
-    });
-  });
 });
+

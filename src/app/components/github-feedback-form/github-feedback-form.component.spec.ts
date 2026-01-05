@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { GitHubFeedbackFormComponent } from './github-feedback-form.component';
 import { GitHubFeedbackService } from '../../services/github-feedback.service';
+import { UserSessionService } from '../../services/user-session.service';
 import { ChangeDetectorRef } from '@angular/core';
 
 describe('GitHubFeedbackFormComponent', () => {
   let component: GitHubFeedbackFormComponent;
   let mockGitHubFeedbackService: any;
+  let mockUserSessionService: any;
   let mockChangeDetectorRef: any;
 
   beforeEach(() => {
@@ -16,15 +18,32 @@ describe('GitHubFeedbackFormComponent', () => {
       createGitHubIssue: vi.fn()
     };
 
+    mockUserSessionService = {
+      getCurrentSession: vi.fn().mockReturnValue({
+        email: 'test@example.com',
+        firstName: 'John',
+        lastName: 'Doe',
+        fullName: 'John Doe',
+        isActive: true
+      }),
+      waitForSession: vi.fn().mockResolvedValue({
+        email: 'test@example.com',
+        firstName: 'John',
+        lastName: 'Doe',
+        fullName: 'John Doe',
+        isActive: true
+      })
+    };
+
     mockChangeDetectorRef = {
       markForCheck: vi.fn()
     };
 
     component = new GitHubFeedbackFormComponent(
       mockGitHubFeedbackService,
+      mockUserSessionService,
       mockChangeDetectorRef as ChangeDetectorRef
     );
-    component.userEmail = 'test@example.com';
   });
 
   afterEach(() => {
@@ -40,15 +59,6 @@ describe('GitHubFeedbackFormComponent', () => {
       expect(component.isLoading).toBe(false);
       expect(component.successMessage).toBe('');
       expect(component.errorMessage).toBe('');
-    });
-
-    it('should have userEmail property', () => {
-      expect(component.userEmail).toBe('test@example.com');
-    });
-
-    it('should have userName property', () => {
-      component.userName = 'John Doe';
-      expect(component.userName).toBe('John Doe');
     });
 
     it('should initialize destroy subject', () => {
@@ -87,9 +97,7 @@ describe('GitHubFeedbackFormComponent', () => {
       component.feedbackDescription = longDesc;
       expect(component.feedbackDescription).toBe(longDesc);
     });
-  });
-
-  describe('Form Submission', () => {
+  });  describe('Form Submission', () => {
     beforeEach(() => {
       mockGitHubFeedbackService.createGitHubIssue.mockResolvedValue({
         success: true,
@@ -145,9 +153,7 @@ describe('GitHubFeedbackFormComponent', () => {
       expect(callArgs.body).toBe('Test Description');
     });
 
-    it('should call GitHub service with user name in payload', async () => {
-      component.userEmail = 'john@example.com';
-      component.userName = 'John Doe';
+    it('should call GitHub service with user data from session', async () => {
       component.feedbackTitle = 'Test';
       component.feedbackDescription = 'Description';
 
@@ -155,7 +161,18 @@ describe('GitHubFeedbackFormComponent', () => {
 
       const callArgs = mockGitHubFeedbackService.createGitHubIssue.mock.calls[0][0];
       expect(callArgs.userName).toBe('John Doe');
-      expect(callArgs.userEmail).toBe('john@example.com');
+      expect(callArgs.userEmail).toBe('test@example.com');
+    });
+
+    it('should handle missing user session gracefully', async () => {
+      mockUserSessionService.waitForSession.mockResolvedValue(null);
+      component.feedbackTitle = 'Test';
+      component.feedbackDescription = 'Description';
+
+      await component.onSubmit();
+
+      expect(component.errorMessage).toContain('User session not available');
+      expect(mockGitHubFeedbackService.createGitHubIssue).not.toHaveBeenCalled();
     });
 
     it('should reset form after successful submission', async () => {
@@ -479,15 +496,14 @@ describe('GitHubFeedbackFormComponent', () => {
       expect(mockGitHubFeedbackService.createGitHubIssue).toHaveBeenCalledTimes(2);
     });
 
-    it('should handle null userEmail gracefully', async () => {
-      component.userEmail = '';
+    it('should use user email from session service', async () => {
       component.feedbackTitle = 'Test';
       component.feedbackDescription = 'Description';
 
       await component.onSubmit();
 
       const callArgs = mockGitHubFeedbackService.createGitHubIssue.mock.calls[0][0];
-      expect(callArgs.userEmail).toBe('');
+      expect(callArgs.userEmail).toBe('test@example.com');
     });
   });
 

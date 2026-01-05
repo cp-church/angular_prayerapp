@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import type { User } from '@supabase/supabase-js';
 import { PrayerService } from '../../services/prayer.service';
 import { AdminAuthService } from '../../services/admin-auth.service';
+import { UserSessionService } from '../../services/user-session.service';
 import { SupabaseService } from '../../services/supabase.service';
 
 @Component({
@@ -157,6 +158,7 @@ export class PrayerFormComponent implements OnInit, OnChanges {
   constructor(
     private prayerService: PrayerService,
     private adminAuthService: AdminAuthService,
+    private userSessionService: UserSessionService,
     private supabase: SupabaseService,
     private cdr: ChangeDetectorRef
   ) {}
@@ -203,23 +205,6 @@ export class PrayerFormComponent implements OnInit, OnChanges {
     return `${firstName} ${lastName}`.trim();
   }
 
-  private async fetchUserNameFromDatabase(email: string): Promise<string> {
-    try {
-      const { data, error } = await this.supabase.client
-        .from('email_subscribers')
-        .select('name')
-        .eq('email', email.toLowerCase().trim())
-        .maybeSingle();
-
-      if (!error && data?.name) {
-        return data.name;
-      }
-    } catch (err) {
-      console.error('Error fetching user name from database:', err);
-    }
-    return this.getCurrentUserName();
-  }
-
   isFormValid(): boolean {
     return !!(
       this.currentUserEmail.trim() &&
@@ -235,8 +220,9 @@ export class PrayerFormComponent implements OnInit, OnChanges {
       this.isSubmitting = true;
       this.cdr.markForCheck();
 
-      // Fetch user name from database, falling back to localStorage if needed
-      const fullName = await this.fetchUserNameFromDatabase(this.currentUserEmail);
+      // Get user name from UserSessionService cache
+      const userSession = this.userSessionService.getCurrentSession();
+      const fullName = userSession?.fullName || this.getCurrentUserName();
 
       const prayerData = {
         title: `Prayer for ${this.formData.prayer_for}`,

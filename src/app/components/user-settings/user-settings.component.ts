@@ -7,6 +7,7 @@ import { PrintService } from '../../services/print.service';
 import { EmailNotificationService } from '../../services/email-notification.service';
 import { AdminAuthService } from '../../services/admin-auth.service';
 import { GitHubFeedbackService } from '../../services/github-feedback.service';
+import { UserSessionService } from '../../services/user-session.service';
 import { Subject, takeUntil, debounceTime, distinctUntilChanged } from 'rxjs';
 import { getUserInfo } from '../../../utils/userInfoStorage';
 import { GitHubFeedbackFormComponent } from '../github-feedback-form/github-feedback-form.component';
@@ -392,7 +393,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           <!-- GitHub Feedback Form -->
           @if (githubFeedbackEnabled) {
           <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
-            <app-github-feedback-form [userEmail]="getCurrentUserEmail()" [userName]="getCurrentUserName()"></app-github-feedback-form>
+            <app-github-feedback-form></app-github-feedback-form>
           </div>
           }
 
@@ -488,6 +489,7 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
     private emailNotification: EmailNotificationService,
     private adminAuthService: AdminAuthService,
     private githubFeedbackService: GitHubFeedbackService,
+    public userSessionService: UserSessionService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -519,32 +521,6 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
       });
   }
 
-  private async loadUserNameFromDatabase(email: string): Promise<void> {
-    try {
-      const { data, error } = await this.supabase.client
-        .from('email_subscribers')
-        .select('first_name, last_name')
-        .eq('email', email.toLowerCase())
-        .maybeSingle();
-
-      if (!error && data) {
-        const firstName = data.first_name || '';
-        const lastName = data.last_name || '';
-        if (firstName || lastName) {
-          this.name = `${firstName}${lastName ? ' ' + lastName : ''}`.trim();
-          // Also save to localStorage for future use
-          if (firstName && lastName) {
-            const userInfo = this.getUserInfo();
-            const util = await import('../../../utils/userInfoStorage');
-            util.saveUserInfo(firstName, lastName, userInfo.email);
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Error loading user name from database:', err);
-    }
-  }
-
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['isOpen'] && this.isOpen) {
       this.loadPromptTypes();
@@ -553,29 +529,33 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
       this.isInitialLoad = true;
       this.preferencesLoaded = false;
       
-      // Load user info from localStorage
-      const userInfo = this.getUserInfo();
-      if (userInfo.firstName && userInfo.lastName) {
-        this.name = `${userInfo.firstName} ${userInfo.lastName}`;
-      }
-      this.email = userInfo.email;
-      
-      // Load user name from database if not in localStorage
-      if ((!userInfo.firstName || !userInfo.lastName) && userInfo.email) {
-        this.loadUserNameFromDatabase(userInfo.email);
+      // Get user info and preferences from UserSessionService cache
+      const userSession = this.userSessionService.getCurrentSession();
+      if (userSession) {
+        this.email = userSession.email;
+        this.name = userSession.fullName || '';
+        
+        // Get preferences from cached session - no database query needed
+        this.receiveNotifications = userSession.isActive ?? true;
+        this.preferencesLoaded = true;
+      } else {
+        // Fall back to localStorage if session not available
+        const userInfo = this.getUserInfo();
+        this.email = userInfo.email;
+        this.name = userInfo.firstName && userInfo.lastName 
+          ? `${userInfo.firstName} ${userInfo.lastName}` 
+          : '';
+        
+        if (this.email.trim()) {
+          this.loadPreferencesAutomatically(this.email);
+        } else {
+          this.receiveNotifications = true;
+          this.preferencesLoaded = true;
+        }
       }
       
       this.error = null;
       this.success = null;
-      
-      // If we have an email, try to load preferences from database
-      if (userInfo.email.trim()) {
-        this.loadPreferencesAutomatically(userInfo.email);
-      } else {
-        // No email - set default and mark as loaded
-        this.receiveNotifications = true;
-        this.preferencesLoaded = true;
-      }
       
       // Reset flag after a short delay
       setTimeout(() => {
@@ -722,8 +702,8 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
   }
 
   async onNotificationToggle(): Promise<void> {
-    const userInfo = this.getUserInfo();
-    const email = userInfo.email.toLowerCase().trim();
+    // Use the email that was loaded from userSession
+    const email = this.email.toLowerCase().trim();
     
     if (!email) {
       this.error = 'Email not found. Please log in again.';
@@ -772,7 +752,7 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
           .insert({
             email,
             is_active: this.receiveNotifications,
-            name: userInfo.firstName ? `${userInfo.firstName} ${userInfo.lastName}`.trim() : ''
+            name: this.name || ''
           });
 
         if (insertError) {
@@ -783,6 +763,12 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
       }
 
       this.success = `✅ Notifications ${this.receiveNotifications ? 'enabled' : 'disabled'} successfully!`;
+      
+      // Update UserSessionService cache to keep it in sync
+      await this.userSessionService.updateUserSession({
+        isActive: this.receiveNotifications ?? true
+      });
+      
       this.saving = false;
       this.cdr.markForCheck();
       console.log('Success! Clearing message in 3 seconds');
