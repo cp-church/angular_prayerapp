@@ -316,7 +316,13 @@ import type { User } from '@supabase/supabase-js';
       <!-- No Footer Links -->
     </div>
   `,
-  styles: []
+  styles: [`
+    :host {
+      display: block;
+      /* Reserve space for scrollbar to prevent layout shift when content changes */
+      scrollbar-gutter: stable;
+    }
+  `]
 })
 export class HomeComponent implements OnInit, OnDestroy {
   prayers$!: Observable<PrayerRequest[]>;
