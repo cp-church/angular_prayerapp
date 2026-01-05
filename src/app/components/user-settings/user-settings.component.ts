@@ -248,17 +248,6 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           <!-- Theme Selector -->
           <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
             <div class="flex items-start gap-2 sm:gap-3">
-              <svg class="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="5"></circle>
-                <line x1="12" y1="1" x2="12" y2="3"></line>
-                <line x1="12" y1="21" x2="12" y2="23"></line>
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                <line x1="1" y1="12" x2="3" y2="12"></line>
-                <line x1="21" y1="12" x2="23" y2="12"></line>
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-              </svg>
               <div class="flex-1">
                 <div class="font-medium text-gray-800 dark:text-gray-100 mb-3 text-sm sm:text-base">
                   Theme Preference
