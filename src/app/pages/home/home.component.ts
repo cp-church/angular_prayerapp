@@ -315,7 +315,7 @@ import type { User } from '@supabase/supabase-js';
 
       <!-- No Footer Links -->
     </div>
-  `]
+  `
 })
 export class HomeComponent implements OnInit, OnDestroy {
   prayers$!: Observable<PrayerRequest[]>;
