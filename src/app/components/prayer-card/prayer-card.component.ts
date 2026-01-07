@@ -479,18 +479,9 @@ export class PrayerCardComponent implements OnInit {
   }
 
   private getCurrentUserEmail(): string {
-    // Try to get from localStorage (approval code flow)
-    const approvalEmail = localStorage.getItem('approvalAdminEmail');
-    if (approvalEmail) return approvalEmail;
-    
-    // Try other possible localStorage keys
-    const userEmail = localStorage.getItem('userEmail');
-    if (userEmail) return userEmail;
-    
-    const prayerappEmail = localStorage.getItem('prayerapp_user_email');
-    if (prayerappEmail) return prayerappEmail;
-    
-    return '';
+    // Get email from UserSessionService (cached from database)
+    const session = this.userSessionService.getCurrentSession();
+    return session?.email || '';
   }
 
   // Helper method to check if the current user is the original prayer requester

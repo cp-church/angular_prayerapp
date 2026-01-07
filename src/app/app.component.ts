@@ -133,72 +133,10 @@ export class AppComponent implements OnInit {
       return;
     }
 
-    // Check if already validated (for prayer/update approvals)
-    const existingEmail = localStorage.getItem('approvalAdminEmail');
-    if (existingEmail) {
-      // Clear URL params and navigate to admin
-      window.history.replaceState({}, '', window.location.pathname);
-      
-      // Lazy load admin auth service
-      const { AdminAuthService } = await import('./services/admin-auth.service');
-      const adminAuth = this.injector.get(AdminAuthService);
-      await adminAuth.setApprovalSession(existingEmail);
-      // Ensure loading is cleared after approval flow
-      try { adminAuth.clearLoading(); } catch (e) { /* best-effort */ }
-      this.router.navigate(['/admin']);
-      return;
-    }
-
-    try {
-      // Lazy load both services
-      const { ApprovalLinksService } = await import('./services/approval-links.service');
-      const { AdminAuthService } = await import('./services/admin-auth.service');
-      
-      const approvalLinks = this.injector.get(ApprovalLinksService);
-      const adminAuth = this.injector.get(AdminAuthService);
-      
-      const result = await approvalLinks.validateApprovalCode(code);
-
-      if (result?.user?.email) {
-        // Store approval session data
-        localStorage.setItem('approvalAdminEmail', result.user.email);
-        localStorage.setItem('approvalSessionValidated', 'true');
-        localStorage.setItem('approvalApprovalType', result.approval_type);
-        localStorage.setItem('approvalApprovalId', result.approval_id);
-
-        // Immediately set admin status
-        await adminAuth.setApprovalSession(result.user.email);
-        // Ensure loading is cleared after approval flow
-        try { adminAuth.clearLoading(); } catch (e) { /* best-effort */ }
-
-        // Clear URL params
-        window.history.replaceState({}, '', window.location.pathname);
-        
-        // Check if user is admin before navigating
-        const isAdmin = await adminAuth.getIsAdmin();
-        if (isAdmin) {
-          // Admin user - navigate to admin portal
-          this.router.navigate(['/admin']);
-        } else {
-          // Non-admin user - stay on main site
-          this.router.navigate(['/']);
-        }
-      } else {
-        // Code validation failed, go to login
-        this.router.navigate(['/login']);
-      }
-    } catch (error) {
-      // Validation error - user can use normal login page
-      console.error('Approval code validation failed:', error);
-      try {
-        const { AdminAuthService } = await import('./services/admin-auth.service');
-        const adminAuth = this.injector.get(AdminAuthService);
-        adminAuth.clearLoading();
-      } catch (e) {
-        // ignore if AdminAuthService isn't available
-      }
-      this.router.navigate(['/login']);
-    }
+    // For other approval codes, just navigate to admin
+    // Admin guard will redirect to login if not authenticated
+    window.history.replaceState({}, '', window.location.pathname);
+    this.router.navigate(['/admin']);
   }
 
   private async handleAccountApprovalCode(code: string) {

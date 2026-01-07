@@ -9,6 +9,7 @@ export interface AccountApprovalRequest {
   email: string;
   first_name: string;
   last_name: string;
+  affiliation_reason?: string | null;
   approval_status: 'pending' | 'approved' | 'denied';
   approved_by?: string;
   created_at: string;
@@ -76,6 +77,14 @@ export interface AccountApprovalRequest {
         </span>
       </div>
 
+      <!-- Affiliation Reason -->
+      @if (request.affiliation_reason) {
+      <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+        <p class="text-xs font-semibold text-blue-900 dark:text-blue-200 mb-1">Church Affiliation</p>
+        <p class="text-sm text-blue-800 dark:text-blue-300 leading-relaxed">{{ request.affiliation_reason }}</p>
+      </div>
+      }
+
       <!-- Action Buttons -->
       <div class="flex gap-2 flex-wrap">
         @if (!isDenying) {
@@ -107,7 +116,7 @@ export interface AccountApprovalRequest {
 
       <!-- Denial Form -->
       @if (isDenying) {
-      <div class="mt-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-700">>
+      <div class="mt-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-700">
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Reason for denial (optional)
         </label>

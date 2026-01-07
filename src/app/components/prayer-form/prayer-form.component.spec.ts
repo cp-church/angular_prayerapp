@@ -121,7 +121,7 @@ describe('PrayerFormComponent', () => {
       expect(component.showSuccessMessage).toBe(false);
     });
 
-    it('should load user info from AdminAuthService on init', () => {
+    it('should load user info from UserSessionService on init', () => {
       component.ngOnInit();
       expect(component.currentUserEmail).toBe('test@example.com');
     });
@@ -132,16 +132,21 @@ describe('PrayerFormComponent', () => {
       expect(component.isAdmin).toBe(true);
     });
 
-    it('should fallback to localStorage for email when user is null', () => {
-      mockAdminAuthService.user$.next(null);
-      localStorage.setItem('userEmail', 'local@example.com');
+    it('should use userSessionService for email when userSession is available', () => {
+      mockUserSessionService.userSession$.next({
+        email: 'session@example.com',
+        firstName: 'Jane',
+        lastName: 'Smith',
+        fullName: 'Jane Smith',
+        isActive: true
+      });
       component.ngOnInit();
-      expect(component.currentUserEmail).toBe('local@example.com');
+      expect(component.currentUserEmail).toBe('session@example.com');
     });
 
     it('should handle error when loading user info', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      mockAdminAuthService.user$ = {
+      mockUserSessionService.userSession$ = {
         subscribe: vi.fn(() => {
           throw new Error('Subscription error');
         })

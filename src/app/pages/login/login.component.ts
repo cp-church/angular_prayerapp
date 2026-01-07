@@ -48,6 +48,7 @@ import { environment } from '../../../environments/environment';
         @if (success) {
         <div class="space-y-4">
           <!-- Main success notification -->
+          @if (waitingForMfaCode) {
           <div class="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border-2 border-emerald-300 dark:border-emerald-700 rounded-lg p-6 shadow-lg">
             <div class="flex items-start gap-3 mb-4">
               <!-- CheckCircle Icon -->
@@ -132,6 +133,9 @@ import { environment } from '../../../environments/environment';
             </div>
             }
 
+            </div>
+            }
+
             <!-- Subscriber Information Form (New Users) -->
             @if (showSubscriberForm && !showPendingApproval) {
             <div class="mt-4">
@@ -161,7 +165,7 @@ import { environment } from '../../../environments/environment';
                 <!-- First Name -->
                 <div>
                   <label for="first-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    First Name
+                    First Name <span class="text-red-600">*</span>
                   </label>
                   <input
                     id="first-name"
@@ -169,6 +173,7 @@ import { environment } from '../../../environments/environment';
                     [(ngModel)]="firstName"
                     placeholder="Your first name"
                     [disabled]="loading"
+                    required
                     class="w-full px-4 py-3 border-2 rounded-lg
                            bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
                            border-emerald-400 dark:border-emerald-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200
@@ -179,7 +184,7 @@ import { environment } from '../../../environments/environment';
                 <!-- Last Name -->
                 <div>
                   <label for="last-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Last Name
+                    Last Name <span class="text-red-600">*</span>
                   </label>
                   <input
                     id="last-name"
@@ -187,11 +192,32 @@ import { environment } from '../../../environments/environment';
                     [(ngModel)]="lastName"
                     placeholder="Your last name"
                     [disabled]="loading"
+                    required
                     class="w-full px-4 py-3 border-2 rounded-lg
                            bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
                            border-emerald-400 dark:border-emerald-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200
                            disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
                   />
+                </div>
+
+                <!-- Church Affiliation / Reason -->
+                <div>
+                  <label for="affiliation-reason" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    How are you affiliated with the church?
+                  </label>
+                  <textarea
+                    id="affiliation-reason"
+                    [(ngModel)]="affiliationReason"
+                    placeholder="Please explain your connection or involvement with our church community (e.g., member, staff, volunteer, family of member, etc.)"
+                    [disabled]="loading"
+                    rows="3"
+                    class="w-full px-4 py-3 border-2 rounded-lg
+                           bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                           border-emerald-400 dark:border-emerald-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200
+                           disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed
+                           resize-none"
+                  ></textarea>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">This helps our administrators review your request</p>
                 </div>
 
                 <!-- Error Message -->
@@ -207,7 +233,7 @@ import { environment } from '../../../environments/environment';
                 <!-- Save Button -->
                 <button
                   (click)="saveNewSubscriber()"
-                  [disabled]="loading || !firstName.trim() || !lastName.trim()"
+                  [disabled]="loading || !firstName.trim() || !lastName.trim() || (!affiliationReason.trim() && requiresApproval)"
                   type="button"
                   class="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#2F5F54] hover:bg-[#1a3a2e] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2F5F54] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
@@ -237,10 +263,10 @@ import { environment } from '../../../environments/environment';
                     <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
                       Account Approval Request Submitted
                     </h4>
-                    <p class="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
                       Your account request has been submitted successfully. An administrator will review your information and you'll receive an email notification once your account has been approved or if additional information is needed.
                     </p>
-                    <p class="text-xs text-gray-600 dark:text-gray-400">
+                    <p class="text-sm text-gray-600 dark:text-gray-400">
                       You can close this window now. Please check your email for updates on your account status.
                     </p>
                   </div>
@@ -249,8 +275,8 @@ import { environment } from '../../../environments/environment';
             </div>
             }
 
-            <!-- Step-by-step instructions (when not waiting for code) -->
-            @if (!waitingForMfaCode && !showSubscriberForm) {
+            <!-- Step-by-step instructions (while waiting for MFA code) -->
+            @if (waitingForMfaCode && !showSubscriberForm) {
             <div class="mt-4 bg-white dark:bg-gray-800 rounded-md p-4 border border-emerald-200 dark:border-emerald-800">
               <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
                 Here's what to do:
@@ -272,7 +298,8 @@ import { environment } from '../../../environments/environment';
             </div>
             }
 
-            <!-- Additional info -->
+            <!-- Additional info (only show while waiting for code) -->
+            @if (waitingForMfaCode) {
             <div class="mt-4 flex items-start gap-2 text-xs text-[#3a7566] dark:text-emerald-300">
               <!-- Info Icon -->
               <svg class="flex-shrink-0 mt-0.5 w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -282,14 +309,16 @@ import { environment } from '../../../environments/environment';
                 <strong>No email?</strong> Check your spam folder. The code expires in 10 minutes.
               </p>
             </div>
-          </div>
+            }
 
+          @if (waitingForMfaCode) {
           <button
             (click)="resetForm()"
             class="w-full py-2 text-center text-sm font-medium text-[#2F5F54] dark:text-emerald-400 hover:text-[#1a3a2e] dark:hover:text-emerald-300 border border-emerald-300 dark:border-emerald-600 rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
           >
             ← Try a different email
           </button>
+          }
         </div>
         }
 
@@ -378,6 +407,7 @@ export class LoginComponent implements OnInit, OnDestroy {
   requiresApproval = false; // Track if user needs admin approval
   firstName = '';
   lastName = '';
+  affiliationReason = '';
   isAdmin = false; // Track if user is admin
   private isDarkMode = false;
   private returnUrl: string = '/';
@@ -562,6 +592,9 @@ export class LoginComponent implements OnInit, OnDestroy {
       if (result.success) {
         this.isAdmin = result.isAdmin || false;
         
+        // Hide the MFA code input form
+        this.waitingForMfaCode = false;
+        
         // Keep loading spinner visible - navigate after brief delay
         const userEmail = this.email;
         
@@ -670,8 +703,11 @@ export class LoginComponent implements OnInit, OnDestroy {
       // Continue anyway - session might load asynchronously
     }
     
-    // Route to home page for both admin and non-admin users
-    this.router.navigate(['/']);
+    // Route to the appropriate page
+    // If returnUrl was set by a guard (like adminGuard), use it. Otherwise, route admin users to /admin and regular users to home
+    const destination = this.returnUrl !== '/' ? this.returnUrl : (isAdmin ? '/admin' : '/');
+    console.log('[AdminLogin] Routing to:', destination, '(isAdmin:', isAdmin, 'returnUrl:', this.returnUrl, ')');
+    this.router.navigate([destination]);
   }
 
   private async fetchCodeLength() {
@@ -823,6 +859,9 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.email = '';
     this.mfaCode = new Array(this.codeLength).fill('');
     this.error = '';
+    this.firstName = '';
+    this.lastName = '';
+    this.affiliationReason = '';
     this.cdr.markForCheck();
   }
 
@@ -1017,14 +1056,16 @@ export class LoginComponent implements OnInit, OnDestroy {
         console.log('[AdminLogin] Request params:', {
           email: this.email.toLowerCase(),
           firstName: this.firstName.trim(),
-          lastName: this.lastName.trim()
+          lastName: this.lastName.trim(),
+          affiliationReason: this.affiliationReason.trim()
         });
         
         const { data, error } = await this.supabaseService.client
           .rpc('create_account_approval_request', {
             p_email: this.email.toLowerCase(),
             p_first_name: this.firstName.trim(),
-            p_last_name: this.lastName.trim()
+            p_last_name: this.lastName.trim(),
+            p_affiliation_reason: this.affiliationReason.trim()
           });
 
         console.log('[AdminLogin] RPC result:', { data, error });
@@ -1059,7 +1100,8 @@ export class LoginComponent implements OnInit, OnDestroy {
           await this.emailNotificationService.sendAccountApprovalNotification(
             this.email.toLowerCase(),
             this.firstName.trim(),
-            this.lastName.trim()
+            this.lastName.trim(),
+            this.affiliationReason.trim()
           );
           console.log('[AdminLogin] Admin notification email sent');
         } catch (emailError) {
@@ -1113,6 +1155,7 @@ export class LoginComponent implements OnInit, OnDestroy {
       this.showSubscriberForm = false;
       this.firstName = '';
       this.lastName = '';
+      this.affiliationReason = '';
       this.loading = false;
       
       // Load user session directly before navigating
@@ -1124,8 +1167,9 @@ export class LoginComponent implements OnInit, OnDestroy {
       }
       
       // Now route to the appropriate page
-      const destination = this.isAdmin ? this.returnUrl : '/';
-      console.log('[AdminLogin] Routing to:', destination, '(isAdmin:', this.isAdmin, ')');
+      // If returnUrl was set by a guard (like adminGuard), use it. Otherwise, route admin users to /admin and regular users to home
+      const destination = this.returnUrl !== '/' ? this.returnUrl : (this.isAdmin ? '/admin' : '/');
+      console.log('[AdminLogin] Routing to:', destination, '(isAdmin:', this.isAdmin, 'returnUrl:', this.returnUrl, ')');
       this.router.navigate([destination]);
       
       return true;

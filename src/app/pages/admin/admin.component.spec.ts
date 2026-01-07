@@ -7,6 +7,7 @@ describe('AdminComponent', () => {
   let adminDataService: any;
   let analyticsService: any;
   let adminAuthService: any;
+  let userSessionService: any;
   let router: any;
   let cdr: any;
 
@@ -51,10 +52,15 @@ describe('AdminComponent', () => {
       recordActivity: vi.fn()
     };
 
+    userSessionService = {
+      userSession$: of({ email: 'admin@example.com', fullName: 'Admin User' }),
+      getCurrentSession: vi.fn().mockReturnValue({ email: 'admin@example.com', fullName: 'Admin User' })
+    };
+
     router = { navigate: vi.fn() };
     cdr = { markForCheck: vi.fn() };
 
-    component = new AdminComponent(router, adminDataService, analyticsService, adminAuthService, cdr);
+    component = new AdminComponent(router, adminDataService, analyticsService, adminAuthService, userSessionService, cdr);
   });
 
   it('subscribes and fetches admin data on init', () => {
@@ -73,7 +79,7 @@ describe('AdminComponent', () => {
 
   it('autoProgressTabs moves tabs based on data (prayers -> updates)', () => {
     component.activeTab = 'prayers';
-    component['adminData'] = { pendingPrayers: [], pendingUpdates: [{ id: 'u1' }], pendingDeletions: [] };
+    component['adminData'] = { pendingPrayers: [], pendingUpdates: [{ id: 'u1' }], pendingDeletionRequests: [] };
     const tabSpy = vi.spyOn(component, 'onTabChange');
     component['autoProgressTabs']();
     expect(tabSpy).toHaveBeenCalledWith('updates');
@@ -81,13 +87,13 @@ describe('AdminComponent', () => {
 
   it('autoProgressTabs cycles correctly for updates and deletions', () => {
     component.activeTab = 'updates';
-    component['adminData'] = { pendingUpdates: [], pendingDeletions: [{ id: 'd1' }], pendingPrayers: [] };
+    component['adminData'] = { pendingUpdates: [], pendingDeletionRequests: [{ id: 'd1' }], pendingPrayers: [] };
     const tabSpy = vi.spyOn(component, 'onTabChange');
     component['autoProgressTabs']();
     expect(tabSpy).toHaveBeenCalledWith('deletions');
 
     component.activeTab = 'deletions';
-    component['adminData'] = { pendingDeletions: [], pendingPrayers: [{ id: 'p1' }], pendingUpdates: [] };
+    component['adminData'] = { pendingDeletionRequests: [], pendingPrayers: [{ id: 'p1' }], pendingUpdates: [] };
     component['autoProgressTabs']();
     expect(tabSpy).toHaveBeenCalledWith('prayers');
   });
@@ -173,16 +179,9 @@ describe('AdminComponent', () => {
     expect(cdr.markForCheck).toHaveBeenCalled();
   });
 
-  it('getAdminEmail reads from localStorage keys in priority', () => {
-    localStorage.clear();
-    localStorage.setItem('prayerapp_user_email', 'p@x.com');
-    expect(component.getAdminEmail()).toBe('p@x.com');
-
-    localStorage.setItem('userEmail', 'u@x.com');
-    expect(component.getAdminEmail()).toBe('u@x.com');
-
-    localStorage.setItem('approvalAdminEmail', 'a@x.com');
-    expect(component.getAdminEmail()).toBe('a@x.com');
+  it('getAdminEmail returns email from userSessionService', () => {
+    userSessionService.getCurrentSession = vi.fn().mockReturnValue({ email: 'session@x.com' });
+    expect(component.getAdminEmail()).toBe('session@x.com');
   });
 
   it('ngOnDestroy calls next and complete on destroy$', () => {
@@ -289,8 +288,8 @@ describe('AdminComponent', () => {
     logSpy.mockRestore();
   });
 
-  it('getAdminEmail returns empty string when no keys', () => {
-    localStorage.clear();
+  it('getAdminEmail returns empty string when no session', () => {
+    userSessionService.getCurrentSession = vi.fn().mockReturnValue(null);
     expect(component.getAdminEmail()).toBe('');
   });
 
@@ -303,7 +302,7 @@ describe('AdminComponent', () => {
 
   it('autoProgressTabs moves prayers->deletions when updates empty but deletions exist', () => {
     component.activeTab = 'prayers';
-    component['adminData'] = { pendingPrayers: [], pendingUpdates: [], pendingDeletions: [{ id: 'del1' }] };
+    component['adminData'] = { pendingPrayers: [], pendingUpdates: [], pendingDeletionRequests: [{ id: 'del1' }] };
     const tabSpy = vi.spyOn(component, 'onTabChange');
     component['autoProgressTabs']();
     expect(tabSpy).toHaveBeenCalledWith('deletions');
@@ -311,7 +310,7 @@ describe('AdminComponent', () => {
 
   it('autoProgressTabs moves updates->prayers when deletions empty but prayers exist', () => {
     component.activeTab = 'updates';
-    component['adminData'] = { pendingUpdates: [], pendingDeletions: [], pendingPrayers: [{ id: 'p1' }] };
+    component['adminData'] = { pendingUpdates: [], pendingDeletionRequests: [], pendingPrayers: [{ id: 'p1' }] };
     const tabSpy = vi.spyOn(component, 'onTabChange');
     component['autoProgressTabs']();
     expect(tabSpy).toHaveBeenCalledWith('prayers');
@@ -319,7 +318,7 @@ describe('AdminComponent', () => {
 
   it('autoProgressTabs moves deletions->updates when deletions empty but updates exist', () => {
     component.activeTab = 'deletions';
-    component['adminData'] = { pendingDeletions: [], pendingPrayers: [], pendingUpdates: [{ id: 'u1' }] };
+    component['adminData'] = { pendingDeletionRequests: [], pendingPrayers: [], pendingUpdates: [{ id: 'u1' }] };
     const tabSpy = vi.spyOn(component, 'onTabChange');
     component['autoProgressTabs']();
     expect(tabSpy).toHaveBeenCalledWith('updates');
@@ -344,17 +343,17 @@ describe('AdminComponent', () => {
   it('autoProgressTabs does nothing when there are no pending items', () => {
     const tabSpy = vi.spyOn(component, 'onTabChange');
     component.activeTab = 'prayers';
-    component['adminData'] = { pendingPrayers: [], pendingUpdates: [], pendingDeletions: [] };
+    component['adminData'] = { pendingPrayers: [], pendingUpdates: [], pendingDeletionRequests: [] };
     component['autoProgressTabs']();
     expect(tabSpy).not.toHaveBeenCalled();
 
     component.activeTab = 'updates';
-    component['adminData'] = { pendingUpdates: [], pendingDeletions: [], pendingPrayers: [] };
+    component['adminData'] = { pendingUpdates: [], pendingDeletionRequests: [], pendingPrayers: [] };
     component['autoProgressTabs']();
     expect(tabSpy).not.toHaveBeenCalled();
 
     component.activeTab = 'deletions';
-    component['adminData'] = { pendingDeletions: [], pendingPrayers: [], pendingUpdates: [] };
+    component['adminData'] = { pendingDeletionRequests: [], pendingPrayers: [], pendingUpdates: [] };
     component['autoProgressTabs']();
     expect(tabSpy).not.toHaveBeenCalled();
   });
@@ -363,23 +362,23 @@ describe('AdminComponent', () => {
     const tabSpy = vi.spyOn(component, 'onTabChange');
 
     component.activeTab = 'prayers';
-    component['adminData'] = { pendingPrayers: undefined, pendingUpdates: undefined, pendingDeletions: undefined };
+    component['adminData'] = { pendingPrayers: undefined, pendingUpdates: undefined, pendingDeletionRequests: undefined };
     component['autoProgressTabs']();
     expect(tabSpy).not.toHaveBeenCalled();
 
     component.activeTab = 'updates';
-    component['adminData'] = { pendingUpdates: undefined, pendingDeletions: undefined, pendingPrayers: undefined };
+    component['adminData'] = { pendingUpdates: undefined, pendingDeletionRequests: undefined, pendingPrayers: undefined };
     component['autoProgressTabs']();
     expect(tabSpy).not.toHaveBeenCalled();
 
     component.activeTab = 'deletions';
-    component['adminData'] = { pendingDeletions: undefined, pendingPrayers: undefined, pendingUpdates: undefined };
+    component['adminData'] = { pendingDeletionRequests: undefined, pendingPrayers: undefined, pendingUpdates: undefined };
     component['autoProgressTabs']();
     expect(tabSpy).not.toHaveBeenCalled();
 
     // if activeTab is unrelated, nothing should happen
     component.activeTab = 'accounts' as any;
-    component['adminData'] = { pendingPrayers: [], pendingUpdates: [], pendingDeletions: [] };
+    component['adminData'] = { pendingPrayers: [], pendingUpdates: [], pendingDeletionRequests: [] };
     component['autoProgressTabs']();
     expect(tabSpy).not.toHaveBeenCalled();
   });
@@ -387,7 +386,7 @@ describe('AdminComponent', () => {
   it('autoProgressTabs does not change tabs when pending lists are non-empty (prayers)', () => {
     const tabSpy = vi.spyOn(component, 'onTabChange');
     component.activeTab = 'prayers';
-    component['adminData'] = { pendingPrayers: [{ id: 'p1' }], pendingUpdates: [], pendingDeletions: [] };
+    component['adminData'] = { pendingPrayers: [{ id: 'p1' }], pendingUpdates: [], pendingDeletionRequests: [] };
     component['autoProgressTabs']();
     expect(tabSpy).not.toHaveBeenCalled();
   });
@@ -395,7 +394,7 @@ describe('AdminComponent', () => {
   it('autoProgressTabs does not change tabs when pending lists are non-empty (updates)', () => {
     const tabSpy = vi.spyOn(component, 'onTabChange');
     component.activeTab = 'updates';
-    component['adminData'] = { pendingUpdates: [{ id: 'u1' }], pendingDeletions: [], pendingPrayers: [] };
+    component['adminData'] = { pendingUpdates: [{ id: 'u1' }], pendingDeletionRequests: [], pendingPrayers: [] };
     component['autoProgressTabs']();
     expect(tabSpy).not.toHaveBeenCalled();
   });
@@ -403,7 +402,7 @@ describe('AdminComponent', () => {
   it('autoProgressTabs does not change tabs when pending lists are non-empty (deletions)', () => {
     const tabSpy = vi.spyOn(component, 'onTabChange');
     component.activeTab = 'deletions';
-    component['adminData'] = { pendingDeletions: [{ id: 'd1' }], pendingPrayers: [], pendingUpdates: [] };
+    component['adminData'] = { pendingDeletionRequests: [{ id: 'd1' }], pendingPrayers: [], pendingUpdates: [] };
     component['autoProgressTabs']();
     expect(tabSpy).not.toHaveBeenCalled();
   });
@@ -447,15 +446,14 @@ describe('AdminComponent', () => {
   });
 
   describe('getAdminEmail', () => {
-    it('should return admin email from localStorage', () => {
-      localStorage.setItem('approvalAdminEmail', 'admin@test.com');
+    it('should return admin email from userSessionService', () => {
+      userSessionService.getCurrentSession = vi.fn().mockReturnValue({ email: 'admin@test.com' });
       const email = component.getAdminEmail();
       expect(email).toBe('admin@test.com');
-      localStorage.clear();
     });
 
-    it('should return empty string when no email in localStorage', () => {
-      localStorage.clear();
+    it('should return empty string when no session from userSessionService', () => {
+      userSessionService.getCurrentSession = vi.fn().mockReturnValue(null);
       const email = component.getAdminEmail();
       expect(email).toBe('');
     });

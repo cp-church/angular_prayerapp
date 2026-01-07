@@ -3,8 +3,10 @@ import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { IMAGE_CONFIG } from '@angular/common';
+import { APP_INITIALIZER } from '@angular/core';
 import { AppComponent } from './app/app.component';
 import { routes } from './app/app.routes';
+import { AdminAuthService } from './app/services/admin-auth.service';
 
 // Initialize Sentry asynchronously to avoid blocking render
 const initSentryLater = async () => {
@@ -97,6 +99,41 @@ bootstrapApplication(AppComponent, {
         disableImageSizeWarning: true,
         disableImageLazyLoadWarning: true
       }
+    },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: (adminAuthService: AdminAuthService) => {
+        return () => {
+          console.log('[AppInitialization] Initializing AdminAuthService for session restoration');
+          // Wait for the loading state to complete (loading goes from true -> false)
+          return new Promise(resolve => {
+            let resolved = false;
+            
+            // Subscribe to loading state
+            const subscription = adminAuthService.loading$.subscribe(isLoading => {
+              // Once loading completes (becomes false), resolve
+              if (!isLoading && !resolved) {
+                resolved = true;
+                console.log('[AppInitialization] AdminAuthService initialization complete');
+                subscription.unsubscribe();
+                resolve(true);
+              }
+            });
+            
+            // Safety timeout in case loading never completes
+            setTimeout(() => {
+              if (!resolved) {
+                resolved = true;
+                console.warn('[AppInitialization] AdminAuthService initialization timed out after 5s');
+                subscription.unsubscribe();
+                resolve(true);
+              }
+            }, 5000);
+          });
+        };
+      },
+      deps: [AdminAuthService],
+      multi: true
     }
   ]
 }).catch(err => {

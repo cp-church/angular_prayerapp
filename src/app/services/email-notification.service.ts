@@ -434,7 +434,7 @@ export class EmailNotificationService {
   /**
    * Send account approval request notification to all admins
    */
-  async sendAccountApprovalNotification(email: string, firstName: string, lastName: string): Promise<void> {
+  async sendAccountApprovalNotification(email: string, firstName: string, lastName: string, affiliationReason?: string): Promise<void> {
     try {
       // Get all admin emails
       const { data: admins, error: adminsError } = await this.supabase.directQuery<{ email: string }>(
@@ -452,7 +452,7 @@ export class EmailNotificationService {
 
       // Send notification to each admin
       for (const admin of admins) {
-        await this.sendAccountApprovalNotificationToEmail(email, firstName, lastName, admin.email);
+        await this.sendAccountApprovalNotificationToEmail(email, firstName, lastName, affiliationReason || '', admin.email);
       }
     } catch (error) {
       console.error('Error in sendAccountApprovalNotification:', error);
@@ -463,15 +463,11 @@ export class EmailNotificationService {
   /**
    * Send account approval notification to a single admin
    */
-  private async sendAccountApprovalNotificationToEmail(email: string, firstName: string, lastName: string, adminEmail: string): Promise<void> {
+  private async sendAccountApprovalNotificationToEmail(email: string, firstName: string, lastName: string, affiliationReason: string, adminEmail: string): Promise<void> {
     try {
-      // Generate approval/denial codes
-      const approvalCode = this.approvalLinks.generateCode('account_approve', email);
-      const denialCode = this.approvalLinks.generateCode('account_deny', email);
-      
+      // Link to admin site - admins will log in normally
       const appUrl = window.location.origin;
-      const approveLink = `${appUrl}?code=${approvalCode}`;
-      const denyLink = `${appUrl}?code=${denialCode}`;
+      const adminLink = `${appUrl}/admin`;
       
       // Get template from database
       const template = await this.getTemplate('account_approval_request');
@@ -499,18 +495,18 @@ export class EmailNotificationService {
         firstName,
         lastName,
         email,
+        affiliationReason,
         requestedDate,
-        approveLink,
-        denyLink
+        adminLink
       });
       
       const body = this.applyTemplateVariables(template.text_body, {
         firstName,
         lastName,
         email,
+        affiliationReason,
         requestedDate,
-        approveLink,
-        denyLink
+        adminLink
       });
       
       await this.sendEmail({
@@ -530,19 +526,8 @@ export class EmailNotificationService {
    */
   private async sendAdminNotificationToEmail(payload: AdminNotificationPayload, adminEmail: string): Promise<void> {
     try {
-      // Generate approval link if requestId is provided
-      let adminLink = `${window.location.origin}#admin`;
-      
-      if (payload.requestId) {
-        const link = await this.approvalLinks.generateApprovalLink(
-          payload.type,
-          payload.requestId,
-          adminEmail
-        );
-        if (link) {
-          adminLink = link;
-        }
-      }
+      // Link to admin site - admins will log in normally to handle approvals
+      const adminLink = `${window.location.origin}/admin`;
 
       let subject: string;
       let body: string;

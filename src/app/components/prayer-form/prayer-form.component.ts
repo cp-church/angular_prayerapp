@@ -179,15 +179,10 @@ export class PrayerFormComponent implements OnInit, OnChanges {
 
   private loadUserInfo(): void {
     try {
-      // Get current user's email from Supabase user or localStorage fallback
-      this.adminAuthService.user$.subscribe(user => {
-        if (user?.email) {
-          this.currentUserEmail = user.email;
-        } else {
-          // Fallback to localStorage for approval code flow
-          const approvalEmail = localStorage.getItem('approvalAdminEmail');
-          const userEmail = localStorage.getItem('userEmail');
-          this.currentUserEmail = approvalEmail || userEmail || '';
+      // Get current user's email from UserSessionService (cached from database)
+      this.userSessionService.userSession$.subscribe(session => {
+        if (session?.email) {
+          this.currentUserEmail = session.email;
         }
       });
     } catch (error) {

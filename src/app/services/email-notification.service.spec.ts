@@ -1012,22 +1012,18 @@ describe('EmailNotificationService', () => {
       expect(a3).toContain(adminLink);
     });
 
-    it('sendAdminNotificationToEmail uses default adminLink when generateApprovalLink returns null', async () => {
+    it('sendAdminNotificationToEmail uses admin portal link', async () => {
       const spySend = vi.spyOn(service as any, 'sendEmail').mockResolvedValue(undefined as any);
-      // approvalLinks.generateApprovalLink resolves to null
-      (service as any).approvalLinks = { generateApprovalLink: vi.fn().mockResolvedValue(null) } as any;
 
       await (service as any).sendAdminNotificationToEmail({ type: 'prayer', title: 'T', requestId: 'rid', requester: 'R' } as any, 'adm@a');
 
       expect(spySend).toHaveBeenCalled();
       const sent = spySend.mock.calls[0][0];
-      expect(sent.htmlBody || sent.textBody).toContain('#admin');
+      expect(sent.htmlBody || sent.textBody).toContain('/admin');
     });
 
-    it('sendAdminNotificationToEmail falls back for update when template missing and uses approval link', async () => {
+    it('sendAdminNotificationToEmail uses admin portal link for update fallback', async () => {
       const spySend = vi.spyOn(service as any, 'sendEmail').mockResolvedValue(undefined as any);
-      // approvalLinks.generateApprovalLink returns a real link
-      (service as any).approvalLinks = { generateApprovalLink: vi.fn().mockResolvedValue('http://custom.link') } as any;
       // template missing
       vi.spyOn(service, 'getTemplate' as any).mockResolvedValueOnce(null as any);
 
@@ -1035,19 +1031,18 @@ describe('EmailNotificationService', () => {
 
       expect(spySend).toHaveBeenCalled();
       const sent = spySend.mock.calls[0][0];
-      expect(sent.htmlBody || sent.textBody).toContain('http://custom.link');
+      expect(sent.htmlBody || sent.textBody).toContain('/admin');
     });
 
-    it('sendAdminNotificationToEmail falls back for deletion when template missing and uses approval link', async () => {
+    it('sendAdminNotificationToEmail uses admin portal link for deletion fallback', async () => {
       const spySend = vi.spyOn(service as any, 'sendEmail').mockResolvedValue(undefined as any);
-      (service as any).approvalLinks = { generateApprovalLink: vi.fn().mockResolvedValue('http://del.link') } as any;
       vi.spyOn(service, 'getTemplate' as any).mockResolvedValueOnce(null as any);
 
       await (service as any).sendAdminNotificationToEmail({ type: 'deletion', title: 'DEL', requestId: 'rid', requester: 'RQ', reason: 'Because' } as any, 'adm@a');
 
       expect(spySend).toHaveBeenCalled();
       const sent = spySend.mock.calls[0][0];
-      expect(sent.htmlBody || sent.textBody).toContain('http://del.link');
+      expect(sent.htmlBody || sent.textBody).toContain('/admin');
     });
   });
 

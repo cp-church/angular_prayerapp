@@ -4,14 +4,6 @@ import { BehaviorSubject, Observable, Subscription, interval, timer } from 'rxjs
 import { SupabaseService } from './supabase.service';
 import type { User } from '@supabase/supabase-js';
 
-interface TimeoutSettings {
-  inactivityTimeoutMinutes: number;
-}
-
-const DEFAULT_TIMEOUTS: TimeoutSettings = {
-  inactivityTimeoutMinutes: 30,
-};
-
 @Injectable({
   providedIn: 'root'
 })
@@ -26,7 +18,6 @@ export class AdminAuthService {
   private lastActivity = Date.now();
   private sessionStart: number | null = null;
   private adminSessionStart: number | null = null;
-  private timeoutSettings: TimeoutSettings = DEFAULT_TIMEOUTS;
   private lastBlockedCheck = 0;
 
   public user$ = this.userSubject.asObservable();
@@ -48,42 +39,57 @@ export class AdminAuthService {
 
   private async initializeAuth(): Promise<void> {
     try {
-    // Load timeout settings
-    await this.loadTimeoutSettings();
-
-    // Check for approval code session first
-    const approvalEmail = localStorage.getItem('approvalAdminEmail');
-    const sessionValidated = localStorage.getItem('approvalSessionValidated');
-    
-    if (approvalEmail && sessionValidated === 'true') {
-      // Authenticate the user via approval code
-      this.isAuthenticatedSubject.next(true);
-      this.sessionStart = this.getPersistedSessionStart() || Date.now();
-      this.persistSessionStart(this.sessionStart);
-      
-      // Check if they're also an admin
-      const isAdmin = await this.isEmailAdmin(approvalEmail);
-      if (isAdmin) {
-        this.isAdminSubject.next(true);
-        this.hasAdminEmailSubject.next(true);
-      } else {
-        this.isAdminSubject.next(false);
-        this.hasAdminEmailSubject.next(false);
-      }
-      
-      this.loadingSubject.next(false);
-      return;
-    }
-
     // Check current session
     const { data: { session } } = await this.supabase.client.auth.getSession();
     
     if (session?.user) {
       this.userSubject.next(session.user);
-      await this.checkAdminStatus(session.user);
+      // Check admin status and wait for it to complete
+      try {
+        await this.checkAdminStatus(session.user);
+      } catch (error) {
+        console.error('[AdminAuth] Error checking admin status during init:', error);
+        this.isAdminSubject.next(false);
+        this.hasAdminEmailSubject.next(false);
+      }
+      // Set authenticated regardless of admin status check
       this.isAuthenticatedSubject.next(true);
       this.sessionStart = this.getPersistedSessionStart() || Date.now();
       this.persistSessionStart(this.sessionStart);
+    } else {
+      // Check if user has an MFA-based session stored in localStorage
+      const mfaAuthenticatedEmail = localStorage.getItem('mfa_authenticated_email');
+      if (mfaAuthenticatedEmail) {
+        console.log('[AdminAuth] Restoring MFA authenticated session for:', mfaAuthenticatedEmail);
+        // Create a mock user object to satisfy the type system
+        const mockUser: User = {
+          id: 'mfa-auth-' + mfaAuthenticatedEmail.replace(/[^a-zA-Z0-9]/g, ''),
+          email: mfaAuthenticatedEmail,
+          user_metadata: {},
+          app_metadata: {},
+          aud: 'authenticated',
+          created_at: localStorage.getItem('mfa_session_start') || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          last_sign_in_at: new Date().toISOString(),
+          email_confirmed_at: new Date().toISOString(),
+          phone: '',
+          confirmed_at: new Date().toISOString()
+        } as User;
+        
+        this.userSubject.next(mockUser);
+        // Check admin status and wait for it to complete
+        try {
+          await this.checkAdminStatus(mockUser);
+        } catch (error) {
+          console.error('[AdminAuth] Error checking admin status for restored MFA session:', error);
+          this.isAdminSubject.next(false);
+          this.hasAdminEmailSubject.next(false);
+        }
+        // Set authenticated for MFA session
+        this.isAuthenticatedSubject.next(true);
+        this.sessionStart = this.getPersistedSessionStart() || Date.now();
+        this.persistSessionStart(this.sessionStart);
+      }
     }
 
     // Listen for auth state changes
@@ -91,7 +97,12 @@ export class AdminAuthService {
       
       if (session?.user) {
         this.userSubject.next(session.user);
-        await this.checkAdminStatus(session.user);
+        // Check admin status but don't block on failure
+        this.checkAdminStatus(session.user).catch(error => {
+          console.error('[AdminAuth] Error checking admin status on state change:', error);
+          this.isAdminSubject.next(false);
+          this.hasAdminEmailSubject.next(false);
+        });
         this.isAuthenticatedSubject.next(true);
         
         if (!this.sessionStart) {
@@ -99,11 +110,16 @@ export class AdminAuthService {
           this.persistSessionStart(this.sessionStart);
         }
       } else {
-        this.userSubject.next(null);
-        this.isAdminSubject.next(false);
-        this.isAuthenticatedSubject.next(false);
-        this.sessionStart = null;
-        this.persistSessionStart(null);
+        // Only clear auth state if we don't have an MFA authenticated user
+        // MFA users don't have Supabase sessions so this listener won't find them
+        const mfaAuthenticatedEmail = localStorage.getItem('mfa_authenticated_email');
+        if (!mfaAuthenticatedEmail) {
+          this.userSubject.next(null);
+          this.isAdminSubject.next(false);
+          this.isAuthenticatedSubject.next(false);
+          this.sessionStart = null;
+          this.persistSessionStart(null);
+        }
       }
     });
 
@@ -112,9 +128,6 @@ export class AdminAuthService {
 
     // Refresh lightweight checks when the window regains focus so we don't block rendering
     window.addEventListener('focus', () => {
-      this.refreshTimeoutSettingsFromDb().catch(error => {
-        console.error('Error refreshing timeout settings on focus:', error);
-      });
       this.checkBlockedStatusInBackground();
       
       // Re-validate admin status on focus after background suspension (iOS Edge issue)
@@ -122,18 +135,6 @@ export class AdminAuthService {
       if (currentUser) {
         this.checkAdminStatus(currentUser).catch(error => {
           console.error('Error re-validating admin status on focus:', error);
-        });
-      }
-      
-      // Also check approval session is still valid
-      const approvalEmail = localStorage.getItem('approvalAdminEmail');
-      const sessionValidated = localStorage.getItem('approvalSessionValidated');
-      if (approvalEmail && sessionValidated === 'true') {
-        this.isEmailAdmin(approvalEmail).then(isAdmin => {
-          this.isAdminSubject.next(isAdmin);
-          this.hasAdminEmailSubject.next(isAdmin);
-        }).catch(error => {
-          console.error('Error re-validating approval session on focus:', error);
         });
       }
     });
@@ -180,75 +181,8 @@ export class AdminAuthService {
     this.loadingSubject.next(false);
   }
 
-  private async loadTimeoutSettings(): Promise<void> {
-    try {
-      this.applyCachedTimeoutSettings();
-      this.refreshTimeoutSettingsFromDb().catch(error => {
-        console.error('Error refreshing timeout settings:', error);
-      });
-    } catch (error) {
-      console.error('Error loading timeout settings:', error);
-    }
-  }
-
-  private applyCachedTimeoutSettings(): void {
-    try {
-      const cached = localStorage.getItem('adminTimeoutSettings');
-      if (!cached) return;
-
-      const parsed = JSON.parse(cached) as Partial<TimeoutSettings> & { requireSiteLogin?: boolean };
-      this.applyTimeoutSettings(parsed);
-    } catch (error) {
-      console.error('Error parsing cached timeout settings:', error);
-    }
-  }
-
-  private async refreshTimeoutSettingsFromDb(): Promise<void> {
-    const { data, error } = await this.supabase.directQuery<Array<{
-      inactivity_timeout_minutes: number;
-      require_site_login: boolean;
-    }>>('admin_settings', {
-      select: 'inactivity_timeout_minutes, require_site_login',
-      eq: { id: 1 },
-      limit: 1,
-      timeout: 8000
-    });
-
-    if (!error && data && data[0]) {
-      const settings = {
-        inactivityTimeoutMinutes: data[0].inactivity_timeout_minutes || DEFAULT_TIMEOUTS.inactivityTimeoutMinutes,
-        requireSiteLogin: data[0].require_site_login ?? true
-      };
-
-      this.applyTimeoutSettings(settings);
-      localStorage.setItem('adminTimeoutSettings', JSON.stringify(settings));
-      localStorage.setItem('adminTimeoutSettingsTimestamp', Date.now().toString());
-    }
-  }
-
-  private applyTimeoutSettings(settings: Partial<TimeoutSettings> & { requireSiteLogin?: boolean }): void {
-    this.timeoutSettings = {
-      inactivityTimeoutMinutes: settings.inactivityTimeoutMinutes ?? this.timeoutSettings.inactivityTimeoutMinutes,
-    };
-
-    if (typeof settings.requireSiteLogin === 'boolean') {
-      this.requireSiteLoginSubject.next(settings.requireSiteLogin);
-    }
-  }
-
   private async checkAdminStatus(user: User): Promise<void> {
     if (!user?.email) {
-      // Check for approval code session
-      const approvalEmail = localStorage.getItem('approvalAdminEmail');
-      const sessionValidated = localStorage.getItem('approvalSessionValidated');
-      
-      if (approvalEmail && sessionValidated === 'true') {
-        this.isAdminSubject.next(true);
-        this.hasAdminEmailSubject.next(true);
-        this.isAuthenticatedSubject.next(true);
-        return;
-      }
-      
       this.isAdminSubject.next(false);
       this.hasAdminEmailSubject.next(false);
       this.isAuthenticatedSubject.next(false);
@@ -332,31 +266,8 @@ export class AdminAuthService {
   }
 
   private setupSessionTimeouts(): void {
-    // Check every minute for timeouts (admin sessions only)
-    interval(60000).subscribe(() => {
-      if (!this.isAdminSubject.value) return;
-      
-      // Only main site (non-admin) authentication stays active indefinitely
-      // Admin sessions (within /admin) have timeouts
-      
-      const now = Date.now();
-      const inactivityTime = now - this.lastActivity;
-
-      // Check inactivity timeout for admin session
-      if (inactivityTime > this.timeoutSettings.inactivityTimeoutMinutes * 60000) {
-        console.log('[AdminAuth] Admin session expired due to inactivity');
-        this.handleAdminSessionExpired();
-        return;
-      }
-    });
-  }
-
-  private handleAdminSessionExpired(): void {
-    // Don't logout - keep the main site session active
-    // Just mark admin session as expired and require re-authentication for admin panel
-    this.isAdminSubject.next(false);
-    this.adminSessionExpiredSubject.next(true);
-    this.adminSessionStart = null;
+    // Admin sessions now stay active indefinitely, matching normal user behavior
+    // Sessions are maintained via Supabase auth and manual logout only
   }
 
   private getPersistedSessionStart(): number | null {
@@ -514,23 +425,27 @@ export class AdminAuthService {
       // Check if user is an admin
       const isAdmin = await this.isEmailAdmin(email);
 
-      // Code verified successfully - now sign in the user
-      await this.setApprovalSession(email);
-
-      // Set admin status only if they're actually an admin
+      // Code verified successfully - mark admin status and authenticated
       if (isAdmin) {
         this.isAdminSubject.next(true);
+        this.hasAdminEmailSubject.next(true);
         this.adminSessionStart = Date.now(); // Start admin session timer
         this.adminSessionExpiredSubject.next(false);
       } else {
         this.isAdminSubject.next(false);
+        this.hasAdminEmailSubject.next(false);
       }
+
+      // Mark user as authenticated (required for siteAuthGuard)
+      this.isAuthenticatedSubject.next(true);
+
+      // Store MFA authenticated email for session restoration after browser restart
+      localStorage.setItem('mfa_authenticated_email', email);
+      localStorage.setItem('mfa_session_start', Date.now().toString());
 
       // Clean up
       localStorage.removeItem('mfa_code_id');
       localStorage.removeItem('mfa_user_email');
-      localStorage.setItem('approvalAdminEmail', email);
-      localStorage.setItem('approvalSessionValidated', 'true');
 
       console.log('[AdminAuth] MFA verification successful, session created (isAdmin:', isAdmin, ')');
       return { success: true, isAdmin };
@@ -544,35 +459,6 @@ export class AdminAuthService {
   }
 
 
-
-  /**
-   * Set approval code session (called when approval code is validated)
-   */
-  async setApprovalSession(email: string): Promise<void> {
-    console.log('[AdminAuth] Setting approval session for:', email);
-    
-    // Always authenticate the user
-    this.isAuthenticatedSubject.next(true);
-    this.sessionStart = Date.now(); // Main site session
-    this.persistSessionStart(this.sessionStart);
-    
-    // Check if user is admin
-    const isAdmin = await this.isEmailAdmin(email);
-    
-    if (isAdmin) {
-      this.isAdminSubject.next(true);
-      this.hasAdminEmailSubject.next(true);
-      this.adminSessionStart = Date.now(); // Admin session timer
-      this.adminSessionExpiredSubject.next(false);
-    } else {
-      this.isAdminSubject.next(false);
-      this.hasAdminEmailSubject.next(false);
-    }
-    
-    // Store the email in localStorage for session persistence
-    localStorage.setItem('approvalAdminEmail', email);
-    localStorage.setItem('approvalSessionValidated', 'true');
-  }
 
   /**
    * Logout current user
@@ -591,6 +477,10 @@ export class AdminAuthService {
       localStorage.removeItem('approvalSessionValidated');
       localStorage.removeItem('approvalApprovalType');
       localStorage.removeItem('approvalApprovalId');
+      
+      // Clear MFA authenticated session data
+      localStorage.removeItem('mfa_authenticated_email');
+      localStorage.removeItem('mfa_session_start');
       
       // Always redirect to login page after logout
       this.router.navigate(['/login']);
@@ -636,11 +526,6 @@ export class AdminAuthService {
 
       if (!error && data && data[0]) {
         this.requireSiteLoginSubject.next(data[0].require_site_login ?? true);
-        localStorage.setItem('adminTimeoutSettings', JSON.stringify({
-          ...this.timeoutSettings,
-          requireSiteLogin: data[0].require_site_login ?? true
-        }));
-        localStorage.setItem('adminTimeoutSettingsTimestamp', Date.now().toString());
       }
     } catch (error) {
       console.error('Error reloading site protection setting:', error);

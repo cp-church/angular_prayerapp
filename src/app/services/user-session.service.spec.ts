@@ -520,6 +520,8 @@ describe('UserSessionService', () => {
       
       // Ensure approvalAdminEmail is not set
       localStorage.removeItem('approvalAdminEmail');
+      localStorage.removeItem('userSession');
+      localStorage.removeItem('mfa_authenticated_email');
       
       // Create new service
       const newService = new UserSessionService(mockSupabaseService, mockAdminAuthService);
@@ -1361,6 +1363,9 @@ describe('UserSessionService', () => {
       // Create new service with never-authenticating auth
       const authSubject = new BehaviorSubject(false);
       const mockAuth = { isAuthenticated$: authSubject };
+      
+      // Clear any cached session from localStorage
+      localStorage.removeItem('userSession');
       
       const timeoutService = new UserSessionService(mockSupabaseService, mockAuth);
       

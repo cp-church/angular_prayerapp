@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { AdminDataService } from '../../services/admin-data.service';
 import { AdminAuthService } from '../../services/admin-auth.service';
+import { UserSessionService } from '../../services/user-session.service';
 import { AnalyticsService, AnalyticsStats } from '../../services/analytics.service';
 import { PendingPrayerCardComponent } from '../../components/pending-prayer-card/pending-prayer-card.component';
 import { PendingUpdateCardComponent } from '../../components/pending-update-card/pending-update-card.component';
@@ -68,9 +69,9 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
             <!-- Right side: Email indicator and navigation controls -->
             <div class="flex flex-col items-end gap-3">
               <!-- Email Indicator -->
-              @if ((adminAuthService.user$ | async); as user) {
+              @if ((userSessionService.userSession$ | async); as session) {
                 <div class="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded">
-                  {{ user.email }}
+                  {{ session.email }}
                 </div>
               } @else {
                 <div class="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded">
@@ -737,6 +738,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     private adminDataService: AdminDataService,
     private analyticsService: AnalyticsService,
     public adminAuthService: AdminAuthService,
+    public userSessionService: UserSessionService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -766,6 +768,11 @@ export class AdminComponent implements OnInit, OnDestroy {
         });
         this.cdr.markForCheck();
         
+        // Set initial tab based on pending items (only if still on default)
+        if (this.activeTab === 'prayers') {
+          this.setInitialTab();
+        }
+        
         // Auto-progress through tabs when each section is complete
         this.autoProgressTabs();
       });
@@ -780,8 +787,33 @@ export class AdminComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Determine which tab should be initially active based on pending items
+   * Priority order: prayers -> updates -> deletions -> accounts
+   */
+  private setInitialTab() {
+    if (!this.adminData) return;
+
+    const hasPendingPrayers = (this.adminData.pendingPrayers || []).length > 0;
+    const hasPendingUpdates = (this.adminData.pendingUpdates || []).length > 0;
+    const hasPendingDeletions = (this.adminData.pendingDeletionRequests || []).length > 0;
+    const hasPendingAccounts = (this.adminData.pendingAccountRequests || []).length > 0;
+
+    // Set tab based on priority
+    if (hasPendingPrayers) {
+      this.activeTab = 'prayers';
+    } else if (hasPendingUpdates) {
+      this.activeTab = 'updates';
+    } else if (hasPendingDeletions) {
+      this.activeTab = 'deletions';
+    } else if (hasPendingAccounts) {
+      this.activeTab = 'accounts';
+    }
+    // Otherwise stay on 'prayers' (default)
+  }
+
+  /**
    * Auto-progress through approval tabs when each section is complete
-   * Priority order: prayers -> updates -> deletions
+   * Priority order: prayers -> updates -> deletions -> accounts
    */
   private autoProgressTabs() {
     if (!this.adminData) return;
@@ -793,9 +825,12 @@ export class AdminComponent implements OnInit, OnDestroy {
         // Move to updates if there are any
         if ((this.adminData.pendingUpdates || []).length > 0) {
           this.onTabChange('updates');
-        } else if ((this.adminData.pendingDeletions || []).length > 0) {
+        } else if ((this.adminData.pendingDeletionRequests || []).length > 0) {
           // Move to deletions if there are any
           this.onTabChange('deletions');
+        } else if ((this.adminData.pendingAccountRequests || []).length > 0) {
+          // Move to accounts if there are any
+          this.onTabChange('accounts');
         }
       }
     }
@@ -804,8 +839,11 @@ export class AdminComponent implements OnInit, OnDestroy {
       const pendingUpdates = this.adminData.pendingUpdates || [];
       if (pendingUpdates.length === 0) {
         // Move to deletions if there are any
-        if ((this.adminData.pendingDeletions || []).length > 0) {
+        if ((this.adminData.pendingDeletionRequests || []).length > 0) {
           this.onTabChange('deletions');
+        } else if ((this.adminData.pendingAccountRequests || []).length > 0) {
+          // Move to accounts if there are any
+          this.onTabChange('accounts');
         } else if ((this.adminData.pendingPrayers || []).length > 0) {
           // Cycle back to prayers if any exist
           this.onTabChange('prayers');
@@ -814,14 +852,33 @@ export class AdminComponent implements OnInit, OnDestroy {
     }
     // If on deletions tab, check if all deletions are done
     else if (this.activeTab === 'deletions') {
-      const pendingDeletions = this.adminData.pendingDeletions || [];
+      const pendingDeletions = this.adminData.pendingDeletionRequests || [];
       if (pendingDeletions.length === 0) {
+        // Move to accounts if there are any
+        if ((this.adminData.pendingAccountRequests || []).length > 0) {
+          this.onTabChange('accounts');
+        } else if ((this.adminData.pendingPrayers || []).length > 0) {
+          // Cycle back to prayers if any exist
+          this.onTabChange('prayers');
+        } else if ((this.adminData.pendingUpdates || []).length > 0) {
+          // Cycle to updates if any exist
+          this.onTabChange('updates');
+        }
+      }
+    }
+    // If on accounts tab, check if all accounts are done
+    else if (this.activeTab === 'accounts') {
+      const pendingAccounts = this.adminData.pendingAccountRequests || [];
+      if (pendingAccounts.length === 0) {
         // Cycle back to prayers if any exist
         if ((this.adminData.pendingPrayers || []).length > 0) {
           this.onTabChange('prayers');
         } else if ((this.adminData.pendingUpdates || []).length > 0) {
           // Cycle to updates if any exist
           this.onTabChange('updates');
+        } else if ((this.adminData.pendingDeletionRequests || []).length > 0) {
+          // Cycle to deletions if any exist
+          this.onTabChange('deletions');
         }
       }
     }
@@ -1119,17 +1176,8 @@ export class AdminComponent implements OnInit, OnDestroy {
   }
 
   getAdminEmail(): string {
-    // Try to get email from localStorage (approval code flow)
-    const approvalEmail = localStorage.getItem('approvalAdminEmail');
-    if (approvalEmail) return approvalEmail;
-    
-    // Try other possible localStorage keys
-    const userEmail = localStorage.getItem('userEmail');
-    if (userEmail) return userEmail;
-    
-    const prayerappEmail = localStorage.getItem('prayerapp_user_email');
-    if (prayerappEmail) return prayerappEmail;
-    
-    return '';
+    // Get email from UserSessionService (cached from database)
+    const session = this.userSessionService.getCurrentSession();
+    return session?.email || '';
   }
 }

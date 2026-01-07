@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { BehaviorSubject } from 'rxjs';
 
 // Define mock types to avoid importing Router/AdminAuthService
-type MockRouter = { navigate: ReturnType<typeof vi.fn> };
+type MockRouter = { 
+  navigate: ReturnType<typeof vi.fn>,
+  createUrlTree: ReturnType<typeof vi.fn>
+};
 type MockAdminAuthService = {
   isAdmin$: BehaviorSubject<boolean>;
   loading$: BehaviorSubject<boolean>;
@@ -34,6 +37,7 @@ vi.mock('@angular/core', async () => {
 vi.mock('@angular/router', () => ({
   Router: class Router {
     navigate = vi.fn();
+    createUrlTree = vi.fn();
   },
 }));
 
@@ -68,6 +72,10 @@ describe('adminGuard', () => {
 
     mockRouter = {
       navigate: vi.fn(),
+      createUrlTree: vi.fn((commands, extras) => {
+        // Return a mock UrlTree object that evaluates to true in boolean context
+        return { _commands: commands, _extras: extras } as any;
+      }),
     };
 
     // Save original location
@@ -97,19 +105,6 @@ describe('adminGuard', () => {
     window.location = originalLocation;
     vi.useRealTimers();
     vi.clearAllMocks();
-  });
-
-  it('should allow access when approval code is present in URL', async () => {
-    window.location.search = '?code=approval-code-123';
-
-    // Re-import the guard to pick up the new mocks
-    vi.resetModules();
-    const { adminGuard } = await import('./admin.guard');
-
-    const result = adminGuard();
-
-    expect(result).toBe(true);
-    expect(mockRouter.navigate).not.toHaveBeenCalled();
   });
 
   it('should allow access when user is admin after loading completes', async () => {
@@ -142,7 +137,11 @@ describe('adminGuard', () => {
     const { adminGuard } = await import('./admin.guard');
     const { firstValueFrom } = await import('rxjs');
 
-    const guard$ = adminGuard();
+    // Mock the route and state
+    const route = { component: {} };
+    const state = { url: '/admin' };
+
+    const guard$ = adminGuard(route as any, state as any);
 
     if (typeof guard$ === 'boolean') {
       throw new Error('Guard should return an Observable');
@@ -153,8 +152,11 @@ describe('adminGuard', () => {
     mockAdminAuthService.isAdmin$.next(false);
 
     const result = await firstValueFrom(guard$);
-    expect(result).toBe(false);
-    expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);
+    // Should return a UrlTree (redirect to login with returnUrl)
+    expect(result).toBeDefined();
+    expect(mockRouter.createUrlTree).toHaveBeenCalledWith(['/login'], {
+      queryParams: { returnUrl: '/admin' }
+    });
   });
 
   it('should skip values while loading is true', async () => {
@@ -164,7 +166,9 @@ describe('adminGuard', () => {
     const { adminGuard } = await import('./admin.guard');
     const { firstValueFrom } = await import('rxjs');
 
-    const guard$ = adminGuard();
+    const route = { component: {} };
+    const state = { url: '/admin' };
+    const guard$ = adminGuard(route as any, state as any);
 
     if (typeof guard$ === 'boolean') {
       throw new Error('Guard should return an Observable');
@@ -182,24 +186,37 @@ describe('adminGuard', () => {
     mockAdminAuthService.loading$.next(false);
 
     const result = await resultPromise;
-    // Should emit the current isAdmin value (false) once loading is complete
-    expect(result).toBe(false);
-    expect(mockAdminAuthService.loading$.value).toBe(false);
+    // Should return a UrlTree (redirect to login)
+    expect(result).toBeDefined();
+    expect(mockRouter.createUrlTree).toHaveBeenCalledWith(['/login'], {
+      queryParams: { returnUrl: '/admin' }
+    });
   });
 
-  it('should handle URL with approval code even when user is not admin', async () => {
+  it('should check admin status normally with URL parameters', async () => {
     window.location.search = '?code=test-code&other=param';
     mockAdminAuthService.isAdmin$.next(false);
     mockAdminAuthService.loading$.next(false);
 
     vi.resetModules();
     const { adminGuard } = await import('./admin.guard');
+    const { firstValueFrom } = await import('rxjs');
 
-    const result = adminGuard();
+    const route = { component: {} };
+    const state = { url: '/admin' };
+    const guard$ = adminGuard(route as any, state as any);
 
-    // Should return true immediately due to approval code
-    expect(result).toBe(true);
-    expect(mockRouter.navigate).not.toHaveBeenCalled();
+    if (typeof guard$ === 'boolean') {
+      throw new Error('Guard should return an Observable');
+    }
+
+    const result = await firstValueFrom(guard$);
+
+    // Should check admin status normally (not bypass due to code)
+    expect(result).toBeDefined();
+    expect(mockRouter.createUrlTree).toHaveBeenCalledWith(['/login'], {
+      queryParams: { returnUrl: '/admin' }
+    });
   });
 
   it('should handle empty search params (no approval code)', async () => {
@@ -209,7 +226,9 @@ describe('adminGuard', () => {
     const { adminGuard } = await import('./admin.guard');
     const { firstValueFrom } = await import('rxjs');
 
-    const guard$ = adminGuard();
+    const route = { component: {} };
+    const state = { url: '/admin' };
+    const guard$ = adminGuard(route as any, state as any);
 
     if (typeof guard$ === 'boolean') {
       throw new Error('Guard should return an Observable');
@@ -229,7 +248,9 @@ describe('adminGuard', () => {
     const { adminGuard } = await import('./admin.guard');
     const { firstValueFrom } = await import('rxjs');
 
-    const guard$ = adminGuard();
+    const route = { component: {} };
+    const state = { url: '/admin' };
+    const guard$ = adminGuard(route as any, state as any);
 
     if (typeof guard$ === 'boolean') {
       throw new Error('Guard should return an Observable');
@@ -239,8 +260,10 @@ describe('adminGuard', () => {
     mockAdminAuthService.isAdmin$.next(false);
 
     const result = await firstValueFrom(guard$);
-    expect(result).toBe(false);
-    expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);
+    expect(result).toBeDefined();
+    expect(mockRouter.createUrlTree).toHaveBeenCalledWith(['/login'], {
+      queryParams: { returnUrl: '/admin' }
+    });
   });
 
   it('should handle timeout error from loading state', async () => {
@@ -250,7 +273,9 @@ describe('adminGuard', () => {
     const { adminGuard } = await import('./admin.guard');
     const { firstValueFrom } = await import('rxjs');
 
-    const guard$ = adminGuard();
+    const route = { component: {} };
+    const state = { url: '/admin' };
+    const guard$ = adminGuard(route as any, state as any);
 
     if (typeof guard$ === 'boolean') {
       throw new Error('Guard should return an Observable');
@@ -258,17 +283,17 @@ describe('adminGuard', () => {
 
     // Don't set loading to false - let the timeout trigger (5 seconds)
     // This will trigger the catchError handler
-    const resultPromise = firstValueFrom(guard$).catch((err) => {
-      // The timeout will cause an error to be caught and handled
-      return false;
-    });
+    const resultPromise = firstValueFrom(guard$);
 
     // Advance timers to trigger the timeout
     await vi.advanceTimersByTimeAsync(5100);
 
     const result = await resultPromise;
-    expect(result).toBe(false);
-    expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);
+    // Should return UrlTree redirecting to login
+    expect(result).toBeDefined();
+    expect(mockRouter.createUrlTree).toHaveBeenCalledWith(['/login'], {
+      queryParams: { returnUrl: '/admin' }
+    });
   });
 
   it('should handle error in combineLatest operator', async () => {
@@ -278,7 +303,9 @@ describe('adminGuard', () => {
     const { adminGuard } = await import('./admin.guard');
     const { firstValueFrom } = await import('rxjs');
 
-    const guard$ = adminGuard();
+    const route = { component: {} };
+    const state = { url: '/admin' };
+    const guard$ = adminGuard(route as any, state as any);
 
     if (typeof guard$ === 'boolean') {
       throw new Error('Guard should return an Observable');
@@ -296,7 +323,9 @@ describe('adminGuard', () => {
       // Error expected
     }
 
-    expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);
+    expect(mockRouter.createUrlTree).toHaveBeenCalledWith(['/login'], {
+      queryParams: { returnUrl: '/admin' }
+    });
   });
 
   it('should return false on catchError', async () => {
@@ -308,38 +337,29 @@ describe('adminGuard', () => {
 
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const guard$ = adminGuard();
+    const route = { component: {} };
+    const state = { url: '/admin' };
+    const guard$ = adminGuard(route as any, state as any);
 
     if (typeof guard$ === 'boolean') {
       throw new Error('Guard should return an Observable');
     }
 
     // Simulate a timeout by letting the 5s timer expire
-    // The catchError will handle it and navigate to /login
-    const resultPromise = firstValueFrom(guard$).catch(() => false);
+    // The catchError will handle it and createUrlTree to redirect to /login
+    const resultPromise = firstValueFrom(guard$);
 
     // Advance timers to trigger timeout
     await vi.advanceTimersByTimeAsync(5100);
 
     const result = await resultPromise;
-    expect(result).toBe(false);
-    expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);
+    expect(result).toBeDefined();
+    expect(mockRouter.createUrlTree).toHaveBeenCalledWith(['/login'], {
+      queryParams: { returnUrl: '/admin' }
+    });
     expect(consoleErrorSpy).toHaveBeenCalled();
 
     consoleErrorSpy.mockRestore();
-  });
-
-  it('should check approval code in constructor', async () => {
-    window.location.search = '?code=approval-123&state=xyz';
-
-    vi.resetModules();
-    const { adminGuard } = await import('./admin.guard');
-
-    const result = adminGuard();
-
-    // Should return true immediately
-    expect(result).toBe(true);
-    expect(mockRouter.navigate).not.toHaveBeenCalled();
   });
 
   it('should handle multiple isAdmin emissions while loading', async () => {
@@ -389,21 +409,6 @@ describe('adminGuard', () => {
     expect(result).toBe(true);
 
     // Verify that the router.navigate was NOT called for allowed access
-    expect(mockRouter.navigate).not.toHaveBeenCalled();
-  });
-
-  it('should immediately return true for approval code regardless of admin status', async () => {
-    window.location.search = '?code=test-approval-code';
-    mockAdminAuthService.isAdmin$.next(false);
-    mockAdminAuthService.loading$.next(true);
-
-    vi.resetModules();
-    const { adminGuard } = await import('./admin.guard');
-
-    const result = adminGuard();
-
-    // Should return true without checking admin status
-    expect(result).toBe(true);
     expect(mockRouter.navigate).not.toHaveBeenCalled();
   });
 });

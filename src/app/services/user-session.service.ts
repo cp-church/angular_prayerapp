@@ -31,10 +31,25 @@ export class UserSessionService {
   private hasInitializedSubject = new BehaviorSubject<boolean>(false);
   private hasInitialized$ = this.hasInitializedSubject.asObservable();
 
+  private hasBeenAuthenticated = false; // Track if user was ever authenticated
+
   constructor(
     private supabase: SupabaseService,
     private adminAuth: AdminAuthService
   ) {
+    // Restore cached session immediately if available
+    const cachedUserSession = localStorage.getItem('userSession');
+    if (cachedUserSession) {
+      try {
+        const session = JSON.parse(cachedUserSession);
+        if (session && session.email) {
+          this.userSessionSubject.next(session);
+        }
+      } catch (err) {
+        console.warn('[UserSession] Failed to parse cached session:', err);
+      }
+    }
+    
     this.initializeSession();
   }
 
@@ -44,10 +59,12 @@ export class UserSessionService {
   private initializeSession(): void {
     this.adminAuth.isAuthenticated$.subscribe(async (isAuthenticated) => {
       if (isAuthenticated) {
-        // Get current user email
+        this.hasBeenAuthenticated = true; // Mark that we've been authenticated
+        // Get current user email from multiple sources
         const { data: { session } } = await this.supabase.client.auth.getSession();
         const approvalEmail = localStorage.getItem('approvalAdminEmail');
-        const email = session?.user?.email || approvalEmail;
+        const mfaEmail = localStorage.getItem('mfa_authenticated_email');
+        const email = session?.user?.email || approvalEmail || mfaEmail;
 
         if (email) {
           // Try to load from localStorage first for instant availability
@@ -64,8 +81,8 @@ export class UserSessionService {
           // No email found, mark as initialized with null session
           this.hasInitializedSubject.next(true);
         }
-      } else {
-        // Clear session on logout
+      } else if (this.hasBeenAuthenticated) {
+        // Only clear session on actual logout (not on initial false state)
         this.userSessionSubject.next(null);
         this.clearCache();
         this.hasInitializedSubject.next(false);
@@ -84,11 +101,17 @@ export class UserSessionService {
     this.isLoadingSubject.next(true);
 
     try {
-      const { data, error } = await this.supabase.client
-        .from('email_subscribers')
-        .select('email, name, is_active')
-        .eq('email', email.toLowerCase().trim())
-        .maybeSingle();
+      // Use directQuery with timeout to prevent hanging
+      const { data, error } = await Promise.race([
+        this.supabase.client
+          .from('email_subscribers')
+          .select('email, name, is_active')
+          .eq('email', email.toLowerCase().trim())
+          .maybeSingle(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('User session query timeout')), 5000)
+        ) as Promise<any>
+      ]);
 
       if (error) {
         console.error('Error loading user session from database:', error);

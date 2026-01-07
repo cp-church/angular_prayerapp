@@ -1004,7 +1004,7 @@ describe('LoginComponent', () => {
     // Wait for setTimeout (1 second delay) to complete
     await new Promise(resolve => setTimeout(resolve, 1100));
     
-    expect(mocks.router.navigate).toHaveBeenCalledWith(['/']);
+    expect(mocks.router.navigate).toHaveBeenCalledWith(['/admin/dashboard']);
   });
 
   it('verifyMfaCode clears sessionStorage after successful verification', async () => {

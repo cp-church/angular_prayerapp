@@ -190,14 +190,7 @@ describe('PrayerCardComponent', () => {
   });
 
   it('handleAddUpdate emits and resets', async () => {
-    // prepare localStorage-backed user info
-    localStorage.setItem('userFirstName', 'John');
-    localStorage.setItem('userLastName', 'Smith');
-    localStorage.setItem('userEmail', 'john@example.com');
-
-    // Mock UserSessionService to return null so it falls back to localStorage
-    mockUserSessionService.getCurrentSession.mockReturnValue(null);
-
+    // Default mock setup has userSessionService returning email
     component.updateContent = 'An update';
     component.updateIsAnonymous = false;
     component.updateMarkAsAnswered = true;
@@ -209,29 +202,32 @@ describe('PrayerCardComponent', () => {
     const emitted = spy.mock.calls[0][0];
     expect(emitted.prayer_id).toBe('p1');
     expect(emitted.content).toBe('An update');
-    expect(emitted.author).toBe('John Smith');
-    expect(emitted.author_email).toBe('john@example.com');
+    expect(emitted.author).toBe('John Doe');
+    expect(emitted.author_email).toBe('test@example.com');
     expect(component.updateContent).toBe('');
     expect(component.showAddUpdateForm).toBe(false);
   });
 
-  it('getCurrentUserEmail prefers prayerapp_user_email when present', async () => {
-    // set the legacy key used by some flows
-    localStorage.setItem('prayerapp_user_email', 'legacy@example.com');
-    component.updateContent = 'Legacy email update';
+  it('getCurrentUserEmail returns email from userSessionService', async () => {
+    // userSessionService.getCurrentSession() is mocked in beforeEach
+    component.updateContent = 'An update';
+    component.updateIsAnonymous = false;
+    component.updateMarkAsAnswered = true;
     const spy = vi.spyOn(component.addUpdate, 'emit');
 
     await component.handleAddUpdate();
 
     expect(spy).toHaveBeenCalled();
     const emitted = spy.mock.calls[0][0];
-    expect(emitted.author_email).toBe('legacy@example.com');
+    expect(emitted.author_email).toBe('test@example.com');
   });
 
-  it('getCurrentUserEmail returns empty string when no keys present', async () => {
-    // ensure no keys exist at all
-    localStorage.clear();
+  it('getCurrentUserEmail returns empty string when session has no email', async () => {
+    // Mock userSessionService to return null session
+    mockUserSessionService.getCurrentSession = vi.fn().mockReturnValue(null);
     component.updateContent = 'No email update';
+    component.updateIsAnonymous = false;
+    component.updateMarkAsAnswered = true;
     const spy = vi.spyOn(component.addUpdate, 'emit');
 
     await component.handleAddUpdate();
@@ -246,18 +242,6 @@ describe('PrayerCardComponent', () => {
     expect(component.shouldShowToggleButton()).toBe(false);
   });
 
-  it('getCurrentUserEmail prefers approvalAdminEmail when present', async () => {
-    localStorage.setItem('approvalAdminEmail', 'approval@example.com');
-    component.updateContent = 'Approval email update';
-    const spy = vi.spyOn(component.addUpdate, 'emit');
-
-    await component.handleAddUpdate();
-
-    expect(spy).toHaveBeenCalled();
-    const emitted = spy.mock.calls[0][0];
-    expect(emitted.author_email).toBe('approval@example.com');
-  });
-
   it('handleUpdateDeletionRequest early returns when no form shown', () => {
     component.showUpdateDeleteRequestForm = null;
     const spy = vi.spyOn(component.requestUpdateDeletion, 'emit');
@@ -266,9 +250,16 @@ describe('PrayerCardComponent', () => {
   });
 
   it('handleDeleteRequest emits and resets', () => {
+    // Set up localStorage for user name and mock userSessionService for email
     localStorage.setItem('userFirstName', 'A');
     localStorage.setItem('userLastName', 'B');
-    localStorage.setItem('userEmail', 'a@b.com');
+    mockUserSessionService.getCurrentSession = vi.fn().mockReturnValue({
+      email: 'session@example.com',
+      firstName: 'A',
+      lastName: 'B',
+      fullName: 'A B',
+      isActive: true
+    });
     component.deleteReason = 'Because';
     const spy = vi.spyOn(component.requestDeletion, 'emit');
 
@@ -279,7 +270,7 @@ describe('PrayerCardComponent', () => {
     expect(payload.prayer_id).toBe('p1');
     expect(payload.requester_first_name).toBe('A');
     expect(payload.requester_last_name).toBe('B');
-    expect(payload.requester_email).toBe('a@b.com');
+    expect(payload.requester_email).toBe('session@example.com');
     expect(payload.reason).toBe('Because');
     expect(component.deleteReason).toBe('');
     expect(component.showDeleteRequestForm).toBe(false);
