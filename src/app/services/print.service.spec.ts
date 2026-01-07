@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PrintService, Prayer, TimeRange } from './print.service';
 import { SupabaseService } from './supabase.service';
+import { CacheService } from './cache.service';
 
 describe('PrintService', () => {
   let service: PrintService;
   let mockSupabaseService: any;
+  let mockCacheService: any;
   let mockSupabaseClient: any;
 
   const mockPrayers: Prayer[] = [
@@ -55,6 +57,13 @@ describe('PrintService', () => {
       client: mockSupabaseClient
     } as any;
 
+    // Mock CacheService
+    mockCacheService = {
+      get: vi.fn().mockReturnValue(null),
+      set: vi.fn(),
+      invalidate: vi.fn()
+    } as any;
+
     // Mock document.createElement for escapeHtml
     const mockDiv = {
       textContent: '',
@@ -84,7 +93,7 @@ describe('PrintService', () => {
       } as any;
     });
 
-    service = new PrintService(mockSupabaseService);
+    service = new PrintService(mockSupabaseService, mockCacheService);
   });
 
   afterEach(() => {

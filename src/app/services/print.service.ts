@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { SupabaseService } from './supabase.service';
+import { CacheService } from './cache.service';
 
 export interface Prayer {
   id: string;
@@ -24,7 +25,10 @@ export type TimeRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
   providedIn: 'root'
 })
 export class PrintService {
-  constructor(private supabase: SupabaseService) {}
+  constructor(
+    private supabase: SupabaseService,
+    private cache: CacheService
+  ) {}
 
   /**
    * Generate and download a printable prayer list for the specified time range
@@ -53,23 +57,36 @@ export class PrintService {
           break;
       }
 
-      // Fetch prayers with their updates
-      const { data: prayers, error } = await this.supabase.client
-        .from('prayers')
-        .select(`
-          *,
-          prayer_updates(*)
-        `)
-        .eq('approval_status', 'approved')
-        .neq('status', 'closed')
-        .gte('created_at', startDate.toISOString())
-        .order('created_at', { ascending: false });
+      // Try to get from cache first
+      const cacheKey = `print_prayers_${timeRange}`;
+      let prayers = this.cache.get<Prayer[]>(cacheKey);
 
-      if (error) {
-        console.error('Error fetching prayers:', error);
-        alert('Failed to fetch prayers. Please try again.');
-        if (newWindow) newWindow.close();
-        return;
+      // If not in cache or cache is expired, fetch from database
+      if (!prayers) {
+        const { data: fetchedPrayers, error } = await this.supabase.client
+          .from('prayers')
+          .select(`
+            *,
+            prayer_updates(*)
+          `)
+          .eq('approval_status', 'approved')
+          .neq('status', 'closed')
+          .gte('created_at', startDate.toISOString())
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching prayers:', error);
+          alert('Failed to fetch prayers. Please try again.');
+          if (newWindow) newWindow.close();
+          return;
+        }
+
+        prayers = fetchedPrayers || [];
+
+        // Cache the results with 10-minute TTL for print service
+        if (prayers.length > 0) {
+          this.cache.set(cacheKey, prayers, 10 * 60 * 1000);
+        }
       }
 
       if (!prayers || prayers.length === 0) {
