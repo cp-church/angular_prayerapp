@@ -209,7 +209,7 @@ import { environment } from '../../../environments/environment';
                   <textarea
                     id="affiliation-reason"
                     [(ngModel)]="affiliationReason"
-                    placeholder="Please explain your connection or involvement with our church community (e.g., member, staff, volunteer, family of member, etc.)"
+                    placeholder="Please explain your connection or involvement with our church community (e.g., visitor, attender, family of member, etc.)"
                     [disabled]="loading"
                     rows="3"
                     required
