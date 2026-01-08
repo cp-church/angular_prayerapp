@@ -5,6 +5,7 @@ import { SupabaseService } from '../../services/supabase.service';
 import { ToastService } from '../../services/toast.service';
 import { AdminDataService } from '../../services/admin-data.service';
 import { SendNotificationDialogComponent } from '../send-notification-dialog/send-notification-dialog.component';
+import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog.component';
 import { lookupPersonByEmail, batchLookupPlanningCenter, searchPlanningCenterByName, PlanningCenterPerson } from '../../../lib/planning-center';
 import { environment } from '../../../environments/environment';
 
@@ -30,7 +31,7 @@ interface CSVRow {
 @Component({
   selector: 'app-email-subscribers',
   standalone: true,
-  imports: [CommonModule, FormsModule, SendNotificationDialogComponent],
+  imports: [CommonModule, FormsModule, SendNotificationDialogComponent, ConfirmationDialogComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
@@ -609,6 +610,19 @@ interface CSVRow {
         (decline)="onDeclineSendWelcomeEmail()">
       </app-send-notification-dialog>
       }
+
+      <!-- Confirmation Dialog -->
+      @if (showConfirmationDialog) {
+      <app-confirmation-dialog
+        [title]="confirmationTitle"
+        [message]="confirmationMessage"
+        [details]="confirmationDetails"
+        [isDangerous]="isDeleteConfirmation"
+        [confirmText]="isDeleteConfirmation ? 'Delete' : 'Confirm'"
+        (confirm)="onConfirmDialog()"
+        (cancel)="onCancelDialog()">
+      </app-confirmation-dialog>
+      }
     </div>
   `,
   styles: [`
@@ -655,6 +669,14 @@ export class EmailSubscribersComponent implements OnInit {
   // Send notification dialog properties
   showSendWelcomeEmailDialog = false;
   pendingSubscriberEmail = '';
+
+  // Confirmation dialog properties
+  showConfirmationDialog = false;
+  confirmationTitle = '';
+  confirmationMessage = '';
+  confirmationDetails: string | null = null;
+  confirmationAction: (() => Promise<void>) | null = null;
+  isDeleteConfirmation = false;
 
   constructor(
     private supabase: SupabaseService,
@@ -927,12 +949,8 @@ export class EmailSubscribersComponent implements OnInit {
   }
 
   async handleDelete(id: string, email: string) {
-    if (!confirm(`Are you sure you want to remove ${email} from the subscriber list?`)) {
-      return;
-    }
-
+    // Fetch subscriber to check if admin
     try {
-      // Check if this subscriber is an admin
       const { data: subscriber, error: fetchError } = await this.supabase.client
         .from('email_subscribers')
         .select('is_admin')
@@ -941,33 +959,52 @@ export class EmailSubscribersComponent implements OnInit {
 
       if (fetchError) throw fetchError;
 
-      // If the subscriber is an admin, deactivate instead of deleting
+      // Show confirmation dialog
+      this.confirmationTitle = 'Remove Subscriber';
+      
       if (subscriber?.is_admin) {
-        const { error: updateError } = await this.supabase.client
-          .from('email_subscribers')
-          .update({ is_active: false })
-          .eq('id', id);
-
-        if (updateError) throw updateError;
-
-        this.csvSuccess = `Admin ${email} has been unsubscribed from emails but retains admin access to the portal.`;
+        this.confirmationMessage = `Are you sure you want to remove ${email} from the subscriber list?`;
+        this.confirmationDetails = 'This admin will be unsubscribed from emails but will retain admin access to the portal.';
       } else {
-        // For non-admin subscribers, we can safely delete the record
-        const { error } = await this.supabase.client
-          .from('email_subscribers')
-          .delete()
-          .eq('id', id);
-
-        if (error) throw error;
-        
-        this.toast.success('Subscriber removed');
+        this.confirmationMessage = `Are you sure you want to remove ${email} from the subscriber list?`;
+        this.confirmationDetails = 'This action will permanently delete the subscriber record.';
       }
 
-      await this.handleSearch();
+      this.isDeleteConfirmation = true;
+      this.confirmationAction = async () => {
+        try {
+          if (subscriber?.is_admin) {
+            const { error: updateError } = await this.supabase.client
+              .from('email_subscribers')
+              .update({ is_active: false })
+              .eq('id', id);
+
+            if (updateError) throw updateError;
+            this.csvSuccess = `Admin ${email} has been unsubscribed from emails but retains admin access to the portal.`;
+          } else {
+            const { error } = await this.supabase.client
+              .from('email_subscribers')
+              .delete()
+              .eq('id', id);
+
+            if (error) throw error;
+            this.toast.success('Subscriber removed');
+          }
+
+          await this.handleSearch();
+          this.cdr.markForCheck();
+        } catch (err: any) {
+          console.error('Error removing subscriber:', err);
+          this.error = err.message || 'Failed to remove subscriber';
+          this.cdr.markForCheck();
+        }
+      };
+
+      this.showConfirmationDialog = true;
       this.cdr.markForCheck();
     } catch (err: any) {
-      console.error('Error removing subscriber:', err);
-      this.error = err.message || 'Failed to remove subscriber';
+      console.error('Error preparing delete:', err);
+      this.error = err.message || 'Failed to prepare deletion';
       this.cdr.markForCheck();
     }
   }
@@ -1257,6 +1294,29 @@ export class EmailSubscribersComponent implements OnInit {
     this.showSendWelcomeEmailDialog = false;
     this.showAddForm = false;
     this.pendingSubscriberEmail = '';
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Handle confirmation dialog confirm
+   */
+  async onConfirmDialog() {
+    if (this.confirmationAction) {
+      await this.confirmationAction();
+    }
+    this.showConfirmationDialog = false;
+    this.confirmationAction = null;
+    this.isDeleteConfirmation = false;
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Handle confirmation dialog cancel
+   */
+  onCancelDialog() {
+    this.showConfirmationDialog = false;
+    this.confirmationAction = null;
+    this.isDeleteConfirmation = false;
     this.cdr.markForCheck();
   }
 }

@@ -455,19 +455,35 @@ describe('EmailSubscribersComponent', () => {
   });
 
   describe('handleDelete', () => {
-    beforeEach(() => {
-      global.confirm = vi.fn().mockReturnValue(true);
-    });
-
-    it('should not delete if user cancels', async () => {
-      (global.confirm as any).mockReturnValue(false);
+    it('should show confirmation dialog for admin subscriber', async () => {
+      mockSupabaseService.client.from().select().eq().maybeSingle.mockResolvedValue({
+        data: { is_admin: true },
+        error: null
+      });
 
       await component.handleDelete('123', 'john@example.com');
 
-      expect(mockSupabaseService.client.from().delete).not.toHaveBeenCalled();
+      expect(component.showConfirmationDialog).toBe(true);
+      expect(component.confirmationTitle).toBe('Remove Subscriber');
+      expect(component.confirmationMessage).toContain('john@example.com');
+      expect(component.isDeleteConfirmation).toBe(true);
     });
 
-    it('should deactivate admin subscriber', async () => {
+    it('should show confirmation dialog for non-admin subscriber', async () => {
+      mockSupabaseService.client.from().select().eq().maybeSingle.mockResolvedValue({
+        data: { is_admin: false },
+        error: null
+      });
+
+      await component.handleDelete('123', 'john@example.com');
+
+      expect(component.showConfirmationDialog).toBe(true);
+      expect(component.confirmationTitle).toBe('Remove Subscriber');
+      expect(component.confirmationMessage).toContain('john@example.com');
+      expect(component.isDeleteConfirmation).toBe(true);
+    });
+
+    it('should deactivate admin subscriber when confirmed', async () => {
       mockSupabaseService.client.from().select().eq().maybeSingle.mockResolvedValue({
         data: { is_admin: true },
         error: null
@@ -476,12 +492,17 @@ describe('EmailSubscribersComponent', () => {
       const searchSpy = vi.spyOn(component, 'handleSearch').mockResolvedValue();
 
       await component.handleDelete('123', 'john@example.com');
+      
+      // Call the confirmation action
+      if (component.confirmationAction) {
+        await component.confirmationAction();
+      }
 
       expect(component.csvSuccess).toContain('admin');
       expect(searchSpy).toHaveBeenCalled();
     });
 
-    it('should delete non-admin subscriber', async () => {
+    it('should delete non-admin subscriber when confirmed', async () => {
       mockSupabaseService.client.from().select().eq().maybeSingle.mockResolvedValue({
         data: { is_admin: false },
         error: null
@@ -490,6 +511,11 @@ describe('EmailSubscribersComponent', () => {
       const searchSpy = vi.spyOn(component, 'handleSearch').mockResolvedValue();
 
       await component.handleDelete('123', 'john@example.com');
+      
+      // Call the confirmation action
+      if (component.confirmationAction) {
+        await component.confirmationAction();
+      }
 
       expect(mockToastService.success).toHaveBeenCalled();
       expect(searchSpy).toHaveBeenCalled();
