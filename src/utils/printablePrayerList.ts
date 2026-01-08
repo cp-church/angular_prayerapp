@@ -505,7 +505,7 @@ function generatePrayerHTML(prayer: Prayer): string {
           month: 'short',
           day: 'numeric'
         });
-        return `<div class="update-item"><span class="update-meta">${update.author || 'Anonymous'} • ${updateDate}:</span> ${update.content}</div>`;
+        return `<div class="update-item"><span class="update-meta">Updated by: ${update.author || 'Anonymous'} • ${updateDate}:</span> ${update.content}</div>`;
       }).join('')}
     </div>
   ` : '';

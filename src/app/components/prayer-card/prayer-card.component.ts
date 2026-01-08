@@ -191,7 +191,7 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
             <div class="relative mb-2">
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600 dark:text-gray-400">
-                  Requested by: <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ update.author }}</span>
+                  Updated by: <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ update.author }}</span>
                 </span>
                 @if (showUpdateDeleteButton()) {
                 <button

@@ -84,7 +84,7 @@ interface PrayerPrompt {
           <div 
             class="bg-gray-100 dark:bg-gray-700 rounded-xl p-5">
             <div class="text-sm md:text-base lg:text-lg text-gray-700 dark:text-gray-300 mb-2">
-              {{ update.author }} • {{ formatDate(update.created_at) }}
+              Updated by: {{ update.author }} • {{ formatDate(update.created_at) }}
             </div>
             <div class="text-base md:text-lg lg:text-xl text-gray-800 dark:text-gray-200">{{ update.content }}</div>
           </div>

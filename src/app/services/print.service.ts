@@ -496,7 +496,7 @@ export class PrintService {
             month: 'short',
             day: 'numeric'
           });
-          return `<div class="update-item"><span class="update-meta">${this.escapeHtml(update.author || 'Anonymous')} • ${updateDate}:</span> ${this.escapeHtml(update.content)}</div>`;
+          return `<div class="update-item"><span class="update-meta">Updated by: ${this.escapeHtml(update.author || 'Anonymous')} • ${updateDate}:</span> ${this.escapeHtml(update.content)}</div>`;
         }).join('')}
       </div>
     ` : '';
