@@ -238,5 +238,36 @@ If you have questions, please contact the administrator.
 ---
 This is an automated notification from your prayer app.',
   'Sent to the update author when their update is denied. Variables: {{prayerTitle}}, {{denialReason}}, {{updateContent}}, {{appLink}}'
+),
+(
+  'subscriber_welcome',
+  'Welcome to Prayer Community - New Subscriber',
+  'Welcome to Our Prayer Community! 🙏',
+  '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Welcome to Prayer Community</title></head><body style="font-family: -apple-system, BlinkMacSystemFont, ''Segoe UI'', Roboto, sans-serif; line-height: 1.6; color: #2B2B2B; max-width: 600px; margin: 0 auto; padding: 20px;"><div style="background: linear-gradient(to right, #0047AB, #3E5266); padding: 30px 20px; border-radius: 8px 8px 0 0; text-align: center;"><h1 style="color: white; margin: 0; font-size: 28px;">Welcome to Our Prayer Community! 🙏</h1><p style="color: #E8E5E1; margin: 10px 0 0 0; font-size: 16px;">You''re now part of something meaningful</p></div><div style="background: #F8F7F5; padding: 20px; border: 1px solid #D1CCC4; border-top: none; border-radius: 0 0 8px 8px;"><p style="font-size: 16px; margin-bottom: 20px;">Hello,</p><p style="margin-bottom: 20px;">We''re so glad you''ve joined our prayer community! You''re now connected to a group of people who believe in the power of prayer and the importance of lifting each other up.</p><div style="background: #E8E5E1; border-left: 4px solid #39704D; padding: 20px; border-radius: 6px; margin: 25px 0;"><h3 style="margin-top: 0; color: #39704D;">What You Can Do:</h3><ul style="margin: 10px 0; padding-left: 20px; color: #2B2B2B;"><li style="margin: 8px 0;"><strong>Submit Prayer Requests</strong> - Share what''s on your heart. Our community will pray for your needs, whether big or small.</li><li style="margin: 8px 0;"><strong>Receive Prayer Updates</strong> - Get notified when community members share updates about their prayers, answered prayers, and God''s faithfulness at work in their lives.</li><li style="margin: 8px 0;"><strong>Stay Informed</strong> - Choose how often you want to hear from us. You can adjust your email preferences anytime.</li><li style="margin: 8px 0;"><strong>Be Encouraged</strong> - Read stories of answered prayers and see how God is working in the lives of those around you.</li><li style="margin: 8px 0;"><strong>Lift Others Up</strong> - Join in prayer for the requests that touch your heart. Your prayers make a real difference.</li></ul></div><div style="background: #FEF9E7; border: 1px solid #C9A961; border-radius: 6px; padding: 15px; margin: 25px 0;"><p style="margin: 0; color: #B8860B;"><strong>💡 Pro Tip:</strong> Check out the app to explore prayers in different categories and find people and situations you''d like to pray for.</p></div><h3 style="margin-top: 25px; margin-bottom: 10px; color: #2B2B2B;">Have Feedback or Questions?</h3><p style="margin-bottom: 15px;">We''d love to hear from you! Whether you have suggestions to improve the app, questions about how things work, or feedback about your experience, we''re all ears.</p><p style="margin-bottom: 15px;"><strong>📝 Share Your Feedback:</strong> You can submit feedback directly through the app using the feedback form. Just look for the "Send Feedback" option in your user menu. Your thoughts help us create a better experience for everyone.</p><div style="margin-top: 30px; text-align: center;"><a href="{{appLink}}" style="background: #39704D; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">Enter the Prayer App</a></div></div><div style="margin-top: 25px; text-align: center; color: #988F83; font-size: 13px; border-top: 1px solid #D1CCC4; padding-top: 20px;"><p style="margin: 10px 0;"><strong>Blessings,</strong><br>Your Prayer Community Team</p><p style="margin: 10px 0; font-size: 12px;">You''re receiving this email because you''ve joined our prayer community. This is a one-time welcome message.</p><p style="margin: 10px 0; font-size: 12px;">© 2024 Prayer Community. All rights reserved.</p></div></body></html>',
+  'Welcome to Our Prayer Community!
+
+Hello,
+
+We''re so glad you''ve joined! You''re now connected to a group of people who believe in the power of prayer.
+
+What You Can Do:
+• Submit Prayer Requests - Share what''s on your heart. Our community will pray for your needs, whether big or small.
+• Receive Prayer Updates - Get notified when community members share updates about their prayers, answered prayers, and God''s faithfulness at work in their lives.
+• Stay Informed - Choose how often you want to hear from us. You can adjust your email preferences anytime.
+• Be Encouraged - Read stories of answered prayers and see how God is working in the lives of those around you.
+• Lift Others Up - Join in prayer for the requests that touch your heart. Your prayers make a real difference.
+
+Have Feedback or Questions?
+
+We''d love to hear from you! You can submit feedback directly through the app using the feedback form. Just look for the "Send Feedback" option in your user menu. Your thoughts help us create a better experience for everyone.
+
+Visit the app to get started: {{appLink}}
+
+---
+Blessings,
+Your Prayer Community Team
+
+You''re receiving this email because you''ve joined our prayer community.',
+  'Sent to new email subscribers with a welcome message. Variables: {{appLink}}'
 )
 ON CONFLICT (template_key) DO NOTHING;

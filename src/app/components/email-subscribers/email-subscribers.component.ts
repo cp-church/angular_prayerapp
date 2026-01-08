@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../services/supabase.service';
 import { ToastService } from '../../services/toast.service';
+import { AdminDataService } from '../../services/admin-data.service';
+import { SendNotificationDialogComponent } from '../send-notification-dialog/send-notification-dialog.component';
 import { lookupPersonByEmail, batchLookupPlanningCenter, searchPlanningCenterByName, PlanningCenterPerson } from '../../../lib/planning-center';
 import { environment } from '../../../environments/environment';
 
@@ -28,7 +30,7 @@ interface CSVRow {
 @Component({
   selector: 'app-email-subscribers',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SendNotificationDialogComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
@@ -598,6 +600,15 @@ interface CSVRow {
         </div>
       </div>
       }
+
+      <!-- Send Welcome Email Dialog -->
+      @if (showSendWelcomeEmailDialog) {
+      <app-send-notification-dialog
+        [notificationType]="'subscriber'"
+        (confirm)="onConfirmSendWelcomeEmail()"
+        (decline)="onDeclineSendWelcomeEmail()">
+      </app-send-notification-dialog>
+      }
     </div>
   `,
   styles: [`
@@ -640,10 +651,15 @@ export class EmailSubscribersComponent implements OnInit {
   pcSearchResults: PlanningCenterPerson[] = [];
   pcSelectedPerson: PlanningCenterPerson | null = null;
 
+  // Send notification dialog properties
+  showSendWelcomeEmailDialog = false;
+  pendingSubscriberEmail = '';
+
   constructor(
     private supabase: SupabaseService,
     private toast: ToastService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private adminDataService: AdminDataService
   ) {}
 
   ngOnInit() {
@@ -854,11 +870,15 @@ export class EmailSubscribersComponent implements OnInit {
       if (error) throw error;
 
       this.csvSuccess = 'Subscriber added successfully!';
+      // Store the email for the welcome dialog
+      this.pendingSubscriberEmail = this.newEmail.toLowerCase().trim();
       this.newName = '';
       this.newEmail = '';
-      this.showAddForm = false;
-      await this.handleSearch();
+      // Show the send welcome email dialog
+      this.showSendWelcomeEmailDialog = true;
       this.cdr.markForCheck();
+      // Refresh the list in background
+      await this.handleSearch();
     } catch (err: any) {
       console.error('Error adding subscriber:', err);
       this.error = err.message || 'Failed to add subscriber';
@@ -1201,6 +1221,39 @@ export class EmailSubscribersComponent implements OnInit {
       this.pcSearchTab = false;
     }
     
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Handle send welcome email confirmation
+   */
+  async onConfirmSendWelcomeEmail() {
+    try {
+      if (!this.pendingSubscriberEmail) {
+        return;
+      }
+
+      // Send the welcome email
+      await this.adminDataService.sendSubscriberWelcomeEmail(this.pendingSubscriberEmail);
+      this.toast.success('Welcome email sent to subscriber');
+      
+      this.showSendWelcomeEmailDialog = false;
+      this.showAddForm = false;
+      this.pendingSubscriberEmail = '';
+      this.cdr.markForCheck();
+    } catch (error: any) {
+      console.error('Error sending welcome email:', error);
+      this.toast.error('Failed to send welcome email');
+    }
+  }
+
+  /**
+   * Handle decline sending welcome email
+   */
+  onDeclineSendWelcomeEmail() {
+    this.showSendWelcomeEmailDialog = false;
+    this.showAddForm = false;
+    this.pendingSubscriberEmail = '';
     this.cdr.markForCheck();
   }
 }

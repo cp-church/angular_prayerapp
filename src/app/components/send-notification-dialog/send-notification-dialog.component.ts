@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
-export type NotificationType = 'prayer' | 'update';
+export type NotificationType = 'prayer' | 'update' | 'subscriber';
 
 @Component({
   selector: 'app-send-notification-dialog',
@@ -69,9 +69,12 @@ export class SendNotificationDialogComponent {
   getMessageText(): string {
     if (this.notificationType === 'prayer') {
       return 'Would you like to send an email notification to all subscribers about this new prayer?';
-    } else {
+    } else if (this.notificationType === 'update') {
       return 'Would you like to send an email notification to all subscribers about this prayer update?';
+    } else if (this.notificationType === 'subscriber') {
+      return 'Would you like to send a welcome email to this new subscriber?';
     }
+    return '';
   }
 
   onConfirm() {

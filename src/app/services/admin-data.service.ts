@@ -985,4 +985,16 @@ export class AdminDataService {
   refresh(): void {
     this.fetchAdminData(false);
   }
+
+  /**
+   * Send welcome email to a new subscriber
+   */
+  async sendSubscriberWelcomeEmail(email: string): Promise<void> {
+    try {
+      await this.emailNotification.sendSubscriberWelcomeNotification(email);
+    } catch (error) {
+      console.error('Error sending subscriber welcome email:', error);
+      throw error;
+    }
+  }
 }
