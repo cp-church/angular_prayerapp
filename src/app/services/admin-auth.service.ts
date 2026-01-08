@@ -447,10 +447,6 @@ export class AdminAuthService {
       localStorage.removeItem('mfa_code_id');
       localStorage.removeItem('mfa_user_email');
 
-      // Identify user in Clarity for analytics
-      const { identifyUserInClarity } = await import('../../lib/clarity');
-      identifyUserInClarity(email);
-
       console.log('[AdminAuth] MFA verification successful, session created (isAdmin:', isAdmin, ')');
       return { success: true, isAdmin };
     } catch (error) {
