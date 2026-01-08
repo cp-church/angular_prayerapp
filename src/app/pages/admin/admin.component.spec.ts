@@ -44,7 +44,8 @@ describe('AdminComponent', () => {
         totalSubscribers: 10,
         activeEmailSubscribers: 11,
         loading: false
-      })
+      }),
+      trackPageView: vi.fn().mockResolvedValue(undefined)
     };
 
     adminAuthService = {
@@ -68,6 +69,7 @@ describe('AdminComponent', () => {
 
     component.ngOnInit();
 
+    expect(analyticsService.trackPageView).toHaveBeenCalled();
     expect(adminDataService.fetchAdminData).toHaveBeenCalled();
 
     // push data through observable and ensure handler runs

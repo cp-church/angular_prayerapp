@@ -8,7 +8,6 @@ interface AdminUser {
   email: string;
   name: string;
   created_at: string;
-  last_sign_in_at: string | null;
   receive_admin_emails: boolean;
 }
 
@@ -205,11 +204,6 @@ interface AdminUser {
               <span>
                 Added: {{ formatDate(admin.created_at) }}
               </span>
-              @if (admin.last_sign_in_at) {
-              <span>
-                Last sign in: {{ formatDate(admin.last_sign_in_at) }}
-              </span>
-              }
             </div>
           </div>
 
@@ -330,7 +324,7 @@ export class AdminUserManagementComponent implements OnInit {
     try {
       const { data, error } = await this.supabase.client
         .from('email_subscribers')
-        .select('email,name,created_at,last_sign_in_at,receive_admin_emails')
+        .select('email,name,created_at,receive_admin_emails')
         .eq('is_admin', true)
         .order('created_at', { ascending: true });
 

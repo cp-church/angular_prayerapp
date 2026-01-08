@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AnalyticsService } from './analytics.service';
 import { SupabaseService } from './supabase.service';
+import { UserSessionService } from './user-session.service';
 
 describe('AnalyticsService', () => {
   let service: AnalyticsService;
   let mockSupabaseService: any;
+  let mockUserSessionService: any;
   let mockSupabaseClient: any;
 
   beforeEach(() => {
@@ -41,7 +43,21 @@ describe('AnalyticsService', () => {
       client: mockSupabaseClient
     } as unknown as SupabaseService;
 
-    service = new AnalyticsService(mockSupabaseService);
+    // Create mock UserSessionService
+    mockUserSessionService = {
+      currentSession: {
+        email: 'test@example.com',
+        firstName: 'Test',
+        lastName: 'User'
+      },
+      getCurrentSession: vi.fn(() => ({
+        email: 'test@example.com',
+        firstName: 'Test',
+        lastName: 'User'
+      }))
+    } as unknown as UserSessionService;
+
+    service = new AnalyticsService(mockSupabaseService, mockUserSessionService);
   });
 
   it('should be created', () => {
@@ -49,53 +65,84 @@ describe('AnalyticsService', () => {
   });
 
   describe('trackPageView', () => {
-    it('should insert a page view event', async () => {
-      const insertMock = vi.fn(() => Promise.resolve({ data: null, error: null }));
-      mockSupabaseClient.from = vi.fn(() => ({
-        insert: insertMock
+    beforeEach(() => {
+      // Clear localStorage before each test
+      localStorage.clear();
+    });
+
+    it('should update user last activity date', async () => {
+      const updateMock = vi.fn(() => ({
+        eq: vi.fn(() => Promise.resolve({ data: null, error: null }))
       }));
+      
+      mockSupabaseClient.from = vi.fn((table: string) => {
+        if (table === 'email_subscribers') {
+          return { update: updateMock };
+        }
+        return {
+          insert: vi.fn(() => Promise.resolve({ data: null, error: null }))
+        };
+      });
 
       await service.trackPageView();
 
-      expect(mockSupabaseClient.from).toHaveBeenCalledWith('analytics');
-      expect(insertMock).toHaveBeenCalledWith(
+      expect(mockSupabaseClient.from).toHaveBeenCalledWith('email_subscribers');
+      expect(updateMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          event_type: 'page_view',
-          event_data: expect.objectContaining({
-            timestamp: expect.any(String),
-            path: expect.any(String),
-            hash: expect.any(String)
-          })
+          last_activity_date: expect.any(String)
         })
       );
     });
 
-    it('should handle insert errors gracefully', async () => {
+    it('should throttle updates - skip if updated within 5 minutes', async () => {
+      const updateMock = vi.fn(() => ({
+        eq: vi.fn(() => Promise.resolve({ data: null, error: null }))
+      }));
+      
+      mockSupabaseClient.from = vi.fn((table: string) => {
+        if (table === 'email_subscribers') {
+          return { update: updateMock };
+        }
+        return {
+          insert: vi.fn(() => Promise.resolve({ data: null, error: null }))
+        };
+      });
+
+      // First call should update
+      await service.trackPageView();
+      expect(updateMock).toHaveBeenCalledTimes(1);
+
+      // Second call immediately should be throttled
+      await service.trackPageView();
+      expect(updateMock).toHaveBeenCalledTimes(1); // Still 1, not called again
+    });
+
+    it('should handle errors gracefully', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      const error = new Error('Insert failed');
+      const error = new Error('Update failed');
       
       mockSupabaseClient.from = vi.fn(() => ({
-        insert: vi.fn(() => Promise.resolve({ data: null, error }))
+        update: vi.fn(() => ({
+          eq: vi.fn(() => Promise.reject(error))
+        }))
       }));
 
       await service.trackPageView();
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith('[Analytics] Insert error:', error);
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[Analytics] Failed to track page view:', error);
       consoleErrorSpy.mockRestore();
     });
 
-    it('should handle exceptions gracefully', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      const error = new Error('Network error');
+    it('should not update if user is not logged in', async () => {
+      const updateMock = vi.fn();
+      mockSupabaseClient.from = vi.fn(() => ({ update: updateMock }));
       
-      mockSupabaseClient.from = vi.fn(() => ({
-        insert: vi.fn(() => Promise.reject(error))
-      }));
+      // Mock null session
+      mockUserSessionService.getCurrentSession = vi.fn(() => null);
 
       await service.trackPageView();
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith('[Analytics] Tracking failed:', error);
-      consoleErrorSpy.mockRestore();
+      expect(updateMock).not.toHaveBeenCalled();
     });
   });
 
@@ -210,7 +257,7 @@ describe('AnalyticsService', () => {
       await service.getStats();
 
       // Verify date calculations (calls with gte for today, week, month)
-      const gteCallsWithDates = gteSpy.mock.calls.filter(
+      const gteCallsWithDates = (gteSpy.mock.calls as any[]).filter(
         (call) => call.length > 0 && call[0] === 'created_at'
       );
       
@@ -258,7 +305,7 @@ describe('AnalyticsService', () => {
               }
               // Other selects have eq chaining
               return {
-                eq: vi.fn(function(column: string, value: string) {
+                eq: vi.fn(function(column: string, value: any) {
                   if (value === 'current') return Promise.resolve({ count: 30, error: null });
                   if (value === 'answered') return Promise.resolve({ count: 15, error: null });
                   if (value === 'archived') return Promise.resolve({ count: 5, error: null });
@@ -277,7 +324,7 @@ describe('AnalyticsService', () => {
               }
               // Second select has eq for is_active
               return {
-                eq: vi.fn(function(column: string, value: string) {
+                eq: vi.fn(function(column: string, value: any) {
                   if (value === true) return Promise.resolve({ count: 20, error: null });
                   return Promise.resolve({ count: 25, error: null });
                 })
@@ -398,7 +445,7 @@ describe('AnalyticsService', () => {
         } else if (table === 'email_subscribers') {
           return {
             select: vi.fn(() => ({
-              eq: vi.fn(function(column: string, value: string) {
+              eq: vi.fn(function(column: string, value: any) {
                 if (value === true) return Promise.resolve({ count: null, error });
                 return Promise.resolve({ count: 25, error: null });
               })
@@ -454,64 +501,45 @@ describe('AnalyticsService', () => {
   });
 
   describe('trackPageView - comprehensive coverage', () => {
-    it('should capture current page path and hash', async () => {
-      const insertMock = vi.fn(() => Promise.resolve({ data: null, error: null }));
-      mockSupabaseClient.from = vi.fn(() => ({
-        insert: insertMock
-      }));
-
-      // Mock window.location
-      const originalLocation = window.location;
-      delete (window as any).location;
-      (window as any).location = {
-        pathname: '/prayers',
-        hash: '#filter=current'
-      };
-
-      await service.trackPageView();
-
-      expect(insertMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          event_type: 'page_view',
-          event_data: expect.objectContaining({
-            path: '/prayers',
-            hash: '#filter=current'
-          })
-        })
-      );
-
-      (window as any).location = originalLocation;
-    });
-
-    it('should handle Promise rejection in trackPageView', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      const error = new Error('Async error');
-
-      mockSupabaseClient.from = vi.fn(() => ({
-        insert: vi.fn(() => Promise.reject(error))
-      }));
-
-      await service.trackPageView();
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith('[Analytics] Tracking failed:', error);
-      consoleErrorSpy.mockRestore();
+    beforeEach(() => {
+      localStorage.clear();
     });
 
     it('should include valid ISO timestamp', async () => {
-      const insertMock = vi.fn(() => Promise.resolve({ data: null, error: null }));
-      mockSupabaseClient.from = vi.fn(() => ({
-        insert: insertMock
+      const updateMock = vi.fn(() => ({
+        eq: vi.fn(() => Promise.resolve({ data: null, error: null }))
       }));
+      
+      mockSupabaseClient.from = vi.fn(() => ({ update: updateMock }));
 
       const beforeCall = new Date();
       await service.trackPageView();
       const afterCall = new Date();
 
-      const callArgs = insertMock.mock.calls[0][0];
-      const timestamp = new Date(callArgs.event_data.timestamp);
+      expect(updateMock.mock.calls.length).toBeGreaterThan(0);
+      const callArgs = (updateMock.mock.calls[0] as any)?.[0] as any;
+      expect(callArgs).toBeDefined();
+
+      const timestamp = new Date(callArgs?.last_activity_date);
 
       expect(timestamp.getTime()).toBeGreaterThanOrEqual(beforeCall.getTime());
       expect(timestamp.getTime()).toBeLessThanOrEqual(afterCall.getTime() + 1000);
+    });
+
+    it('should handle Promise rejection gracefully', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const error = new Error('Update error');
+
+      mockSupabaseClient.from = vi.fn(() => ({
+        update: vi.fn(() => ({
+          eq: vi.fn(() => Promise.reject(error))
+        }))
+      }));
+
+      await service.trackPageView();
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[Analytics] Failed to track page view:', error);
+      consoleErrorSpy.mockRestore();
     });
   });
 });

@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { SupabaseService } from './supabase.service';
+import { UserSessionService } from './user-session.service';
 
 export interface AnalyticsStats {
   todayPageViews: number;
@@ -20,30 +21,49 @@ export interface AnalyticsStats {
   providedIn: 'root'
 })
 export class AnalyticsService {
-  constructor(private supabase: SupabaseService) {}
+  constructor(
+    private supabase: SupabaseService,
+    private userSession: UserSessionService
+  ) {}
 
   /**
-   * Track a page view by recording it to the analytics table
+   * Track a page view and update user's last activity date
+   * Updates the user's last_activity_date in email_subscribers table when they view the page
+   * Throttled to update at most every 5 minutes to reduce database writes
    * Should be called from main site pages only, not from admin routes
    */
   async trackPageView(): Promise<void> {
     try {
-      const insertData = {
-        event_type: 'page_view',
-        event_data: {
-          timestamp: new Date().toISOString(),
-          path: window.location.pathname,
-          hash: window.location.hash
-        }
-      };
-      
-      const result = await this.supabase.client.from('analytics').insert(insertData);
-      
-      if (result.error) {
-        console.error('[Analytics] Insert error:', result.error);
+      // Get user email from current session
+      const session = this.userSession.getCurrentSession();
+      const userEmail = session?.email || null;
+
+      // Only update if user is logged in
+      if (!userEmail) {
+        return;
       }
+
+      // Check if we've already updated within the last 5 minutes
+      const lastUpdateKey = `last_activity_update_${userEmail}`;
+      const lastUpdateTime = localStorage.getItem(lastUpdateKey);
+      const now = Date.now();
+      const fiveMinutesMs = 5 * 60 * 1000;
+
+      // Only update if no previous update or if 5+ minutes have passed
+      if (lastUpdateTime && now - parseInt(lastUpdateTime) < fiveMinutesMs) {
+        return; // Skip update - too recent
+      }
+
+      // Update the user's last activity date in email_subscribers
+      await this.supabase.client
+        .from('email_subscribers')
+        .update({ last_activity_date: new Date().toISOString() })
+        .eq('email', userEmail);
+
+      // Record the update time in localStorage
+      localStorage.setItem(lastUpdateKey, String(now));
     } catch (error) {
-      console.error('[Analytics] Tracking failed:', error);
+      console.error('[Analytics] Failed to track page view:', error);
     }
   }
 

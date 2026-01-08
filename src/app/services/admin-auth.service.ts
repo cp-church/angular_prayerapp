@@ -70,7 +70,6 @@ export class AdminAuthService {
           aud: 'authenticated',
           created_at: localStorage.getItem('mfa_session_start') || new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          last_sign_in_at: new Date().toISOString(),
           email_confirmed_at: new Date().toISOString(),
           phone: '',
           confirmed_at: new Date().toISOString()

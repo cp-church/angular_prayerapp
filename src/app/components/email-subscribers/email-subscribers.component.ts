@@ -17,6 +17,7 @@ interface EmailSubscriber {
   is_blocked: boolean;
   is_admin?: boolean;
   created_at: string;
+  last_activity_date?: string | null;
   in_planning_center?: boolean | null;
   planning_center_checked_at?: string | null;
 }
@@ -475,11 +476,14 @@ interface CSVRow {
                 Opted out of emails but retains admin portal access
               </p>
               }
-              @if (!subscriber.is_admin) {
-              <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                Added {{ subscriber.created_at | date:'short' }}
-              </p>
-              }
+              <div class="text-xs text-gray-500 dark:text-gray-500 mt-1 space-y-0.5">
+                <p>Added {{ subscriber.created_at | date:'short' }}</p>
+                @if (subscriber.last_activity_date) {
+                <p>Last active {{ subscriber.last_activity_date | date:'short' }}</p>
+                } @else {
+                <p class="text-gray-400 dark:text-gray-600">No activity recorded</p>
+                }
+              </div>
             </div>
             <div class="flex items-center gap-2 ml-4">
               <button
