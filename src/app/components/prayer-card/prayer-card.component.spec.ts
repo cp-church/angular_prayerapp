@@ -153,17 +153,13 @@ describe('PrayerCardComponent', () => {
     expect(component.showUpdateDeleteButton()).toBe(false);
   });
 
-  it('handleDeleteClick as admin confirms or cancels', () => {
+  it('handleDeleteClick as admin shows confirmation dialog', () => {
     component.isAdmin = true;
-    const delSpy = vi.spyOn(component.delete, 'emit');
-    vi.stubGlobal('confirm', vi.fn().mockReturnValue(true));
     component.handleDeleteClick();
-    expect(delSpy).toHaveBeenCalledWith('p1');
+    expect(component.showConfirmationDialog).toBe(true);
 
-    (confirm as any).mockReturnValue(false);
-    delSpy.mockClear();
-    component.handleDeleteClick();
-    expect(delSpy).not.toHaveBeenCalled();
+    component.onConfirmDelete();
+    expect(component.showConfirmationDialog).toBe(false);
   });
 
   it('handleDeleteClick toggles request form for non-admin', () => {
@@ -276,12 +272,21 @@ describe('PrayerCardComponent', () => {
     expect(component.showDeleteRequestForm).toBe(false);
   });
 
-  it('handleDeleteUpdate as admin uses confirm', () => {
+  it('handleDeleteUpdate as admin shows confirmation dialog', () => {
+    component.isAdmin = true;
+    component.handleDeleteUpdate('u1');
+    expect(component.showUpdateConfirmationDialog).toBe(true);
+    expect(component.updateConfirmationId).toBe('u1');
+    expect(component.updateConfirmationTitle).toBe('Delete Update');
+  });
+
+  it('handleDeleteUpdate emits after confirmation', async () => {
     component.isAdmin = true;
     const spy = vi.spyOn(component.deleteUpdate, 'emit');
-    vi.stubGlobal('confirm', vi.fn().mockReturnValue(true));
     component.handleDeleteUpdate('u1');
+    await component.onConfirmUpdateDelete();
     expect(spy).toHaveBeenCalledWith('u1');
+    expect(component.showUpdateConfirmationDialog).toBe(false);
   });
 
   it('handleDeleteUpdate toggles request form for non-admin', () => {

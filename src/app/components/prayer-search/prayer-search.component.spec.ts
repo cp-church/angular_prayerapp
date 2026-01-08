@@ -441,12 +441,11 @@ describe('PrayerSearchComponent', () => {
   });
 
   describe('prayer deletion', () => {
-    it('should not delete if user cancels', async () => {
-      (global.confirm as any).mockReturnValue(false);
-
+    it('should show confirmation dialog', async () => {
       await component.deletePrayer(mockPrayer);
 
-      expect(mockSupabaseService.getClient().from().delete).not.toHaveBeenCalled();
+      expect(component.showConfirmationDialog).toBe(true);
+      expect(component.confirmationPrayerId).toBe(mockPrayer.id);
     });
 
     it('should delete prayer successfully', async () => {
@@ -454,6 +453,7 @@ describe('PrayerSearchComponent', () => {
       component.totalItems = 1;
 
       await component.deletePrayer(mockPrayer);
+      await component.onConfirmDelete();
 
       expect(mockToastService.success).toHaveBeenCalledWith('Prayer deleted successfully');
       expect(component.allPrayers).toHaveLength(0);
@@ -465,6 +465,7 @@ describe('PrayerSearchComponent', () => {
       });
 
       await component.deletePrayer(mockPrayer);
+      await component.onConfirmDelete();
 
       expect(component.error).toContain('Failed to delete prayer');
     });
@@ -745,6 +746,7 @@ describe('PrayerSearchComponent', () => {
       mockPrayerService.loadPrayers.mockRejectedValue(new Error('Service error'));
 
       await component.deletePrayer(mockPrayer);
+      await component.onConfirmDelete();
 
       expect(component.allPrayers).not.toContain(mockPrayer);
       expect(mockToastService.success).toHaveBeenCalled();
@@ -1402,6 +1404,7 @@ describe('PrayerSearchComponent', () => {
       });
 
       await component.deletePrayer(mockPrayer);
+      await component.onConfirmDelete();
 
       expect(component.error).toContain('Failed to delete prayer updates');
     });

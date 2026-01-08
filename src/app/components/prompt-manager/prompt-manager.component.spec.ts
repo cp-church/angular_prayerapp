@@ -742,31 +742,31 @@ describe('PromptManagerComponent', () => {
   });
 
   describe('handleDelete', () => {
-    it('should delete prompt after confirmation', async () => {
-      vi.stubGlobal('confirm', vi.fn(() => true));
-
+    it('should show deletion confirmation dialog', async () => {
       await component.handleDelete('prompt-123', 'Test Prayer');
 
-      expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to delete "Test Prayer"?');
+      expect(component.showConfirmationDialog).toBe(true);
+      expect(component.confirmationDeleteId).toBe('prompt-123');
+      expect(component.confirmationTitle).toBe('Delete Prompt');
+    });
+
+    it('should delete prompt after confirmation', async () => {
+      await component.handleDelete('prompt-123', 'Test Prayer');
+      await component.onConfirmDelete();
+
       expect(mockSupabaseService.client.from).toHaveBeenCalledWith('prayer_prompts');
       expect(component.success).toBe('Prayer prompt deleted successfully!');
-      
-      vi.unstubAllGlobals();
     });
 
     it('should not delete if user cancels', async () => {
-      vi.stubGlobal('confirm', vi.fn(() => false));
-
       await component.handleDelete('prompt-123', 'Test Prayer');
+      component.onCancelDelete();
 
-      expect(mockSupabaseService.client.from).not.toHaveBeenCalled();
-      
-      vi.unstubAllGlobals();
+      expect(component.showConfirmationDialog).toBe(false);
     });
 
     it('should handle delete errors', async () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      vi.stubGlobal('confirm', vi.fn(() => true));
 
       mockSupabaseService.client.from.mockReturnValue({
         delete: vi.fn(() => ({
@@ -775,15 +775,14 @@ describe('PromptManagerComponent', () => {
       });
 
       await component.handleDelete('prompt-123', 'Test Prayer');
+      await component.onConfirmDelete();
 
       expect(component.error).toContain('Failed to delete prompt');
       
       consoleSpy.mockRestore();
-      vi.unstubAllGlobals();
     });
 
     it('should refresh search results after deletion', async () => {
-      vi.stubGlobal('confirm', vi.fn(() => true));
       component.hasSearched = true;
 
       mockSupabaseService.directQuery.mockResolvedValue({
@@ -792,10 +791,9 @@ describe('PromptManagerComponent', () => {
       });
 
       await component.handleDelete('prompt-123', 'Test Prayer');
+      await component.onConfirmDelete();
 
       expect(mockSupabaseService.directQuery).toHaveBeenCalled();
-      
-      vi.unstubAllGlobals();
     });
   });
 

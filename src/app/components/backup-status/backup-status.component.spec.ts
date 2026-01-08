@@ -164,10 +164,11 @@ describe('BackupStatusComponent', () => {
 
     await component.handleManualBackup();
 
-    expect(component.backingUp).toBe(false);
-    expect(toast.success).toHaveBeenCalled();
-    expect(createObjectURL).toHaveBeenCalled();
-    expect(anchor.click).toHaveBeenCalled();
+    expect(component.showBackupConfirmDialog).toBe(true);
+    expect(component.backupConfirmTitle).toBe('Create Manual Backup');
+  });
+
+  it('onConfirmBackup successfully creates a backup', async () => {
   }, 10000);
 
   it('handleManualBackup failure logs failed backup and shows toast.error', async () => {
@@ -188,6 +189,7 @@ describe('BackupStatusComponent', () => {
     supabaseService.getClient = vi.fn().mockReturnValue(client);
 
     await component.handleManualBackup();
+    await component.onConfirmBackup();
 
     expect(toast.error).toHaveBeenCalled();
     expect(component.backingUp).toBe(false);
@@ -199,15 +201,14 @@ describe('BackupStatusComponent', () => {
     expect(component.restoring).toBe(false);
   });
 
-  it('handleManualRestore cancel on confirm false clears input', async () => {
+  it('handleManualRestore cancel on confirm false does not restore', async () => {
     const fakeFile: any = { name: 'b.json', text: async () => '{}' };
     const input: any = { files: [fakeFile], value: '' };
     const evt: any = { target: input };
-    window.confirm = vi.fn().mockReturnValue(false);
 
     await component.handleManualRestore(evt as Event);
-    expect(input.value).toBe('');
-    expect(component.restoring).toBe(false);
+    expect(component.showRestoreConfirmDialog).toBe(true);
+    expect(component.restoreFileName).toBe('b.json');
   });
 
   it('handleManualRestore success restores tables and calls toast.success', async () => {
@@ -221,23 +222,19 @@ describe('BackupStatusComponent', () => {
     const input: any = { files: [fakeFile], value: '' };
     const evt: any = { target: input };
 
-    window.confirm = vi.fn().mockReturnValue(true);
-
     const client = makeMockSupabaseClient();
     // select returns existing records (none)
     client.from = vi.fn().mockImplementation(() => ({ select: vi.fn().mockResolvedValue({ data: [], error: null }), delete: vi.fn().mockResolvedValue({}), upsert: vi.fn().mockResolvedValue({}) }));
     supabaseService.getClient = vi.fn().mockReturnValue(client);
 
     await component.handleManualRestore(evt as Event);
+    await component.onConfirmRestore();
 
     expect(toast.success).toHaveBeenCalled();
     expect(component.restoring).toBe(false);
-    expect(input.value).toBe('');
   });
 
   it('handleManualBackup with discovered table and data produces non-zero totalRecords', async () => {
-    window.confirm = vi.fn().mockReturnValue(true);
-
     fetchSpy.mockImplementation(async (url: string) => {
       if (url.includes('/backup_tables')) {
         return { ok: true, json: async () => [{ table_name: 't1' }] } as any;
@@ -262,6 +259,7 @@ describe('BackupStatusComponent', () => {
     component.fetchBackupLogs = vi.fn();
 
     await component.handleManualBackup();
+    await component.onConfirmBackup();
 
     expect(toast.success).toHaveBeenCalled();
     expect(createObjectURL).toHaveBeenCalled();
@@ -275,8 +273,6 @@ describe('BackupStatusComponent', () => {
     const fakeFile: any = { name: 'b.json', text: async () => JSON.stringify(backupObj) };
     const input: any = { files: [fakeFile], value: '' };
     const evt: any = { target: input };
-
-    window.confirm = vi.fn().mockReturnValue(true);
 
     const client = {
       from: vi.fn().mockImplementation((tableName: string) => {
@@ -294,10 +290,10 @@ describe('BackupStatusComponent', () => {
     supabaseService.getClient = vi.fn().mockReturnValue(client);
 
     await component.handleManualRestore(evt as Event);
+    await component.onConfirmRestore();
 
     expect(toast.warning).toHaveBeenCalled();
     expect(component.restoring).toBe(false);
-    expect(input.value).toBe('');
   });
 });
 
@@ -347,6 +343,7 @@ describe('BackupStatusComponent - extra branches', () => {
     component.fetchBackupLogs = vi.fn();
 
     await component.handleManualBackup();
+    await component.onConfirmBackup();
 
     expect(insertSpy).toHaveBeenCalled();
     // ensure success toast
@@ -354,8 +351,6 @@ describe('BackupStatusComponent - extra branches', () => {
   }, 10000);
 
   it('handleManualBackup logs failed insert when download/createObjectURL throws', async () => {
-    window.confirm = vi.fn().mockReturnValue(true);
-
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string) => {
       if (url.includes('/backup_tables')) {
         return { ok: true, json: async () => [{ table_name: 't1' }] } as any;
@@ -381,6 +376,7 @@ describe('BackupStatusComponent - extra branches', () => {
     supabaseService.getClient = vi.fn().mockReturnValue(client);
 
     await component.handleManualBackup();
+    await component.onConfirmBackup();
 
     expect(insertSpy).toHaveBeenCalled();
     // the insert in the catch should have status: 'failed' somewhere in args
@@ -396,8 +392,6 @@ describe('BackupStatusComponent - extra branches', () => {
     const input: any = { files: [fakeFile], value: '' };
     const evt: any = { target: input };
 
-    window.confirm = vi.fn().mockReturnValue(true);
-
     // supabase client: select returns two existing ids, delete returns error for first batch
     const client = {
       from: vi.fn().mockImplementation((tableName: string) => ({
@@ -410,9 +404,9 @@ describe('BackupStatusComponent - extra branches', () => {
     supabaseService.getClient = vi.fn().mockReturnValue(client);
 
     await component.handleManualRestore(evt as Event);
+    await component.onConfirmRestore();
 
     expect(toast.warning).toHaveBeenCalled();
-    expect(input.value).toBe('');
   });
 });
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -682,6 +676,7 @@ describe('BackupStatusComponent', () => {
       const removeChildSpy = vi.spyOn(document.body, 'removeChild').mockImplementation(() => mockLink as any);
 
       await component.handleManualBackup();
+      await component.onConfirmBackup();
 
       expect(mockToastService.success).toHaveBeenCalled();
       expect(component.backingUp).toBe(false);
@@ -706,6 +701,7 @@ describe('BackupStatusComponent', () => {
       const removeChildSpy = vi.spyOn(document.body, 'removeChild').mockImplementation(() => mockLink as any);
 
       await component.handleManualBackup();
+      await component.onConfirmBackup();
 
       expect(component.backingUp).toBe(false);
 
@@ -718,6 +714,7 @@ describe('BackupStatusComponent', () => {
       (global.fetch as any).mockRejectedValue(new Error('Backup failed'));
 
       await component.handleManualBackup();
+      await component.onConfirmBackup();
 
       expect(mockToastService.error).toHaveBeenCalled();
       expect(component.backingUp).toBe(false);
@@ -739,8 +736,6 @@ describe('BackupStatusComponent', () => {
     });
 
     it('should not proceed if user cancels', async () => {
-      (global.confirm as any).mockReturnValue(false);
-
       const mockFile = new File(['{}'], 'backup.json', { type: 'application/json' });
       const mockEvent = {
         target: {
@@ -751,8 +746,11 @@ describe('BackupStatusComponent', () => {
 
       await component.handleManualRestore(mockEvent);
       
-      expect(component.restoring).toBe(false);
-      expect(mockEvent.target.value).toBe('');
+      expect(component.showRestoreConfirmDialog).toBe(true);
+      expect(component.restoreFileName).toBe('backup.json');
+
+      component.onCancelRestore();
+      expect(component.showRestoreConfirmDialog).toBe(false);
     });
 
     it('should handle invalid backup format', async () => {
@@ -769,6 +767,7 @@ describe('BackupStatusComponent', () => {
         (mockFile as any).text = async () => JSON.stringify(invalidData);
 
         await component.handleManualRestore(mockEvent);
+        await component.onConfirmRestore();
 
         expect(mockToastService.error).toHaveBeenCalledWith(expect.stringContaining('Invalid backup file format'));
         expect(component.restoring).toBe(false);

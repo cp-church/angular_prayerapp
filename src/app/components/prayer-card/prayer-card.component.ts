@@ -1,13 +1,16 @@
-import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PrayerRequest } from '../../services/prayer.service';
 import { SupabaseService } from '../../services/supabase.service';
 import { UserSessionService } from '../../services/user-session.service';
+import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog.component';
 
 @Component({
   selector: 'app-prayer-card',
   standalone: true,
-  imports: [FormsModule],
+  imports: [CommonModule, FormsModule, ConfirmationDialogComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div 
       [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md border-[2px] p-6 mb-4 transition-colors relative ' + getBorderClass()"
@@ -249,6 +252,30 @@ import { UserSessionService } from '../../services/user-session.service';
         </div>
       </div>
       }
+
+      <!-- Confirmation Dialog -->
+      @if (showConfirmationDialog) {
+      <app-confirmation-dialog
+        [title]="'Delete Prayer'"
+        [message]="'Are you sure you want to delete this prayer? This action cannot be undone.'"
+        [isDangerous]="true"
+        [confirmText]="'Delete'"
+        (confirm)="onConfirmDelete()"
+        (cancel)="onCancelDelete()">
+      </app-confirmation-dialog>
+      }
+
+      <!-- Update Confirmation Dialog -->
+      @if (showUpdateConfirmationDialog) {
+      <app-confirmation-dialog
+        [title]="updateConfirmationTitle"
+        [message]="updateConfirmationMessage"
+        [isDangerous]="true"
+        [confirmText]="'Delete'"
+        (confirm)="onConfirmUpdateDelete()"
+        (cancel)="onCancelUpdateDelete()">
+      </app-confirmation-dialog>
+      }
     </div>
   `,
   styles: []
@@ -270,6 +297,11 @@ export class PrayerCardComponent implements OnInit {
   showDeleteRequestForm = false;
   showUpdateDeleteRequestForm: string | null = null;
   showAllUpdates = false;
+  showConfirmationDialog = false;
+  showUpdateConfirmationDialog = false;
+  updateConfirmationTitle = '';
+  updateConfirmationMessage = '';
+  updateConfirmationId: string | null = null;
 
   // Update form fields
   updateContent = '';
@@ -360,15 +392,35 @@ export class PrayerCardComponent implements OnInit {
 
   handleDeleteClick(): void {
     if (this.isAdmin) {
-      if (confirm('Are you sure you want to delete this prayer? This action cannot be undone.')) {
-        this.delete.emit(this.prayer.id);
-      }
+      this.showConfirmationDialog = true;
     } else {
       this.showDeleteRequestForm = !this.showDeleteRequestForm;
       if (this.showDeleteRequestForm) {
         this.showAddUpdateForm = false;
       }
     }
+  }
+
+  onConfirmDelete(): void {
+    this.delete.emit(this.prayer.id);
+    this.showConfirmationDialog = false;
+  }
+
+  onCancelDelete(): void {
+    this.showConfirmationDialog = false;
+  }
+
+  onConfirmUpdateDelete(): void {
+    if (!this.updateConfirmationId) return;
+    const updateId = this.updateConfirmationId;
+    this.showUpdateConfirmationDialog = false;
+    this.updateConfirmationId = null;
+    this.deleteUpdate.emit(updateId);
+  }
+
+  onCancelUpdateDelete(): void {
+    this.showUpdateConfirmationDialog = false;
+    this.updateConfirmationId = null;
   }
 
   toggleAddUpdate(): void {
@@ -414,9 +466,10 @@ export class PrayerCardComponent implements OnInit {
 
   handleDeleteUpdate(updateId: string): void {
     if (this.isAdmin) {
-      if (confirm('Are you sure you want to delete this update? This action cannot be undone.')) {
-        this.deleteUpdate.emit(updateId);
-      }
+      this.updateConfirmationTitle = 'Delete Update';
+      this.updateConfirmationMessage = 'Are you sure you want to delete this update? This action cannot be undone.';
+      this.updateConfirmationId = updateId;
+      this.showUpdateConfirmationDialog = true;
     } else {
       // Toggle the form - close if already open for this update, open if closed
       if (this.showUpdateDeleteRequestForm === updateId) {

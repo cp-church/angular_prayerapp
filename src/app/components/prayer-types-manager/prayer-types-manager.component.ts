@@ -1,15 +1,18 @@
-import { Component, OnInit, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { SupabaseService } from '../../services/supabase.service';
 import { ToastService } from '../../services/toast.service';
 import { PromptService } from '../../services/prompt.service';
+import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog.component';
 import type { PrayerTypeRecord } from '../../types/prayer';
 
 @Component({
   selector: 'app-prayer-types-manager',
   standalone: true,
-  imports: [FormsModule, DragDropModule],
+  imports: [CommonModule, FormsModule, DragDropModule, ConfirmationDialogComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
       <!-- Header -->
@@ -254,6 +257,18 @@ import type { PrayerTypeRecord } from '../../types/prayer';
         </div>
       </div>
       }
+
+      <!-- Confirmation Dialog -->
+      @if (showConfirmationDialog) {
+      <app-confirmation-dialog
+        [title]="confirmationTitle"
+        [message]="confirmationMessage"
+        [isDangerous]="true"
+        [confirmText]="'Delete'"
+        (confirm)="onConfirmDelete()"
+        (cancel)="onCancelDelete()">
+      </app-confirmation-dialog>
+      }
     </div>
   `,
   styles: []
@@ -266,6 +281,12 @@ export class PrayerTypesManagerComponent implements OnInit {
   showAddForm = false;
   error: string | null = null;
   success: string | null = null;
+
+  // Confirmation dialog properties
+  showConfirmationDialog = false;
+  confirmationTitle = '';
+  confirmationMessage = '';
+  confirmationDeleteId: string | null = null;
 
   // Form state
   editingId: string | null = null;
@@ -395,9 +416,18 @@ export class PrayerTypesManagerComponent implements OnInit {
   }
 
   async handleDelete(id: string, name: string) {
-    if (!confirm(`Are you sure you want to delete the "${name}" type? This may affect existing prayer prompts using this type.`)) {
-      return;
-    }
+    this.confirmationTitle = 'Delete Prayer Type';
+    this.confirmationMessage = `Are you sure you want to delete the "${name}" type? This may affect existing prayer prompts using this type.`;
+    this.confirmationDeleteId = id;
+    this.showConfirmationDialog = true;
+  }
+
+  async onConfirmDelete() {
+    if (!this.confirmationDeleteId) return;
+
+    const id = this.confirmationDeleteId;
+    this.showConfirmationDialog = false;
+    this.confirmationDeleteId = null;
 
     try {
       this.error = null;
@@ -421,6 +451,11 @@ export class PrayerTypesManagerComponent implements OnInit {
         : 'Unknown error';
       this.error = message;
     }
+  }
+
+  onCancelDelete() {
+    this.showConfirmationDialog = false;
+    this.confirmationDeleteId = null;
   }
 
   async toggleActive(type: PrayerTypeRecord) {

@@ -5,6 +5,7 @@ import { PrayerService } from '../../services/prayer.service';
 import { AdminAuthService } from '../../services/admin-auth.service';
 import { UserSessionService } from '../../services/user-session.service';
 import { SupabaseService } from '../../services/supabase.service';
+import { ToastService } from '../../services/toast.service';
 import { BehaviorSubject } from 'rxjs';
 import type { User } from '@supabase/supabase-js';
 
@@ -15,6 +16,7 @@ describe('PrayerFormComponent', () => {
   let mockUserSessionService: any;
   let mockChangeDetectorRef: any;
   let mockSupabaseService: any;
+  let mockToastService: any;
   let mockUser: User | null;
 
   beforeEach(() => {
@@ -90,11 +92,17 @@ describe('PrayerFormComponent', () => {
       }
     };
 
+    mockToastService = {
+      error: vi.fn(),
+      success: vi.fn()
+    };
+
     component = new PrayerFormComponent(
       mockPrayerService,
       mockAdminAuthService,
       mockUserSessionService,
       mockSupabaseService,
+      mockToastService as any as ToastService,
       mockChangeDetectorRef as ChangeDetectorRef
     );
   });
@@ -314,7 +322,6 @@ describe('PrayerFormComponent', () => {
 
     it('should handle submission errors gracefully', async () => {
       mockPrayerService.addPrayer.mockRejectedValue(new Error('Network error'));
-      global.alert = vi.fn();
 
       component.currentUserEmail = 'test@example.com';
       component.formData.prayer_for = 'My Friend';
@@ -323,7 +330,7 @@ describe('PrayerFormComponent', () => {
       await component.handleSubmit();
 
       expect(component.isSubmitting).toBe(false);
-      expect(global.alert).toHaveBeenCalledWith('Failed to submit prayer request. Please try again.');
+      expect(mockToastService.error).toHaveBeenCalledWith('Failed to submit prayer request. Please try again.');
     });
 
     it('should set isSubmitting to false after submission completes', async () => {

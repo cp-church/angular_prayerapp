@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { SupabaseService } from '../../services/supabase.service';
 import { ToastService } from '../../services/toast.service';
+import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog.component';
 
 interface BackupLog {
   id: string;
@@ -16,7 +18,7 @@ interface BackupLog {
 @Component({
   selector: 'app-backup-status',
   standalone: true,
-  imports: [],
+  imports: [CommonModule, ConfirmationDialogComponent],
   template: `
 @if (loading) {
 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
@@ -330,6 +332,30 @@ interface BackupLog {
     </div>
   </div>
   }
+
+  <!-- Backup Confirmation Dialog -->
+  @if (showBackupConfirmDialog) {
+  <app-confirmation-dialog
+    [title]="backupConfirmTitle"
+    [message]="backupConfirmMessage"
+    [isDangerous]="false"
+    [confirmText]="'Create Backup'"
+    (confirm)="onConfirmBackup()"
+    (cancel)="onCancelBackup()">
+  </app-confirmation-dialog>
+  }
+
+  <!-- Restore Confirmation Dialog -->
+  @if (showRestoreConfirmDialog) {
+  <app-confirmation-dialog
+    [title]="restoreConfirmTitle"
+    [message]="restoreConfirmMessage"
+    [isDangerous]="true"
+    [confirmText]="'Restore'"
+    (confirm)="onConfirmRestore()"
+    (cancel)="onCancelRestore()">
+  </app-confirmation-dialog>
+  }
   `
 })
 export class BackupStatusComponent implements OnInit {
@@ -341,6 +367,18 @@ export class BackupStatusComponent implements OnInit {
   backingUp = false;
   restoring = false;
   showRestoreDialog = false;
+
+  // Dialog state for backup confirmation
+  showBackupConfirmDialog = false;
+  backupConfirmTitle = '';
+  backupConfirmMessage = '';
+
+  // Dialog state for restore confirmation
+  showRestoreConfirmDialog = false;
+  restoreConfirmTitle = '';
+  restoreConfirmMessage = '';
+  restoreFileName = '';
+  restoreFileText = '';
 
   constructor(
     private supabaseService: SupabaseService,
@@ -418,9 +456,13 @@ export class BackupStatusComponent implements OnInit {
   }
 
   async handleManualBackup(): Promise<void> {
-    if (!confirm('Create a manual backup now? This will back up all current data.')) {
-      return;
-    }
+    this.backupConfirmTitle = 'Create Manual Backup';
+    this.backupConfirmMessage = 'Create a manual backup now? This will back up all current data.';
+    this.showBackupConfirmDialog = true;
+  }
+
+  async onConfirmBackup(): Promise<void> {
+    this.showBackupConfirmDialog = false;
 
     this.backingUp = true;
     try {
@@ -564,24 +606,33 @@ export class BackupStatusComponent implements OnInit {
     }
   }
 
+  onCancelBackup(): void {
+    this.showBackupConfirmDialog = false;
+  }
+
   async handleManualRestore(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
 
     if (!file) return;
 
-    if (!confirm(`Are you absolutely sure you want to restore from "${file.name}"?\n\nThis will ERASE ALL current data!`)) {
-      input.value = '';
-      return;
-    }
+    const text = await file.text();
+    this.restoreFileName = file.name;
+    this.restoreFileText = text;
+    this.restoreConfirmTitle = 'Restore from Backup';
+    this.restoreConfirmMessage = `Are you absolutely sure you want to restore from "${file.name}"?\n\nThis will ERASE ALL current data!`;
+    this.showRestoreConfirmDialog = true;
+  }
+
+  async onConfirmRestore(): Promise<void> {
+    this.showRestoreConfirmDialog = false;
 
     this.restoring = true;
     this.showRestoreDialog = false;
 
     try {
-      // Read the file
-      const text = await file.text();
-      const backup = JSON.parse(text);
+      // Parse the file
+      const backup = JSON.parse(this.restoreFileText);
 
       if (!backup.tables || typeof backup.tables !== 'object') {
         throw new Error('Invalid backup file format');
@@ -698,8 +749,13 @@ export class BackupStatusComponent implements OnInit {
       this.toast.error('Restore failed: ' + errorMessage);
     } finally {
       this.restoring = false;
-      input.value = '';
     }
+  }
+
+  onCancelRestore(): void {
+    this.showRestoreConfirmDialog = false;
+    this.restoreFileName = '';
+    this.restoreFileText = '';
   }
 
   toggleExpanded(backupId: string): void {

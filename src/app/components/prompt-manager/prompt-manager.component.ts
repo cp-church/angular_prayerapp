@@ -1,7 +1,9 @@
 import { Component, OnInit, Output, EventEmitter, ChangeDetectorRef } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../services/supabase.service';
 import { ToastService } from '../../services/toast.service';
+import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog.component';
 import type { PrayerPrompt, PrayerTypeRecord } from '../../types/prayer';
 
 interface CSVRow {
@@ -15,7 +17,7 @@ interface CSVRow {
 @Component({
   selector: 'app-prompt-manager',
   standalone: true,
-  imports: [FormsModule],
+  imports: [CommonModule, FormsModule, ConfirmationDialogComponent],
   template: `
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
       <!-- Header -->
@@ -466,6 +468,18 @@ interface CSVRow {
         </div>
       </div>
       }
+
+      <!-- Confirmation Dialog -->
+      @if (showConfirmationDialog) {
+      <app-confirmation-dialog
+        [title]="confirmationTitle"
+        [message]="confirmationMessage"
+        [isDangerous]="true"
+        [confirmText]="'Delete'"
+        (confirm)="onConfirmDelete()"
+        (cancel)="onCancelDelete()">
+      </app-confirmation-dialog>
+      }
     </div>
   `,
   styles: []
@@ -484,6 +498,12 @@ export class PromptManagerComponent implements OnInit {
   success: string | null = null;
   csvData: CSVRow[] = [];
   uploadingCSV = false;
+
+  // Confirmation dialog state
+  showConfirmationDialog = false;
+  confirmationTitle = '';
+  confirmationMessage = '';
+  confirmationDeleteId: string | null = null;
 
   // Form state
   editingId: string | null = null;
@@ -774,9 +794,18 @@ export class PromptManagerComponent implements OnInit {
   }
 
   async handleDelete(id: string, title: string) {
-    if (!confirm(`Are you sure you want to delete "${title}"?`)) {
-      return;
-    }
+    this.confirmationTitle = 'Delete Prompt';
+    this.confirmationMessage = `Are you sure you want to delete "${title}"?`;
+    this.confirmationDeleteId = id;
+    this.showConfirmationDialog = true;
+  }
+
+  async onConfirmDelete() {
+    if (!this.confirmationDeleteId) return;
+
+    const id = this.confirmationDeleteId;
+    this.showConfirmationDialog = false;
+    this.confirmationDeleteId = null;
 
     try {
       this.error = null;
@@ -789,6 +818,7 @@ export class PromptManagerComponent implements OnInit {
 
       if (error) throw error;
 
+      this.prompts = this.prompts.filter(p => p.id !== id);
       this.success = 'Prayer prompt deleted successfully!';
 
       // Refresh search results if user has already searched
@@ -804,6 +834,11 @@ export class PromptManagerComponent implements OnInit {
         : 'Unknown error';
       this.error = `Failed to delete prompt: ${message}`;
     }
+  }
+
+  onCancelDelete() {
+    this.showConfirmationDialog = false;
+    this.confirmationDeleteId = null;
   }
 
   cancelEdit() {

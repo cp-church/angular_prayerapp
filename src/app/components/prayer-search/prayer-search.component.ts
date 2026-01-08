@@ -6,6 +6,7 @@ import { ToastService } from '../../services/toast.service';
 import { PrayerService } from '../../services/prayer.service';
 import { AdminDataService } from '../../services/admin-data.service';
 import { SendNotificationDialogComponent, type NotificationType } from '../send-notification-dialog/send-notification-dialog.component';
+import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog.component';
 
 interface PrayerUpdate {
   id: string;
@@ -59,7 +60,7 @@ interface NewUpdate {
 @Component({
   selector: 'app-prayer-search',
   standalone: true,
-  imports: [CommonModule, FormsModule, SendNotificationDialogComponent],
+  imports: [CommonModule, FormsModule, SendNotificationDialogComponent, ConfirmationDialogComponent],
   template: `
 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
   <div class="flex items-center gap-2 mb-4">
@@ -1057,6 +1058,18 @@ interface NewUpdate {
       (decline)="onDeclineSendNotification()"
     ></app-send-notification-dialog>
   }
+
+  <!-- Confirmation Dialog -->
+  @if (showConfirmationDialog) {
+    <app-confirmation-dialog
+      [title]="confirmationTitle"
+      [message]="confirmationMessage"
+      [isDangerous]="true"
+      [confirmText]="'Delete'"
+      (confirm)="onConfirmDelete()"
+      (cancel)="onCancelDelete()"
+    ></app-confirmation-dialog>
+  }
   `
 })
 export class PrayerSearchComponent implements OnInit {
@@ -1102,6 +1115,12 @@ export class PrayerSearchComponent implements OnInit {
   sendDialogPrayerTitle?: string;
   private sendDialogPrayerId?: string;
   private sendDialogUpdateId?: string;
+
+  // Confirmation dialog state
+  showConfirmationDialog = false;
+  confirmationTitle = '';
+  confirmationMessage = '';
+  confirmationPrayerId: string | null = null;
   
   // Pagination properties
   currentPage = 1;
@@ -1383,18 +1402,27 @@ export class PrayerSearchComponent implements OnInit {
   }
 
   async deletePrayer(prayer: Prayer): Promise<void> {
-    if (!confirm(`Are you sure you want to delete the prayer "${prayer.title}"? This action cannot be undone.`)) {
-      return;
-    }
+    this.confirmationTitle = 'Delete Prayer';
+    this.confirmationMessage = `Are you sure you want to delete the prayer "${prayer.title}"? This action cannot be undone.`;
+    this.confirmationPrayerId = prayer.id;
+    this.showConfirmationDialog = true;
+  }
+
+  async onConfirmDelete(): Promise<void> {
+    if (!this.confirmationPrayerId) return;
 
     try {
       this.deleting = true;
       this.error = null;
 
+      const prayerId = this.confirmationPrayerId;
+      this.showConfirmationDialog = false;
+      this.confirmationPrayerId = null;
+
       const { error: updatesError } = await this.supabaseService.getClient()
         .from('prayer_updates')
         .delete()
-        .eq('prayer_id', prayer.id);
+        .eq('prayer_id', prayerId);
 
       if (updatesError) {
         throw new Error(`Failed to delete prayer updates: ${updatesError.message}`);
@@ -1403,17 +1431,17 @@ export class PrayerSearchComponent implements OnInit {
       const { error: prayerError } = await this.supabaseService.getClient()
         .from('prayers')
         .delete()
-        .eq('id', prayer.id);
+        .eq('id', prayerId);
 
       if (prayerError) {
         throw new Error(`Failed to delete prayer: ${prayerError.message}`);
       }
 
-      this.searchResults = this.searchResults.filter(p => p.id !== prayer.id);
-      this.allPrayers = this.allPrayers.filter(p => p.id !== prayer.id);
+      this.searchResults = this.searchResults.filter(p => p.id !== prayerId);
+      this.allPrayers = this.allPrayers.filter(p => p.id !== prayerId);
       this.totalItems = this.allPrayers.length;
       this.loadPageData();
-      this.selectedPrayers.delete(prayer.id);
+      this.selectedPrayers.delete(prayerId);
       this.prayerService.loadPrayers().catch(err => {
         console.debug('[PrayerSearch] Refresh after delete failed:', err);
       });
@@ -1426,6 +1454,11 @@ export class PrayerSearchComponent implements OnInit {
     } finally {
       this.deleting = false;
     }
+  }
+
+  onCancelDelete(): void {
+    this.showConfirmationDialog = false;
+    this.confirmationPrayerId = null;
   }
 
   startEditPrayer(prayer: Prayer): void {

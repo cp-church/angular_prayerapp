@@ -227,12 +227,12 @@ describe('PromptCardComponent', () => {
       const deleteSpy = vi.fn();
       fixture.componentInstance.delete.subscribe(deleteSpy);
       
-      // Mock window.confirm to return true
-      (global.confirm as any).mockReturnValue(true);
-      
       fixture.componentInstance.handleDelete();
       
-      expect(global.confirm).toHaveBeenCalledWith('Are you sure you want to delete this prayer prompt?');
+      expect(fixture.componentInstance.showConfirmationDialog).toBe(true);
+      
+      fixture.componentInstance.onConfirmDelete();
+      
       expect(deleteSpy).toHaveBeenCalledWith('123');
     });
 
@@ -247,12 +247,13 @@ describe('PromptCardComponent', () => {
       const deleteSpy = vi.fn();
       fixture.componentInstance.delete.subscribe(deleteSpy);
       
-      // Mock window.confirm to return false
-      (global.confirm as any).mockReturnValue(false);
-      
       fixture.componentInstance.handleDelete();
       
-      expect(global.confirm).toHaveBeenCalledWith('Are you sure you want to delete this prayer prompt?');
+      expect(fixture.componentInstance.showConfirmationDialog).toBe(true);
+      
+      fixture.componentInstance.onCancelDelete();
+      
+      expect(fixture.componentInstance.showConfirmationDialog).toBe(false);
       expect(deleteSpy).not.toHaveBeenCalled();
     });
   });
@@ -290,9 +291,8 @@ describe('PromptCardComponent', () => {
       const deleteSpy = vi.fn();
       fixture.componentInstance.delete.subscribe(deleteSpy);
       
-      (global.confirm as any).mockReturnValue(true);
-      
       fixture.componentInstance.handleDelete();
+      fixture.componentInstance.onConfirmDelete();
       
       expect(deleteSpy).toHaveBeenCalledWith('custom-id-456');
     });

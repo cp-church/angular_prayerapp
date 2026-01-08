@@ -6,6 +6,7 @@ import { PrayerService } from '../../services/prayer.service';
 import { AdminAuthService } from '../../services/admin-auth.service';
 import { UserSessionService } from '../../services/user-session.service';
 import { SupabaseService } from '../../services/supabase.service';
+import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-prayer-form',
@@ -160,6 +161,7 @@ export class PrayerFormComponent implements OnInit, OnChanges {
     private adminAuthService: AdminAuthService,
     private userSessionService: UserSessionService,
     private supabase: SupabaseService,
+    private toast: ToastService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -235,7 +237,7 @@ export class PrayerFormComponent implements OnInit, OnChanges {
       console.error('Failed to initiate prayer submission:', error);
       this.isSubmitting = false;
       this.cdr.markForCheck();
-      alert('Failed to submit prayer request. Please try again.');
+      this.toast.error('Failed to submit prayer request. Please try again.');
     }
   }
 

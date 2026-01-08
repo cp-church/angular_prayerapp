@@ -339,12 +339,10 @@ describe('PrayerTypesManagerComponent', () => {
 
       await component.handleDelete('type-1', 'Test Type');
 
-      expect(mockSupabaseClient.from).not.toHaveBeenCalled();
+      expect(component.showConfirmationDialog).toBe(false);
     });
 
     it('should delete prayer type successfully', async () => {
-      vi.stubGlobal('confirm', () => true);
-
       mockSupabaseClient.from = vi.fn(() => ({
         delete: vi.fn(() => ({
           eq: vi.fn(() => Promise.resolve({ error: null }))
@@ -354,13 +352,13 @@ describe('PrayerTypesManagerComponent', () => {
       mockSupabaseService.directQuery = vi.fn(() => Promise.resolve({ data: [], error: null }));
 
       await component.handleDelete('type-1', 'Test Type');
+      await component.onConfirmDelete();
 
       expect(component.success).toBe('Prayer type deleted successfully!');
       expect(mockPromptService.loadPrompts).toHaveBeenCalled();
     });
 
     it('should handle delete error', async () => {
-      vi.stubGlobal('confirm', () => true);
       const error = new Error('Delete failed');
 
       mockSupabaseClient.from = vi.fn(() => ({
@@ -370,19 +368,17 @@ describe('PrayerTypesManagerComponent', () => {
       }));
 
       await component.handleDelete('type-1', 'Test Type');
+      await component.onConfirmDelete();
 
       expect(component.error).toBe('Delete failed');
     });
 
     it('should display confirmation with type name', async () => {
-      const confirmSpy = vi.fn(() => false);
-      vi.stubGlobal('confirm', confirmSpy);
-
       await component.handleDelete('type-1', 'Healing');
 
-      expect(confirmSpy).toHaveBeenCalledWith(
-        expect.stringContaining('"Healing"')
-      );
+      expect(component.confirmationMessage).toContain('"Healing"');
+      expect(component.showConfirmationDialog).toBe(true);
+    })
     });
   });
 

@@ -1,4 +1,6 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog.component';
 
 export interface PrayerPrompt {
   id: string;
@@ -12,7 +14,8 @@ export interface PrayerPrompt {
 @Component({
   selector: 'app-prompt-card',
   standalone: true,
-  imports: [],
+  imports: [CommonModule, ConfirmationDialogComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="prompt-card bg-white dark:bg-gray-800 rounded-lg shadow-md border-[2px] !border-[#988F83] dark:!border-[#988F83] p-6 mb-4 hover:shadow-lg transition-shadow">
       <!-- Header -->
@@ -59,6 +62,18 @@ export interface PrayerPrompt {
       <p class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
         {{ prompt.description }}
       </p>
+
+      <!-- Confirmation Dialog -->
+      @if (showConfirmationDialog) {
+      <app-confirmation-dialog
+        [title]="'Delete Prayer Prompt'"
+        [message]="'Are you sure you want to delete this prayer prompt?'"
+        [isDangerous]="true"
+        [confirmText]="'Delete'"
+        (confirm)="onConfirmDelete()"
+        (cancel)="onCancelDelete()">
+      </app-confirmation-dialog>
+      }
     </div>
   `,
   styles: []
@@ -71,9 +86,18 @@ export class PromptCardComponent {
   @Output() delete = new EventEmitter<string>();
   @Output() onTypeClick = new EventEmitter<string>();
 
+  showConfirmationDialog = false;
+
   handleDelete(): void {
-    if (confirm('Are you sure you want to delete this prayer prompt?')) {
-      this.delete.emit(this.prompt.id);
-    }
+    this.showConfirmationDialog = true;
+  }
+
+  onConfirmDelete(): void {
+    this.delete.emit(this.prompt.id);
+    this.showConfirmationDialog = false;
+  }
+
+  onCancelDelete(): void {
+    this.showConfirmationDialog = false;
   }
 }
