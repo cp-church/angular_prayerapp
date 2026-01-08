@@ -688,7 +688,7 @@ export class EmailSubscribersComponent implements OnInit {
 
   // Sorting properties
   sortBy: 'name' | 'email' | 'created_at' | 'last_activity_date' | 'is_active' | 'is_blocked' | 'in_planning_center' = 'name';
-  sortDirection: 'asc' | 'desc' = 'desc';
+  sortDirection: 'asc' | 'desc' = 'asc';
 
   // Planning Center search properties
   pcSearchTab = false;
