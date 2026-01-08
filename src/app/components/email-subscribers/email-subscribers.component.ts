@@ -445,47 +445,48 @@ interface CSVRow {
 
       @if (!searching && hasSearched && subscribers.length > 0) {
       <div>
+        <div class="hidden md:grid mb-3 grid-cols-12 gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-300">
+          <button (click)="toggleSort('name')" class="col-span-2 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors" title="Click to sort by name">Name{{ getSortIndicator('name') }}</button>
+          <button (click)="toggleSort('email')" class="col-span-4 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors" title="Click to sort by email">Email{{ getSortIndicator('email') }}</button>
+          <button (click)="toggleSort('created_at')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors" title="Click to sort by join date">Added{{ getSortIndicator('created_at') }}</button>
+          <button (click)="toggleSort('last_activity_date')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors" title="Click to sort by last activity">Activity{{ getSortIndicator('last_activity_date') }}</button>
+          <button (click)="toggleSort('is_active')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors" title="Click to sort by status">Status{{ getSortIndicator('is_active') }}</button>
+          <button (click)="toggleSort('is_blocked')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors" title="Click to sort by blocked status">Blocked{{ getSortIndicator('is_blocked') }}</button>
+          <button (click)="toggleSort('in_planning_center')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors" title="Click to sort by Planning Center status">Planning Center{{ getSortIndicator('in_planning_center') }}</button>
+        </div>
         <div class="space-y-2">
-          @for (subscriber of subscribers; track subscriber.id) {
-          <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 flex-wrap">
-                <h4 class="font-medium text-gray-900 dark:text-gray-100">{{ subscriber.name }}</h4>
-                @if (subscriber.is_admin) {
-                <span class="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs rounded-full font-semibold">Admin</span>
-                }
-                @if (subscriber.is_active) {
-                <span class="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs rounded-full">Active</span>
-                }
-                @if (!subscriber.is_active) {
-                <span class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded-full">Inactive</span>
-                }
-                @if (subscriber.is_blocked) {
-                <span class="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs rounded-full font-semibold">Blocked</span>
-                }
-                @if (subscriber.in_planning_center === true) {
-                <span class="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs rounded-full" title="Verified in Planning Center on {{ subscriber.planning_center_checked_at | date:'short' }}">Planning Center ✓</span>
-              }
-              @if (subscriber.in_planning_center === false) {
-                <span class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded-full" title="Not found in Planning Center (checked {{ subscriber.planning_center_checked_at | date:'short' }})">Not in Planning Center</span>
-                }
-              </div>
-              <p class="text-sm text-gray-600 dark:text-gray-400 truncate">{{ subscriber.email }}</p>
-              @if (subscriber.is_admin && !subscriber.is_active) {
-              <p class="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                Opted out of emails but retains admin portal access
-              </p>
-              }
-              <div class="text-xs text-gray-500 dark:text-gray-500 mt-1 space-y-0.5">
-                <p>Added {{ subscriber.created_at | date:'short' }}</p>
-                @if (subscriber.last_activity_date) {
-                <p>Last active {{ subscriber.last_activity_date | date:'short' }}</p>
-                } @else {
-                <p class="text-gray-400 dark:text-gray-600">No activity recorded</p>
-                }
-              </div>
+          @for (subscriber of subscribers; track subscriber.id) { <div class="grid grid-cols-2 md:grid-cols-12 gap-2 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 md:items-start">
+            <!-- Name column -->
+            <div class="col-span-1 md:col-span-2">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Name</p>
+              <h4 class="font-medium text-gray-900 dark:text-gray-100 truncate" [title]="subscriber.name">{{ subscriber.name }}</h4>
             </div>
-            <div class="flex items-center gap-2 ml-4">
+            
+            <!-- Email column -->
+            <div class="col-span-1 md:col-span-4">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Email</p>
+              <p class="text-sm text-gray-600 dark:text-gray-400 truncate" [title]="subscriber.email">{{ subscriber.email }}</p>
+            </div>
+            
+            <!-- Added column -->
+            <div class="col-span-1 md:col-span-1">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Added</p>
+              <p class="text-xs text-gray-500 dark:text-gray-500" [title]="'Joined: ' + (subscriber.created_at | date:'medium')">{{ subscriber.created_at | date:'short' }}</p>
+            </div>
+            
+            <!-- Activity column -->
+            <div class="col-span-1 md:col-span-1">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Activity</p>
+              @if (subscriber.last_activity_date) {
+              <p class="text-xs text-gray-500 dark:text-gray-500" [title]="'Last active: ' + (subscriber.last_activity_date | date:'medium')">{{ subscriber.last_activity_date | date:'short' }}</p>
+              } @else {
+              <p class="text-xs text-gray-400 dark:text-gray-600" title="User has not accessed the portal yet">No activity</p>
+              }
+            </div>
+            
+            <!-- Status column -->
+            <div class="col-span-1 md:col-span-1 flex items-center gap-1">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Status</p>
               <button
                 (click)="handleToggleActive(subscriber.id, subscriber.is_active)"
                 [class]="subscriber.is_active ? 
@@ -498,8 +499,7 @@ interface CSVRow {
                   <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                   <polyline points="22 4 12 14.01 9 11.01"></polyline>
                 </svg>
-                }
-                @if (!subscriber.is_active) {
+                } @else {
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <circle cx="12" cy="12" r="10"></circle>
                   <line x1="15" y1="9" x2="9" y2="15"></line>
@@ -507,6 +507,11 @@ interface CSVRow {
                 </svg>
                 }
               </button>
+            </div>
+
+            <!-- Blocked column -->
+            <div class="col-span-1 md:col-span-1 flex items-center gap-1">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Blocked</p>
               <button
                 (click)="handleToggleBlocked(subscriber.id, subscriber.is_blocked)"
                 [class]="subscriber.is_blocked ? 
@@ -519,6 +524,23 @@ interface CSVRow {
                   <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
                 </svg>
               </button>
+            </div>
+
+            <!-- Planning Center column -->
+            <div class="col-span-1 md:col-span-1 flex items-center gap-1">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Planning Center</p>
+              @if (subscriber.in_planning_center === true) {
+              <span class="text-lg text-green-600 dark:text-green-400" title="This person is verified in Planning Center">✓</span>
+              } @else if (subscriber.in_planning_center === false) {
+              <span class="text-lg text-gray-400 dark:text-gray-600" title="This person is not verified in Planning Center">✓</span>
+              } @else {
+              <span class="text-lg text-gray-400 dark:text-gray-600" title="Planning Center status unknown">✓</span>
+              }
+            </div>
+
+            <!-- Delete button column -->
+            <div class="col-span-1 md:col-span-1 flex items-center gap-1">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Delete</p>
               <button
                 (click)="handleDelete(subscriber.id, subscriber.email)"
                 class="p-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
@@ -527,8 +549,8 @@ interface CSVRow {
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="3 6 5 6 21 6"></polyline>
                   <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>
-              </button>
+                  </svg>
+                </button>
             </div>
           </div>
           }
@@ -601,9 +623,11 @@ interface CSVRow {
               </div>
             </div>
           </div>
+          <!-- end @for -->
           }
         </div>
       </div>
+      <!-- end @if (!searching && hasSearched && subscribers.length > 0) -->
       }
 
       <!-- Send Welcome Email Dialog -->
@@ -661,6 +685,10 @@ export class EmailSubscribersComponent implements OnInit {
   totalItems = 0;
   totalActiveCount = 0;
   allSubscribers: EmailSubscriber[] = [];
+
+  // Sorting properties
+  sortBy: 'name' | 'email' | 'created_at' | 'last_activity_date' | 'is_active' | 'is_blocked' | 'in_planning_center' = 'created_at';
+  sortDirection: 'asc' | 'desc' = 'desc';
 
   // Planning Center search properties
   pcSearchTab = false;
@@ -731,7 +759,7 @@ export class EmailSubscribersComponent implements OnInit {
       let query = this.supabase.client
         .from('email_subscribers')
         .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false });
+        .order(this.sortBy, { ascending: this.sortDirection === 'asc' });
 
       if (this.searchQuery.trim()) {
         query = query.or(`email.ilike.%${this.searchQuery}%,name.ilike.%${this.searchQuery}%`);
@@ -761,6 +789,67 @@ export class EmailSubscribersComponent implements OnInit {
     } finally {
       this.searching = false;
     }
+  }
+
+  toggleSort(column: 'name' | 'email' | 'created_at' | 'last_activity_date' | 'is_active' | 'is_blocked' | 'in_planning_center') {
+    // If clicking the same column, toggle direction; otherwise set new column
+    if (this.sortBy === column) {
+      this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortBy = column;
+      this.sortDirection = 'asc';
+    }
+    this.currentPage = 1; // Reset to first page
+    this.sortSubscribers();
+    this.loadPageData();
+    this.cdr.markForCheck();
+  }
+
+  sortSubscribers() {
+    this.allSubscribers.sort((a, b) => {
+      let aVal: any;
+      let bVal: any;
+
+      switch (this.sortBy) {
+        case 'name':
+          aVal = (a.name || '').toLowerCase();
+          bVal = (b.name || '').toLowerCase();
+          break;
+        case 'email':
+          aVal = (a.email || '').toLowerCase();
+          bVal = (b.email || '').toLowerCase();
+          break;
+        case 'created_at':
+          aVal = new Date(a.created_at).getTime();
+          bVal = new Date(b.created_at).getTime();
+          break;
+        case 'last_activity_date':
+          aVal = a.last_activity_date ? new Date(a.last_activity_date).getTime() : 0;
+          bVal = b.last_activity_date ? new Date(b.last_activity_date).getTime() : 0;
+          break;
+        case 'is_active':
+          aVal = a.is_active ? 1 : 0;
+          bVal = b.is_active ? 1 : 0;
+          break;
+        case 'is_blocked':
+          aVal = a.is_blocked ? 1 : 0;
+          bVal = b.is_blocked ? 1 : 0;
+          break;
+        case 'in_planning_center':
+          aVal = a.in_planning_center === true ? 1 : a.in_planning_center === false ? 0 : -1;
+          bVal = b.in_planning_center === true ? 1 : b.in_planning_center === false ? 0 : -1;
+          break;
+      }
+
+      if (aVal < bVal) return this.sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return this.sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+
+  getSortIndicator(column: string): string {
+    if (this.sortBy !== column) return '';
+    return this.sortDirection === 'asc' ? ' ↑' : ' ↓';
   }
 
   loadPageData() {
