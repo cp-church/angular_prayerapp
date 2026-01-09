@@ -921,6 +921,15 @@ export class AdminDataService {
     } catch (emailError) {
       console.error('Failed to send approval email:', emailError);
     }
+
+    // Send welcome email to the newly approved subscriber
+    try {
+      await this.emailNotification.sendSubscriberWelcomeNotification(request.email);
+      console.log('[AccountApproval] Welcome email sent to newly approved subscriber');
+    } catch (welcomeEmailError) {
+      console.error('Failed to send welcome email:', welcomeEmailError);
+      // Don't fail the approval if welcome email fails
+    }
     
     await this.fetchAdminData(true);
   }

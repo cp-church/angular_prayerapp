@@ -1205,6 +1205,15 @@ export class LoginComponent implements OnInit, OnDestroy {
 
       console.log('[AdminLogin] Subscriber saved successfully');
       
+      // Send welcome email to the new subscriber
+      try {
+        await this.emailNotificationService.sendSubscriberWelcomeNotification(this.email);
+        console.log('[AdminLogin] Welcome email sent to new subscriber');
+      } catch (emailError) {
+        console.error('[AdminLogin] Failed to send welcome email:', emailError);
+        // Don't fail the request if email fails
+      }
+      
       this.showSubscriberForm = false;
       this.firstName = '';
       this.lastName = '';
