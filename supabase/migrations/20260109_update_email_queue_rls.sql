@@ -12,17 +12,18 @@ DROP POLICY IF EXISTS "Only admins can enqueue emails" ON email_queue;
 -- Drop the service role policy if it already exists
 DROP POLICY IF EXISTS "Service role can process queue" ON email_queue;
 
--- Only admins can insert into email_queue (prayers/updates must be approved by admin)
-CREATE POLICY "Only admins can enqueue emails" ON email_queue
+-- Allow admins and service role to insert into email_queue
+CREATE POLICY "Only admins and service role can enqueue emails" ON email_queue
   FOR INSERT
   WITH CHECK (
-    auth.role() = 'authenticated' AND
+    (auth.role() = 'authenticated' AND
     EXISTS (
       SELECT 1 FROM email_subscribers
       WHERE email = auth.email()
       AND is_admin = true
       AND is_active = true
-    )
+    )) OR
+    auth.role() = 'service_role'
   );
 
 -- Service role can read and update (for the background processor)

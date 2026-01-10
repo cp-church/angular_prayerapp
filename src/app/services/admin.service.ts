@@ -106,6 +106,14 @@ export class AdminService {
   }
 
   /**
+   * Get the admin client for use in other services
+   * This client has service role access and can bypass RLS
+   */
+  getAdminClient(): SupabaseClient {
+    return this.adminClient;
+  }
+
+  /**
    * Generic query method for any table with admin privileges
    * Allows bypassing RLS for all admin operations
    */

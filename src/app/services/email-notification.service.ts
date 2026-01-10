@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { ApprovalLinksService } from './approval-links.service';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export interface SendEmailOptions {
   to: string | string[];
@@ -77,10 +78,20 @@ export interface AdminNotificationPayload {
   providedIn: 'root'
 })
 export class EmailNotificationService {
+  private adminClient: SupabaseClient | null = null;
+
   constructor(
     private supabase: SupabaseService,
     private approvalLinks: ApprovalLinksService
   ) {}
+
+  /**
+   * Set admin client for operations that need service role access
+   * Called from AdminService or admin-only operations
+   */
+  setAdminClient(client: SupabaseClient): void {
+    this.adminClient = client;
+  }
 
   /**
    * Send a single email using Supabase edge function
@@ -146,7 +157,10 @@ export class EmailNotificationService {
     templateKey: string,
     variables: Record<string, string> = {}
   ): Promise<void> {
-    const { error } = await this.supabase.client
+    // Use admin client if available (has service role access), otherwise use regular client
+    const client = this.adminClient || this.supabase.client;
+    
+    const { error } = await client
       .from('email_queue')
       .insert({
         recipient,
