@@ -218,8 +218,8 @@ export class EmailNotificationService {
       const { data: subscribers, error: fetchError } = await this.supabase.client
         .from('email_subscribers')
         .select('email')
-        .eq('optout', false)
-        .eq('blocked', false);
+        .eq('is_active', true)
+        .eq('is_blocked', false);
 
       if (fetchError) {
         throw fetchError;
@@ -266,8 +266,8 @@ export class EmailNotificationService {
       const { data: subscribers, error: fetchError } = await this.supabase.client
         .from('email_subscribers')
         .select('email')
-        .eq('optout', false)
-        .eq('blocked', false);
+        .eq('is_active', true)
+        .eq('is_blocked', false);
 
       if (fetchError) {
         throw fetchError;

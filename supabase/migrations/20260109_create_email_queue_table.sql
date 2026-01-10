@@ -20,9 +20,21 @@ CREATE INDEX idx_email_queue_recipient ON email_queue(recipient);
 -- Enable RLS (Row Level Security)
 ALTER TABLE email_queue ENABLE ROW LEVEL SECURITY;
 
--- Only service_role (via Supabase) can access email_queue
--- This table should only be accessed through scheduled jobs and edge functions
-CREATE POLICY "Email queue only accessible via service role" ON email_queue
+-- Only admins can insert into email_queue (prayers/updates must be approved by admin)
+CREATE POLICY "Only admins can enqueue emails" ON email_queue
+  FOR INSERT
+  WITH CHECK (
+    auth.role() = 'authenticated' AND
+    EXISTS (
+      SELECT 1 FROM email_subscribers
+      WHERE email = auth.jwt() ->> 'email'
+      AND is_admin = true
+      AND is_active = true
+    )
+  );
+
+-- Service role can read and update (for the background processor)
+CREATE POLICY "Service role can process queue" ON email_queue
   FOR ALL
-  USING (false)
-  WITH CHECK (false);
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
