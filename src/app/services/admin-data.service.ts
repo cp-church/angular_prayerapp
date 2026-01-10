@@ -3,7 +3,6 @@ import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
 import { SupabaseService } from './supabase.service';
 import { PrayerService } from './prayer.service';
 import { EmailNotificationService } from './email-notification.service';
-import { environment } from '../../environments/environment';
 import type { 
   PrayerRequest, 
   PrayerUpdate, 
@@ -1023,43 +1022,22 @@ export class AdminDataService {
    * Sends an immediate request to process the email queue
    */
   private async triggerEmailProcessor(): Promise<void> {
-    const token = environment.githubPat;
-    const repo = environment.githubRepo;
-    
-    if (!token) {
-      console.warn('❌ VITE_GITHUB_PAT not configured - email processor trigger disabled');
-      return;
-    }
-    if (!repo) {
-      console.warn('❌ VITE_GITHUB_REPO not configured - email processor trigger disabled');
-      return;
-    }
-
     try {
-      console.log('🚀 Triggering email processor workflow...');
+      console.log('🚀 Triggering email processor via Edge Function...');
       
-      const response = await fetch(
-        `https://api.github.com/repos/${repo}/actions/workflows/process-email-queue.yml/dispatches`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/vnd.github+json'
-          },
-          body: JSON.stringify({ ref: 'main' })
-        }
-      );
+      const response = await this.supabase.client.functions.invoke('trigger-email-processor', {
+        method: 'POST',
+      });
 
-      console.log(`📊 GitHub API response: ${response.status} ${response.statusText}`);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`GitHub API error: ${response.status} ${response.statusText} - ${errorText}`);
+      if (response.error) {
+        console.error('❌ Edge Function error:', response.error);
+        return;
       }
 
+      console.log('📊 Edge Function response:', response.data);
       console.log('✅ Email processor workflow triggered successfully');
     } catch (error) {
-      console.error('❌ Failed to trigger email processor:', error);
+      console.error('❌ Failed to trigger email processor:', error instanceof Error ? error.message : error);
       // Don't throw - email processing will still happen, just slower
     }
   }

@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { ApprovalLinksService } from './approval-links.service';
-import { environment } from '../../environments/environment';
 
 export interface SendEmailOptions {
   to: string | string[];
@@ -166,41 +165,22 @@ export class EmailNotificationService {
   }
 
   /**
-   * Trigger email processor workflow on GitHub Actions
+   * Trigger email processor workflow via Supabase Edge Function
    */
   private async triggerEmailProcessor(): Promise<void> {
-    const token = environment.githubPat;
-    const repo = environment.githubRepo;
-    if (!token) {
-      console.warn('❌ VITE_GITHUB_PAT not configured');
-      return;
-    }
-    if (!repo) {
-      console.warn('❌ VITE_GITHUB_REPO not configured');
-      return;
-    }
-
     try {
-      console.log('🚀 Triggering email processor workflow...');
-      const response = await fetch(
-        `https://api.github.com/repos/${repo}/actions/workflows/process-email-queue.yml/dispatches`,
-        {
-          method: 'POST',
-          headers: {
-            'Accept': 'application/vnd.github+json',
-            'Authorization': `Bearer ${token}`,
-            'X-GitHub-Api-Version': '2022-11-28'
-          },
-          body: JSON.stringify({ ref: 'main' })
-        }
-      );
+      console.log('🚀 Triggering email processor via Edge Function...');
+      
+      const response = await this.supabase.client.functions.invoke('trigger-email-processor', {
+        method: 'POST',
+      });
 
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => '');
-        throw new Error(`GitHub API error: ${response.status} ${response.statusText}${errorText ? ': ' + errorText : ''}`);
+      if (response.error) {
+        console.error('❌ Edge Function error:', response.error);
+        return;
       }
 
-      console.log(`📊 GitHub API response: ${response.status}`);
+      console.log('📊 Edge Function response:', response.data);
       console.log('✅ Email processor workflow triggered successfully');
     } catch (error) {
       console.error('❌ Failed to trigger email processor:', error instanceof Error ? error.message : error);
