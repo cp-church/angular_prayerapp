@@ -401,14 +401,23 @@ export class AdminDataService {
 
     if (error) throw error;
     
+    // Send approval email to requester immediately (don't let email failures block)
+    this.emailNotification.sendRequesterApprovalNotification({
+      title: prayer.title,
+      description: prayer.description,
+      requester: prayer.is_anonymous ? 'Anonymous' : prayer.requester,
+      requesterEmail: prayer.email,
+      prayerFor: prayer.prayer_for
+    }).catch(err => console.error('Failed to send requester approval notification:', err));
+    
     // Refresh admin data and main prayer list
     await this.fetchAdminData(true);
     await this.prayerService.loadPrayers();
   }
 
   /**
-   * Send notification emails for an approved prayer
-   * Called after admin confirms they want to send the notification
+   * Send notification emails to all subscribers for an approved prayer
+   * Called when admin clicks the "Send Emails" button
    */
   async sendApprovedPrayerEmails(id: string): Promise<void> {
     const supabaseClient = this.supabase.client;
@@ -423,7 +432,7 @@ export class AdminDataService {
     if (fetchError) throw fetchError;
     if (!prayer) throw new Error('Prayer not found');
     
-    // Send email notifications (don't let email failures block)
+    // Send email notifications to all subscribers (don't let email failures block)
     this.emailNotification.sendApprovedPrayerNotification({
       title: prayer.title,
       description: prayer.description,
@@ -431,14 +440,6 @@ export class AdminDataService {
       prayerFor: prayer.prayer_for,
       status: prayer.status
     }).catch(err => console.error('Failed to send broadcast notification:', err));
-
-    this.emailNotification.sendRequesterApprovalNotification({
-      title: prayer.title,
-      description: prayer.description,
-      requester: prayer.is_anonymous ? 'Anonymous' : prayer.requester,
-      requesterEmail: prayer.email,
-      prayerFor: prayer.prayer_for
-    }).catch(err => console.error('Failed to send requester notification:', err));
 
     // Trigger email processor immediately
     await this.triggerEmailProcessor().catch(err => 
@@ -582,6 +583,20 @@ export class AdminDataService {
       if (prayerError) {
         console.error('Failed to update prayer status:', prayerError);
       }
+    }
+
+    // Send approval email to update author immediately (don't let email failures block)
+    if (update.author_email) {
+      const prayerTitle = prayerData && 'title' in prayerData
+        ? String(prayerData.title)
+        : 'Prayer';
+      this.emailNotification.sendRequesterApprovalNotification({
+        title: prayerTitle,
+        description: update.content,
+        requester: update.is_anonymous ? 'Anonymous' : (update.author || 'Anonymous'),
+        requesterEmail: update.author_email,
+        prayerFor: prayerTitle
+      }).catch(err => console.error('Failed to send update approval notification:', err));
     }
     
     await this.fetchAdminData(true);
