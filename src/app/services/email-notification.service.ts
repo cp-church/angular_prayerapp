@@ -165,6 +165,43 @@ export class EmailNotificationService {
   }
 
   /**
+   * Trigger email processor workflow on GitHub Actions
+   */
+  private async triggerEmailProcessor(): Promise<void> {
+    const token = (import.meta as any).env?.VITE_GITHUB_PAT;
+    if (!token) {
+      console.warn('❌ VITE_GITHUB_PAT not configured');
+      return;
+    }
+
+    try {
+      console.log('🚀 Triggering email processor workflow...');
+      const response = await fetch(
+        'https://api.github.com/repos/Kelemek/angular_prayerapp/actions/workflows/process-email-queue.yml/dispatches',
+        {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': `Bearer ${token}`,
+            'X-GitHub-Api-Version': '2022-11-28'
+          },
+          body: JSON.stringify({ ref: 'main' })
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        throw new Error(`GitHub API error: ${response.status} ${response.statusText}${errorText ? ': ' + errorText : ''}`);
+      }
+
+      console.log(`📊 GitHub API response: ${response.status}`);
+      console.log('✅ Email processor workflow triggered successfully');
+    } catch (error) {
+      console.error('❌ Failed to trigger email processor:', error instanceof Error ? error.message : error);
+    }
+  }
+
+  /**
    * Send email to all active subscribers
    */
   async sendEmailToAllSubscribers(options: {
@@ -239,6 +276,11 @@ export class EmailNotificationService {
 
       await Promise.all(queuePromises);
       console.log(`📧 Queued approved prayer notification to ${subscribers.length} subscriber(s)`);
+
+      // Trigger email processor immediately
+      await this.triggerEmailProcessor().catch(err =>
+        console.error('Failed to trigger email processor:', err)
+      );
     } catch (error) {
       console.error('Error in sendApprovedPrayerNotification:', error);
       // Don't re-throw - let the error be logged but don't block approval
@@ -287,6 +329,11 @@ export class EmailNotificationService {
 
       await Promise.all(queuePromises);
       console.log(`📧 Queued approved update notification to ${subscribers.length} subscriber(s)`);
+
+      // Trigger email processor immediately
+      await this.triggerEmailProcessor().catch(err =>
+        console.error('Failed to trigger email processor:', err)
+      );
     } catch (error) {
       console.error('Error in sendApprovedUpdateNotification:', error);
     }
