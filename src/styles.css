@@ -10,17 +10,32 @@ html {
 /* iOS PWA Safe Area - Only applies when running as standalone app */
 @supports (padding: max(0px)) {
   @media (display-mode: standalone) {
-    body {
+    html {
+      padding-top: max(0px, env(safe-area-inset-top));
       padding-left: max(0px, env(safe-area-inset-left));
       padding-right: max(0px, env(safe-area-inset-right));
+      padding-bottom: max(0px, env(safe-area-inset-bottom));
+    }
+
+    body {
       padding-top: max(0px, env(safe-area-inset-top));
+      padding-left: max(0px, env(safe-area-inset-left));
+      padding-right: max(0px, env(safe-area-inset-right));
       padding-bottom: max(0px, env(safe-area-inset-bottom));
     }
 
     app-root {
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
+      padding-top: max(0px, env(safe-area-inset-top));
+      padding-left: max(0px, env(safe-area-inset-left));
+      padding-right: max(0px, env(safe-area-inset-right));
+      padding-bottom: max(0px, env(safe-area-inset-bottom));
+    }
+
+    .min-h-screen {
+      padding-top: max(0px, env(safe-area-inset-top));
+      padding-left: max(0px, env(safe-area-inset-left));
+      padding-right: max(0px, env(safe-area-inset-right));
+      padding-bottom: max(0px, env(safe-area-inset-bottom));
     }
   }
 }
