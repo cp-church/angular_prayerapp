@@ -70,7 +70,8 @@ describe('PrayerSearchComponent', () => {
       mockSupabaseService,
       mockToastService,
       mockChangeDetectorRef,
-      mockPrayerService
+      mockPrayerService,
+      { provide: 'AdminDataService' } as any
     );
 
     global.fetch = vi.fn();
@@ -103,6 +104,9 @@ describe('PrayerSearchComponent', () => {
       expect(component.updatingStatus).toBe(false);
       expect(component.addingUpdate).toBeNull();
       expect(component.savingUpdate).toBe(false);
+      expect(component.editingUpdateId).toBeNull();
+      expect(component.editingUpdatePrayerId).toBeNull();
+      expect(component.savingEditUpdate).toBe(false);
       expect(component.currentPage).toBe(1);
       expect(component.pageSize).toBe(10);
       expect(component.totalItems).toBe(0);
@@ -322,7 +326,8 @@ describe('PrayerSearchComponent', () => {
         lastName: 'Doe',
         email: 'john@example.com',
         prayer_for: 'Jane',
-        status: 'current'
+        status: 'current',
+        is_anonymous: false
       };
 
       expect(component.isCreateFormValid()).toBe(true);
@@ -336,7 +341,8 @@ describe('PrayerSearchComponent', () => {
         lastName: 'Doe',
         email: 'john@example.com',
         prayer_for: 'Jane',
-        status: 'current'
+        status: 'current',
+        is_anonymous: false
       };
 
       await component.createPrayer(mockEvent);
@@ -363,7 +369,8 @@ describe('PrayerSearchComponent', () => {
         lastName: 'Doe',
         email: 'john@example.com',
         prayer_for: 'Jane',
-        status: 'current'
+        status: 'current',
+        is_anonymous: false
       };
 
       mockSupabaseService.getClient().from().insert().select().single.mockResolvedValue({
@@ -654,6 +661,121 @@ describe('PrayerSearchComponent', () => {
       await component.deleteUpdate('123', 'update-1', 'Test');
 
       expect(mockSupabaseService.getClient().from().delete).not.toHaveBeenCalled();
+    });
+
+    it('should start edit update', () => {
+      const mockUpdate = {
+        id: 'update-1',
+        content: 'Original content',
+        author: 'John Doe',
+        author_email: 'john@example.com',
+        created_at: '2024-01-01'
+      };
+
+      component.startEditUpdate('123', mockUpdate);
+
+      expect(component.editingUpdateId).toBe('update-1');
+      expect(component.editingUpdatePrayerId).toBe('123');
+      expect(component.editUpdateForm.content).toBe('Original content');
+      expect(component.editUpdateForm.author).toBe('John Doe');
+      expect(component.editUpdateForm.author_email).toBe('john@example.com');
+    });
+
+    it('should cancel edit update', () => {
+      component.editingUpdateId = 'update-1';
+      component.editingUpdatePrayerId = '123';
+      component.editUpdateForm = {
+        content: 'Modified content',
+        author: 'Jane Doe',
+        author_email: 'jane@example.com'
+      };
+
+      component.cancelEditUpdate();
+
+      expect(component.editingUpdateId).toBeNull();
+      expect(component.editingUpdatePrayerId).toBeNull();
+      expect(component.editUpdateForm.content).toBe('');
+      expect(component.editUpdateForm.author).toBe('');
+      expect(component.editUpdateForm.author_email).toBe('');
+    });
+
+    it('should validate edit update form', () => {
+      expect(component.isEditUpdateFormValid()).toBe(false);
+
+      component.editUpdateForm = {
+        content: 'Test content',
+        author: 'John Doe',
+        author_email: 'john@example.com'
+      };
+
+      expect(component.isEditUpdateFormValid()).toBe(true);
+    });
+
+    it('should not validate edit update form with empty fields', () => {
+      component.editUpdateForm = {
+        content: '   ',
+        author: 'John Doe',
+        author_email: 'john@example.com'
+      };
+
+      expect(component.isEditUpdateFormValid()).toBe(false);
+    });
+
+    it('should save edit update successfully', async () => {
+      const mockUpdate = {
+        id: 'update-1',
+        content: 'Original',
+        author: 'John',
+        author_email: 'john@example.com',
+        created_at: '2024-01-01'
+      };
+
+      component.editUpdateForm = {
+        content: 'Updated content',
+        author: 'Jane Doe',
+        author_email: 'jane@example.com'
+      };
+
+      component.allPrayers = [{
+        ...mockPrayer,
+        prayer_updates: [mockUpdate]
+      }];
+
+      await component.saveEditUpdate('123', 'update-1');
+
+      expect(mockToastService.success).toHaveBeenCalled();
+      expect(component.editingUpdateId).toBeNull();
+      expect(component.editingUpdatePrayerId).toBeNull();
+    });
+
+    it('should not save edit update with invalid form', async () => {
+      component.editUpdateForm = {
+        content: '',
+        author: 'John',
+        author_email: 'john@example.com'
+      };
+
+      await component.saveEditUpdate('123', 'update-1');
+
+      expect(component.error).toBe('All fields are required');
+      expect(mockToastService.error).toHaveBeenCalled();
+    });
+
+    it('should handle edit update error', async () => {
+      component.editUpdateForm = {
+        content: 'Updated',
+        author: 'John',
+        author_email: 'john@example.com'
+      };
+
+      mockSupabaseService.getClient().from().update = vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ error: new Error('Update failed') })
+      });
+
+      await component.saveEditUpdate('123', 'update-1');
+
+      expect(component.error).toContain('Failed to update');
+      expect(mockToastService.error).toHaveBeenCalled();
     });
   });
 
@@ -985,7 +1107,8 @@ describe('PrayerSearchComponent', () => {
         email: '',
         prayer_for: 'Peace',
         description: 'Testing',
-        status: 'current'
+        status: 'current',
+        is_anonymous: false
       };
       component.allPrayers = [];
 
@@ -1095,7 +1218,8 @@ describe('PrayerSearchComponent', () => {
         email: '  john@example.com  ',
         prayer_for: '  Guidance  ',
         description: '  Test  ',
-        status: 'current'
+        status: 'current',
+        is_anonymous: false
       };
       component.allPrayers = [];
 
@@ -1130,7 +1254,8 @@ describe('PrayerSearchComponent', () => {
         email: 'john@example.com',
         prayer_for: 'Peace',
         description: 'Test',
-        status: 'current'
+        status: 'current',
+        is_anonymous: false
       };
 
       expect(component.isCreateFormValid()).toBe(false);
@@ -1452,7 +1577,8 @@ describe('PrayerSearchComponent', () => {
         email: 'john@example.com',
         prayer_for: 'Peace',
         description: 'Test prayer',
-        status: 'current'
+        status: 'current',
+        is_anonymous: false
       };
 
       await component.createPrayer(new Event('submit'));
@@ -1486,7 +1612,8 @@ describe('PrayerSearchComponent', () => {
         email: 'john@example.com',
         prayer_for: 'Test',
         description: 'Test',
-        status: 'current'
+        status: 'current',
+        is_anonymous: false
       };
 
       expect(component.isCreateFormValid()).toBe(false);
@@ -1499,7 +1626,8 @@ describe('PrayerSearchComponent', () => {
         email: 'john@example.com',
         prayer_for: 'Test',
         description: 'Test',
-        status: 'current'
+        status: 'current',
+        is_anonymous: false
       };
 
       expect(component.isCreateFormValid()).toBe(false);
@@ -1512,7 +1640,8 @@ describe('PrayerSearchComponent', () => {
         email: '',
         prayer_for: 'Test',
         description: 'Test',
-        status: 'current'
+        status: 'current',
+        is_anonymous: false
       };
 
       expect(component.isCreateFormValid()).toBe(false);
@@ -1525,7 +1654,8 @@ describe('PrayerSearchComponent', () => {
         email: 'john@example.com',
         prayer_for: '',
         description: 'Test',
-        status: 'current'
+        status: 'current',
+        is_anonymous: false
       };
 
       expect(component.isCreateFormValid()).toBe(false);
@@ -1538,7 +1668,8 @@ describe('PrayerSearchComponent', () => {
         email: 'john@example.com',
         prayer_for: 'Test',
         description: 'Test',
-        status: ''
+        status: '',
+        is_anonymous: false
       };
 
       // Status field is not validated in isCreateFormValid
@@ -1552,7 +1683,8 @@ describe('PrayerSearchComponent', () => {
         email: 'john@example.com',
         prayer_for: 'Test',
         description: 'Test',
-        status: 'current'
+        status: 'current',
+        is_anonymous: false
       };
 
       expect(component.isCreateFormValid()).toBe(true);
@@ -1941,7 +2073,7 @@ describe('PrayerSearchComponent', () => {
     });
 
     it('should filter denied prayers with denial_reason on update', async () => {
-      component.approachFilter = 'denied';
+      component.approvalFilter = 'denied';
       
       const update = {
         id: 'update-1',

@@ -12,6 +12,7 @@ interface PrayerUpdate {
   id: string;
   content: string;
   author: string;
+  author_email?: string;
   created_at: string;
   denial_reason?: string | null;
   approval_status?: string;
@@ -54,6 +55,12 @@ interface NewUpdate {
   content: string;
   firstName: string;
   lastName: string;
+  author_email: string;
+}
+
+interface EditUpdateForm {
+  content: string;
+  author: string;
   author_email: string;
 }
 
@@ -758,6 +765,85 @@ interface NewUpdate {
               <div class="space-y-3">
                 @for (update of prayer.prayer_updates; track update.id; let i = $index) {
                 <div [class]="'p-3 rounded border ' + (update.denial_reason ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700')">
+                  <!-- Edit Mode Form -->
+                  @if (editingUpdateId === update.id) {
+                  <div class="space-y-3">
+                    <div class="flex items-center justify-between mb-2">
+                      <h6 class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase">
+                        Edit Update #{{ prayer.prayer_updates!.length - i }}
+                      </h6>
+                      <div class="flex gap-2">
+                        <button
+                          (click)="saveEditUpdate(prayer.id, update.id)"
+                          [disabled]="!isEditUpdateFormValid() || savingEditUpdate"
+                          class="flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                            <polyline points="7 3 7 8 15 8"></polyline>
+                          </svg>
+                          {{ savingEditUpdate ? 'Saving...' : 'Save' }}
+                        </button>
+                        <button
+                          (click)="cancelEditUpdate()"
+                          [disabled]="savingEditUpdate"
+                          class="flex items-center gap-1 px-3 py-1 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm disabled:opacity-50"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                          </svg>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Update Content *
+                      </label>
+                      <textarea
+                        [(ngModel)]="editUpdateForm.content"
+                        required
+                        rows="3"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                      ></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Author Name *
+                        </label>
+                        <input
+                          type="text"
+                          [(ngModel)]="editUpdateForm.author"
+                          required
+                          placeholder="Author name"
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Author Email *
+                        </label>
+                        <input
+                          type="email"
+                          [(ngModel)]="editUpdateForm.author_email"
+                          required
+                          placeholder="email@example.com"
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  }
+
+                  <!-- View Mode -->
+                  @if (editingUpdateId !== update.id) {
                   <div class="flex justify-between items-start mb-2">
                     <div class="flex items-center gap-2">
                       <span class="text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -774,6 +860,17 @@ interface NewUpdate {
                         {{ update.created_at | date:'shortDate' }}
                       </span>
                       <button
+                        (click)="startEditUpdate(prayer.id, update)"
+                        [disabled]="deleting || savingEditUpdate"
+                        class="p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors disabled:opacity-50"
+                        title="Edit this update"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                      </button>
+                      <button
                         (click)="deleteUpdate(prayer.id, update.id, update.content)"
                         [disabled]="deleting"
                         class="p-1 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors disabled:opacity-50"
@@ -789,6 +886,8 @@ interface NewUpdate {
                   <p class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap mb-2">
                     {{ update.content }}
                   </p>
+                  }
+                  
                   @if (update.denial_reason) {
                   <div class="mt-2 p-2 bg-red-100 dark:bg-red-900/30 rounded border-l-2 border-red-500">
                     <div class="flex items-start gap-2">
@@ -913,7 +1012,7 @@ interface NewUpdate {
               @if (addingUpdate !== prayer.id) {
               <button
                 (click)="addingUpdate = prayer.id"
-                class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                class="ml-auto flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -1109,6 +1208,12 @@ export class PrayerSearchComponent implements OnInit {
   newUpdate: NewUpdate = { content: '', firstName: '', lastName: '', author_email: '' };
   savingUpdate = false;
   
+  // Edit update properties
+  editingUpdateId: string | null = null;
+  editingUpdatePrayerId: string | null = null;
+  editUpdateForm: EditUpdateForm = { content: '', author: '', author_email: '' };
+  savingEditUpdate = false;
+  
   // Dialog state for send notification
   showSendNotificationDialog = false;
   sendDialogType: NotificationType = 'prayer';
@@ -1175,7 +1280,7 @@ export class PrayerSearchComponent implements OnInit {
       const supabaseKey = this.supabaseService.getSupabaseKey();
 
       const params = new URLSearchParams();
-      params.set('select', 'id,title,requester,email,status,created_at,denial_reason,description,approval_status,prayer_for,prayer_updates(id,content,author,created_at,denial_reason,approval_status)');
+      params.set('select', 'id,title,requester,email,status,created_at,denial_reason,description,approval_status,prayer_for,prayer_updates(id,content,author,author_email,created_at,denial_reason,approval_status)');
       params.set('order', 'created_at.desc');
       params.set('limit', '100');
 
@@ -1224,7 +1329,7 @@ export class PrayerSearchComponent implements OnInit {
         
         // Fetch ALL prayers (no search filter) to check update content
         const allParams = new URLSearchParams();
-        allParams.set('select', 'id,title,requester,email,status,created_at,denial_reason,description,approval_status,prayer_for,prayer_updates(id,content,author,created_at,denial_reason,approval_status)');
+        allParams.set('select', 'id,title,requester,email,status,created_at,denial_reason,description,approval_status,prayer_for,prayer_updates(id,content,author,author_email,created_at,denial_reason,approval_status)');
         allParams.set('order', 'created_at.desc');
         allParams.set('limit', '100');
 
@@ -1912,6 +2017,101 @@ export class PrayerSearchComponent implements OnInit {
       this.toast.error(errorMessage);
     } finally {
       this.deleting = false;
+    }
+  }
+
+  startEditUpdate(prayerId: string, update: PrayerUpdate): void {
+    this.editingUpdateId = update.id;
+    this.editingUpdatePrayerId = prayerId;
+    this.editUpdateForm = {
+      content: update.content,
+      author: update.author,
+      author_email: update.author_email || ''
+    };
+  }
+
+  cancelEditUpdate(): void {
+    this.editingUpdateId = null;
+    this.editingUpdatePrayerId = null;
+    this.editUpdateForm = { content: '', author: '', author_email: '' };
+  }
+
+  isEditUpdateFormValid(): boolean {
+    return !!(
+      this.editUpdateForm.content.trim() &&
+      this.editUpdateForm.author.trim() &&
+      this.editUpdateForm.author_email.trim()
+    );
+  }
+
+  async saveEditUpdate(prayerId: string, updateId: string): Promise<void> {
+    if (!this.isEditUpdateFormValid()) {
+      this.error = 'All fields are required';
+      this.toast.error(this.error);
+      return;
+    }
+
+    try {
+      this.savingEditUpdate = true;
+      this.cdr.markForCheck();
+      this.error = null;
+
+      const { error: updateError } = await this.supabaseService.getClient()
+        .from('prayer_updates')
+        .update({
+          content: this.editUpdateForm.content.trim(),
+          author: this.editUpdateForm.author.trim(),
+          author_email: this.editUpdateForm.author_email.trim()
+        })
+        .eq('id', updateId);
+
+      if (updateError) {
+        throw new Error(`Failed to update: ${updateError.message}`);
+      }
+
+      this.allPrayers = this.allPrayers.map(p => {
+        if (p.id === prayerId && p.prayer_updates) {
+          return {
+            ...p,
+            prayer_updates: p.prayer_updates.map(u =>
+              u.id === updateId
+                ? {
+                    ...u,
+                    content: this.editUpdateForm.content.trim(),
+                    author: this.editUpdateForm.author.trim(),
+                    author_email: this.editUpdateForm.author_email.trim()
+                  }
+                : u
+            )
+          };
+        }
+        return p;
+      });
+      this.loadPageData();
+
+      this.toast.success('Update saved successfully');
+      this.cancelEditUpdate();
+      
+      // Show dialog asking if they want to send notification
+      const prayer = this.allPrayers.find(p => p.id === prayerId);
+      this.sendDialogPrayerId = prayerId;
+      this.sendDialogUpdateId = updateId;
+      this.sendDialogPrayerTitle = prayer?.title;
+      this.sendDialogType = 'update';
+      this.showSendNotificationDialog = true;
+      
+      // Trigger reload on main site
+      await this.prayerService.loadPrayers();
+      
+      this.savingEditUpdate = false;
+      this.cdr.markForCheck();
+    } catch (err: unknown) {
+      console.error('Error updating update:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update';
+      this.error = errorMessage;
+      this.toast.error(errorMessage);
+    } finally {
+      this.savingEditUpdate = false;
     }
   }
 
