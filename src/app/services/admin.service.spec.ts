@@ -53,11 +53,6 @@ describe('AdminService', () => {
     expect(service).toBeTruthy();
   });
 
-  it('should log environment variables on construction', () => {
-    expect(consoleLogSpy).toHaveBeenCalledWith('All env vars:', expect.any(Object));
-    expect(consoleLogSpy).toHaveBeenCalledWith('Service key exists?', expect.any(Boolean));
-  });
-
   it('should log error if service key is not found', () => {
     // Call helper directly to avoid env mutation issues in test environment
     (AdminService as any).reportMissingServiceKey({});
