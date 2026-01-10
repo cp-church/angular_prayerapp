@@ -7,6 +7,24 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* iOS PWA Safe Area - Only applies when running as standalone app */
+@supports (padding: max(0px)) {
+  @media (display-mode: standalone) {
+    body {
+      padding-left: max(0px, env(safe-area-inset-left));
+      padding-right: max(0px, env(safe-area-inset-right));
+      padding-top: max(0px, env(safe-area-inset-top));
+      padding-bottom: max(0px, env(safe-area-inset-bottom));
+    }
+
+    app-root {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+  }
+}
+
 /* Church Theme Color Overrides - Maps Tailwind grays to church brand colors */
 @layer utilities {
   /* Background colors - light theme */
@@ -47,6 +65,7 @@ html {
   .border-gray-100 { @apply !border-[#E8E5E1]; }
   .border-gray-200 { @apply !border-[#D1CCC4]; }
   .border-gray-300 { @apply !border-[#D1CCC4]; }
+
   
   /* Border colors - dark theme */
   .dark .border-gray-600 { @apply !border-[#3E5266]; }
