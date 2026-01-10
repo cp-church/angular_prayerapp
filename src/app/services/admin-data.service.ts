@@ -1022,7 +1022,7 @@ export class AdminDataService {
    * Sends an immediate request to process the email queue
    */
   private async triggerEmailProcessor(): Promise<void> {
-    const token = import.meta.env.VITE_GITHUB_PAT as string | undefined;
+    const token = (import.meta as any).env?.VITE_GITHUB_PAT as string | undefined;
     
     if (!token) {
       console.warn('VITE_GITHUB_PAT not configured - email processor will not be triggered');
