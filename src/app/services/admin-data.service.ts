@@ -1025,11 +1025,13 @@ export class AdminDataService {
     const token = (import.meta as any).env?.VITE_GITHUB_PAT as string | undefined;
     
     if (!token) {
-      console.warn('VITE_GITHUB_PAT not configured - email processor will not be triggered');
+      console.warn('❌ VITE_GITHUB_PAT not configured - email processor trigger disabled');
       return;
     }
 
     try {
+      console.log('🚀 Triggering email processor workflow...');
+      
       const response = await fetch(
         'https://api.github.com/repos/Kelemek/angular_prayerapp/actions/workflows/process-email-queue.yml/dispatches',
         {
@@ -1042,14 +1044,17 @@ export class AdminDataService {
         }
       );
 
+      console.log(`📊 GitHub API response: ${response.status} ${response.statusText}`);
+
       if (!response.ok) {
-        throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`GitHub API error: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
-      console.log('✅ Email processor triggered successfully');
+      console.log('✅ Email processor workflow triggered successfully');
     } catch (error) {
-      console.error('Failed to trigger email processor:', error);
-      // Don't throw - email processing will still happen via schedule, just slower
+      console.error('❌ Failed to trigger email processor:', error);
+      // Don't throw - email processing will still happen, just slower
     }
   }
 }
