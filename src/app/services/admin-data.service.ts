@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
 import { SupabaseService } from './supabase.service';
-import { AdminService } from './admin.service';
 import { PrayerService } from './prayer.service';
 import { EmailNotificationService } from './email-notification.service';
 import type { 
@@ -86,13 +85,9 @@ export class AdminDataService {
 
   constructor(
     private supabase: SupabaseService,
-    private adminService: AdminService,
     private prayerService: PrayerService,
     private emailNotification: EmailNotificationService
-  ) {
-    // Pass admin client to email service so it can use service role for queue operations
-    this.emailNotification.setAdminClient(this.adminService.getAdminClient());
-  }
+  ) {}
 
   async fetchAdminData(silent = false): Promise<void> {
     if (this.isFetching) return;

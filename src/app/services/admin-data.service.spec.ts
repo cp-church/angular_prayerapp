@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { AdminDataService } from './admin-data.service';
 import { SupabaseService } from './supabase.service';
-import { AdminService } from './admin.service';
 import { PrayerService } from './prayer.service';
 import { EmailNotificationService } from './email-notification.service';
 import { firstValueFrom } from 'rxjs';
@@ -23,7 +22,6 @@ describe('AdminDataService', () => {
   let service: AdminDataService;
   let mockSupabaseService: any;
   let mockSupabaseClient: any;
-  let mockAdminService: any;
   let mockPrayerService: any;
   let mockEmailNotificationService: any;
 
@@ -74,11 +72,6 @@ describe('AdminDataService', () => {
       client: mockSupabaseClient
     } as unknown as SupabaseService;
 
-    // Create mock AdminService
-    mockAdminService = {
-      getAdminClient: vi.fn(() => mockSupabaseClient)
-    } as unknown as AdminService;
-
     // Create mock PrayerService
     mockPrayerService = {
       loadPrayers: vi.fn(() => Promise.resolve())
@@ -103,11 +96,10 @@ describe('AdminDataService', () => {
         }
         return result;
       }),
-      sendEmail: vi.fn(() => Promise.resolve()),
-      setAdminClient: vi.fn()
+      sendEmail: vi.fn(() => Promise.resolve())
     } as unknown as EmailNotificationService;
 
-    service = new AdminDataService(mockSupabaseService, mockAdminService, mockPrayerService, mockEmailNotificationService);
+    service = new AdminDataService(mockSupabaseService, mockPrayerService, mockEmailNotificationService);
   });
 
   afterEach(() => {
