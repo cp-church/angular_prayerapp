@@ -2,11 +2,6 @@ import { Injectable } from '@angular/core';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../environments/environment';
 
-interface ImportMetaEnv {
-  readonly VITE_SUPABASE_SERVICE_KEY?: string;
-  [key: string]: any;
-}
-
 /**
  * Admin service for operations that require service role access
  * Uses the service role key to bypass RLS policies
@@ -23,15 +18,10 @@ export class AdminService {
     // Local: Set VITE_SUPABASE_SERVICE_KEY in .env file
     // Vercel: Already set in environment variables
     
-    // Debug: log all environment variables
-    const env = import.meta.env as unknown as ImportMetaEnv;
-    console.log('All env vars:', env);
-    console.log('Service key exists?', !!env.VITE_SUPABASE_SERVICE_KEY);
-    
-    const serviceKey = env.VITE_SUPABASE_SERVICE_KEY;
+    const serviceKey = (import.meta as any).env?.VITE_SUPABASE_SERVICE_KEY as string | undefined;
     
     if (!serviceKey) {
-      AdminService.reportMissingServiceKey(env);
+      AdminService.reportMissingServiceKey({});
     }
     
     // Create a separate client with service role key for admin operations
