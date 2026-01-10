@@ -128,10 +128,11 @@ async function sendViaGraphAPI(
         }
       ],
       // Add List-Unsubscribe header for compliance (RFC 8058)
+      // Must be prefixed with 'x-' for Microsoft Graph API
       // Email clients will show an "Unsubscribe" button
       internetMessageHeaders: [
         {
-          name: 'List-Unsubscribe',
+          name: 'x-List-Unsubscribe',
           value: `<mailto:${process.env.MAIL_SENDER_ADDRESS}?subject=unsubscribe>`
         }
       ]
