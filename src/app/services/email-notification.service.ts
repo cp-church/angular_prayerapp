@@ -169,15 +169,20 @@ export class EmailNotificationService {
    */
   private async triggerEmailProcessor(): Promise<void> {
     const token = (import.meta as any).env?.VITE_GITHUB_PAT;
+    const repo = (import.meta as any).env?.VITE_GITHUB_REPO;
     if (!token) {
       console.warn('❌ VITE_GITHUB_PAT not configured');
+      return;
+    }
+    if (!repo) {
+      console.warn('❌ VITE_GITHUB_REPO not configured');
       return;
     }
 
     try {
       console.log('🚀 Triggering email processor workflow...');
       const response = await fetch(
-        'https://api.github.com/repos/Kelemek/angular_prayerapp/actions/workflows/process-email-queue.yml/dispatches',
+        `https://api.github.com/repos/${repo}/actions/workflows/process-email-queue.yml/dispatches`,
         {
           method: 'POST',
           headers: {

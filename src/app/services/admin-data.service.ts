@@ -1023,9 +1023,14 @@ export class AdminDataService {
    */
   private async triggerEmailProcessor(): Promise<void> {
     const token = (import.meta as any).env?.VITE_GITHUB_PAT as string | undefined;
+    const repo = (import.meta as any).env?.VITE_GITHUB_REPO as string | undefined;
     
     if (!token) {
       console.warn('❌ VITE_GITHUB_PAT not configured - email processor trigger disabled');
+      return;
+    }
+    if (!repo) {
+      console.warn('❌ VITE_GITHUB_REPO not configured - email processor trigger disabled');
       return;
     }
 
@@ -1033,7 +1038,7 @@ export class AdminDataService {
       console.log('🚀 Triggering email processor workflow...');
       
       const response = await fetch(
-        'https://api.github.com/repos/Kelemek/angular_prayerapp/actions/workflows/process-email-queue.yml/dispatches',
+        `https://api.github.com/repos/${repo}/actions/workflows/process-email-queue.yml/dispatches`,
         {
           method: 'POST',
           headers: {
