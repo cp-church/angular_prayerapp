@@ -69,6 +69,44 @@ const initServiceWorker = async () => {
     });
     console.log('[PWA] Service Worker registered successfully:', registration);
 
+    // If there's already a waiting worker, tell it to skip waiting so new content activates
+    if (registration.waiting) {
+      try {
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        console.log('[PWA] Sent SKIP_WAITING to existing waiting worker');
+      } catch (err) {
+        console.warn('[PWA] Could not message waiting worker:', err);
+      }
+    }
+
+    // When a new service worker is found, request it activate immediately once installed
+    registration.addEventListener('updatefound', () => {
+      const newWorker = registration.installing;
+      if (!newWorker) return;
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'installed') {
+          if (navigator.serviceWorker.controller) {
+            try {
+              newWorker.postMessage({ type: 'SKIP_WAITING' });
+              console.log('[PWA] Requested new worker to skip waiting');
+            } catch (err) {
+              console.warn('[PWA] Could not message installing worker:', err);
+            }
+          }
+        }
+      });
+    });
+
+    // When the controlling service worker changes, reload to ensure the new assets are used
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      console.log('[PWA] Service worker controller changed, reloading to apply update');
+      try {
+        window.location.reload();
+      } catch (err) {
+        console.warn('[PWA] Reload failed:', err);
+      }
+    });
+
     // Check for updates periodically
     setInterval(() => {
       registration.update().catch(error => {

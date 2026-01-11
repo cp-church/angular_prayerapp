@@ -61,3 +61,10 @@ src/main.tsx
 src/vite-env.d.ts
 vite.config.ts
 vitest.config.ts
+
+# Ignore intermediate generated favicon PNGs and helper scripts
+/public/favicon-16.png
+/public/favicon-32.png
+/scripts/generate-icons.js
+/scripts/build-favicon.js
+/scripts/regenerate-icons-padding.js
