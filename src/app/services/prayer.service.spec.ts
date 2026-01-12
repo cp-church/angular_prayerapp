@@ -8,6 +8,7 @@ describe('PrayerService', () => {
   let emailNotification: any;
   let verificationService: any;
   let cache: any;
+  let badgeService: any;
 
   const makePrayer = (overrides: Partial<PrayerRequest> = {}): PrayerRequest => ({
     id: '1',
@@ -41,6 +42,7 @@ describe('PrayerService', () => {
     emailNotification = { sendAdminNotification: vi.fn().mockResolvedValue(undefined) };
     verificationService = {};
     cache = { get: vi.fn(() => null), set: vi.fn() };
+    badgeService = { refreshBadgeCounts: vi.fn() };
 
     // Ensure from() returns a safe default to avoid constructor side-effects failing
     supabase.client.from.mockImplementation((table: string) => ({
@@ -52,7 +54,7 @@ describe('PrayerService', () => {
       maybeSingle: () => Promise.resolve({ data: null, error: null })
     }));
 
-    service = new PrayerService(supabase, toast, emailNotification, verificationService as any, cache);
+    service = new PrayerService(supabase, toast, emailNotification, verificationService as any, cache, badgeService);
   });
 
   it('applyFilters filters by status, type, and search', () => {

@@ -5,6 +5,7 @@ import { ToastService } from './toast.service';
 import { EmailNotificationService } from './email-notification.service';
 import { VerificationService } from './verification.service';
 import { CacheService } from './cache.service';
+import { BadgeService } from './badge.service';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export type PrayerStatus = 'current' | 'answered' | 'archived';
@@ -65,7 +66,8 @@ export class PrayerService {
     private toast: ToastService,
     private emailNotification: EmailNotificationService,
     private verificationService: VerificationService,
-    private cache: CacheService
+    private cache: CacheService,
+    private badgeService: BadgeService
   ) {
     this.initializePrayers();
   }
@@ -151,6 +153,9 @@ export class PrayerService {
       this.allPrayersSubject.next(sortedPrayers);
       this.cache.set('prayers', sortedPrayers);
       this.applyFilters(this.currentFilters);
+      
+      // Refresh badge counts to ensure badges show up for new updates
+      this.badgeService.refreshBadgeCounts();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load prayers';
       console.error('[PrayerService] Failed to load prayers:', err);

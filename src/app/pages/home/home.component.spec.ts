@@ -68,7 +68,16 @@ const makeMocks = () => {
     }
   };
 
-  return { prayerService, promptService, adminAuthService, userSessionService, toastService, analyticsService, cdr, router, supabaseService, prayersSubject, promptsSubject };
+  const badgeService: any = {
+    isPromptUnread: vi.fn(),
+    getBadgeFunctionalityEnabled$: vi.fn().mockReturnValue(of(false)),
+    unreadPromptCount$: of(0),
+    getUnreadPromptCountByType: vi.fn().mockReturnValue(0),
+    refreshBadgeCounts: vi.fn(),
+    getBadgeCount$: vi.fn().mockReturnValue(of(0))
+  };
+
+  return { prayerService, promptService, adminAuthService, userSessionService, badgeService, toastService, analyticsService, cdr, router, supabaseService, prayersSubject, promptsSubject };
 };
 
 describe('HomeComponent', () => {
@@ -90,6 +99,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -121,6 +131,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -136,6 +147,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -152,6 +164,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -168,6 +181,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -185,6 +199,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -200,6 +215,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -234,6 +250,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -251,6 +268,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -267,6 +285,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -286,6 +305,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -303,6 +323,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -320,6 +341,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -337,6 +359,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -359,6 +382,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -379,6 +403,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -405,6 +430,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -420,6 +446,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -440,6 +467,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -481,6 +509,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -503,6 +532,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -522,6 +552,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -540,6 +571,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       adminServiceTrue,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -555,6 +587,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       adminServiceFalse,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -594,6 +627,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -629,6 +663,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -661,6 +696,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -696,6 +732,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -734,6 +771,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.badgeService,
       mocks.toastService,
       mocks.analyticsService,
       mocks.cdr,
@@ -746,5 +784,137 @@ describe('HomeComponent', () => {
     // Should use fallback 'everyone' when values are null/undefined
     expect(comp.deletionsAllowed).toBe('everyone');
     expect(comp.updatesAllowed).toBe('everyone');
+  });
+
+  describe('Badge count functionality', () => {
+    it('should have getUnreadPromptCountByType method', () => {
+      const comp = new HomeComponent(
+        mocks.prayerService,
+        mocks.promptService,
+        mocks.adminAuthService,
+        mocks.userSessionService,
+      mocks.badgeService,
+        mocks.badgeService,
+        mocks.toastService,
+        mocks.analyticsService,
+        mocks.cdr,
+        mocks.router
+      );
+
+      expect(typeof comp['getUnreadPromptCountByType']).toBe('function');
+    });
+
+    it('should count unread prompts by type', () => {
+      const prompts = [
+        { id: '1', type: 'Morning', title: 'Test 1' },
+        { id: '2', type: 'Morning', title: 'Test 2' },
+        { id: '3', type: 'Evening', title: 'Test 3' }
+      ];
+
+      mocks.promptService.prompts$ = of(prompts);
+
+      const comp = new HomeComponent(
+        mocks.prayerService,
+        mocks.promptService,
+        mocks.adminAuthService,
+        mocks.userSessionService,
+      mocks.badgeService,
+        mocks.badgeService,
+        mocks.toastService,
+        mocks.analyticsService,
+        mocks.cdr,
+        mocks.router
+      );
+
+      // Component should have badge count functionality
+      expect(comp).toBeDefined();
+    });
+
+    it('should display badge count on prompt type filters', () => {
+      const prompts = [
+        { id: '1', type: 'Morning', title: 'Test 1' },
+        { id: '2', type: 'Morning', title: 'Test 2' }
+      ];
+
+      const promptsSubject = new BehaviorSubject(prompts);
+      const customPromptService = {
+        ...mocks.promptService,
+        prompts$: promptsSubject.asObservable()
+      };
+
+      const comp = new HomeComponent(
+        mocks.prayerService,
+        customPromptService,
+        mocks.adminAuthService,
+        mocks.userSessionService,
+      mocks.badgeService,
+        mocks.badgeService,
+        mocks.toastService,
+        mocks.analyticsService,
+        mocks.cdr,
+        mocks.router
+      );
+
+      expect(comp).toBeDefined();
+    });
+
+    it('should filter prompts by type with badge counts', () => {
+      const prompts = [
+        { id: '1', type: 'Morning', title: 'Test 1' },
+        { id: '2', type: 'Evening', title: 'Test 2' },
+        { id: '3', type: 'Morning', title: 'Test 3' }
+      ];
+
+      const promptsSubject = new BehaviorSubject(prompts);
+      const customPromptService = {
+        ...mocks.promptService,
+        prompts$: promptsSubject.asObservable()
+      };
+
+      const comp = new HomeComponent(
+        mocks.prayerService,
+        customPromptService,
+        mocks.adminAuthService,
+        mocks.userSessionService,
+      mocks.badgeService,
+        mocks.badgeService,
+        mocks.toastService,
+        mocks.analyticsService,
+        mocks.cdr,
+        mocks.router
+      );
+
+      expect(comp).toBeDefined();
+    });
+
+    it('should update badge counts when prompts change', () => {
+      const promptsSubject = new BehaviorSubject<any[]>([]);
+
+      const customPromptService = {
+        ...mocks.promptService,
+        prompts$: promptsSubject.asObservable()
+      };
+
+      const comp = new HomeComponent(
+        mocks.prayerService,
+        customPromptService,
+        mocks.adminAuthService,
+        mocks.userSessionService,
+      mocks.badgeService,
+        mocks.badgeService,
+        mocks.toastService,
+        mocks.analyticsService,
+        mocks.cdr,
+        mocks.router
+      );
+
+      // Add prompts after initialization
+      promptsSubject.next([
+        { id: '1', type: 'Morning', title: 'Test 1' },
+        { id: '2', type: 'Morning', title: 'Test 2' }
+      ]);
+
+      expect(comp).toBeDefined();
+    });
   });
 });

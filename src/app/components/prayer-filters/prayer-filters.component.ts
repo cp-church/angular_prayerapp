@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
 
 export interface PrayerFilters {
   searchTerm?: string;
@@ -10,7 +11,7 @@ export interface PrayerFilters {
 @Component({
   selector: 'app-prayer-filters',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, CommonModule],
   template: `
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 mb-6 transition-colors">
       <div class="grid grid-cols-1 gap-4">

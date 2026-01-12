@@ -8,6 +8,7 @@ import { EmailNotificationService } from '../../services/email-notification.serv
 import { AdminAuthService } from '../../services/admin-auth.service';
 import { GitHubFeedbackService } from '../../services/github-feedback.service';
 import { UserSessionService } from '../../services/user-session.service';
+import { BadgeService } from '../../services/badge.service';
 import { Subject, takeUntil, debounceTime, distinctUntilChanged } from 'rxjs';
 import { getUserInfo } from '../../../utils/userInfoStorage';
 import { GitHubFeedbackFormComponent } from '../github-feedback-form/github-feedback-form.component';
@@ -63,7 +64,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
               <div class="flex">
                 <button
                   (click)="handlePrint()"
-                  title="Print all prayers"
+                  title="Print prayers for the selected time period"
                   [disabled]="isPrinting"
                   class="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:py-3 bg-green-600 text-white rounded-l-lg hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors"
                 >
@@ -104,6 +105,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                 <button
                   (click)="showPrintDropdown = !showPrintDropdown"
                   [disabled]="isPrinting"
+                  title="Select time period for prayers to print"
                   class="flex items-center justify-center px-2 bg-green-600 text-white rounded-r-lg border-l border-green-500 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors"
                 >
                   <svg 
@@ -135,6 +137,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                   <button
                     (click)="setPrintRange(option.value); showPrintDropdown = false"
                     class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between"
+                    [title]="'Print prayers from the last ' + option.label"
                   >
                     <span>{{ option.label }}</span>
                     @if (printRange === option.value) {
@@ -153,6 +156,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                 <button
                   (click)="handlePrintPrompts()"
                   [disabled]="isPrintingPrompts"
+                  title="Print prayer prompts for the selected time period"
                   class="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:py-3 bg-green-600 text-white rounded-l-lg hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors"
                 >
                   @if (!isPrintingPrompts) {
@@ -192,6 +196,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                 <button
                   (click)="showPromptTypesDropdown = !showPromptTypesDropdown"
                   [disabled]="isPrintingPrompts"
+                  title="Select which types of prompts to print"
                   class="flex items-center justify-center px-2 bg-green-600 text-white rounded-r-lg border-l border-green-500 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors"
                 >
                   <svg 
@@ -222,6 +227,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                   <button
                     (click)="selectedPromptTypes = []; showPromptTypesDropdown = false"
                     class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between"
+                    title="Print all prompt types"
                   >
                     <span>All Types</span>
                     @if (selectedPromptTypes.length === 0) {
@@ -232,6 +238,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                   <button
                     (click)="togglePromptType(type)"
                     class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between"
+                    [title]="'Toggle ' + type + ' prompts for printing'"
                   >
                     <span>{{ type }}</span>
                     @if (selectedPromptTypes.includes(type)) {
@@ -259,6 +266,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                       'border-blue-500 bg-blue-50 dark:bg-blue-900/20': theme === 'light',
                       'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600': theme !== 'light'
                     }"
+                    title="Use light theme for the application"
                     class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all"
                   >
                     <svg width="18" height="18" class="text-amber-600 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -280,6 +288,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                       'border-blue-500 bg-blue-50 dark:bg-blue-900/20': theme === 'dark',
                       'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600': theme !== 'dark'
                     }"
+                    title="Use dark theme for the application"
                     class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all"
                   >
                     <svg width="18" height="18" class="text-blue-600 dark:text-blue-400 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -293,6 +302,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                       'border-blue-500 bg-blue-50 dark:bg-blue-900/20': theme === 'system',
                       'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600': theme !== 'system'
                     }"
+                    title="Use your operating system's theme preference"
                     class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all"
                   >
                     <svg width="18" height="18" class="text-gray-600 dark:text-gray-400 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -311,59 +321,116 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           </div>
 
           <!-- Email Subscription Toggle -->
-          <div class="flex items-start gap-3 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
-            @if (preferencesLoaded) {
-            <input
-              type="checkbox"
-              id="notifications"
-              [(ngModel)]="receiveNotifications"
-              (ngModelChange)="onNotificationToggle()"
-              [disabled]="saving"
-              name="notifications"
-              aria-label="Receive prayer notifications"
-              class="mt-1 h-4 w-4 text-blue-600 border-gray-300 bg-white dark:bg-gray-800 rounded focus:ring-blue-500 cursor-pointer focus:ring-2 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-            } @else {
-            <!-- Loading skeleton -->
-            <div class="mt-1 h-4 w-4 bg-gray-300 dark:bg-gray-600 rounded animate-pulse flex-shrink-0"></div>
-            }
-            <div class="flex-1">
-              <div class="flex items-center gap-2">
-                <div class="font-medium text-gray-900 dark:text-gray-100 text-sm sm:text-base">
-                  @if (preferencesLoaded) {
-                  {{ receiveNotifications ? 'Subscribed to Prayer Notifications' : 'Not Subscribed to Prayer Notifications' }}
-                  } @else {
-                  <span class="inline-block h-5 w-48 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></span>
+          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 space-y-2">
+            <div class="flex items-start gap-3">
+              @if (preferencesLoaded) {
+              <input
+                type="checkbox"
+                id="notifications"
+                [(ngModel)]="receiveNotifications"
+                (ngModelChange)="onNotificationToggle()"
+                [disabled]="savingNotification"
+                name="notifications"
+                aria-label="Receive prayer notifications"
+                title="Enable or disable receiving prayer notifications via email"
+                class="mt-1 h-4 w-4 text-blue-600 border-gray-300 bg-white dark:bg-gray-800 rounded focus:ring-blue-500 cursor-pointer focus:ring-2 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              } @else {
+              <!-- Loading skeleton -->
+              <div class="mt-1 h-4 w-4 bg-gray-300 dark:bg-gray-600 rounded animate-pulse flex-shrink-0"></div>
+              }
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <div class="font-medium text-gray-900 dark:text-gray-100 text-sm sm:text-base">
+                    @if (preferencesLoaded) {
+                    {{ receiveNotifications ? 'Subscribed to Prayer Notifications' : 'Not Subscribed to Prayer Notifications' }}
+                    } @else {
+                    <span class="inline-block h-5 w-48 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></span>
+                    }
+                  </div>
+                  @if (savingNotification) {
+                  <svg class="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
                   }
                 </div>
-                @if (saving) {
-                <svg class="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                }
               </div>
-              <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
-                @if (preferencesLoaded && receiveNotifications !== null) {
-                {{ saving ? 'Saving...' : (receiveNotifications ? 'You are receiving prayer notifications' : 'You are not receiving prayer notifications') }}
-                } @else {
-                <span class="inline-block h-4 w-64 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></span>
-                }
-              </p>
             </div>
+            <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+              @if (preferencesLoaded && receiveNotifications !== null) {
+              {{ savingNotification ? 'Saving...' : (receiveNotifications ? 'Receive email notifications for new prayers and updates' : 'Email notifications are disabled') }}
+              } @else {
+              <span class="inline-block h-4 w-64 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></span>
+              }
+            </p>
+            @if (successNotification) {
+            <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-2" role="alert" aria-live="assertive" aria-atomic="true">
+              <div class="flex items-start gap-2">
+                <svg class="text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <p class="text-xs sm:text-sm text-green-800 dark:text-green-200">{{ successNotification }}</p>
+              </div>
+            </div>
+            }
           </div>
 
-          <!-- Success/Error Messages -->
-          @if (success) {
-          <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-3" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="flex items-start gap-2">
-              <svg class="text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-              <p class="text-sm text-green-800 dark:text-green-200">{{ success }}</p>
+          <!-- Badge Functionality Toggle -->
+          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 space-y-2">
+            <div class="flex items-start gap-3">
+              @if (badgePreferencesLoaded) {
+              <input
+                type="checkbox"
+                id="badgeFunctionality"
+                [(ngModel)]="badgeFunctionalityEnabled"
+                (ngModelChange)="onBadgeFunctionalityToggle()"
+                [disabled]="savingBadge"
+                name="badgeFunctionality"
+                aria-label="Enable notification badges"
+                title="Enable or disable notification badges to show unread prayers and updates"
+                class="mt-1 h-4 w-4 text-blue-600 border-gray-300 bg-white dark:bg-gray-800 rounded focus:ring-blue-500 cursor-pointer focus:ring-2 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              } @else {
+              <!-- Loading skeleton -->
+              <div class="mt-1 h-4 w-4 bg-gray-300 dark:bg-gray-600 rounded animate-pulse flex-shrink-0"></div>
+              }
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <div class="font-medium text-gray-900 dark:text-gray-100 text-sm sm:text-base">
+                    @if (badgePreferencesLoaded) {
+                    {{ badgeFunctionalityEnabled ? 'Notification Badges Enabled' : 'Notification Badges Disabled' }}
+                    } @else {
+                    <span class="inline-block h-5 w-48 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></span>
+                    }
+                  </div>
+                  @if (savingBadge) {
+                  <svg class="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  }
+                </div>
+              </div>
             </div>
+            <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+              @if (badgePreferencesLoaded && badgeFunctionalityEnabled !== null) {
+              {{ savingBadge ? 'Saving...' : (badgeFunctionalityEnabled ? 'Display badge counts on prayers and updates' : 'Notification badges are disabled') }}
+              } @else {
+              <span class="inline-block h-4 w-64 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"></span>
+              }
+            </p>
+            @if (successBadge) {
+            <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-2" role="alert" aria-live="assertive" aria-atomic="true">
+              <div class="flex items-start gap-2">
+                <svg class="text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <p class="text-xs sm:text-sm text-green-800 dark:text-green-200">{{ successBadge }}</p>
+              </div>
+            </div>
+            }
           </div>
-          }
 
           <!-- Error Message -->
           @if (error) {
@@ -390,6 +457,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           <div class="flex flex-row gap-2 sm:gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 -mx-4 sm:-mx-6 px-4 sm:px-6">
             <button
               (click)="logout()"
+              title="Sign out of your account"
               class="flex items-center justify-center gap-2 px-4 py-2 sm:py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors text-sm sm:text-base font-medium"
               aria-label="Logout"
             >
@@ -402,6 +470,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
             </button>
             <button
               (click)="onClose.emit()"
+              title="Close the settings modal"
               class="px-4 py-2 sm:py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors text-sm sm:text-base font-medium sm:min-w-[100px]"
               aria-label="Close settings"
             >
@@ -426,11 +495,17 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
   name = '';
   email = '';
   receiveNotifications: boolean | null = null;
+  badgeFunctionalityEnabled: boolean | null = null;
   theme: ThemeOption = 'system';
   saving = false;
+  savingNotification = false;
+  savingBadge = false;
   error: string | null = null;
   success: string | null = null;
+  successNotification: string | null = null;
+  successBadge: string | null = null;
   preferencesLoaded = false;
+  badgePreferencesLoaded = false;
   
   isPrinting = false;
   isPrintingPrompts = false;
@@ -478,6 +553,7 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
     private emailNotification: EmailNotificationService,
     private adminAuthService: AdminAuthService,
     private githubFeedbackService: GitHubFeedbackService,
+    private badgeService: BadgeService,
     public userSessionService: UserSessionService,
     private cdr: ChangeDetectorRef
   ) {}
@@ -517,6 +593,7 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
       // Mark that we're doing initial load
       this.isInitialLoad = true;
       this.preferencesLoaded = false;
+      this.badgePreferencesLoaded = false;
       
       // Get user info and preferences from UserSessionService cache
       const userSession = this.userSessionService.getCurrentSession();
@@ -527,6 +604,10 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
         // Get preferences from cached session - no database query needed
         this.receiveNotifications = userSession.isActive ?? true;
         this.preferencesLoaded = true;
+        
+        // Get badge functionality preference from cached session - no database query needed
+        this.badgeFunctionalityEnabled = userSession.badgeFunctionalityEnabled ?? false;
+        this.badgePreferencesLoaded = true;
       } else {
         // Fall back to localStorage if session not available
         const userInfo = this.getUserInfo();
@@ -537,14 +618,21 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
         
         if (this.email.trim()) {
           this.loadPreferencesAutomatically(this.email);
+          // Badge functionality defaults to false when no session
+          this.badgeFunctionalityEnabled = false;
+          this.badgePreferencesLoaded = true;
         } else {
           this.receiveNotifications = true;
           this.preferencesLoaded = true;
+          this.badgeFunctionalityEnabled = false;
+          this.badgePreferencesLoaded = true;
         }
       }
       
       this.error = null;
       this.success = null;
+      this.successNotification = null;
+      this.successBadge = null;
       
       // Reset flag after a short delay
       setTimeout(() => {
@@ -699,7 +787,7 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.saving = true;
+    this.savingNotification = true;
     this.error = null;
     this.success = null;
 
@@ -758,21 +846,147 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
         isActive: this.receiveNotifications ?? true
       });
       
-      this.saving = false;
+      this.savingNotification = false;
       this.cdr.markForCheck();
-      console.log('Success! Clearing message in 3 seconds');
+      this.successNotification = this.receiveNotifications ? '✅ Prayer notifications enabled' : '✅ Prayer notifications disabled';
       setTimeout(() => {
-        this.success = null;
+        this.successNotification = null;
         this.cdr.markForCheck();
       }, 3000);
     } catch (err) {
       console.error('Error updating notification preference:', err);
       this.error = err instanceof Error ? err.message : 'Failed to update preference';
       this.receiveNotifications = !this.receiveNotifications; // Revert toggle on error
-      this.saving = false;
+      this.savingNotification = false;
       this.cdr.markForCheck();
     } finally {
       console.log('Setting saving to false');
+    }
+  }
+
+  async onBadgeFunctionalityToggle(): Promise<void> {
+    const email = this.email.toLowerCase().trim();
+    
+    if (!email) {
+      this.error = 'Email not found. Please log in again.';
+      return;
+    }
+
+    this.savingBadge = true;
+    this.error = null;
+    this.success = null;
+
+    try {
+      // Check if subscriber record exists
+      const { data: existingRecord, error: fetchError } = await this.supabase.client
+        .from('email_subscribers')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      if (existingRecord) {
+        // Update existing record
+        const { error: updateError } = await this.supabase.client
+          .from('email_subscribers')
+          .update({ badge_functionality_enabled: this.badgeFunctionalityEnabled })
+          .eq('email', email);
+
+        if (updateError) {
+          throw updateError;
+        }
+      } else {
+        // Create new record
+        const { error: insertError } = await this.supabase.client
+          .from('email_subscribers')
+          .insert({
+            email,
+            badge_functionality_enabled: this.badgeFunctionalityEnabled
+          });
+
+        if (insertError) {
+          throw insertError;
+        }
+      }
+
+      // If enabling badge functionality, mark all current items as read
+      if (this.badgeFunctionalityEnabled) {
+        this.markAllItemsAsRead();
+        this.successBadge = '✅ Notification badges enabled';
+      } else {
+        this.successBadge = '✅ Notification badges disabled';
+      }
+
+      // Update UserSessionService cache to keep it in sync (this will trigger BadgeService update)
+      await this.userSessionService.updateUserSession({
+        badgeFunctionalityEnabled: this.badgeFunctionalityEnabled ?? false
+      });
+
+      this.savingBadge = false;
+      this.cdr.markForCheck();
+      
+      // Auto-dismiss success message after 3 seconds
+      setTimeout(() => {
+        this.successBadge = null;
+        this.cdr.markForCheck();
+      }, 3000);
+    } catch (err) {
+      console.error('Error updating badge preference:', err);
+      this.error = err instanceof Error ? err.message : 'Failed to update badge preference';
+      this.badgeFunctionalityEnabled = !this.badgeFunctionalityEnabled; // Revert toggle on error
+      this.savingBadge = false;
+      this.cdr.markForCheck();
+    } finally {
+      this.savingBadge = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  private markAllItemsAsRead(): void {
+    try {
+      // Get all prayers and prompts from cache
+      const prayersCache = localStorage.getItem('prayers_cache');
+      const promptsCache = localStorage.getItem('prompts_cache');
+
+      // Mark all prayers as read
+      if (prayersCache) {
+        const parsedCache = JSON.parse(prayersCache);
+        const prayers = parsedCache?.data || parsedCache || [];
+        if (Array.isArray(prayers)) {
+          const prayerIds = prayers.map((p: any) => p.id);
+          const updateIds = prayers.flatMap((p: any) => p.updates?.map((u: any) => u.id) || []);
+
+          const readData = localStorage.getItem('read_prayers_data');
+          const data = readData ? JSON.parse(readData) : { prayers: [], updates: [] };
+          data.prayers = Array.from(new Set([...data.prayers, ...prayerIds]));
+          data.updates = Array.from(new Set([...data.updates, ...updateIds]));
+          localStorage.setItem('read_prayers_data', JSON.stringify(data));
+        }
+      }
+
+      // Mark all prompts as read
+      if (promptsCache) {
+        const parsedCache = JSON.parse(promptsCache);
+        const prompts = parsedCache?.data || parsedCache || [];
+        if (Array.isArray(prompts)) {
+          const promptIds = prompts.map((p: any) => p.id);
+          const updateIds = prompts.flatMap((p: any) => p.updates?.map((u: any) => u.id) || []);
+
+          const readData = localStorage.getItem('read_prompts_data');
+          const data = readData ? JSON.parse(readData) : { prompts: [], updates: [] };
+          data.prompts = Array.from(new Set([...data.prompts, ...promptIds]));
+          data.updates = Array.from(new Set([...data.updates, ...updateIds]));
+          localStorage.setItem('read_prompts_data', JSON.stringify(data));
+        }
+      }
+
+      // Refresh badge counts
+      this.badgeService.refreshBadgeCounts();
+    } catch (err) {
+      console.error('Error marking all items as read:', err);
     }
   }
 

@@ -15,6 +15,7 @@ import { PromptService } from '../../services/prompt.service';
 import { AdminAuthService } from '../../services/admin-auth.service';
 import { UserSessionService } from '../../services/user-session.service';
 import { SupabaseService } from '../../services/supabase.service';
+import { BadgeService } from '../../services/badge.service';
 import { Observable, take, Subject, takeUntil } from 'rxjs';
 import { ToastService } from '../../services/toast.service';
 import { AnalyticsService } from '../../services/analytics.service';
@@ -173,8 +174,19 @@ import type { User } from '@supabase/supabase-js';
           <button
             (click)="setFilter('current')"
             title="Show current prayers"
-            [class]="'rounded-lg shadow-md p-4 text-center border-[2px] transition-all duration-200 cursor-pointer ' + (activeFilter === 'current' ? '!border-[#0047AB] dark:!border-[#0047AB] bg-blue-100 dark:bg-blue-950 ring-3 ring-[#0047AB] dark:ring-[#0047AB] ring-offset-0' : 'bg-white dark:bg-gray-800 !border-gray-200 dark:!border-gray-700 hover:!border-[#0047AB] dark:hover:!border-[#0047AB] hover:shadow-lg')"
+            [class]="'rounded-lg shadow-md p-4 text-center border-[2px] transition-all duration-200 cursor-pointer relative ' + (activeFilter === 'current' ? '!border-[#0047AB] dark:!border-[#0047AB] bg-blue-100 dark:bg-blue-950 ring-3 ring-[#0047AB] dark:ring-[#0047AB] ring-offset-0' : 'bg-white dark:bg-gray-800 !border-gray-200 dark:!border-gray-700 hover:!border-[#0047AB] dark:hover:!border-[#0047AB] hover:shadow-lg')"
           >
+            @let currentCount = (currentPrayerBadge$ | async) || 0;
+            @if ((currentCount > 0) && (badgeService.getBadgeFunctionalityEnabled$() | async)) {
+              <button
+                (click)="$event.stopPropagation(); markAllCurrentAsRead()"
+                class="absolute -top-2 -right-2 inline-flex items-center justify-center w-6 h-6 bg-[#39704D] dark:bg-[#39704D] text-white rounded-full text-xs font-bold hover:bg-[#2d5a3f] dark:hover:bg-[#2d5a3f] focus:outline-none focus:ring-2 focus:ring-[#39704D] focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors"
+                title="Mark all current prayers as read"
+                aria-label="Mark all current prayers as read"
+              >
+                {{ currentCount }}
+              </button>
+            }
             <div class="text-xl sm:text-2xl font-bold text-gray-700 dark:text-gray-300 tabular-nums">
               {{ currentPrayersCount }}
             </div>
@@ -183,8 +195,19 @@ import type { User } from '@supabase/supabase-js';
           <button
             (click)="setFilter('answered')"
             title="Show answered prayers"
-            [class]="'rounded-lg shadow-md p-4 text-center border-[2px] transition-all duration-200 cursor-pointer ' + (activeFilter === 'answered' ? '!border-[#39704D] dark:!border-[#39704D] bg-green-100 dark:bg-green-950 ring-3 ring-[#39704D] dark:ring-[#39704D] ring-offset-0' : 'bg-white dark:bg-gray-800 !border-gray-200 dark:!border-gray-700 hover:!border-[#39704D] dark:hover:!border-[#39704D] hover:shadow-lg')"
+            [class]="'rounded-lg shadow-md p-4 text-center border-[2px] transition-all duration-200 cursor-pointer relative ' + (activeFilter === 'answered' ? '!border-[#39704D] dark:!border-[#39704D] bg-green-100 dark:bg-green-950 ring-3 ring-[#39704D] dark:ring-[#39704D] ring-offset-0' : 'bg-white dark:bg-gray-800 !border-gray-200 dark:!border-gray-700 hover:!border-[#39704D] dark:hover:!border-[#39704D] hover:shadow-lg')"
           >
+            @let answeredCount = (answeredPrayerBadge$ | async) || 0;
+            @if ((answeredCount > 0) && (badgeService.getBadgeFunctionalityEnabled$() | async)) {
+              <button
+                (click)="$event.stopPropagation(); markAllAnsweredAsRead()"
+                class="absolute -top-2 -right-2 inline-flex items-center justify-center w-6 h-6 bg-[#39704D] dark:bg-[#39704D] text-white rounded-full text-xs font-bold hover:bg-[#2d5a3f] dark:hover:bg-[#2d5a3f] focus:outline-none focus:ring-2 focus:ring-[#39704D] focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors"
+                title="Mark all answered prayers as read"
+                aria-label="Mark all answered prayers as read"
+              >
+                {{ answeredCount }}
+              </button>
+            }
             <div class="text-xl sm:text-2xl font-bold text-gray-700 dark:text-gray-300 tabular-nums">
               {{ answeredPrayersCount }}
             </div>
@@ -193,7 +216,7 @@ import type { User } from '@supabase/supabase-js';
           <button
             (click)="setFilter('total')"
             title="Show all prayers"
-            [class]="'rounded-lg shadow-md p-4 text-center border-[2px] transition-all duration-200 cursor-pointer ' + (activeFilter === 'total' ? '!border-[#C9A961] dark:!border-[#C9A961] bg-amber-100 dark:bg-amber-900/40 ring-3 ring-[#C9A961] dark:ring-[#C9A961] ring-offset-0' : 'bg-white dark:bg-gray-800 !border-gray-200 dark:!border-gray-700 hover:!border-[#C9A961] dark:hover:!border-[#C9A961] hover:shadow-lg')"
+            [class]="'rounded-lg shadow-md p-4 text-center border-[2px] transition-all duration-200 cursor-pointer relative ' + (activeFilter === 'total' ? '!border-[#C9A961] dark:!border-[#C9A961] bg-amber-100 dark:bg-amber-900/40 ring-3 ring-[#C9A961] dark:ring-[#C9A961] ring-offset-0' : 'bg-white dark:bg-gray-800 !border-gray-200 dark:!border-gray-700 hover:!border-[#C9A961] dark:hover:!border-[#C9A961] hover:shadow-lg')"
           >
             <div class="text-xl sm:text-2xl font-bold text-gray-700 dark:text-gray-300 tabular-nums">
               {{ totalPrayersCount }}
@@ -203,8 +226,19 @@ import type { User } from '@supabase/supabase-js';
           <button
             (click)="setFilter('prompts')"
             title="Show prayer prompts"
-            [class]="'rounded-lg shadow-md p-4 text-center border-[2px] transition-all duration-200 cursor-pointer ' + (activeFilter === 'prompts' ? '!border-[#988F83] dark:!border-[#988F83] bg-stone-100 dark:bg-stone-900/40 ring-3 ring-[#988F83] dark:ring-[#988F83] ring-offset-0' : 'bg-white dark:bg-gray-800 !border-gray-200 dark:!border-gray-700 hover:!border-[#988F83] dark:hover:!border-[#988F83] hover:shadow-lg')"
+            [class]="'rounded-lg shadow-md p-4 text-center border-[2px] transition-all duration-200 cursor-pointer relative ' + (activeFilter === 'prompts' ? '!border-[#988F83] dark:!border-[#988F83] bg-stone-100 dark:bg-stone-900/40 ring-3 ring-[#988F83] dark:ring-[#988F83] ring-offset-0' : 'bg-white dark:bg-gray-800 !border-gray-200 dark:!border-gray-700 hover:!border-[#988F83] dark:hover:!border-[#988F83] hover:shadow-lg')"
           >
+            @let promptCount = (promptBadge$ | async) || 0;
+            @if ((promptCount > 0) && (badgeService.getBadgeFunctionalityEnabled$() | async)) {
+              <button
+                (click)="$event.stopPropagation(); markAllPromptsAsRead()"
+                class="absolute -top-2 -right-2 inline-flex items-center justify-center w-6 h-6 bg-[#39704D] dark:bg-[#39704D] text-white rounded-full text-xs font-bold hover:bg-[#2d5a3f] dark:hover:bg-[#2d5a3f] focus:outline-none focus:ring-2 focus:ring-[#39704D] focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors"
+                title="Mark all prompts as read"
+                aria-label="Mark all prompts as read"
+              >
+                {{ promptCount }}
+              </button>
+            }
             <div class="text-xl sm:text-2xl font-bold text-gray-700 dark:text-gray-300 tabular-nums">
               {{ promptsCount }}
             </div>
@@ -239,9 +273,14 @@ import type { User } from '@supabase/supabase-js';
             @for (type of getUniquePromptTypes(); track type) {
               <button
                 (click)="togglePromptType(type)"
-                [class]="'flex-1 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-medium transition-all ' + (isPromptTypeSelected(type) ? 'bg-[#988F83] text-white shadow-md' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:border-[#988F83] dark:hover:border-[#988F83]')"
+                [class]="'flex-1 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-medium transition-all relative ' + (isPromptTypeSelected(type) ? 'bg-[#988F83] text-white shadow-md' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:border-[#988F83] dark:hover:border-[#988F83]')"
               >
                 {{ type }} ({{ getPromptCountByType(type) }})
+                @if ((badgeService.getBadgeFunctionalityEnabled$() | async) && getUnreadPromptCountByType(type) > 0) {
+                  <span class="absolute -top-2 -right-2 inline-flex items-center justify-center w-5 h-5 bg-[#39704D] dark:bg-[#39704D] text-white rounded-full text-xs font-bold">
+                    {{ getUnreadPromptCountByType(type) }}
+                  </span>
+                }
               </button>
             }
           </div>
@@ -328,6 +367,11 @@ export class HomeComponent implements OnInit, OnDestroy {
   isAdmin$!: Observable<boolean>;
   hasAdminEmail$!: Observable<boolean>;
 
+  // Badge observables
+  currentPrayerBadge$!: Observable<number>;
+  answeredPrayerBadge$!: Observable<number>;
+  promptBadge$!: Observable<number>;
+
   currentPrayersCount = 0;
   answeredPrayersCount = 0;
   totalPrayersCount = 0;
@@ -354,6 +398,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     public promptService: PromptService,
     public adminAuthService: AdminAuthService,
     public userSessionService: UserSessionService,
+    public badgeService: BadgeService,
     private toastService: ToastService,
     private analyticsService: AnalyticsService,
     private cdr: ChangeDetectorRef,
@@ -377,6 +422,11 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.isAdmin$ = this.adminAuthService.isAdmin$;
     this.hasAdminEmail$ = this.adminAuthService.hasAdminEmail$;
 
+    // Initialize badge observables
+    this.currentPrayerBadge$ = this.badgeService.getBadgeCount$('prayers', 'current');
+    this.answeredPrayerBadge$ = this.badgeService.getBadgeCount$('prayers', 'answered');
+    this.promptBadge$ = this.badgeService.getBadgeCount$('prompts');
+
     // Load admin settings (deletion and update policies)
     this.loadAdminSettings();
 
@@ -387,6 +437,9 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.currentPrayersCount = prayers.filter(p => p.status === 'current').length;
         this.answeredPrayersCount = prayers.filter(p => p.status === 'answered').length;
         this.totalPrayersCount = prayers.length;
+
+        // Refresh badge counts when prayers data loads/changes
+        this.badgeService.refreshBadgeCounts();
       });
 
     // Subscribe to prompts for count - with cleanup
@@ -395,6 +448,9 @@ export class HomeComponent implements OnInit, OnDestroy {
       .subscribe(prompts => {
         this.promptsCount = prompts.length;
         this.cdr.markForCheck();
+
+        // Refresh badge counts when prompts data loads/changes
+        this.badgeService.refreshBadgeCounts();
       });
     
     // Subscribe to admin status - with cleanup
@@ -582,6 +638,14 @@ export class HomeComponent implements OnInit, OnDestroy {
     return prompts.filter(p => p.type === type).length;
   }
 
+  /**
+   * Get count of unread prompts by type (prompts with badges)
+   */
+  getUnreadPromptCountByType(type: string): number {
+    const prompts = this.promptService.promptsSubject.value;
+    return prompts.filter(p => p.type === type && this.badgeService.isPromptUnread(p.id)).length;
+  }
+
   formatDate(dateString: string): string {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
@@ -662,5 +726,17 @@ export class HomeComponent implements OnInit, OnDestroy {
     if (prayerappEmail) return prayerappEmail;
     
     return 'Not logged in';
+  }
+
+  markAllCurrentAsRead(): void {
+    this.badgeService.markAllAsReadByStatus('prayers', 'current');
+  }
+
+  markAllAnsweredAsRead(): void {
+    this.badgeService.markAllAsReadByStatus('prayers', 'answered');
+  }
+
+  markAllPromptsAsRead(): void {
+    this.badgeService.markAllAsRead('prompts');
   }
 }

@@ -3,6 +3,7 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { SupabaseService } from './supabase.service';
 import { ToastService } from './toast.service';
 import { CacheService } from './cache.service';
+import { BadgeService } from './badge.service';
 import { PrayerPrompt } from '../components/prompt-card/prompt-card.component';
 
 @Injectable({
@@ -20,7 +21,8 @@ export class PromptService {
   constructor(
     private supabase: SupabaseService,
     private toast: ToastService,
-    private cache: CacheService
+    private cache: CacheService,
+    private badgeService: BadgeService
   ) {
     this.loadPrompts();
   }
@@ -81,6 +83,9 @@ export class PromptService {
       this.toast.error('Failed to load prompts');
     } finally {
       this.loadingSubject.next(false);
+      
+      // Refresh badge counts to ensure badges show up for new prompts
+      this.badgeService.refreshBadgeCounts();
     }
   }
 

@@ -1,5 +1,8 @@
-import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Observable, BehaviorSubject, Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+import { BadgeService } from '../../services/badge.service';
 import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog.component';
 
 export interface PrayerPrompt {
@@ -17,7 +20,7 @@ export interface PrayerPrompt {
   imports: [CommonModule, ConfirmationDialogComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="prompt-card bg-white dark:bg-gray-800 rounded-lg shadow-md border-[2px] !border-[#988F83] dark:!border-[#988F83] p-6 mb-4 hover:shadow-lg transition-shadow">
+    <div class="prompt-card bg-white dark:bg-gray-800 rounded-lg shadow-md border-[2px] !border-[#988F83] dark:!border-[#988F83] p-6 mb-4 hover:shadow-lg transition-shadow relative">
       <!-- Header -->
       <div class="flex items-start justify-between mb-4">
         <div class="flex items-center gap-2 flex-1">
@@ -58,6 +61,18 @@ export interface PrayerPrompt {
         </div>
       </div>
 
+      <!-- Badge in top-right corner -->
+      @if ((promptBadge$ | async) && (badgeService.getBadgeFunctionalityEnabled$() | async)) {
+        <button
+          (click)="markPromptAsRead()"
+          class="absolute -top-2 -right-2 inline-flex items-center justify-center w-6 h-6 bg-[#39704D] dark:bg-[#39704D] text-white rounded-full text-xs font-bold hover:bg-[#2d5a3f] dark:hover:bg-[#2d5a3f] focus:outline-none focus:ring-2 focus:ring-[#39704D] focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors"
+          title="Mark as read"
+          aria-label="Mark prompt as read"
+        >
+          1
+        </button>
+      }
+
       <!-- Description -->
       <p class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
         {{ prompt.description }}
@@ -78,7 +93,7 @@ export interface PrayerPrompt {
   `,
   styles: []
 })
-export class PromptCardComponent {
+export class PromptCardComponent implements OnInit, OnDestroy {
   @Input() prompt!: PrayerPrompt;
   @Input() isAdmin = false;
   @Input() isTypeSelected = false;
@@ -86,7 +101,59 @@ export class PromptCardComponent {
   @Output() delete = new EventEmitter<string>();
   @Output() onTypeClick = new EventEmitter<string>();
 
+  promptBadge$: Observable<boolean> | null = null;
   showConfirmationDialog = false;
+  private storageListener: ((event: StorageEvent) => void) | null = null;
+  private promptBadgeSubject$ = new BehaviorSubject<boolean>(false);
+  private destroy$ = new Subject<void>();
+
+  constructor(public badgeService: BadgeService) {}
+
+  ngOnInit(): void {
+    // Initialize badge by checking if prompt is unread
+    this.initializePromptBadge();
+    this.promptBadge$ = this.promptBadgeSubject$.asObservable();
+
+    // Listen to badge changes from badge service
+    this.badgeService.getUpdateBadgesChanged$()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.updatePromptBadge();
+      });
+
+    // Listen to storage changes to ensure badge updates
+    this.storageListener = (event: StorageEvent) => {
+      if (event.key === 'read_prompts_data') {
+        this.updatePromptBadge();
+      }
+    };
+
+    window.addEventListener('storage', this.storageListener);
+  }
+
+  ngOnDestroy(): void {
+    if (this.storageListener) {
+      window.removeEventListener('storage', this.storageListener);
+    }
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  /**
+   * Initialize the prompt badge based on badge service state
+   */
+  private initializePromptBadge(): void {
+    const isUnread = this.badgeService.isPromptUnread(this.prompt.id);
+    this.promptBadgeSubject$.next(isUnread);
+  }
+
+  /**
+   * Update the prompt badge based on current badge service state
+   */
+  private updatePromptBadge(): void {
+    const isUnread = this.badgeService.isPromptUnread(this.prompt.id);
+    this.promptBadgeSubject$.next(isUnread);
+  }
 
   handleDelete(): void {
     this.showConfirmationDialog = true;
@@ -99,5 +166,9 @@ export class PromptCardComponent {
 
   onCancelDelete(): void {
     this.showConfirmationDialog = false;
+  }
+
+  markPromptAsRead(): void {
+    this.badgeService.markPromptAsRead(this.prompt.id);
   }
 }

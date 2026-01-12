@@ -4,12 +4,14 @@ import { PromptService } from './prompt.service';
 import { SupabaseService } from './supabase.service';
 import { ToastService } from './toast.service';
 import { CacheService } from './cache.service';
+import { BadgeService } from './badge.service';
 
 describe('PromptService', () => {
   let service: PromptService;
   let mockSupabaseService: any;
   let mockToastService: any;
   let mockCacheService: any;
+  let mockBadgeService: any;
   let consoleErrorSpy: any;
 
   beforeEach(() => {
@@ -26,6 +28,16 @@ describe('PromptService', () => {
       get: vi.fn().mockReturnValue(null),
       set: vi.fn(),
       invalidate: vi.fn()
+    };
+
+    // Mock BadgeService
+    mockBadgeService = {
+      refreshBadgeCounts: vi.fn(),
+      isPrayerUnread: vi.fn(),
+      isPromptUnread: vi.fn(),
+      markPrayerAsRead: vi.fn(),
+      markPromptAsRead: vi.fn(),
+      getBadgeFunctionalityEnabled$: vi.fn(() => ({ subscribe: vi.fn() }))
     };
 
     // Mock SupabaseService with default responses
@@ -76,7 +88,7 @@ describe('PromptService', () => {
       }
     };
 
-    service = new PromptService(mockSupabaseService, mockToastService, mockCacheService);
+    service = new PromptService(mockSupabaseService, mockToastService, mockCacheService, mockBadgeService);
   });
 
   afterEach(() => {

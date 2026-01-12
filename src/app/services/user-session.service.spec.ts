@@ -1868,4 +1868,134 @@ describe('UserSessionService', () => {
       expect(result).not.toBeNull();
     });
   });
+
+  describe('Badge Functionality', () => {
+    it('should load badge_functionality_enabled from database', async () => {
+      mockSupabaseService.client.from = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: {
+                email: 'test@example.com',
+                name: 'John Doe',
+                is_active: true,
+                badge_functionality_enabled: true
+              },
+              error: null
+            })
+          })
+        })
+      });
+
+      await service.loadUserSession('test@example.com');
+      
+      const session = service.getCurrentSession();
+      expect(session?.badgeFunctionalityEnabled).toBe(true);
+    });
+
+    it('should default badge_functionality_enabled to false if not in database', async () => {
+      mockSupabaseService.client.from = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: {
+                email: 'test@example.com',
+                name: 'John Doe',
+                is_active: true
+              },
+              error: null
+            })
+          })
+        })
+      });
+
+      await service.loadUserSession('test@example.com');
+      
+      const session = service.getCurrentSession();
+      expect(session?.badgeFunctionalityEnabled).toBe(false);
+    });
+
+    it('should have isBadgeFunctionalityEnabled getter', async () => {
+      mockSupabaseService.client.from = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: {
+                email: 'test@example.com',
+                name: 'John Doe',
+                is_active: true,
+                badge_functionality_enabled: true
+              },
+              error: null
+            })
+          })
+        })
+      });
+
+      await service.loadUserSession('test@example.com');
+      
+      expect(service.isBadgeFunctionalityEnabled()).toBe(true);
+    });
+
+    it('should return false for isBadgeFunctionalityEnabled when session is null', () => {
+      expect(service.isBadgeFunctionalityEnabled()).toBe(false);
+    });
+
+    it('should update session cache with badge functionality', async () => {
+      mockSupabaseService.client.from = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: {
+                email: 'test@example.com',
+                name: 'John Doe',
+                is_active: true,
+                badge_functionality_enabled: true
+              },
+              error: null
+            })
+          })
+        })
+      });
+
+      await service.loadUserSession('test@example.com');
+      
+      const cached = localStorage.getItem('userSession');
+      expect(cached).toBeTruthy();
+      
+      const parsed = JSON.parse(cached!);
+      expect(parsed.badgeFunctionalityEnabled).toBe(true);
+    });
+
+    it('should persist badge functionality through updateUserSession', async () => {
+      mockSupabaseService.client.from = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: {
+                email: 'test@example.com',
+                name: 'John Doe',
+                is_active: true,
+                badge_functionality_enabled: false
+              },
+              error: null
+            })
+          })
+        })
+      });
+
+      await service.loadUserSession('test@example.com');
+      
+      await service.updateUserSession({ badgeFunctionalityEnabled: true });
+      
+      const session = service.getCurrentSession();
+      expect(session?.badgeFunctionalityEnabled).toBe(true);
+    });
+
+    it('should handle null session gracefully for badge functionality', async () => {
+      service.loadUserSession('');
+      
+      expect(service.isBadgeFunctionalityEnabled()).toBe(false);
+    });
+  });
 });

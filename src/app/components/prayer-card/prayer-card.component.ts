@@ -1,9 +1,10 @@
-import { Component, Input, Output, EventEmitter, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, ChangeDetectionStrategy, OnDestroy, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { PrayerRequest } from '../../services/prayer.service';
+import { Observable, BehaviorSubject, Subject } from 'rxjs';import { takeUntil } from 'rxjs/operators';import { PrayerRequest } from '../../services/prayer.service';
 import { SupabaseService } from '../../services/supabase.service';
 import { UserSessionService } from '../../services/user-session.service';
+import { BadgeService } from '../../services/badge.service';
 import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog.component';
 
 @Component({
@@ -46,6 +47,18 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
         </button>
         }
       </div>
+
+      <!-- Badge in top-right corner -->
+      @if ((prayerBadge$ | async) && (badgeService.getBadgeFunctionalityEnabled$() | async)) {
+        <button
+          (click)="markPrayerAsRead()"
+          class="absolute -top-2 -right-2 inline-flex items-center justify-center w-6 h-6 bg-[#39704D] dark:bg-[#39704D] text-white rounded-full text-xs font-bold hover:bg-[#2d5a3f] dark:hover:bg-[#2d5a3f] focus:outline-none focus:ring-2 focus:ring-[#39704D] focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors"
+          title="Mark prayer as read"
+          aria-label="Mark prayer as read"
+        >
+          1
+        </button>
+      }
 
       <!-- Centered timestamp -->
       <span class="absolute left-1/2 top-4 transform -translate-x-1/2 -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400">
@@ -186,7 +199,7 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
         <div class="space-y-3">
           @for (update of getDisplayedUpdates(); track update.id) {
           <div
-            [class]="'bg-gray-100 dark:bg-gray-700 rounded-lg p-6 border ' + getBorderClass()"
+            [class]="'bg-gray-100 dark:bg-gray-700 rounded-lg p-6 border relative ' + getBorderClass()"
           >
             <div class="relative mb-2">
               <div class="flex items-center justify-between">
@@ -211,6 +224,19 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
                 {{ formatDate(update.created_at) }}
               </span>
             </div>
+            
+            <!-- Badge in top-right corner -->
+            @if ((updateBadges$.get(update.id) | async) && (badgeService.getBadgeFunctionalityEnabled$() | async)) {
+              <button
+                (click)="markUpdateAsRead(update.id)"
+                class="absolute -top-2 -right-2 inline-flex items-center justify-center w-6 h-6 bg-[#39704D] dark:bg-[#39704D] text-white rounded-full text-xs font-bold hover:bg-[#2d5a3f] dark:hover:bg-[#2d5a3f] focus:outline-none focus:ring-2 focus:ring-[#39704D] focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors"
+                title="Mark update as read"
+                aria-label="Mark update as read"
+              >
+                1
+              </button>
+            }
+
             <p class="text-sm text-gray-700 dark:text-gray-300">{{ update.content }}</p>
             
             @if (showUpdateDeleteRequestForm === update.id && !isAdmin) {
@@ -280,7 +306,7 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
   `,
   styles: []
 })
-export class PrayerCardComponent implements OnInit {
+export class PrayerCardComponent implements OnInit, OnChanges, OnDestroy {
   @Input() prayer!: PrayerRequest;
   @Input() isAdmin = false;
   @Input() deletionsAllowed: 'everyone' | 'original-requestor' | 'admin-only' = 'everyone';
@@ -292,6 +318,12 @@ export class PrayerCardComponent implements OnInit {
   @Output() deleteUpdate = new EventEmitter<string>();
   @Output() requestDeletion = new EventEmitter<any>();
   @Output() requestUpdateDeletion = new EventEmitter<any>();
+
+  prayerBadge$: Observable<boolean> | null = null;
+  updateBadges$: Map<string, BehaviorSubject<boolean>> = new Map();
+  private destroy$ = new Subject<void>();
+  private storageListener: ((event: StorageEvent) => void) | null = null;
+  private prayerBadgeSubject$ = new BehaviorSubject<boolean>(false);
 
   showAddUpdateForm = false;
   showDeleteRequestForm = false;
@@ -316,11 +348,133 @@ export class PrayerCardComponent implements OnInit {
 
   constructor(
     private supabase: SupabaseService,
-    private userSessionService: UserSessionService
+    private userSessionService: UserSessionService,
+    public badgeService: BadgeService
   ) {}
 
   ngOnInit(): void {
-    // Any initialization logic
+    // Initialize badge observable for this prayer
+    this.initializePrayerBadge();
+    this.prayerBadge$ = this.prayerBadgeSubject$.asObservable();
+
+    // Initialize badges for updates with local BehaviorSubjects
+    if (this.prayer.updates && Array.isArray(this.prayer.updates)) {
+      this.prayer.updates.forEach(update => {
+        this.initializeUpdateBadge(update.id);
+      });
+    }
+
+    // Listen to update badges changed event from badge service
+    this.badgeService.getUpdateBadgesChanged$()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        // Update prayer badge and all update badge subjects when batch changes occur
+        this.updatePrayerBadge();
+        if (this.prayer.updates && Array.isArray(this.prayer.updates)) {
+          this.prayer.updates.forEach(update => {
+            this.updateUpdateBadge(update.id);
+          });
+        }
+      });
+
+    // Listen to storage changes for cross-tab updates
+    this.storageListener = (event: StorageEvent) => {
+      if (event.key === 'read_prayers_data') {
+        // Update only this prayer's update badge subjects
+        if (this.prayer.updates && Array.isArray(this.prayer.updates)) {
+          this.prayer.updates.forEach(update => {
+            this.updateUpdateBadge(update.id);
+          });
+        }
+      }
+    };
+
+    window.addEventListener('storage', this.storageListener);
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    // Check if updates array has changed
+    if (changes['prayer'] && !changes['prayer'].firstChange) {
+      const previousPrayer = changes['prayer'].previousValue as PrayerRequest;
+      const currentPrayer = changes['prayer'].currentValue as PrayerRequest;
+      
+      // Detect if updates were added
+      const previousUpdateIds = previousPrayer?.updates?.map(u => u.id) || [];
+      const currentUpdateIds = currentPrayer?.updates?.map(u => u.id) || [];
+      
+      // Find new updates that weren't in the previous array
+      const newUpdates = currentUpdateIds.filter(id => !previousUpdateIds.includes(id));
+      
+      if (newUpdates.length > 0) {
+        // Initialize badge subjects for new updates
+        newUpdates.forEach(newUpdateId => {
+          const update = currentPrayer.updates?.find(u => u.id === newUpdateId);
+          if (update && !this.updateBadges$.has(update.id)) {
+            this.initializeUpdateBadge(update.id);
+          }
+        });
+      }
+    }
+  }
+
+  /**
+   * Initialize a badge subject for an update
+   */
+  private initializeUpdateBadge(updateId: string): void {
+    const isUnread = this.badgeService.isUpdateUnread(updateId);
+    const subject = new BehaviorSubject<boolean>(isUnread);
+    this.updateBadges$.set(updateId, subject);
+  }
+
+  /**
+   * Update a badge subject for an update based on badge service state
+   */
+  private updateUpdateBadge(updateId: string): void {
+    const isUnread = this.badgeService.isUpdateUnread(updateId);
+    const subject = this.updateBadges$.get(updateId);
+    if (subject) {
+      subject.next(isUnread);
+    }
+  }
+
+  /**
+   * Initialize the prayer badge based on badge service state
+   */
+  private initializePrayerBadge(): void {
+    const isUnread = this.badgeService.isPrayerUnread(this.prayer.id);
+    this.prayerBadgeSubject$.next(isUnread);
+  }
+
+  /**
+   * Update the prayer badge based on current badge service state
+   */
+  private updatePrayerBadge(): void {
+    const isUnread = this.badgeService.isPrayerUnread(this.prayer.id);
+    this.prayerBadgeSubject$.next(isUnread);
+  }
+
+  ngOnDestroy(): void {
+    if (this.storageListener) {
+      window.removeEventListener('storage', this.storageListener);
+    }
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  /**
+   * Get read update IDs from localStorage
+   */
+  private getReadUpdateIds(): string[] {
+    try {
+      const stored = localStorage.getItem('read_prayers_data');
+      if (!stored) {
+        return [];
+      }
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed.updates) ? parsed.updates : [];
+    } catch (error) {
+      return [];
+    }
   }
 
   getBorderClass(): string {
@@ -569,5 +723,27 @@ export class PrayerCardComponent implements OnInit {
   private resetUpdateDeleteForm(): void {
     this.updateDeleteReason = '';
     this.showUpdateDeleteRequestForm = null;
+  }
+
+  markPrayerAsRead(): void {
+    this.badgeService.markPrayerAsRead(this.prayer.id);
+  }
+
+  /**
+   * Mark an update as read
+   */
+  markUpdateAsRead(updateId: string): void {
+    try {
+      // Call the badge service method which handles all the counting
+      this.badgeService.markUpdateAsRead(updateId, this.prayer.id, 'prayers');
+      
+      // Update the BehaviorSubject for this update immediately
+      const subject = this.updateBadges$.get(updateId);
+      if (subject) {
+        subject.next(false); // Hide the badge
+      }
+    } catch (error) {
+      console.warn('Failed to mark update as read:', error);
+    }
   }
 }

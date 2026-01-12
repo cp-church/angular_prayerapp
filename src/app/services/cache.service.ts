@@ -81,7 +81,11 @@ export class CacheService {
    * Get cached data by key
    */
   get<T>(key: string): T | null {
-    const cached = this.inMemoryCache.get(key);
+    const configKey = key.split('_')[0];
+    const config = this.cacheConfigs.get(configKey);
+    const storageKey = config?.key || key;
+
+    const cached = this.inMemoryCache.get(storageKey);
 
     if (!cached) {
       return null;
@@ -89,9 +93,9 @@ export class CacheService {
 
     // Check if cache has expired
     if (this.isExpired(cached)) {
-      this.inMemoryCache.delete(key);
+      this.inMemoryCache.delete(storageKey);
       if (this.localStorageEnabled) {
-        localStorage.removeItem(key);
+        localStorage.removeItem(storageKey);
       }
       return null;
     }
@@ -103,7 +107,9 @@ export class CacheService {
    * Set cached data with TTL
    */
   set<T>(key: string, data: T, ttl?: number): void {
-    const config = this.cacheConfigs.get(key.split('_')[0]);
+    const configKey = key.split('_')[0];
+    const config = this.cacheConfigs.get(configKey);
+    const storageKey = config?.key || key;
     const finalTtl = ttl || config?.ttl || 5 * 60 * 1000;
 
     const cached: CachedData<T> = {
@@ -112,12 +118,13 @@ export class CacheService {
       ttl: finalTtl
     };
 
-    this.inMemoryCache.set(key, cached);
+    this.inMemoryCache.set(storageKey, cached);
 
     // Persist to localStorage if available
     if (this.localStorageEnabled) {
       try {
-        localStorage.setItem(key, JSON.stringify(cached));
+        console.log('[CacheService] Setting cache for', storageKey, 'with', Array.isArray(data) ? data.length + ' items' : 'data');
+        localStorage.setItem(storageKey, JSON.stringify(cached));
       } catch (error) {
         console.warn('Failed to persist cache to localStorage:', error);
       }

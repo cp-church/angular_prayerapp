@@ -82,6 +82,17 @@ describe('UserSettingsComponent', () => {
       getGitHubConfig: vi.fn(() => Promise.resolve(null))
     };
 
+    const mockBadgeService = {
+      getBadgeFunctionalityEnabled$: vi.fn(() => Promise.resolve({ enabled: true })),
+      isPromptUnread: vi.fn(() => false),
+      markPromptAsRead: vi.fn(() => Promise.resolve()),
+      getUpdateBadgesChanged$: vi.fn(() => ({})),
+      markPrayerAsRead: vi.fn(() => Promise.resolve()),
+      markPromptAsRead: vi.fn(() => Promise.resolve()),
+      refreshBadgeCounts: vi.fn(() => Promise.resolve()),
+      getBadgeCount$: vi.fn(() => ({}))
+    };
+
     component = new UserSettingsComponent(
       mockThemeService,
       mockPrintService,
@@ -89,6 +100,7 @@ describe('UserSettingsComponent', () => {
       mockEmailNotificationService,
       mockAdminAuthService,
       mockGitHubFeedbackService as any,
+      mockBadgeService as any,
       mockUserSessionService,
       mockChangeDetectorRef as ChangeDetectorRef
     );
@@ -631,11 +643,11 @@ describe('UserSettingsComponent', () => {
 
       await component.onNotificationToggle();
       
-      expect(component.success).toBeTruthy();
+      expect(component.successNotification).toBeTruthy();
       
       await vi.advanceTimersByTimeAsync(3000);
       
-      expect(component.success).toBeNull();
+      expect(component.successNotification).toBeNull();
     });
 
     it('should handle update error and revert toggle', async () => {

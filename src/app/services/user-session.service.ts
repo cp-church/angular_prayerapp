@@ -10,6 +10,7 @@ export interface UserSessionData {
   isActive: boolean;
   receiveNotifications?: boolean;
   receiveAdminEmails?: boolean;
+  badgeFunctionalityEnabled?: boolean;
 }
 
 /**
@@ -105,7 +106,7 @@ export class UserSessionService {
       const { data, error } = await Promise.race([
         this.supabase.client
           .from('email_subscribers')
-          .select('email, name, is_active')
+          .select('email, name, is_active, badge_functionality_enabled')
           .eq('email', email.toLowerCase().trim())
           .maybeSingle(),
         new Promise((_, reject) => 
@@ -124,7 +125,8 @@ export class UserSessionService {
           fullName: data.name || '',
           isActive: data.is_active ?? true,
           receiveNotifications: true,
-          receiveAdminEmails: false
+          receiveAdminEmails: false,
+          badgeFunctionalityEnabled: data.badge_functionality_enabled ?? false
         };
         this.userSessionSubject.next(sessionData);
         this.saveToCache(sessionData);
@@ -135,7 +137,8 @@ export class UserSessionService {
           fullName: '',
           isActive: true,
           receiveNotifications: true,
-          receiveAdminEmails: false
+          receiveAdminEmails: false,
+          badgeFunctionalityEnabled: false
         };
         this.userSessionSubject.next(sessionData);
         this.saveToCache(sessionData);
@@ -148,7 +151,8 @@ export class UserSessionService {
         fullName: '',
         isActive: true,
         receiveNotifications: true,
-        receiveAdminEmails: false
+        receiveAdminEmails: false,
+        badgeFunctionalityEnabled: false
       };
       this.userSessionSubject.next(sessionData);
       this.saveToCache(sessionData);
@@ -218,6 +222,14 @@ export class UserSessionService {
   isAdminEmailsEnabled(): boolean {
     const session = this.userSessionSubject.value;
     return session?.receiveAdminEmails ?? false;
+  }
+
+  /**
+   * Check if badge functionality is enabled for the user
+   */
+  isBadgeFunctionalityEnabled(): boolean {
+    const session = this.userSessionSubject.value;
+    return session?.badgeFunctionalityEnabled ?? false;
   }
 
   /**
