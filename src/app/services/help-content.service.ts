@@ -260,7 +260,7 @@ export class HelpContentService {
         content: [
           {
             subtitle: 'Creating a New Prayer Request',
-            text: 'Click the "Add Request" button in the header to create a new prayer request. Fill in the title, description, and any relevant details about what you\'d like prayer for.',
+            text: 'Click the "Add Request" button in the header to create a new prayer request. Fill in the title, description, and any relevant details about what you\'d like people to pray for.',
             examples: [
               'Example: "Healing for Jane\'s surgery next week"',
               'Example: "Wisdom in my job decision"',
