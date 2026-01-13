@@ -268,7 +268,7 @@ export class HelpContentService {
           },
           {
             subtitle: 'Prayer Approval Process',
-            text: 'When you submit a new prayer request, it will be reviewed and approved by an administrator before it appears publicly. This helps maintain the quality and appropriateness of prayer requests in our community.',
+            text: 'When you submit a new prayer request, update or deletion, it will be reviewed and approved by an administrator before it appears publicly. This helps maintain the quality and appropriateness of prayer requests in our community.',
           },
           {
             subtitle: 'Updating Prayers',
