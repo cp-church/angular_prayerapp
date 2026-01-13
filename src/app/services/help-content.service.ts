@@ -415,6 +415,35 @@ export class HelpContentService {
         createdBy: 'system',
       },
       {
+        id: 'help_email_subscription',
+        title: 'Email Subscription',
+        description: 'Manage your email notification preferences',
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>',
+        content: [
+          {
+            subtitle: 'What is Email Subscription?',
+            text: 'Email subscription allows you to receive email notifications about new prayers and prayer updates. When you disable email subscription, you will not receive any mass email blasts.',
+          },
+          {
+            subtitle: 'Accessing Email Subscription Settings',
+            text: 'To manage your email subscription, open the Settings menu (gear icon) in the top right corner of the app. You\'ll find the Email Subscription toggle in the settings panel. Simply toggle it on or off to enable or disable email notifications.',
+          },
+          {
+            subtitle: 'Unsubscribe from Mass Emails',
+            text: 'Disabling the Email Subscription toggle will unsubscribe you from all mass email blasts and automated notification emails sent by the app. This means you\'ll stop receiving prayer updates, but you\'ll still be able to use the app normally.',
+          },
+          {
+            subtitle: 'Your Preference is Saved',
+            text: 'Your email subscription preference is saved automatically and will persist across sessions. You can change your subscription status at any time by revisiting the Settings menu.',
+          },
+        ],
+        order: 7,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'system',
+      },
+      {
         id: 'help_feedback',
         title: 'Send Feedback',
         description: 'Share suggestions, report bugs, and request features',
@@ -437,7 +466,7 @@ export class HelpContentService {
             text: 'Your feedback is valuable! Whether you find a bug, want a new feature, or have a suggestion to make the app better, please share it with us. We read and consider all feedback from our users.',
           },
         ],
-        order: 7,
+        order: 8,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -458,6 +487,10 @@ export class HelpContentService {
             text: 'Choose from different theme options to customize the app appearance. Light mode is best for bright environments, dark mode reduces eye strain in low light, and system mode automatically follows your device\'s theme preference. Your selected theme preference is saved automatically.',
           },
           {
+            subtitle: 'Email Subscription',
+            text: 'Enable email subscription to receive notifications about prayer updates and community activities. When enabled, you\'ll get email notifications for new prayers, prayer updates, and other important app notifications. You can toggle this setting at any time to start or stop receiving emails.',
+          },
+          {
             subtitle: 'Notification Badges',
             text: 'Badges appear on the prayer count cards and filter buttons to notify you of new prayers that haven\'t been read yet. You can dismiss badges by clicking directly on the badge number. Or, click the badge in the filter buttons to clear all badges for that specific prayer category at once.',
           },
@@ -474,7 +507,7 @@ export class HelpContentService {
             text: 'Click the logout button to sign out of your account. This will end your session and return you to the login screen. Make sure to save any important information before logging out.',
           },
         ],
-        order: 8,
+        order: 9,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
