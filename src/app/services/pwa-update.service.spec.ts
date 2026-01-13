@@ -147,6 +147,7 @@ describe('PWAUpdateService', () => {
 
   it('should handle checkForUpdate error gracefully', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {}); // Suppress log output
     const errorMock = new Error('Update check failed');
     
     const errorSwUpdateMock: Partial<SwUpdate> = {
@@ -160,7 +161,7 @@ describe('PWAUpdateService', () => {
     isStableSubject.next(true);
 
     // Wait for async operations
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     expect(consoleSpy).toHaveBeenCalledWith(
       '[PWAUpdate] Failed to check for updates:',

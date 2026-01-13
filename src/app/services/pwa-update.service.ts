@@ -1,6 +1,6 @@
 import { Injectable, ApplicationRef } from '@angular/core';
 import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
-import { BehaviorSubject, Observable, interval, concat } from 'rxjs';
+import { BehaviorSubject, Observable, interval } from 'rxjs';
 import { filter, first } from 'rxjs/operators';
 
 /**
@@ -29,9 +29,11 @@ export class PWAUpdateService {
    */
   private initializeUpdateDetection(): void {
     if (!this.swUpdate.isEnabled) {
-      console.log('[PWAUpdate] Service Worker updates not enabled');
+      console.log('[PWAUpdate] Service Worker updates not enabled (likely in development mode)');
       return;
     }
+
+    console.log('[PWAUpdate] Service Worker updates enabled, initializing update detection...');
 
     // Listen for version updates (when new version is ready)
     this.swUpdate.versionUpdates
@@ -41,20 +43,36 @@ export class PWAUpdateService {
         this.updateAvailableSubject.next(true);
       });
 
-    // Check for updates when app stabilizes and then periodically
-    const appIsStable$ = this.appRef.isStable.pipe(first(isStable => isStable === true));
-    const everySixHours$ = concat(appIsStable$, interval(5 * 60 * 1000)); // Check every 5 minutes
+    // Check for updates when app stabilizes and then periodically every 5 minutes
+    this.appRef.isStable
+      .pipe(
+        first(isStable => isStable === true), // Wait for app to stabilize
+      )
+      .subscribe(() => {
+        console.log('[PWAUpdate] App stabilized, starting update check schedule');
+        
+        // Check immediately when app stabilizes
+        this.performUpdateCheck();
+        
+        // Then check periodically every 5 minutes
+        interval(5 * 60 * 1000).subscribe(() => {
+          console.log('[PWAUpdate] Periodic update check (every 5 minutes)');
+          this.performUpdateCheck();
+        });
+      });
+  }
 
-    everySixHours$.subscribe(async () => {
-      try {
-        const updateFound = await this.swUpdate.checkForUpdate();
-        if (updateFound) {
-          console.log('[PWAUpdate] Update check found new version');
-        }
-      } catch (err) {
-        console.error('[PWAUpdate] Failed to check for updates:', err);
-      }
-    });
+  /**
+   * Internal method to perform update check with logging
+   */
+  private async performUpdateCheck(): Promise<void> {
+    try {
+      console.log('[PWAUpdate] Checking for updates...');
+      const updateFound = await this.swUpdate.checkForUpdate();
+      console.log('[PWAUpdate] Update check result:', updateFound ? 'Update found!' : 'No update available');
+    } catch (err) {
+      console.error('[PWAUpdate] Failed to check for updates:', err);
+    }
   }
 
   /**
