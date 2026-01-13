@@ -728,8 +728,8 @@ export class AdminComponent implements OnInit, OnDestroy {
   showSendNotificationDialog = false;
   sendDialogType: NotificationType = 'prayer';
   sendDialogPrayerTitle?: string;
-  private sendDialogPrayerId?: string;
-  private sendDialogUpdateId?: string;
+  sendDialogPrayerId?: string;
+  sendDialogUpdateId?: string;
   
   private destroy$ = new Subject<void>();
 
@@ -739,7 +739,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     private analyticsService: AnalyticsService,
     public adminAuthService: AdminAuthService,
     public userSessionService: UserSessionService,
-    private cdr: ChangeDetectorRef
+    public cdr: ChangeDetectorRef
   ) {}
 
   /**

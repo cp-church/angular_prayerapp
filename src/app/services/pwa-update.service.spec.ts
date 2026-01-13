@@ -92,14 +92,34 @@ describe('PWAUpdateService', () => {
   });
 
   it('should apply update and reload page', async () => {
-    const reloadSpy = vi.spyOn(window.location, 'reload').mockImplementation(() => {});
+    // Mock reload function using a WeakMap to avoid read-only issues
+    const mockReload = vi.fn();
+    const originalLocation = window.location;
 
-    await service.applyUpdate();
+    // Create a mock location with reload
+    const mockLocation = {
+      ...originalLocation,
+      reload: mockReload,
+    };
 
-    expect(swUpdateMock.activateUpdate).toHaveBeenCalled();
-    expect(reloadSpy).toHaveBeenCalled();
+    Object.defineProperty(window, 'location', {
+      value: mockLocation,
+      writable: true,
+      configurable: true,
+    });
 
-    reloadSpy.mockRestore();
+    try {
+      await service.applyUpdate();
+
+      expect(swUpdateMock.activateUpdate).toHaveBeenCalled();
+      expect(mockReload).toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(window, 'location', {
+        value: originalLocation,
+        writable: true,
+        configurable: true,
+      });
+    }
   });
 
   it('should defer update and clear notification', () => {

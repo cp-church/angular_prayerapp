@@ -1,14 +1,28 @@
-// Vitest setup - this file is only used by Vitest, not ng serve
+// Vitest setup file - automatically loaded before running tests
 
-import { beforeEach } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { BrowserDynamicTestingModule, platformBrowserDynamicTesting } from '@angular/platform-browser-dynamic/testing';
+import { afterEach, beforeEach } from 'vitest';
 
-// Initialize Angular Testing Environment
-TestBed.initTestEnvironment(
-  BrowserDynamicTestingModule,
-  platformBrowserDynamicTesting()
-);
+// Initialize TestBed IMMEDIATELY at module load time
+// This must be the first thing that happens
+try {
+  TestBed.initTestEnvironment(BrowserDynamicTestingModule, platformBrowserDynamicTesting(), {
+    teardown: { destroyAfterEach: true }
+  });
+} catch (e: any) {
+  // TestBed already initialized, which is fine
+  console.log('TestBed already initialized');
+}
+
+// Only reset after test completes to avoid leaving TestBed in bad state
+afterEach(() => {
+  try {
+    TestBed.resetTestingModule();
+  } catch (e) {
+    // Ignore reset errors
+  }
+});
 
 // Setup localStorage mock
 beforeEach(() => {

@@ -1,13 +1,12 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { PWAService, BeforeInstallPromptEvent } from './pwa.service';
-import { TestBed } from '@angular/core/testing';
 
 describe('PWAService', () => {
   let service: PWAService;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
-    service = TestBed.inject(PWAService);
+    // Create service directly without TestBed since it has no dependencies
+    service = new PWAService();
   });
 
   afterEach(() => {

@@ -521,7 +521,7 @@ describe('AnalyticsService', () => {
     });
 
     it('should include valid ISO timestamp', async () => {
-      const updateMock = vi.fn(() => ({
+      const updateMock: any = vi.fn(() => ({
         eq: vi.fn(() => Promise.resolve({ data: null, error: null }))
       }));
       
@@ -546,15 +546,20 @@ describe('AnalyticsService', () => {
       await service.trackPageView();
       const afterCall = new Date();
 
+      // Verify the update was called
       expect(updateMock).toHaveBeenCalled();
-      const callArgs = updateMock.mock.calls[0]?.[0] as any;
-      expect(callArgs).toBeDefined();
-      expect(callArgs?.last_activity_date).toBeDefined();
+      
+      // Get the call arguments
+      const calls: any[] = (updateMock as any).mock.calls;
+      if (calls.length > 0) {
+        const callArgs = calls[0]?.[0] as any;
+        expect(callArgs).toBeDefined();
+        expect(callArgs?.last_activity_date).toBeDefined();
 
-      const timestamp = new Date(callArgs?.last_activity_date);
-
-      expect(timestamp.getTime()).toBeGreaterThanOrEqual(beforeCall.getTime());
-      expect(timestamp.getTime()).toBeLessThanOrEqual(afterCall.getTime() + 1000);
+        const timestamp = new Date(callArgs?.last_activity_date);
+        expect(timestamp.getTime()).toBeGreaterThanOrEqual(beforeCall.getTime());
+        expect(timestamp.getTime()).toBeLessThanOrEqual(afterCall.getTime() + 1000);
+      }
     });
 
     it('should handle Promise rejection gracefully', async () => {
