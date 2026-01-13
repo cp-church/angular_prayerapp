@@ -276,11 +276,11 @@ export class HelpContentService {
           },
           {
             subtitle: 'Mark as Anonymous',
-            text: 'You can mark prayers as anonymous to protect the privacy of the prayer request. This keeps the identity of the person who submitted the prayer confidential.',
+            text: 'When creating a prayer, you can check the "Make this prayer anonymous" checkbox to protect your privacy. This keeps your identity confidential.',
           },
           {
             subtitle: 'Mark as Answered',
-            text: 'When a prayer is marked as answered, it moves to the "Answered" section where you can reflect on how God has worked in that situation.',
+            text: 'When adding an update to a prayer, check the "Mark this prayer as answered" checkbox to move it to the "Answered" section. This is perfect for reflecting on how God has worked in that situation.',
           },
         ],
         order: 1,
