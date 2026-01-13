@@ -36,6 +36,7 @@ A comprehensive prayer request management system for Cross Pointe Church built w
 - ✅ Badge indicators (unread prayers/prompts)
 - ✅ Works offline (PWA)
 - ✅ iOS/Android installable
+- ✅ User-controlled app updates (no forced reloads)
 
 ## 🚀 Getting Started
 

@@ -26,6 +26,7 @@ src/
 │   │   ├── pending-*/               # Admin approval cards
 │   │   ├── install-prompt/          # PWA install button
 │   │   ├── offline-indicator/       # Offline status banner
+│   │   ├── pwa-update-notification/ # PWA update notification banner
 │   │   └── ...other components
 │   ├── pages/
 │   │   ├── admin/                   # Admin portal
@@ -115,6 +116,18 @@ this.supabase.client.from('table').select()
 - activateUpdate()           // Apply pending update
 - isInstalledAsApp()         // Detect PWA mode
 - getOnlineStatus()          // Network status
+```
+
+#### PWAUpdateService
+```typescript
+// Service worker update management with user control
+- updateAvailable$           // Observable for update availability
+- checkForUpdates()          // Manually check for updates
+- applyUpdate()              // Apply update immediately (triggers reload)
+- deferUpdate()              // Defer update to next app launch
+- isUpdateAvailable()        // Check current update status
+// Prevents automatic reloads, giving users control
+// Update checks run every 5 minutes
 ```
 
 #### BadgeService
