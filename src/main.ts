@@ -2,7 +2,7 @@ import { bootstrapApplication } from '@angular/platform-browser';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
-import { provideServiceWorker } from '@angular/service-worker';
+
 import { IMAGE_CONFIG } from '@angular/common';
 import { APP_INITIALIZER } from '@angular/core';
 import { AppComponent } from './app/app.component';
@@ -94,10 +94,6 @@ bootstrapApplication(AppComponent, {
     provideRouter(routes, withInMemoryScrolling({ scrollPositionRestoration: 'top' })),
     provideHttpClient(),
     provideAnimations(),
-    provideServiceWorker('ngsw-worker.js', {
-      enabled: true,
-      registrationStrategy: 'registerImmediately'
-    }),
     {
       provide: IMAGE_CONFIG,
       useValue: {
