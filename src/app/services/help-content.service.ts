@@ -305,7 +305,7 @@ export class HelpContentService {
           },
           {
             subtitle: 'Filtering by Type',
-            text: 'Each prayer prompt has a type tag (such as Healing, Guidance, Praise, Intercession, etc.). Click on a type tag to filter and show only prompts of that type. Click the "All Types" button to view all prompts again.',
+            text: 'Each prayer prompt has a type tag (such as Church, Family, Cities, Country, World, Bible etc.). Click on a type tag to filter and show only prompts of that type. Click the "All Types" button to view all prompts again.',
           },
           {
             subtitle: 'Using Prompts in Presentation Mode',
