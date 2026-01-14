@@ -64,7 +64,6 @@ export const bundleAnalysis = {
         'Cache strategy implementation'
       ],
       recommended: [
-        'Service Worker caching strategy',
         'Critical CSS inlining',
         'Dynamic imports for large components',
         'Code splitting for user features',
@@ -291,23 +290,6 @@ export const bundleAnalysis = {
             estimatedSavings: '15-25% reduction',
             effort: 'Medium',
             impact: 'Faster initial load'
-          }
-        ]
-      },
-      {
-        phase: 'Phase 5: Service Worker (OPTIONAL)',
-        tasks: [
-          {
-            task: 'Configure ngsw-config.json',
-            estimatedSavings: 'Network-free loads',
-            effort: 'Medium',
-            impact: 'Offline capability'
-          },
-          {
-            task: 'Implement cache versioning',
-            estimatedSavings: 'Better cache management',
-            effort: 'Low',
-            impact: 'Improved updates'
           }
         ]
       }

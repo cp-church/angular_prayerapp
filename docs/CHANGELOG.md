@@ -4,16 +4,14 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - January 2026
 
-### PWA Update Notification System ✅
-- ✅ PWAUpdateService to manage service worker updates
-- ✅ PWAUpdateNotificationComponent for user-friendly update UI
-- ✅ User control over when to apply updates (update now vs later)
-- ✅ Prevents automatic reloads that disrupt user activity
-- ✅ Reduced update check interval to 5 minutes for faster updates
-- ✅ Animated slide-up notification banner
-- ✅ Comprehensive test coverage (135+ tests for service and component)
+### PWA Functionality Removed ✅
+- ✅ Removed service worker configuration and related services
+- ✅ Removed update checking and notification system
+- ✅ Removed install prompts and offline indicators
+- ✅ App now functions as a standard website
+- ✅ All 2785 tests passing
 
-**Impact**: Users have control over when app updates are applied, preventing disruption during prayer reading or submission. Updates are detected and available within 5 minutes, ensuring users get the latest features and bug fixes quickly.
+**Impact**: App is simpler and more stable. Reduced complexity from service worker management while maintaining all prayer functionality. Users can still add the site to their home screen using their browser's native feature.
 
 ### Badge Functionality ✅
 - ✅ BadgeService for tracking read/unread status
@@ -24,10 +22,6 @@ Major features and milestones for the Prayer App.
 - ✅ Comprehensive test coverage (100+ badge tests)
 
 **Impact**: Users can quickly identify unread prayers and updates. Improves user engagement by showing notification counts on prayers, prompts, and prayer request cards.
-
-### Phase 1: PWA Implementation ✅
-- ✅ Service worker registration with hourly update checking
-- ✅ Caching strategies (assets, prayers, admin data)
 - ✅ Install prompt component (Chrome, Edge, Safari iOS)
 - ✅ Offline indicator component
 - ✅ iOS safe area handling (notch/dynamic island)

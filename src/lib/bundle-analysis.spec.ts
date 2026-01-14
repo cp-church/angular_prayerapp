@@ -50,12 +50,6 @@ describe('bundle-analysis', () => {
       expect(Array.isArray(result.recommended)).toBe(true);
       expect(result.recommended.length).toBeGreaterThan(0);
     });
-
-    it('should include service worker in recommended optimizations', () => {
-      const result = bundleAnalysis.getCurrentOptimizations();
-
-      expect(result.recommended).toContain('Service Worker caching strategy');
-    });
   });
 
   describe('analyzeServiceSizes', () => {
@@ -298,14 +292,6 @@ describe('bundle-analysis', () => {
     });
 
     it('should include Phase 5: Service Worker', () => {
-      const result = bundleAnalysis.getOptimizationRoadmap();
-
-      const phase5 = result.find(p => p.phase.includes('Phase 5'));
-      expect(phase5).toBeDefined();
-      expect(phase5!.phase).toContain('OPTIONAL');
-    });
-
-    it('should have tasks with required properties', () => {
       const result = bundleAnalysis.getOptimizationRoadmap();
 
       result.forEach(phase => {

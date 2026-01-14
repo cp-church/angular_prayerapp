@@ -24,9 +24,7 @@ src/
 │   │   ├── admin/                   # Admin dashboard
 │   │   ├── prayer-cards/            # Prayer display components
 │   │   ├── pending-*/               # Admin approval cards
-│   │   ├── install-prompt/          # PWA install button
-│   │   ├── offline-indicator/       # Offline status banner
-│   │   ├── pwa-update-notification/ # PWA update notification banner
+
 │   │   └── ...other components
 │   ├── pages/
 │   │   ├── admin/                   # Admin portal
@@ -37,7 +35,7 @@ src/
 │   │   ├── prayer.service.ts        # Prayer business logic
 │   │   ├── admin-data.service.ts    # Admin operations
 │   │   ├── email-notification.service.ts # Email queue
-│   │   ├── pwa.service.ts           # PWA features
+
 │   │   ├── user-session.service.ts  # Auth & session
 │   │   └── ...other services
 │   ├── guards/
@@ -106,28 +104,6 @@ this.supabase.client.from('table').select()
 - sendApprovedPrayerNotification()   // Queue email
 - sendDeniedPrayerNotification()     // Queue email
 - triggerEmailProcessor()            // Invoke GitHub Action
-```
-
-#### PWAService
-```typescript
-// Progressive Web App features
-- promptInstall()            // Show install dialog
-- checkForUpdates()          // Check service worker
-- activateUpdate()           // Apply pending update
-- isInstalledAsApp()         // Detect PWA mode
-- getOnlineStatus()          // Network status
-```
-
-#### PWAUpdateService
-```typescript
-// Service worker update management with user control
-- updateAvailable$           // Observable for update availability
-- checkForUpdates()          // Manually check for updates
-- applyUpdate()              // Apply update immediately (triggers reload)
-- deferUpdate()              // Defer update to next app launch
-- isUpdateAvailable()        // Check current update status
-// Prevents automatic reloads, giving users control
-// Update checks run every 5 minutes
 ```
 
 #### BadgeService
@@ -319,18 +295,6 @@ npm run lint -- --fix
 ---
 
 ## Performance
-
-### Service Worker Caching
-
-Configured in `ngsw-config.json`:
-
-```typescript
-// Asset groups: Prefetch app shell
-// Data groups:
-// - prayers (performance, 1h TTL, max 100)
-// - admin (network-first, 5m TTL)
-// - auth (network-first, 1m TTL)
-```
 
 ### Database Optimization
 

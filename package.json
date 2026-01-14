@@ -26,7 +26,6 @@
     "@angular/platform-browser": "^21.0.6",
     "@angular/platform-browser-dynamic": "^21.0.6",
     "@angular/router": "^21.0.6",
-    "@angular/service-worker": "^21.0.6",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",

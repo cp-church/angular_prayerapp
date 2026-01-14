@@ -262,8 +262,6 @@ Push to `main` branch automatically deploys to Vercel via GitHub Actions.
 - [ ] Can submit prayer request
 - [ ] Admin can login and approve
 - [ ] Email notifications send
-- [ ] PWA installs on mobile
-- [ ] Works offline
 
 ### Configure Domain
 
@@ -308,13 +306,6 @@ npm run build
 2. Check logs: GitHub Actions > process-email-queue workflow
 3. Verify Microsoft 365 credentials in `.env`
 4. Check email templates exist in database
-
-### PWA Not Installing
-
-1. Clear browser cache
-2. Serve over HTTPS (not localhost)
-3. Check manifest.json is valid
-4. Check service worker registration in console
 
 ---
 

@@ -20,7 +20,6 @@ A comprehensive prayer request management system for Cross Pointe Church built w
 - **Auth**: Supabase Auth with email verification
 - **Email**: Microsoft 365 Graph API
 - **Sync**: Planning Center integration
-- **PWA**: Full offline support, installable on iOS/Android
 - **Testing**: Vitest with 2840+ tests
 
 ## 🎯 Core Capabilities
@@ -34,9 +33,6 @@ A comprehensive prayer request management system for Cross Pointe Church built w
 - ✅ Theme system (light/dark)
 - ✅ Planning Center contact lookup
 - ✅ Badge indicators (unread prayers/prompts)
-- ✅ Works offline (PWA)
-- ✅ iOS/Android installable
-- ✅ User-controlled app updates (no forced reloads)
 
 ## 🚀 Getting Started
 
@@ -95,13 +91,6 @@ src/
 - Queue-based processing (prevent rate limits)
 - HTML templates with variable substitution
 - Subscriber management (opt-in/out)
-
-### PWA Features
-- Service worker caching (prayers, assets)
-- Install prompts (Chrome, Edge, Safari iOS)
-- Offline indicator
-- Hourly update checks
-- iOS safe area support
 
 ---
 
