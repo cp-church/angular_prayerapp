@@ -53,6 +53,34 @@ supabase db push
 # 2. Run migration files in supabase/migrations/
 ```
 
+### PWA Icons & Favicon
+
+The app uses a PWA (Progressive Web App) with custom icons. To regenerate icons:
+
+1. **Prepare source image**
+   - Save your image as `public/icon-source.png`
+   - Should be square and at least 1024px × 1024px
+
+2. **Install sharp** (if not already installed):
+   ```bash
+   npm install --save-dev sharp
+   ```
+
+3. **Generate icons**
+   ```bash
+   npm run generate-icons
+   ```
+
+This creates the following files:
+- `public/icons/icon-192.png` - PWA home screen icon
+- `public/icons/icon-512.png` - PWA splash screen icon
+- `public/icons/maskable-icon-512.png` - Maskable PWA icon
+- `public/apple-touch-icon.png` - iOS home screen icon
+- `public/favicon-32.png` - Standard favicon
+- `public/favicon-16.png` - Alternative favicon
+
+The PWA manifest (`public/manifest.json`) and `src/index.html` reference these files automatically.
+
 ---
 
 ## Environment Configuration
