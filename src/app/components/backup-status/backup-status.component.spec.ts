@@ -328,7 +328,8 @@ describe('BackupStatusComponent - extra branches', () => {
     window.confirm = vi.fn().mockReturnValue(true);
 
     // table list returns one table and that table has two rows
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: string | URL | Request) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : '';
       if (url.includes('/backup_tables')) {
         return { ok: true, json: async () => [{ table_name: 't1' }] } as any;
       }
@@ -360,7 +361,8 @@ describe('BackupStatusComponent - extra branches', () => {
   }, 10000);
 
   it('handleManualBackup logs failed insert when download/createObjectURL throws', async () => {
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: string) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: string | URL | Request) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : '';
       if (url.includes('/backup_tables')) {
         return { ok: true, json: async () => [{ table_name: 't1' }] } as any;
       }
@@ -418,10 +420,6 @@ describe('BackupStatusComponent - extra branches', () => {
     expect(toast.warning).toHaveBeenCalled();
   });
 });
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { BackupStatusComponent } from './backup-status.component';
-import { SupabaseService } from '../../services/supabase.service';
-import { ToastService } from '../../services/toast.service';
 
 describe('BackupStatusComponent', () => {
   let component: BackupStatusComponent;

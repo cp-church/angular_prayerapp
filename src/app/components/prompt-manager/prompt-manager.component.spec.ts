@@ -334,7 +334,7 @@ describe('PromptManagerComponent', () => {
       component.title = 'Old title';
       component.description = 'Old description';
       component.editingId = 'some-id';
-      component.prayerTypes = [{ name: 'Prayer', display_order: 1, is_active: true }];
+      component.prayerTypes = [{ id: '1', name: 'Prayer', display_order: 1, is_active: true, created_at: '2024-01-01', updated_at: '2024-01-01' }];
       
       component.toggleAddForm();
       
@@ -352,8 +352,8 @@ describe('PromptManagerComponent', () => {
       const file = new File([blob], 'test.csv', { type: 'text/csv' });
       
       component.prayerTypes = [
-        { name: 'Prayer', display_order: 1, is_active: true },
-        { name: 'Praise', display_order: 2, is_active: true }
+        { id: '1', name: 'Prayer', display_order: 1, is_active: true, created_at: '2024-01-01', updated_at: '2024-01-01' },
+        { id: '2', name: 'Praise', display_order: 2, is_active: true, created_at: '2024-01-01', updated_at: '2024-01-01' }
       ];
 
       const event = {
@@ -381,7 +381,7 @@ describe('PromptManagerComponent', () => {
       const file = new File([blob], 'test.csv', { type: 'text/csv' });
       
       component.prayerTypes = [
-        { name: 'Prayer', display_order: 1, is_active: true }
+        { id: '1', name: 'Prayer', display_order: 1, is_active: true, created_at: '2024-01-01', updated_at: '2024-01-01' }
       ];
 
       const event = {
@@ -465,7 +465,7 @@ describe('PromptManagerComponent', () => {
       const file = new File([blob], 'test.csv', { type: 'text/csv' });
       
       component.prayerTypes = [
-        { name: 'Prayer', display_order: 1, is_active: true }
+        { id: '1', name: 'Prayer', display_order: 1, is_active: true, created_at: '2024-01-01', updated_at: '2024-01-01' }
       ];
 
       const event = {
@@ -492,7 +492,7 @@ describe('PromptManagerComponent', () => {
       const file = new File([blob], 'test.csv', { type: 'text/csv' });
       
       component.prayerTypes = [
-        { name: 'Prayer', display_order: 1, is_active: true }
+        { id: '1', name: 'Prayer', display_order: 1, is_active: true, created_at: '2024-01-01', updated_at: '2024-01-01' }
       ];
 
       const event = {
@@ -660,7 +660,7 @@ describe('PromptManagerComponent', () => {
     });
 
     it('should reset form after successful submission', async () => {
-      component.prayerTypes = [{ name: 'Prayer', display_order: 1, is_active: true }];
+      component.prayerTypes = [{ id: '1', name: 'Prayer', display_order: 1, is_active: true, created_at: '2024-01-01', updated_at: '2024-01-01' }];
       component.title = 'Prayer';
       component.type = 'Prayer';
       component.description = 'Description';
@@ -707,15 +707,16 @@ describe('PromptManagerComponent', () => {
       const prompt = {
         id: 'prompt-123',
         title: 'Test Prayer',
-        type: 'Prayer',
+        type: 'Guidance' as any,
         description: 'Test description',
-        created_at: '2024-01-01'
+        created_at: '2024-01-01',
+        updated_at: '2024-01-01'
       };
 
       component.handleEdit(prompt);
 
       expect(component.title).toBe('Test Prayer');
-      expect(component.type).toBe('Prayer');
+      expect(component.type).toBe('Guidance');
       expect(component.description).toBe('Test description');
       expect(component.editingId).toBe('prompt-123');
       expect(component.showAddForm).toBe(false);
@@ -726,9 +727,10 @@ describe('PromptManagerComponent', () => {
       const prompt = {
         id: 'prompt-123',
         title: 'Test',
-        type: 'Prayer',
+        type: 'Guidance' as any,
         description: 'Desc',
-        created_at: '2024-01-01'
+        created_at: '2024-01-01',
+        updated_at: '2024-01-01'
       };
 
       component.error = 'Error';
@@ -799,7 +801,7 @@ describe('PromptManagerComponent', () => {
 
   describe('cancelEdit', () => {
     it('should reset form state', () => {
-      component.prayerTypes = [{ name: 'Prayer', display_order: 1, is_active: true }];
+      component.prayerTypes = [{ id: '1', name: 'Prayer', display_order: 1, is_active: true, created_at: '2024-01-01', updated_at: '2024-01-01' }];
       component.showAddForm = true;
       component.editingId = 'prompt-123';
       component.title = 'Test';
@@ -830,9 +832,9 @@ describe('PromptManagerComponent', () => {
   describe('getValidTypeNames', () => {
     it('should return comma-separated type names', () => {
       component.prayerTypes = [
-        { name: 'Prayer', display_order: 1, is_active: true },
-        { name: 'Praise', display_order: 2, is_active: true },
-        { name: 'Thanks', display_order: 3, is_active: true }
+        { id: '1', name: 'Prayer', display_order: 1, is_active: true, created_at: '2024-01-01', updated_at: '2024-01-01' },
+        { id: '2', name: 'Praise', display_order: 2, is_active: true, created_at: '2024-01-01', updated_at: '2024-01-01' },
+        { id: '3', name: 'Thanks', display_order: 3, is_active: true, created_at: '2024-01-01', updated_at: '2024-01-01' }
       ];
 
       const result = component.getValidTypeNames();
@@ -900,7 +902,7 @@ describe('PromptManagerComponent', () => {
   describe('handleCSVUpload', () => {
     it('should handle CSV parsing errors gracefully', async () => {
       // Set up prayer types for parsing
-      component.prayerTypes = [{ id: '1', name: 'Prayer', order: 1 }];
+      component.prayerTypes = [{ id: '1', name: 'Prayer', display_order: 1, is_active: true, created_at: '2024-01-01', updated_at: '2024-01-01' }];
       
       const file = new File(['title,type,description\nTest,Prayer,Desc'], 'test.csv', { type: 'text/csv' });
       const event = {
