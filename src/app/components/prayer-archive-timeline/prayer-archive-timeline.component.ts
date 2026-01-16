@@ -585,9 +585,9 @@ export class PrayerArchiveTimelineComponent implements OnInit {
           
           const archiveDaysUntil = Math.ceil((archiveDate.getTime() - todayLocal.getTime()) / (1000 * 60 * 60 * 24));
           
-          if (archiveDaysUntil <= -1) {
-            // Archive date has passed by at least 1 day - show as missed
-            // (Give system 1 day buffer for auto-archive job to execute)
+          if (archiveDaysUntil <= -2) {
+            // Archive date has passed by at least 2 days - show as missed
+            // (Give system 2 extra days buffer for auto-archive job to execute)
             allEvents.push({
               date: archiveDate,
               prayer: { id: prayer.id, title: prayer.title },
@@ -603,7 +603,7 @@ export class PrayerArchiveTimelineComponent implements OnInit {
               daysUntil: archiveDaysUntil
             });
           }
-          // If archiveDaysUntil === 0, don't show anything yet (archive day is today)
+          // If archiveDaysUntil is between -2 and 0, don't show anything yet (archive is pending)
         }
         
         // Reminder sent event
@@ -627,8 +627,9 @@ export class PrayerArchiveTimelineComponent implements OnInit {
         
         const reminderDaysUntil = Math.ceil((nextReminderDate.getTime() - todayLocal.getTime()) / (1000 * 60 * 60 * 24));
         
-        if (reminderDaysUntil <= 0) {
+        if (reminderDaysUntil <= -2) {
           // Reminder should have been sent but wasn't - show as missed
+          // (Give system 2 extra days buffer before marking as missed)
           allEvents.push({
             date: nextReminderDate,
             prayer: { id: prayer.id, title: prayer.title },
@@ -642,9 +643,9 @@ export class PrayerArchiveTimelineComponent implements OnInit {
           
           const archiveDaysUntil = Math.ceil((archiveDate.getTime() - todayLocal.getTime()) / (1000 * 60 * 60 * 24));
           
-          if (archiveDaysUntil <= -1) {
-            // Archive date has passed by at least 1 day - show as missed
-            // (Give system 1 day buffer for auto-archive job to execute)
+          if (archiveDaysUntil <= -2) {
+            // Archive date has passed by at least 2 days - show as missed
+            // (Give system 2 extra days buffer for auto-archive job to execute)
             allEvents.push({
               date: archiveDate,
               prayer: { id: prayer.id, title: prayer.title },
@@ -660,7 +661,7 @@ export class PrayerArchiveTimelineComponent implements OnInit {
               daysUntil: archiveDaysUntil
             });
           }
-          // If archiveDaysUntil === 0, don't show anything yet (archive day is today)
+          // If archiveDaysUntil is between -2 and 0, don't show anything yet (archive is pending)
         } else {
           // Reminder is still upcoming
           allEvents.push({

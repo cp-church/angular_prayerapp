@@ -128,6 +128,7 @@ export class PrayerService {
           date_answered: prayer.date_answered,
           created_at: prayer.created_at,
           updated_at: prayer.updated_at,
+          last_reminder_sent: prayer.last_reminder_sent,
           updates: updates.map((u: any) => ({
             id: u.id,
             prayer_id: u.prayer_id,
