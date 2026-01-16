@@ -4,6 +4,18 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - January 2026
 
+### Bug Fixes & Improvements
+- ✅ Fixed badge display on prayer cards under Total Prayers filter
+  - Badges now only show for Current and Answered filters
+  - Prevents notification indicators from appearing on archived prayers
+- ✅ Improved help content for prayer request creation
+  - Clarified form field descriptions
+  - Better examples matching actual form structure
+  - Added information about anonymous option and approval process
+- ✅ Cleaned up documentation links
+  - Removed references to non-existent documentation files
+  - Updated README.md and docs/README.md for accuracy
+
 ### PWA Functionality Removed ✅
 - ✅ Removed service worker configuration and related services
 - ✅ Removed update checking and notification system
@@ -48,6 +60,13 @@ Major features and milestones for the Prayer App.
 - ✅ Real-time admin dashboard
 - ✅ Email settings management
 - ✅ User management
+- ✅ Prayer Archive Timeline
+  - Visual timeline of prayer lifecycle events
+  - Automatic timezone detection
+  - Activity-based timer logic (timer resets on updates)
+  - Month-based navigation
+  - Refresh functionality with manual settings control
+  - 21 unit tests with full test coverage
 
 ### User Features ✅
 - ✅ Submit prayer requests
