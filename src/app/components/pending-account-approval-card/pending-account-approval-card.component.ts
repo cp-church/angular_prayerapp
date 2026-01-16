@@ -11,7 +11,6 @@ export interface AccountApprovalRequest {
   last_name: string;
   affiliation_reason?: string | null;
   approval_status: 'pending' | 'approved' | 'denied';
-  approved_by?: string;
   created_at: string;
   updated_at: string;
 }

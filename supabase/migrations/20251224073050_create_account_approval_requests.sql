@@ -5,7 +5,6 @@ CREATE TABLE IF NOT EXISTS account_approval_requests (
   first_name TEXT NOT NULL,
   last_name TEXT NOT NULL,
   approval_status TEXT DEFAULT 'pending' CHECK (approval_status IN ('pending', 'approved', 'denied')),
-  approved_by TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
 );
