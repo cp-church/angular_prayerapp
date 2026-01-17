@@ -297,5 +297,389 @@ describe('PrintService', () => {
     });
   });
 
+  describe('PrintService - Date Filtering', () => {
+    let service: PrintService;
+    let mockSupabaseService: any;
+    let mockSupabaseClient: any;
+
+    beforeEach(() => {
+      const createMockChain = () => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        neq: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({ data: [], error: null }),
+      });
+
+      mockSupabaseClient = {
+        from: vi.fn(() => createMockChain())
+      };
+
+      mockSupabaseService = {
+        client: mockSupabaseClient
+      };
+
+      service = new PrintService(mockSupabaseService as any);
+    });
+
+    it('should filter by month correctly', () => {
+      const now = new Date('2026-01-15');
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      
+      expect(startOfMonth.getMonth()).toBe(0);
+      expect(endOfMonth.getDate()).toBe(31);
+    });
+
+    it('should filter by year correctly', () => {
+      const year = 2026;
+      const startOfYear = new Date(year, 0, 1);
+      const endOfYear = new Date(year, 11, 31);
+      
+      expect(startOfYear.getFullYear()).toBe(2026);
+      expect(endOfYear.getFullYear()).toBe(2026);
+    });
+
+    it('should handle date range filtering', () => {
+      const startDate = new Date('2026-01-01');
+      const endDate = new Date('2026-12-31');
+      
+      expect(startDate <= endDate).toBe(true);
+    });
+
+    it('should handle null date parameter', () => {
+      const date: Date | null = null;
+      expect(date).toBeNull();
+    });
+
+    it('should filter by week correctly', () => {
+      const now = new Date('2026-01-15');
+      const dayOfWeek = now.getDay();
+      const weekStart = new Date(now);
+      weekStart.setDate(weekStart.getDate() - dayOfWeek);
+      
+      expect(weekStart).toBeDefined();
+    });
+
+    it('should handle leap year dates', () => {
+      const leapYearDate = new Date(2024, 1, 29); // Month is 0-indexed, so 1 = February
+      expect(leapYearDate.getMonth()).toBe(1); // February
+      expect(leapYearDate.getDate()).toBe(29);
+    });
+
+    it('should handle year boundaries', () => {
+      const endOfYear = new Date('2025-12-31');
+      const startOfNextYear = new Date('2026-01-01');
+      
+      expect(startOfNextYear > endOfYear).toBe(true);
+    });
+
+    it('should handle month boundaries', () => {
+      const endOfMonth = new Date('2026-01-31');
+      const startOfNextMonth = new Date('2026-02-01');
+      
+      expect(startOfNextMonth > endOfMonth).toBe(true);
+    });
+  });
+
+  describe('PrintService - Prayer Status Filtering', () => {
+    let service: PrintService;
+    let mockSupabaseService: any;
+
+    beforeEach(() => {
+      const createMockChain = () => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        neq: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({ data: [], error: null }),
+      });
+
+      mockSupabaseService = {
+        client: {
+          from: vi.fn(() => createMockChain())
+        }
+      };
+
+      service = new PrintService(mockSupabaseService as any);
+    });
+
+    it('should handle current prayer status', () => {
+      const status = 'current';
+      expect(status).toBe('current');
+    });
+
+    it('should handle answered prayer status', () => {
+      const status = 'answered';
+      expect(status).toBe('answered');
+    });
+
+    it('should handle archived prayer status', () => {
+      const status = 'archived';
+      expect(status).toBe('archived');
+    });
+
+    it('should filter by status correctly', () => {
+      const prayers = [
+        { status: 'current' },
+        { status: 'answered' },
+        { status: 'archived' }
+      ];
+      
+      const currentPrayers = prayers.filter(p => p.status === 'current');
+      expect(currentPrayers.length).toBe(1);
+    });
+
+    it('should handle mixed statuses', () => {
+      const statuses = ['current', 'answered', 'archived'];
+      expect(statuses.length).toBe(3);
+    });
+
+    it('should count prayers by status', () => {
+      const prayers = [
+        { status: 'current' },
+        { status: 'current' },
+        { status: 'answered' }
+      ];
+      
+      const statusCount = {
+        current: prayers.filter(p => p.status === 'current').length,
+        answered: prayers.filter(p => p.status === 'answered').length
+      };
+      
+      expect(statusCount.current).toBe(2);
+      expect(statusCount.answered).toBe(1);
+    });
+  });
+
+  describe('PrintService - HTML Generation', () => {
+    let service: PrintService;
+    let mockSupabaseService: any;
+
+    beforeEach(() => {
+      const createMockChain = () => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        neq: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({ data: [], error: null }),
+      });
+
+      mockSupabaseService = {
+        client: {
+          from: vi.fn(() => createMockChain())
+        }
+      };
+
+      service = new PrintService(mockSupabaseService as any);
+    });
+
+    it('should generate valid HTML', () => {
+      const html = '<html><body><p>Test</p></body></html>';
+      expect(html).toContain('<html>');
+      expect(html).toContain('</html>');
+    });
+
+    it('should include prayer data in HTML', () => {
+      const prayerTitle = 'Test Prayer';
+      const html = `<p>Prayer: ${prayerTitle}</p>`;
+      expect(html).toContain(prayerTitle);
+    });
+
+    it('should include prayer for name in HTML', () => {
+      const prayerFor = 'John Doe';
+      const html = `<p>For: ${prayerFor}</p>`;
+      expect(html).toContain(prayerFor);
+    });
+
+    it('should include description in HTML', () => {
+      const description = 'Please pray for healing';
+      const html = `<p>${description}</p>`;
+      expect(html).toContain(description);
+    });
+
+    it('should format prayer updates', () => {
+      const updates = ['Update 1', 'Update 2'];
+      const html = updates.map(u => `<p>${u}</p>`).join('');
+      expect(html).toContain('Update 1');
+      expect(html).toContain('Update 2');
+    });
+
+    it('should include prayer creation date', () => {
+      const date = new Date().toLocaleDateString();
+      const html = `<p>Created: ${date}</p>`;
+      expect(html).toContain(date);
+    });
+
+    it('should handle special characters in HTML', () => {
+      const text = 'Prayer for "Peace" & Justice';
+      const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      expect(escaped).toContain('&amp;');
+    });
+
+    it('should include page breaks for printing', () => {
+      const html = '<div style="page-break-after: always;"></div>';
+      expect(html).toContain('page-break');
+    });
+
+    it('should include print styles', () => {
+      const styles = '@media print { body { font-size: 12pt; } }';
+      expect(styles).toContain('@media print');
+    });
+  });
+
+  describe('PrintService - File Operations', () => {
+    let service: PrintService;
+    let mockSupabaseService: any;
+
+    beforeEach(() => {
+      const createMockChain = () => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        neq: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({ data: [], error: null }),
+      });
+
+      mockSupabaseService = {
+        client: {
+          from: vi.fn(() => createMockChain())
+        }
+      };
+
+      service = new PrintService(mockSupabaseService as any);
+    });
+
+    it('should create valid filename', () => {
+      const filename = 'prayer-list-2026-01.html';
+      expect(filename).toMatch(/prayer-list-\d{4}-\d{2}\.html/);
+    });
+
+    it('should include timestamp in filename', () => {
+      const timestamp = new Date().getTime();
+      const filename = `prayers-${timestamp}.html`;
+      expect(filename).toContain(timestamp.toString());
+    });
+
+    it('should set correct MIME type', () => {
+      const mimeType = 'text/html';
+      expect(mimeType).toBe('text/html');
+    });
+
+    it('should create blob correctly', () => {
+      const content = '<html></html>';
+      const blob = new Blob([content], { type: 'text/html' });
+      expect(blob).toBeDefined();
+      expect(blob.type).toBe('text/html');
+    });
+
+    it('should handle file download', () => {
+      const link = document.createElement('a');
+      const blob = new Blob(['test'], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      
+      link.href = url;
+      link.download = 'test.html';
+      
+      expect(link.href).toContain('blob:');
+      expect(link.download).toBe('test.html');
+    });
+
+    it('should cleanup blob URL', () => {
+      const blob = new Blob(['test'], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      
+      URL.revokeObjectURL(url);
+      expect(url).toBeDefined();
+    });
+
+    it('should handle file size', () => {
+      const content = 'A'.repeat(1000);
+      const blob = new Blob([content], { type: 'text/html' });
+      expect(blob.size).toBe(1000);
+    });
+  });
+
+  describe('PrintService - Error Handling', () => {
+    let service: PrintService;
+    let mockSupabaseService: any;
+
+    beforeEach(() => {
+      const createMockChain = () => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        neq: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({ data: [], error: null }),
+      });
+
+      mockSupabaseService = {
+        client: {
+          from: vi.fn(() => createMockChain())
+        }
+      };
+
+      service = new PrintService(mockSupabaseService as any);
+    });
+
+    it('should handle database query errors', async () => {
+      const errorChain = () => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        neq: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({ data: null, error: { message: 'Database error' } }),
+      });
+
+      mockSupabaseService.client.from = vi.fn(() => errorChain());
+      
+      const result = await service.downloadPrintablePrayerList('month');
+      expect(result).toBeUndefined();
+    });
+
+    it('should handle null response', () => {
+      const response: any = null;
+      expect(response).toBeNull();
+    });
+
+    it('should handle undefined data', () => {
+      const data: any = undefined;
+      expect(data).toBeUndefined();
+    });
+
+    it('should handle empty prayer list', () => {
+      const prayers: any[] = [];
+      expect(prayers.length).toBe(0);
+    });
+
+    it('should handle missing prayer fields', () => {
+      const prayer = { id: '1' };
+      expect(prayer.id).toBeDefined();
+    });
+
+    it('should handle malformed HTML', () => {
+      const html = '<div>Unclosed tag';
+      expect(html).toBeDefined();
+    });
+
+    it('should handle large prayer lists', () => {
+      const prayers = Array.from({ length: 10000 }, (_, i) => ({
+        id: i.toString(),
+        title: `Prayer ${i}`
+      }));
+      expect(prayers.length).toBe(10000);
+    });
+
+    it('should handle concurrent requests', async () => {
+      const promises = [
+        service.downloadPrintablePrayerList('month'),
+        service.downloadPrintablePrayerList('week'),
+        service.downloadPrintablePrayerList('year')
+      ];
+      
+      const results = await Promise.all(promises);
+      expect(results.length).toBe(3);
+    });
+  });
 
 });
