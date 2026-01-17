@@ -1769,4 +1769,677 @@ describe('PrintService - Advanced Coverage Tests', () => {
       });
     });
   });
+
+  describe('downloadPrintablePromptList', () => {
+    let service: PrintService;
+    let mockSupabaseService: any;
+    let mockSupabaseClient: any;
+
+    const mockPrompts = [
+      {
+        id: '1',
+        title: 'Prompt for praise',
+        type: 'Praise',
+        is_active: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: '2',
+        title: 'Prompt for confession',
+        type: 'Confession',
+        is_active: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: '3',
+        title: 'Prompt for thanksgiving',
+        type: 'Thanksgiving',
+        is_active: true,
+        created_at: new Date().toISOString()
+      }
+    ];
+
+    const mockTypes = [
+      { name: 'Praise', display_order: 1 },
+      { name: 'Confession', display_order: 2 },
+      { name: 'Thanksgiving', display_order: 3 }
+    ];
+
+    beforeEach(() => {
+      mockSupabaseClient = {
+        from: vi.fn().mockImplementation((table: string) => {
+          if (table === 'prayer_prompts') {
+            return {
+              select: vi.fn().mockReturnThis(),
+              order: vi.fn().mockResolvedValue({ data: mockPrompts, error: null })
+            };
+          } else if (table === 'prayer_types') {
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              order: vi.fn().mockResolvedValue({ data: mockTypes, error: null })
+            };
+          }
+          return {};
+        })
+      };
+
+      mockSupabaseService = { client: mockSupabaseClient } as any;
+      service = new PrintService(mockSupabaseService);
+
+      global.window.open = vi.fn(() => ({
+        document: {
+          open: vi.fn(),
+          write: vi.fn(),
+          close: vi.fn()
+        },
+        focus: vi.fn()
+      }));
+      global.alert = vi.fn();
+      global.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
+      global.URL.revokeObjectURL = vi.fn();
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('should fetch all prompts when no types selected', async () => {
+      await service.downloadPrintablePromptList([], null);
+
+      expect(mockSupabaseClient.from).toHaveBeenCalledWith('prayer_prompts');
+      expect(mockSupabaseClient.from).toHaveBeenCalledWith('prayer_types');
+    });
+
+    it('should filter prompts by selected types', async () => {
+      mockSupabaseClient.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prayer_prompts') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ 
+              data: mockPrompts.filter(p => p.type === 'Praise'),
+              error: null
+            })
+          };
+        } else if (table === 'prayer_types') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: mockTypes, error: null })
+          };
+        }
+        return {};
+      });
+
+      await service.downloadPrintablePromptList(['Praise'], null);
+
+      expect(mockSupabaseClient.from).toHaveBeenCalledWith('prayer_prompts');
+    });
+
+    it('should open new window with prompt HTML', async () => {
+      const mockWindow = {
+        document: {
+          open: vi.fn(),
+          write: vi.fn(),
+          close: vi.fn()
+        },
+        focus: vi.fn()
+      };
+      (global.window.open as any).mockReturnValue(mockWindow);
+
+      await service.downloadPrintablePromptList([], null);
+
+      expect(mockWindow.document.open).toHaveBeenCalled();
+      expect(mockWindow.document.write).toHaveBeenCalled();
+      expect(mockWindow.document.close).toHaveBeenCalled();
+      expect(mockWindow.focus).toHaveBeenCalled();
+    });
+
+    it('should use pre-opened window when provided', async () => {
+      const mockWindow = {
+        document: {
+          open: vi.fn(),
+          write: vi.fn(),
+          close: vi.fn()
+        },
+        focus: vi.fn()
+      };
+
+      await service.downloadPrintablePromptList([], mockWindow as any);
+
+      expect(mockWindow.document.open).toHaveBeenCalled();
+      expect(mockWindow.document.write).toHaveBeenCalled();
+    });
+
+    it('should alert when no prompts found', async () => {
+      mockSupabaseClient.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prayer_prompts') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: [], error: null })
+          };
+        } else if (table === 'prayer_types') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: mockTypes, error: null })
+          };
+        }
+        return {};
+      });
+
+      await service.downloadPrintablePromptList([], null);
+
+      expect(global.alert).toHaveBeenCalledWith('No prayer prompts found.');
+    });
+
+    it('should alert when no prompts match selected types', async () => {
+      mockSupabaseClient.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prayer_prompts') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: mockPrompts, error: null })
+          };
+        } else if (table === 'prayer_types') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: mockTypes, error: null })
+          };
+        }
+        return {};
+      });
+
+      await service.downloadPrintablePromptList(['NonExistentType'], null);
+
+      expect(global.alert).toHaveBeenCalledWith('No prayer prompts found for the selected types.');
+    });
+
+    it('should handle prompt fetch error', async () => {
+      mockSupabaseClient.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prayer_prompts') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: null, error: { message: 'Fetch error' } })
+          };
+        }
+        return {};
+      });
+
+      await service.downloadPrintablePromptList([], null);
+
+      expect(global.alert).toHaveBeenCalledWith('Failed to fetch prayer prompts. Please try again.');
+    });
+
+    it('should continue with default sorting if types fetch fails', async () => {
+      mockSupabaseClient.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prayer_prompts') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: mockPrompts, error: null })
+          };
+        } else if (table === 'prayer_types') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: null, error: { message: 'Types error' } })
+          };
+        }
+        return {};
+      });
+
+      const mockWindow = {
+        document: {
+          open: vi.fn(),
+          write: vi.fn(),
+          close: vi.fn()
+        },
+        focus: vi.fn()
+      };
+      (global.window.open as any).mockReturnValue(mockWindow);
+
+      await service.downloadPrintablePromptList([], null);
+
+      expect(mockWindow.document.write).toHaveBeenCalled();
+    });
+
+    it('should fallback to file download when window.open blocked', async () => {
+      (global.window.open as any).mockReturnValue(null);
+      const mockLink = {
+        href: '',
+        download: '',
+        click: vi.fn()
+      };
+      (global.document.createElement as any).mockReturnValue(mockLink);
+      global.document.body.appendChild = vi.fn();
+      global.document.body.removeChild = vi.fn();
+      global.Blob = class MockBlob {
+        constructor(data: any[], options?: any) {}
+      } as any;
+
+      await service.downloadPrintablePromptList([], null);
+
+      expect(mockLink.click).toHaveBeenCalled();
+      expect(global.alert).toHaveBeenCalledWith('Prayer prompts downloaded. Please open the file to view and print.');
+    });
+
+    it('should close newWindow on prompt fetch error', async () => {
+      const mockWindow = { close: vi.fn() };
+      mockSupabaseClient.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prayer_prompts') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: null, error: { message: 'Error' } })
+          };
+        }
+        return {};
+      });
+
+      await service.downloadPrintablePromptList([], mockWindow as any);
+
+      expect(mockWindow.close).toHaveBeenCalled();
+    });
+
+    it('should handle exception during prompt generation', async () => {
+      mockSupabaseClient.from = vi.fn().mockImplementation(() => {
+        throw new Error('Unexpected error');
+      });
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await service.downloadPrintablePromptList([], null);
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error generating prayer prompts list:', expect.any(Error));
+      expect(global.alert).toHaveBeenCalledWith('An error occurred while generating the prayer prompts list.');
+    });
+
+    it('should close newWindow on exception', async () => {
+      const mockWindow = { close: vi.fn() };
+      mockSupabaseClient.from = vi.fn().mockImplementation(() => {
+        throw new Error('Unexpected error');
+      });
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await service.downloadPrintablePromptList([], mockWindow as any);
+
+      expect(mockWindow.close).toHaveBeenCalled();
+    });
+  });
+
+  describe('Prompt HTML Generation via downloadPrintablePromptList', () => {
+    let service: PrintService;
+    let mockSupabaseService: any;
+
+    beforeEach(() => {
+      mockSupabaseService = {
+        client: {
+          from: vi.fn()
+        }
+      } as any;
+      service = new PrintService(mockSupabaseService);
+      
+      global.window.open = vi.fn(() => ({
+        document: {
+          open: vi.fn(),
+          write: vi.fn(),
+          close: vi.fn()
+        },
+        focus: vi.fn()
+      }));
+      global.alert = vi.fn();
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('should generate valid HTML structure for prompts', async () => {
+      const mockPrompts = [
+        { id: '1', title: 'Test Prompt', type: 'Praise', created_at: new Date().toISOString() }
+      ];
+
+      mockSupabaseService.client.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prayer_prompts') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: mockPrompts, error: null })
+          };
+        } else if (table === 'prayer_types') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: [], error: null })
+          };
+        }
+      });
+
+      const mockWindow = {
+        document: {
+          open: vi.fn(),
+          write: vi.fn(),
+          close: vi.fn()
+        },
+        focus: vi.fn()
+      };
+      (global.window.open as any).mockReturnValue(mockWindow);
+
+      await service.downloadPrintablePromptList([], null);
+
+      expect(mockWindow.document.write).toHaveBeenCalled();
+      const html = mockWindow.document.write.mock.calls[0][0];
+      expect(html).toContain('<!DOCTYPE html>');
+      expect(html).toContain('Prayer Prompts');
+    });
+
+    it('should group and organize prompts by type', async () => {
+      const mockPrompts = [
+        { id: '1', title: 'Praise Prompt', type: 'Praise', created_at: new Date().toISOString() },
+        { id: '2', title: 'Confession Prompt', type: 'Confession', created_at: new Date().toISOString() }
+      ];
+
+      const mockTypes = [
+        { name: 'Praise', display_order: 1 },
+        { name: 'Confession', display_order: 2 }
+      ];
+
+      mockSupabaseService.client.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prayer_prompts') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: mockPrompts, error: null })
+          };
+        } else if (table === 'prayer_types') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: mockTypes, error: null })
+          };
+        }
+      });
+
+      const mockWindow = {
+        document: {
+          open: vi.fn(),
+          write: vi.fn(),
+          close: vi.fn()
+        },
+        focus: vi.fn()
+      };
+      (global.window.open as any).mockReturnValue(mockWindow);
+
+      await service.downloadPrintablePromptList([], null);
+
+      expect(mockWindow.document.write).toHaveBeenCalled();
+      const html = mockWindow.document.write.mock.calls[0][0];
+      expect(html).toBeDefined();
+      expect(html.length).toBeGreaterThan(100);
+      // The HTML should contain the section divs with type grouping
+      expect(html).toContain('type-section');
+    });
+
+    it('should include CSS styles for prompts', async () => {
+      const mockPrompts = [
+        { id: '1', title: 'Test', type: 'Praise', created_at: new Date().toISOString() }
+      ];
+
+      mockSupabaseService.client.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prayer_prompts') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: mockPrompts, error: null })
+          };
+        } else if (table === 'prayer_types') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: [], error: null })
+          };
+        }
+      });
+
+      const mockWindow = {
+        document: {
+          open: vi.fn(),
+          write: vi.fn(),
+          close: vi.fn()
+        },
+        focus: vi.fn()
+      };
+      (global.window.open as any).mockReturnValue(mockWindow);
+
+      await service.downloadPrintablePromptList([], null);
+
+      expect(mockWindow.document.write).toHaveBeenCalled();
+      const html = mockWindow.document.write.mock.calls[0][0];
+      expect(html).toContain('<style>');
+    });
+
+    it('should use correct colors for different prompt types', async () => {
+      const mockPrompts = [
+        { id: '1', title: 'Praise', type: 'Praise', created_at: new Date().toISOString() },
+        { id: '2', title: 'Thanksgiving', type: 'Thanksgiving', created_at: new Date().toISOString() }
+      ];
+
+      const mockTypes = [
+        { name: 'Praise', display_order: 1 },
+        { name: 'Thanksgiving', display_order: 3 }
+      ];
+
+      mockSupabaseService.client.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prayer_prompts') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: mockPrompts, error: null })
+          };
+        } else if (table === 'prayer_types') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: mockTypes, error: null })
+          };
+        }
+      });
+
+      const mockWindow = {
+        document: {
+          open: vi.fn(),
+          write: vi.fn(),
+          close: vi.fn()
+        },
+        focus: vi.fn()
+      };
+      (global.window.open as any).mockReturnValue(mockWindow);
+
+      await service.downloadPrintablePromptList([], null);
+
+      const html = mockWindow.document.write.mock.calls[0][0];
+      expect(html).toContain('#39704D'); // Praise
+      expect(html).toContain('#0047AB'); // Thanksgiving
+    });
+
+    it('should display prompt count per type', async () => {
+      const mockPrompts = [
+        { id: '1', title: 'Prompt 1', type: 'Praise', created_at: new Date().toISOString() },
+        { id: '2', title: 'Prompt 2', type: 'Praise', created_at: new Date().toISOString() }
+      ];
+
+      mockSupabaseService.client.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prayer_prompts') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: mockPrompts, error: null })
+          };
+        } else if (table === 'prayer_types') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({ data: [], error: null })
+          };
+        }
+      });
+
+      const mockWindow = {
+        document: {
+          open: vi.fn(),
+          write: vi.fn(),
+          close: vi.fn()
+        },
+        focus: vi.fn()
+      };
+      (global.window.open as any).mockReturnValue(mockWindow);
+
+      await service.downloadPrintablePromptList([], null);
+
+      const html = mockWindow.document.write.mock.calls[0][0];
+      expect(html).toContain('(2)');
+    });
+  });
+
+  describe('Prompt HTML Escaping and Generation', () => {
+    let service: PrintService;
+    let mockSupabaseService: any;
+
+    beforeEach(() => {
+      mockSupabaseService = {
+        client: { from: vi.fn() }
+      } as any;
+      service = new PrintService(mockSupabaseService);
+    });
+
+    it('should escape HTML in prompt titles during generation', () => {
+      const prompts = [
+        { id: '1', title: 'Prompt <script>alert("xss")</script>', type: 'Praise', created_at: new Date().toISOString() }
+      ];
+
+      const html = service.generatePromptsPrintableHTML(prompts);
+
+      expect(html).not.toContain('<script>');
+      expect(html).toContain('prompt-item');
+    });
+
+    it('should escape special characters in prompt titles', () => {
+      const prompts = [
+        { id: '1', title: 'Prompt & "Test" \'single\'', type: 'Praise', created_at: new Date().toISOString() }
+      ];
+
+      const html = service.generatePromptsPrintableHTML(prompts);
+
+      expect(html).toContain('prompt-item');
+      expect(html).toBeDefined();
+    });
+
+    it('should handle ampersand in prayer titles via escapeHtml', () => {
+      const prayers = [
+        {
+          id: '1',
+          title: 'Prayer & Blessing',
+          prayer_for: 'John',
+          description: 'Test & description',
+          requester: 'Jane',
+          status: 'current',
+          created_at: new Date().toISOString(),
+          prayer_updates: []
+        }
+      ];
+
+      const html = service.generatePrintableHTML(prayers);
+      expect(html).toBeDefined();
+    });
+
+    it('should handle less than symbol in prayer descriptions', () => {
+      const prayers = [
+        {
+          id: '1',
+          title: 'Prayer',
+          prayer_for: 'John < 50',
+          description: 'Test < description',
+          requester: 'Jane',
+          status: 'current',
+          created_at: new Date().toISOString(),
+          prayer_updates: []
+        }
+      ];
+
+      const html = service.generatePrintableHTML(prayers);
+      expect(html).toBeDefined();
+    });
+
+    it('should handle greater than symbol in prayer content', () => {
+      const prayers = [
+        {
+          id: '1',
+          title: 'Prayer > Important',
+          prayer_for: 'John',
+          description: 'Test > description',
+          requester: 'Jane',
+          status: 'current',
+          created_at: new Date().toISOString(),
+          prayer_updates: []
+        }
+      ];
+
+      const html = service.generatePrintableHTML(prayers);
+      expect(html).toBeDefined();
+    });
+
+    it('should handle quotes in prayer content', () => {
+      const prayers = [
+        {
+          id: '1',
+          title: 'Prayer "quoted"',
+          prayer_for: 'John "Doe"',
+          description: 'Test "quoted" description',
+          requester: 'Jane',
+          status: 'current',
+          created_at: new Date().toISOString(),
+          prayer_updates: []
+        }
+      ];
+
+      const html = service.generatePrintableHTML(prayers);
+      expect(html).toBeDefined();
+    });
+
+    it('should prevent XSS attacks in prayer updates', () => {
+      const prayers = [
+        {
+          id: '1',
+          title: 'Prayer',
+          prayer_for: 'John',
+          description: 'Test',
+          requester: 'Jane',
+          status: 'current',
+          created_at: new Date().toISOString(),
+          prayer_updates: [
+            {
+              id: 'u1',
+              content: '<script>alert("xss")</script>',
+              author: 'Author',
+              created_at: new Date().toISOString()
+            }
+          ]
+        }
+      ];
+
+      const html = service.generatePrintableHTML(prayers);
+      expect(html).not.toContain('<script>');
+    });
+
+    it('should prevent XSS in prompt author names', () => {
+      const prayers = [
+        {
+          id: '1',
+          title: 'Prayer',
+          prayer_for: 'John',
+          description: 'Test',
+          requester: '<img src=x onerror="alert(\'xss\')">',
+          status: 'current',
+          created_at: new Date().toISOString(),
+          prayer_updates: []
+        }
+      ];
+
+      const html = service.generatePrintableHTML(prayers);
+      expect(html).not.toContain('onerror');
+    });
+  });
 });

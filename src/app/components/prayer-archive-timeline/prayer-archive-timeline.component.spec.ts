@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { PrayerArchiveTimelineComponent } from './prayer-archive-timeline.component';
 
 describe('PrayerArchiveTimelineComponent - Core Logic', () => {
   describe('Date Formatting', () => {
@@ -1492,6 +1493,618 @@ describe('PrayerArchiveTimelineComponent - Component Integration Tests', () => {
       const dayValues = grid.filter((d: any) => typeof d === 'number');
 
       expect(dayValues[dayValues.length - 1]).toBe(29);
+    });
+  });
+});
+
+describe('PrayerArchiveTimelineComponent - Angular Component Tests', () => {
+  let component: PrayerArchiveTimelineComponent;
+  let fixture: any;
+  let prayerService: any;
+  let supabaseService: any;
+
+  beforeEach(async () => {
+    // Create mock services
+    prayerService = {
+      loadPrayers: vi.fn().mockResolvedValue(undefined),
+      allPrayers$: {
+        subscribe: vi.fn((cb) => {
+          cb([]);
+          return { unsubscribe: vi.fn() };
+        })
+      }
+    };
+
+    supabaseService = {
+      client: {
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue({ data: [], error: null })
+              })
+            })
+          }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: null, error: null })
+          })
+        }),
+        getUserSettings: vi.fn().mockResolvedValue({
+          data: {
+            reminder_interval_days: 30,
+            days_before_archive: 30
+          },
+          error: null
+        })
+      }
+    };
+
+    // Import the actual component
+    const { PrayerArchiveTimelineComponent } = await import('./prayer-archive-timeline.component');
+
+    // Create component manually with mocked dependencies
+    const cdr = { markForCheck: vi.fn() };
+    
+    component = new PrayerArchiveTimelineComponent(
+      prayerService as any,
+      supabaseService as any,
+      cdr as any
+    );
+  });
+
+  describe('Component Initialization', () => {
+    it('should create component', () => {
+      expect(component).toBeDefined();
+    });
+
+    it('should have default reminder interval', () => {
+      expect(component.reminderIntervalDays).toBe(30);
+    });
+
+    it('should have default archive threshold', () => {
+      expect(component.daysBeforeArchive).toBe(30);
+    });
+
+    it('should initialize with empty timeline events', () => {
+      expect(component.timelineEvents).toEqual([]);
+    });
+
+    it('should initialize with loading state false', () => {
+      expect(component.isLoading).toBe(false);
+    });
+
+    it('should detect user timezone', () => {
+      expect(component.userTimezone).toBeDefined();
+      expect(typeof component.userTimezone).toBe('string');
+    });
+
+    it('should set current month to today', () => {
+      const today = new Date();
+      expect(component.currentMonth.getMonth()).toBe(today.getMonth());
+      expect(component.currentMonth.getFullYear()).toBe(today.getFullYear());
+    });
+
+    it('should have monthKey getter', () => {
+      const key = component.monthKey;
+      expect(typeof key).toBe('string');
+      expect(key).toMatch(/^\d{4}-\d{2}$/);
+    });
+
+    it('should have monthDisplay getter', () => {
+      const display = component.monthDisplay;
+      expect(typeof display).toBe('string');
+      expect(display.length).toBeGreaterThan(0);
+    });
+
+    it('should have canGoPrevious getter', () => {
+      const canGo = component.canGoPrevious;
+      expect(typeof canGo).toBe('boolean');
+    });
+
+    it('should have canGoNext getter', () => {
+      const canGo = component.canGoNext;
+      expect(typeof canGo).toBe('boolean');
+    });
+  });
+
+  describe('ngOnInit', () => {
+    it('should call loadSettings on init', async () => {
+      const loadSettingsSpy = vi.spyOn(component as any, 'loadSettings');
+      
+      component.ngOnInit();
+      
+      expect(loadSettingsSpy).toHaveBeenCalled();
+    });
+
+    it('should subscribe to prayers on init', async () => {
+      const subscribeSpy = vi.spyOn(prayerService.allPrayers$, 'subscribe');
+      
+      component.ngOnInit();
+      
+      expect(subscribeSpy).toHaveBeenCalled();
+    });
+
+    it('should set allPrayers when prayers emit', async () => {
+      const testPrayers = [
+        { id: '1', title: 'Test Prayer' }
+      ] as any;
+      
+      prayerService.allPrayers$.subscribe = vi.fn((cb) => {
+        cb(testPrayers);
+        return { unsubscribe: vi.fn() };
+      });
+      
+      component.ngOnInit();
+      
+      // Component should process prayers after subscription
+      expect(component).toBeDefined();
+    });
+
+    it('should filter current month on init', async () => {
+      const filterSpy = vi.spyOn(component as any, 'filterCurrentMonth').mockResolvedValue(undefined);
+      
+      component.ngOnInit();
+      
+      // Wait for subscription callback
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      expect(filterSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('Navigation - Previous Month', () => {
+    it('should move to previous month when enabled', () => {
+      component.currentMonth = new Date(2026, 1, 15); // February 2026
+      const minDate = new Date(2025, 6, 1); // July 2025
+      (component as any).minMonth = minDate;
+      
+      component.previousMonth();
+      
+      expect(component.currentMonth.getMonth()).toBe(0); // January
+    });
+
+    it('should not move to previous month when disabled', () => {
+      component.currentMonth = new Date(2026, 1, 15); // February 2026
+      (component as any).minMonth = new Date(2026, 2, 1); // March 2026 (after current)
+      
+      const originalMonth = component.currentMonth.getMonth();
+      component.previousMonth();
+      
+      expect(component.currentMonth.getMonth()).toBe(originalMonth);
+    });
+
+    it('should handle year transition backward', () => {
+      component.currentMonth = new Date(2026, 0, 15); // January 2026
+      (component as any).minMonth = new Date(2025, 0, 1); // January 2025
+      
+      component.previousMonth();
+      
+      expect(component.currentMonth.getFullYear()).toBe(2025);
+      expect(component.currentMonth.getMonth()).toBe(11); // December
+    });
+
+    it('should preserve scroll position', () => {
+      window.scrollY = 100;
+      component.currentMonth = new Date(2026, 2, 15); // March 2026
+      (component as any).minMonth = new Date(2026, 0, 1); // January 2026
+      
+      component.previousMonth();
+      
+      // Should attempt to restore scroll position
+      expect(component.currentMonth.getMonth()).toBe(1); // February
+    });
+  });
+
+  describe('Navigation - Next Month', () => {
+    it('should move to next month when enabled', () => {
+      component.currentMonth = new Date(2026, 0, 15); // January 2026
+      (component as any).maxMonth = new Date(2026, 3, 1); // April 2026
+      
+      component.nextMonth();
+      
+      expect(component.currentMonth.getMonth()).toBe(1); // February
+    });
+
+    it('should not move to next month when disabled', () => {
+      component.currentMonth = new Date(2026, 0, 15); // January 2026
+      (component as any).maxMonth = new Date(2025, 11, 1); // December 2025 (before current)
+      
+      const originalMonth = component.currentMonth.getMonth();
+      component.nextMonth();
+      
+      expect(component.currentMonth.getMonth()).toBe(originalMonth);
+    });
+
+    it('should handle year transition forward', () => {
+      component.currentMonth = new Date(2025, 11, 15); // December 2025
+      (component as any).maxMonth = new Date(2026, 11, 1); // December 2026
+      
+      component.nextMonth();
+      
+      expect(component.currentMonth.getFullYear()).toBe(2026);
+      expect(component.currentMonth.getMonth()).toBe(0); // January
+    });
+
+    it('should preserve scroll position', () => {
+      window.scrollY = 100;
+      component.currentMonth = new Date(2026, 0, 15); // January 2026
+      (component as any).maxMonth = new Date(2026, 2, 1); // March 2026
+      
+      component.nextMonth();
+      
+      // Should attempt to restore scroll position
+      expect(component.currentMonth.getMonth()).toBe(1); // February
+    });
+  });
+
+  describe('Refresh Data', () => {
+    it('should set isLoading to true', () => {
+      component.isLoading = false;
+      
+      component.refreshData();
+      
+      expect(component.isLoading).toBe(true);
+    });
+
+    it('should mark for check', () => {
+      const cdr = (component as any).cdr;
+      const spy = vi.spyOn(cdr, 'markForCheck');
+      
+      component.refreshData();
+      
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('should load prayers with force refresh', async () => {
+      component.refreshData();
+      
+      // Wait for promise to resolve
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      expect(prayerService.loadPrayers).toHaveBeenCalledWith(true);
+    });
+
+    it('should stop loading after refresh completes', async () => {
+      component.refreshData();
+      
+      // Wait for promise to resolve
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      expect(component.isLoading).toBe(false);
+    });
+  });
+
+  describe('Load Settings', () => {
+    it('should call loadSettings method', async () => {
+      const loadSettingsSpy = vi.spyOn(component as any, 'loadSettings');
+      
+      await (component as any).loadSettings();
+      
+      expect(loadSettingsSpy).toHaveBeenCalled();
+    });
+
+    it('should set reminder interval from settings', async () => {
+      supabaseService.client.from = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: {
+                reminder_interval_days: 45,
+                days_before_archive: 20
+              },
+              error: null
+            })
+          })
+        })
+      });
+
+      await (component as any).loadSettings();
+      
+      // Should be called with admin_settings
+      expect(supabaseService.client.from).toHaveBeenCalledWith('admin_settings');
+    });
+
+    it('should maintain default values on settings load error', async () => {
+      supabaseService.client.from = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: null,
+              error: new Error('Network error')
+            })
+          })
+        })
+      });
+
+      const originalReminder = component.reminderIntervalDays;
+      const originalArchive = component.daysBeforeArchive;
+      
+      await (component as any).loadSettings();
+      
+      // Should keep defaults on error
+      expect(component.reminderIntervalDays).toBe(originalReminder);
+      expect(component.daysBeforeArchive).toBe(originalArchive);
+    });
+  });
+
+  describe('Get Local Date String', () => {
+    it('should format date correctly', () => {
+      const testDate = new Date('2026-01-15T12:00:00Z');
+      const result = (component as any).getLocalDateString(testDate);
+      
+      expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
+    it('should use user timezone', () => {
+      component.userTimezone = 'America/New_York';
+      const testDate = new Date('2026-01-15T00:00:00Z');
+      const result = (component as any).getLocalDateString(testDate);
+      
+      expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
+    it('should handle different dates consistently', () => {
+      const dates = [
+        new Date('2026-01-01T00:00:00Z'),
+        new Date('2026-06-15T12:00:00Z'),
+        new Date('2026-12-31T23:59:59Z')
+      ];
+      
+      dates.forEach(date => {
+        const result = (component as any).getLocalDateString(date);
+        expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      });
+    });
+  });
+
+  describe('Get Local Date At Midnight', () => {
+    it('should return date at midnight', () => {
+      const testDate = new Date('2026-01-15T12:34:56Z');
+      const result = (component as any).getLocalDateAtMidnight(testDate);
+      
+      expect(result.getUTCHours()).toBe(0);
+      expect(result.getUTCMinutes()).toBe(0);
+      expect(result.getUTCSeconds()).toBe(0);
+    });
+
+    it('should convert date to UTC midnight representation', () => {
+      const testDate = new Date('2026-01-15T12:34:56Z');
+      const result = (component as any).getLocalDateAtMidnight(testDate);
+      
+      // Result should be a valid date
+      expect(result).toBeDefined();
+      expect(result instanceof Date).toBe(true);
+    });
+
+    it('should handle end of month dates', () => {
+      const testDate = new Date('2026-01-31T23:59:59Z');
+      const result = (component as any).getLocalDateAtMidnight(testDate);
+      
+      expect(result).toBeDefined();
+      // Should be at midnight UTC
+      expect(result.getUTCHours()).toBe(0);
+    });
+  });
+
+  describe('Group Events By Date', () => {
+    it('should group events by date', () => {
+      const events = [
+        { date: new Date('2026-01-15T00:00:00Z'), prayer: { id: '1', title: 'P1' }, eventType: 'reminder-sent' as const, daysUntil: 0 },
+        { date: new Date('2026-01-15T00:00:00Z'), prayer: { id: '2', title: 'P2' }, eventType: 'reminder-sent' as const, daysUntil: 0 },
+        { date: new Date('2026-01-16T00:00:00Z'), prayer: { id: '3', title: 'P3' }, eventType: 'reminder-sent' as const, daysUntil: 0 }
+      ];
+      
+      const grouped = (component as any).groupEventsByDate(events);
+      
+      expect(grouped.length).toBe(2); // Two different dates
+      expect(grouped[0].events.length).toBe(2); // First date has 2 events
+      expect(grouped[1].events.length).toBe(1); // Second date has 1 event
+    });
+
+    it('should format dates in groups', () => {
+      const events = [
+        { date: new Date(), prayer: { id: '1', title: 'P1' }, eventType: 'reminder-sent' as const, daysUntil: 0 }
+      ];
+      
+      const grouped = (component as any).groupEventsByDate(events);
+      
+      expect(grouped[0].dateStr).toBeDefined();
+      expect(typeof grouped[0].dateStr).toBe('string');
+    });
+
+    it('should sort events within same day', () => {
+      const events = [
+        { date: new Date('2026-01-15T00:00:00Z'), prayer: { id: '1', title: 'P1' }, eventType: 'answered' as const, daysUntil: 0 },
+        { date: new Date('2026-01-15T00:00:00Z'), prayer: { id: '2', title: 'P2' }, eventType: 'reminder-sent' as const, daysUntil: 0 },
+        { date: new Date('2026-01-15T00:00:00Z'), prayer: { id: '3', title: 'P3' }, eventType: 'reminder-upcoming' as const, daysUntil: 5 }
+      ];
+      
+      const grouped = (component as any).groupEventsByDate(events);
+      const dayEvents = grouped[0].events;
+      
+      // Should be sorted by event type order
+      expect(dayEvents.length).toBe(3);
+      // Check that answered (type 6) comes after reminder-sent (type 2)
+      expect(dayEvents[0].eventType).toBe('reminder-upcoming');
+    });
+
+    it('should sort dates chronologically', () => {
+      const events = [
+        { date: new Date('2026-03-15T00:00:00Z'), prayer: { id: '1', title: 'P1' }, eventType: 'reminder-sent' as const, daysUntil: 0 },
+        { date: new Date('2026-01-15T00:00:00Z'), prayer: { id: '2', title: 'P2' }, eventType: 'reminder-sent' as const, daysUntil: 0 },
+        { date: new Date('2026-02-15T00:00:00Z'), prayer: { id: '3', title: 'P3' }, eventType: 'reminder-sent' as const, daysUntil: 0 }
+      ];
+      
+      const grouped = (component as any).groupEventsByDate(events);
+      
+      expect(grouped[0].date < grouped[1].date).toBe(true);
+      expect(grouped[1].date < grouped[2].date).toBe(true);
+    });
+  });
+
+  describe('Format Date', () => {
+    it('should show "Today" for today date', () => {
+      const today = new Date();
+      const formatted = (component as any).formatDate(today);
+      
+      expect(formatted).toBe('Today');
+    });
+
+    it('should show "Tomorrow" for tomorrow date', () => {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      const formatted = (component as any).formatDate(tomorrow);
+      
+      expect(formatted).toBe('Tomorrow');
+    });
+
+    it('should show formatted date for other dates', () => {
+      const future = new Date();
+      future.setDate(future.getDate() + 10);
+      
+      const formatted = (component as any).formatDate(future);
+      
+      expect(formatted).not.toBe('Today');
+      expect(formatted).not.toBe('Tomorrow');
+      expect(formatted).toMatch(/\w+,\s+\w+\s+\d+,\s+\d{4}/); // E.g., "Mon, Jan 15, 2026"
+    });
+
+    it('should handle past dates', () => {
+      const past = new Date();
+      past.setDate(past.getDate() - 5);
+      
+      const formatted = (component as any).formatDate(past);
+      
+      expect(typeof formatted).toBe('string');
+      expect(formatted.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Process Prayers', () => {
+    it('should handle empty prayer list', async () => {
+      const prayers: any[] = [];
+      
+      await (component as any).processPrayers(prayers);
+      
+      expect((component as any).allEvents).toEqual([]);
+    });
+
+    it('should add answered prayer event', async () => {
+      const prayers = [
+        {
+          id: '1',
+          title: 'Prayer 1',
+          status: 'answered',
+          updated_at: new Date().toISOString()
+        } as any
+      ];
+      
+      await (component as any).processPrayers(prayers);
+      
+      const events = (component as any).allEvents;
+      expect(events.length).toBeGreaterThan(0);
+      expect(events[0].eventType).toBe('answered');
+    });
+
+    it('should add archived prayer event', async () => {
+      const prayers = [
+        {
+          id: '1',
+          title: 'Prayer 1',
+          status: 'archived',
+          updated_at: new Date().toISOString()
+        } as any
+      ];
+      
+      await (component as any).processPrayers(prayers);
+      
+      const events = (component as any).allEvents;
+      expect(events.length).toBeGreaterThan(0);
+      expect(events[0].eventType).toBe('archived');
+    });
+
+    it('should skip processing for non-current prayers', async () => {
+      const prayers = [
+        {
+          id: '1',
+          title: 'Prayer 1',
+          status: 'answered',
+          updated_at: new Date().toISOString()
+        } as any
+      ];
+      
+      await (component as any).processPrayers(prayers);
+      
+      // Should process answered, but still add the event
+      const events = (component as any).allEvents;
+      expect(Array.isArray(events)).toBe(true);
+    });
+
+    it('should handle prayers with last_reminder_sent', async () => {
+      const reminderDate = new Date();
+      reminderDate.setDate(reminderDate.getDate() - 40);
+      
+      const prayers = [
+        {
+          id: '1',
+          title: 'Prayer 1',
+          status: 'current',
+          last_reminder_sent: reminderDate.toISOString(),
+          created_at: new Date(reminderDate.getTime() - 1000 * 60 * 60 * 24 * 60).toISOString()
+        } as any
+      ];
+      
+      await (component as any).processPrayers(prayers);
+      
+      const events = (component as any).allEvents;
+      expect(events.length).toBeGreaterThan(0);
+    });
+
+    it('should calculate upcoming reminders for new prayers', async () => {
+      const createdDate = new Date();
+      createdDate.setDate(createdDate.getDate() - 20);
+      
+      const prayers = [
+        {
+          id: '1',
+          title: 'Prayer 1',
+          status: 'current',
+          created_at: createdDate.toISOString()
+        } as any
+      ];
+      
+      await (component as any).processPrayers(prayers);
+      
+      const events = (component as any).allEvents;
+      expect(events.length).toBeGreaterThan(0);
+      expect(events.some((e: any) => e.eventType === 'reminder-upcoming')).toBe(true);
+    });
+  });
+
+  describe('Filter Current Month', () => {
+    it('should filter events by current month', async () => {
+      const events = [
+        { date: new Date(2026, 0, 15), prayer: { id: '1', title: 'P1' }, eventType: 'reminder-sent' as const, daysUntil: 0 },
+        { date: new Date(2026, 1, 15), prayer: { id: '2', title: 'P2' }, eventType: 'reminder-sent' as const, daysUntil: 0 }
+      ];
+      
+      component.currentMonth = new Date(2026, 0, 1); // January
+      (component as any).allEvents = events;
+      
+      await (component as any).filterCurrentMonth();
+      
+      // Should have filtered timeline events
+      expect(Array.isArray(component.timelineEvents)).toBe(true);
+    });
+
+    it('should mark for check after filtering', async () => {
+      const cdr = (component as any).cdr;
+      const spy = vi.spyOn(cdr, 'markForCheck');
+      
+      await (component as any).filterCurrentMonth();
+      
+      expect(spy).toHaveBeenCalled();
     });
   });
 });

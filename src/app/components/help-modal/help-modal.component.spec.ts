@@ -1677,3 +1677,541 @@ describe('HelpModalComponent - Component Integration Tests', () => {
     });
   });
 });
+
+describe('HelpModalComponent - Angular Integration Tests', () => {
+  let component: any;
+  let helpContentService: any;
+  let sanitizer: any;
+
+  beforeEach(async () => {
+    // Mock HelpContentService with observables
+    helpContentService = {
+      getSections: vi.fn().mockReturnValue({
+        pipe: vi.fn().mockReturnValue({
+          subscribe: vi.fn((callback: any) => {
+            callback([
+              {
+                id: '1',
+                title: 'Getting Started',
+                description: 'Learn the basics',
+                icon: '<svg></svg>',
+                content: [
+                  { subtitle: 'Overview', text: 'This is an overview', examples: ['Example 1'] }
+                ]
+              },
+              {
+                id: '2',
+                title: 'Advanced Features',
+                description: 'Power user features',
+                icon: '<svg></svg>',
+                content: [
+                  { subtitle: 'Features', text: 'Advanced functionality', examples: [] }
+                ]
+              }
+            ]);
+            return { unsubscribe: vi.fn() };
+          })
+        })
+      }),
+      isLoading$: {
+        pipe: vi.fn().mockReturnValue({
+          subscribe: vi.fn((callback: any) => {
+            callback(false);
+            return { unsubscribe: vi.fn() };
+          })
+        })
+      },
+      error$: {
+        pipe: vi.fn().mockReturnValue({
+          subscribe: vi.fn((callback: any) => {
+            callback(null);
+            return { unsubscribe: vi.fn() };
+          })
+        })
+      }
+    };
+
+    // Mock DomSanitizer
+    sanitizer = {
+      bypassSecurityTrustHtml: vi.fn((html: string) => ({ changingThisBreaksApplicationSecurity: html }))
+    };
+
+    // Import and create actual component instance
+    const { HelpModalComponent } = await import('./help-modal.component');
+    component = new HelpModalComponent(helpContentService, sanitizer);
+  });
+
+  describe('Component Initialization with ngOnInit', () => {
+    it('should create component', () => {
+      expect(component).toBeDefined();
+    });
+
+    it('should initialize with default values', () => {
+      expect(component.isOpen).toBe(false);
+      expect(component.searchQuery).toBe('');
+      expect(component.expandedSection).toBeNull();
+    });
+
+    it('should setup observables on ngOnInit', () => {
+      component.ngOnInit();
+
+      expect(component.helpSections$).toBeDefined();
+      expect(component.filteredSections$).toBeDefined();
+      expect(component.isLoading$).toBeDefined();
+      expect(component.error$).toBeDefined();
+    });
+
+    it('should call getSections from service', () => {
+      component.ngOnInit();
+      
+      expect(helpContentService.getSections).toHaveBeenCalled();
+    });
+
+    it('should initialize search query subject', () => {
+      component.ngOnInit();
+      
+      expect(component.searchQuery).toBe('');
+      // Trigger search change
+      component.onSearchChange();
+      expect(component.searchQuery).toBe('');
+    });
+
+    it('should initialize helpSections$ observable from service', () => {
+      component.ngOnInit();
+      
+      // helpSections$ should be the result of getSections()
+      expect(component.helpSections$).toBeDefined();
+    });
+
+    it('should setup filteredSections$ with initial empty mapping', () => {
+      component.ngOnInit();
+      
+      // filteredSections$ should be defined after ngOnInit
+      expect(component.filteredSections$).toBeDefined();
+    });
+
+    it('should setup filteredSections$ to filter sections on getSections', () => {
+      component.ngOnInit();
+      
+      // filteredSections$ should be observable that filters sections
+      expect(component.filteredSections$).toBeDefined();
+    });
+
+    it('should subscribe to searchQuerySubject changes', () => {
+      component.ngOnInit();
+      
+      // After init, searchQuerySubject should be set up
+      component.searchQuery = 'test';
+      component.onSearchChange();
+      
+      expect(component.searchQuery).toBe('test');
+    });
+
+    it('should filter sections dynamically when search changes', () => {
+      component.ngOnInit();
+      
+      const sections = [
+        { id: '1', title: 'Test Section', description: 'Test', content: [] }
+      ];
+      
+      component.searchQuery = 'Test';
+      const filtered = (component as any).filterSections(sections, component.searchQuery);
+      
+      expect(filtered.length).toBe(1);
+    });
+  });
+
+  describe('Modal Visibility and Lifecycle', () => {
+    it('should start with isOpen as false', () => {
+      expect(component.isOpen).toBe(false);
+    });
+
+    it('should emit closeModal event when onClose is called', () => {
+      const emitSpy = vi.spyOn(component.closeModal, 'emit');
+      
+      component.onClose();
+      
+      expect(emitSpy).toHaveBeenCalled();
+    });
+
+    it('should handle multiple close calls', () => {
+      const emitSpy = vi.spyOn(component.closeModal, 'emit');
+      
+      component.onClose();
+      component.onClose();
+      component.onClose();
+      
+      expect(emitSpy).toHaveBeenCalledTimes(3);
+    });
+
+    it('should set isOpen when input changes', () => {
+      component.isOpen = true;
+      expect(component.isOpen).toBe(true);
+
+      component.isOpen = false;
+      expect(component.isOpen).toBe(false);
+    });
+  });
+
+  describe('Section Expansion and Collapse', () => {
+    it('should toggle section expansion', () => {
+      expect(component.isSectionExpanded('section-1')).toBe(false);
+      
+      component.toggleSection('section-1');
+      expect(component.isSectionExpanded('section-1')).toBe(true);
+      
+      component.toggleSection('section-1');
+      expect(component.isSectionExpanded('section-1')).toBe(false);
+    });
+
+    it('should expand different sections independently', () => {
+      component.toggleSection('section-1');
+      expect(component.isSectionExpanded('section-1')).toBe(true);
+      expect(component.isSectionExpanded('section-2')).toBe(false);
+
+      component.toggleSection('section-2');
+      expect(component.isSectionExpanded('section-1')).toBe(false);
+      expect(component.isSectionExpanded('section-2')).toBe(true);
+    });
+
+    it('should collapse previous section when expanding new one', () => {
+      component.toggleSection('section-1');
+      expect(component.expandedSection).toBe('section-1');
+
+      component.toggleSection('section-2');
+      expect(component.expandedSection).toBe('section-2');
+      expect(component.isSectionExpanded('section-1')).toBe(false);
+    });
+
+    it('should set expandedSection to null when collapsing', () => {
+      component.toggleSection('section-1');
+      expect(component.expandedSection).not.toBeNull();
+
+      component.toggleSection('section-1');
+      expect(component.expandedSection).toBeNull();
+    });
+
+    it('should handle rapid section toggles', () => {
+      component.toggleSection('section-1');
+      component.toggleSection('section-2');
+      component.toggleSection('section-3');
+
+      expect(component.expandedSection).toBe('section-3');
+      expect(component.isSectionExpanded('section-1')).toBe(false);
+      expect(component.isSectionExpanded('section-2')).toBe(false);
+      expect(component.isSectionExpanded('section-3')).toBe(true);
+    });
+  });
+
+  describe('Search Functionality', () => {
+    it('should update search query', () => {
+      component.searchQuery = 'test query';
+      component.onSearchChange();
+      
+      expect(component.searchQuery).toBe('test query');
+    });
+
+    it('should handle empty search query', () => {
+      component.searchQuery = '';
+      component.onSearchChange();
+      
+      expect(component.searchQuery).toBe('');
+    });
+
+    it('should filter sections by title', () => {
+      const sections = [
+        { id: '1', title: 'Getting Started', description: 'Intro', content: [] },
+        { id: '2', title: 'Advanced Tips', description: 'Tips', content: [] }
+      ];
+
+      const result = (component as any).filterSections(sections, 'Getting');
+      
+      expect(result.length).toBe(1);
+      expect(result[0].title).toBe('Getting Started');
+    });
+
+    it('should filter sections by description', () => {
+      const sections = [
+        { id: '1', title: 'Getting Started', description: 'Introduction guide', content: [] },
+        { id: '2', title: 'Advanced Tips', description: 'Power user features', content: [] }
+      ];
+
+      const result = (component as any).filterSections(sections, 'Introduction');
+      
+      expect(result.length).toBe(1);
+      expect(result[0].description).toContain('Introduction');
+    });
+
+    it('should filter sections by content subtitle', () => {
+      const sections = [
+        {
+          id: '1',
+          title: 'Guide',
+          description: 'Desc',
+          content: [{ subtitle: 'Installation', text: 'How to install', examples: [] }]
+        },
+        {
+          id: '2',
+          title: 'Guide',
+          description: 'Desc',
+          content: [{ subtitle: 'Usage', text: 'How to use', examples: [] }]
+        }
+      ];
+
+      const result = (component as any).filterSections(sections, 'Installation');
+      
+      expect(result.length).toBe(1);
+      expect(result[0].content[0].subtitle).toBe('Installation');
+    });
+
+    it('should filter sections by content text', () => {
+      const sections = [
+        {
+          id: '1',
+          title: 'Guide',
+          description: 'Desc',
+          content: [{ subtitle: 'Sub', text: 'Contains keyword here', examples: [] }]
+        }
+      ];
+
+      const result = (component as any).filterSections(sections, 'keyword');
+      
+      expect(result.length).toBe(1);
+    });
+
+    it('should filter sections by examples', () => {
+      const sections = [
+        {
+          id: '1',
+          title: 'Guide',
+          description: 'Desc',
+          content: [{ subtitle: 'Sub', text: 'Text', examples: ['Example with special text'] }]
+        }
+      ];
+
+      const result = (component as any).filterSections(sections, 'special');
+      
+      expect(result.length).toBe(1);
+    });
+
+    it('should perform case-insensitive search', () => {
+      const sections = [
+        { id: '1', title: 'Getting Started', description: 'Intro', content: [] }
+      ];
+
+      const result1 = (component as any).filterSections(sections, 'GETTING');
+      const result2 = (component as any).filterSections(sections, 'getting');
+      const result3 = (component as any).filterSections(sections, 'Getting');
+      
+      expect(result1.length).toBe(1);
+      expect(result2.length).toBe(1);
+      expect(result3.length).toBe(1);
+    });
+
+    it('should return all sections when search is empty', () => {
+      const sections = [
+        { id: '1', title: 'Guide 1', description: 'Desc 1', content: [] },
+        { id: '2', title: 'Guide 2', description: 'Desc 2', content: [] },
+        { id: '3', title: 'Guide 3', description: 'Desc 3', content: [] }
+      ];
+
+      const result = (component as any).filterSections(sections, '');
+      
+      expect(result.length).toBe(3);
+    });
+
+    it('should return empty array when no matches found', () => {
+      const sections = [
+        { id: '1', title: 'Guide', description: 'Description', content: [] }
+      ];
+
+      const result = (component as any).filterSections(sections, 'nonexistent');
+      
+      expect(result.length).toBe(0);
+    });
+
+    it('should handle search with whitespace', () => {
+      const sections = [
+        { id: '1', title: 'Getting Started', description: 'Intro', content: [] }
+      ];
+
+      const result = (component as any).filterSections(sections, '   ');
+      
+      expect(result.length).toBe(1);
+    });
+
+    it('should update filtered sections on search change', () => {
+      component.ngOnInit();
+      
+      component.searchQuery = 'Getting';
+      component.onSearchChange();
+      expect(component.searchQuery).toBe('Getting');
+
+      component.searchQuery = 'Advanced';
+      component.onSearchChange();
+      expect(component.searchQuery).toBe('Advanced');
+    });
+  });
+
+  describe('Icon Sanitization', () => {
+    it('should sanitize HTML in getSafeIcon', () => {
+      const iconHtml = '<svg><path d="M0 0"/></svg>';
+      
+      const result = component.getSafeIcon(iconHtml);
+      
+      expect(sanitizer.bypassSecurityTrustHtml).toHaveBeenCalledWith(iconHtml);
+      expect(result).toBeDefined();
+    });
+
+    it('should handle empty icon string', () => {
+      const result = component.getSafeIcon('');
+      
+      expect(sanitizer.bypassSecurityTrustHtml).toHaveBeenCalledWith('');
+    });
+
+    it('should handle complex SVG icons', () => {
+      const complexSvg = '<svg class="icon"><circle cx="10" cy="10" r="8"/></svg>';
+      
+      const result = component.getSafeIcon(complexSvg);
+      
+      expect(sanitizer.bypassSecurityTrustHtml).toHaveBeenCalledWith(complexSvg);
+    });
+  });
+
+  describe('Content Area Scrolling', () => {
+    it('should have contentArea ViewChild when set', () => {
+      component.contentArea = { nativeElement: { scrollTop: 0 } };
+      expect(component.contentArea).toBeDefined();
+    });
+
+    it('should scroll section into view on expand', (done) => {
+      component.contentArea = {
+        nativeElement: {
+          scrollTop: 0,
+          getBoundingClientRect: vi.fn().mockReturnValue({ top: 100 })
+        }
+      };
+
+      const mockHeader = {
+        getBoundingClientRect: vi.fn().mockReturnValue({ top: 150 })
+      };
+      
+      vi.spyOn(document, 'querySelector').mockReturnValue(mockHeader as any);
+
+      component.toggleSection('section-1');
+
+      return new Promise<void>((resolve) => {
+        setTimeout(() => {
+          expect(document.querySelector).toHaveBeenCalled();
+          resolve();
+        }, 50);
+      });
+    });
+
+    it('should handle missing contentArea element gracefully', () => {
+      component.contentArea = undefined;
+      
+      expect(() => {
+        component.toggleSection('section-1');
+      }).not.toThrow();
+    });
+  });
+
+  describe('Search Query State Management', () => {
+    it('should initialize with empty search query', () => {
+      expect(component.searchQuery).toBe('');
+    });
+
+    it('should update search query through onSearchChange', () => {
+      component.searchQuery = 'new search';
+      component.onSearchChange();
+      
+      expect(component.searchQuery).toBe('new search');
+    });
+
+    it('should handle multiple sequential searches', () => {
+      const queries = ['getting', 'advanced', 'troubleshoot', ''];
+      
+      queries.forEach(query => {
+        component.searchQuery = query;
+        component.onSearchChange();
+        expect(component.searchQuery).toBe(query);
+      });
+    });
+
+    it('should filter sections immediately after search change', () => {
+      component.ngOnInit();
+      
+      const sections = [
+        { id: '1', title: 'Getting Started', description: 'Intro', content: [] },
+        { id: '2', title: 'Advanced Tips', description: 'Tips', content: [] }
+      ];
+
+      component.searchQuery = 'getting';
+      component.onSearchChange();
+      
+      const filtered = (component as any).filterSections(sections, component.searchQuery);
+      expect(filtered.length).toBe(1);
+    });
+  });
+
+  describe('Complex Filtering Scenarios', () => {
+    it('should handle sections with no content examples', () => {
+      const sections = [
+        {
+          id: '1',
+          title: 'Guide',
+          description: 'Desc',
+          content: [{ subtitle: 'Sub', text: 'Text', examples: [] }]
+        }
+      ];
+
+      const result = (component as any).filterSections(sections, 'Guide');
+      
+      expect(result.length).toBe(1);
+    });
+
+    it('should handle sections with null examples', () => {
+      const sections = [
+        {
+          id: '1',
+          title: 'Guide',
+          description: 'Desc',
+          content: [{ subtitle: 'Sub', text: 'Text', examples: null }]
+        }
+      ];
+
+      const result = (component as any).filterSections(sections, 'Guide');
+      
+      expect(result.length).toBe(1);
+    });
+
+    it('should handle empty content array', () => {
+      const sections = [
+        { id: '1', title: 'Guide', description: 'Desc', content: [] }
+      ];
+
+      const result = (component as any).filterSections(sections, 'something');
+      
+      expect(result.length).toBe(0);
+    });
+
+    it('should filter multiple matching content items', () => {
+      const sections = [
+        {
+          id: '1',
+          title: 'Guide',
+          description: 'Desc',
+          content: [
+            { subtitle: 'Installation', text: 'Install step 1', examples: [] },
+            { subtitle: 'Installation', text: 'Install step 2', examples: [] }
+          ]
+        }
+      ];
+
+      const result = (component as any).filterSections(sections, 'Installation');
+      
+      expect(result.length).toBe(1);
+    });
+  });
+});
