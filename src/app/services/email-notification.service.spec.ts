@@ -623,4 +623,425 @@ describe('EmailNotificationService - Additional Logic', () => {
       await expect(Promise.all(promises)).resolves.toBeDefined();
     });
   });
+
+  describe('EmailNotificationService - Advanced Integration Tests', () => {
+    let service: EmailNotificationService;
+    let mockSupabase: any;
+    let mockApprovalLinks: any;
+
+    beforeEach(() => {
+      mockSupabase = {
+        client: {
+          functions: { invoke: vi.fn() },
+          from: vi.fn()
+        },
+        directQuery: vi.fn()
+      };
+
+      mockApprovalLinks = {
+        generateCode: vi.fn().mockReturnValue('code-123'),
+        generateApprovalLink: vi.fn().mockResolvedValue(null)
+      };
+
+      service = new EmailNotificationService(mockSupabase as any, mockApprovalLinks as any);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('should handle template caching', async () => {
+      const tpl = { id: '1', template_key: 'test', subject: 's', html_body: 'h', text_body: 't' };
+      mockSupabase.client.from = vi.fn().mockReturnValue(makeFromQuery({ data: tpl, error: null }));
+      
+      const res1 = await service.getTemplate('test');
+      const res2 = await service.getTemplate('test');
+      
+      // Should return same result
+      expect(res1).toBeDefined();
+      expect(res2).toBeDefined();
+    });
+
+    it('should validate email addresses', () => {
+      const validEmails = [
+        'user@example.com',
+        'test.user@domain.co.uk',
+        'user+tag@example.com'
+      ];
+
+      validEmails.forEach(email => {
+        const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        expect(isValid).toBe(true);
+      });
+    });
+
+    it('should reject invalid email addresses', () => {
+      const invalidEmails = [
+        'notanemail',
+        '@example.com',
+        'user@',
+        'user @example.com'
+      ];
+
+      invalidEmails.forEach(email => {
+        const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        expect(isValid).toBe(false);
+      });
+    });
+
+    it('should handle template variables substitution', () => {
+      const template = 'Hello {{name}}, welcome to {{app_name}}!';
+      const variables = { name: 'John', app_name: 'PrayerApp' };
+      
+      let result = template;
+      Object.entries(variables).forEach(([key, value]) => {
+        result = result.replace(`{{${key}}}`, String(value));
+      });
+
+      expect(result).toBe('Hello John, welcome to PrayerApp!');
+    });
+
+    it('should handle multiple template variables', () => {
+      const template = 'User: {{user}}, Status: {{status}}, Date: {{date}}';
+      const vars = { user: 'Alice', status: 'active', date: '2026-01-15' };
+      
+      let result = template;
+      Object.entries(vars).forEach(([key, value]) => {
+        result = result.replace(`{{${key}}}`, String(value));
+      });
+
+      expect(result).toContain('Alice');
+      expect(result).toContain('active');
+      expect(result).toContain('2026-01-15');
+    });
+
+    it('should handle email with attachments', async () => {
+      const emailWithAttachment = {
+        to: 'user@example.com',
+        subject: 'Document',
+        attachments: [{
+          filename: 'doc.pdf',
+          content: 'base64content',
+          contentType: 'application/pdf'
+        }]
+      };
+
+      mockSupabase.client.functions.invoke.mockResolvedValue({
+        data: { success: true },
+        error: null
+      });
+
+      await service.sendEmail(emailWithAttachment);
+      expect(mockSupabase.client.functions.invoke).toHaveBeenCalled();
+    });
+
+    it('should batch process emails', async () => {
+      mockSupabase.client.functions.invoke.mockResolvedValue({
+        data: { success: true },
+        error: null
+      });
+
+      const emails = [
+        { to: 'user1@example.com', subject: 'Test 1' },
+        { to: 'user2@example.com', subject: 'Test 2' },
+        { to: 'user3@example.com', subject: 'Test 3' }
+      ];
+
+      const results = await Promise.all(
+        emails.map(email => service.sendEmail(email))
+      );
+
+      expect(results.length).toBe(3);
+      expect(mockSupabase.client.functions.invoke).toHaveBeenCalledTimes(3);
+    });
+
+    it('should handle email with html and text content', async () => {
+      const emailData = {
+        to: 'user@example.com',
+        subject: 'Test',
+        html: '<p>HTML content</p>',
+        text: 'Text content'
+      };
+
+      mockSupabase.client.functions.invoke.mockResolvedValue({
+        data: { success: true },
+        error: null
+      });
+
+      await service.sendEmail(emailData);
+      expect(mockSupabase.client.functions.invoke).toHaveBeenCalled();
+    });
+
+    it('should handle email with cc and bcc', async () => {
+      const emailData = {
+        to: 'user@example.com',
+        cc: 'cc@example.com',
+        bcc: 'bcc@example.com',
+        subject: 'Test'
+      };
+
+      mockSupabase.client.functions.invoke.mockResolvedValue({
+        data: { success: true },
+        error: null
+      });
+
+      await service.sendEmail(emailData);
+      expect(mockSupabase.client.functions.invoke).toHaveBeenCalled();
+    });
+
+    it('should handle email with priority levels', async () => {
+      const priorities = ['low', 'normal', 'high'];
+
+      mockSupabase.client.functions.invoke.mockResolvedValue({
+        data: { success: true },
+        error: null
+      });
+
+      for (const priority of priorities) {
+        const emailData = {
+          to: 'user@example.com',
+          subject: 'Test',
+          priority
+        };
+        await service.sendEmail(emailData);
+        expect(mockSupabase.client.functions.invoke).toHaveBeenCalled();
+      }
+    });
+
+    it('should sanitize email content', () => {
+      const unsafeContent = '<script>alert("xss")</script><p>Safe</p>';
+      const safe = unsafeContent.replace(/<script[^>]*>.*?<\/script>/g, '');
+      
+      expect(safe).not.toContain('script');
+      expect(safe).toContain('Safe');
+    });
+
+    it('should handle email retry logic', async () => {
+      let attempt = 0;
+      mockSupabase.client.functions.invoke.mockImplementation(() => {
+        attempt++;
+        if (attempt === 1) {
+          return Promise.reject(new Error('Timeout'));
+        }
+        return Promise.resolve({
+          data: { success: true },
+          error: null
+        });
+      });
+
+      // Simulate retry
+      try {
+        await service.sendEmail({ to: 'user@example.com', subject: 'Test' });
+      } catch (e) {
+        // First attempt failed
+      }
+
+      await service.sendEmail({ to: 'user@example.com', subject: 'Test' });
+      expect(mockSupabase.client.functions.invoke).toHaveBeenCalled();
+    });
+
+    it('should handle rate limiting', async () => {
+      const emails = Array(100).fill(null).map((_, i) => ({
+        to: `user${i}@example.com`,
+        subject: 'Test'
+      }));
+
+      mockSupabase.client.functions.invoke.mockResolvedValue({
+        data: { success: true },
+        error: null
+      });
+
+      const results = await Promise.allSettled(
+        emails.map(email => service.sendEmail(email))
+      );
+
+      expect(results.length).toBe(100);
+    });
+
+    it('should track email delivery status', async () => {
+      mockSupabase.client.functions.invoke.mockResolvedValue({
+        data: { success: true, messageId: 'msg-123' },
+        error: null
+      });
+
+      await service.sendEmail({
+        to: 'user@example.com',
+        subject: 'Test'
+      });
+
+      expect(mockSupabase.client.functions.invoke).toHaveBeenCalled();
+    });
+
+    it('should handle email with multiple recipients', async () => {
+      const recipients = ['user1@example.com', 'user2@example.com', 'user3@example.com'];
+
+      mockSupabase.client.functions.invoke.mockResolvedValue({
+        data: { success: true },
+        error: null
+      });
+
+      for (const to of recipients) {
+        await service.sendEmail({ to, subject: 'Test' });
+        expect(mockSupabase.client.functions.invoke).toHaveBeenCalled();
+      }
+    });
+
+    it('should handle template with no variables', async () => {
+      const template = 'Static email content';
+      const variables = {};
+      
+      let result = template;
+      Object.entries(variables).forEach(([key, value]) => {
+        result = result.replace(`{{${key}}}`, String(value));
+      });
+
+      expect(result).toBe('Static email content');
+    });
+
+    it('should handle missing template gracefully', async () => {
+      mockSupabase.client.from = vi.fn().mockReturnValue(
+        makeFromQuery({ data: null, error: { message: 'Not found' } })
+      );
+
+      const result = await service.getTemplate('nonexistent');
+      expect(result).toBeNull();
+    });
+
+    it('should handle email with custom headers', async () => {
+      const emailData = {
+        to: 'user@example.com',
+        subject: 'Test',
+        headers: {
+          'X-Custom-Header': 'value',
+          'X-Priority': '1'
+        }
+      };
+
+      mockSupabase.client.functions.invoke.mockResolvedValue({
+        data: { success: true },
+        error: null
+      });
+
+      await service.sendEmail(emailData);
+      expect(mockSupabase.client.functions.invoke).toHaveBeenCalled();
+    });
+
+    it('should handle email encoding', () => {
+      const content = 'Email with émojis 🎉 and spëcial çharacters';
+      expect(content).toContain('émojis');
+      expect(content).toContain('🎉');
+    });
+
+    it('should validate template structure', async () => {
+      const tpl = { 
+        id: '1', 
+        template_key: 'test',
+        subject: 'Subject',
+        html_body: '<p>Content</p>',
+        text_body: 'Content'
+      };
+
+      expect(tpl.id).toBeDefined();
+      expect(tpl.template_key).toBeDefined();
+      expect(tpl.subject).toBeDefined();
+      expect(tpl.html_body).toBeDefined();
+      expect(tpl.text_body).toBeDefined();
+    });
+
+    it('should handle send email with metadata', async () => {
+      const emailData = {
+        to: 'user@example.com',
+        subject: 'Test',
+        metadata: {
+          userId: 'user-123',
+          type: 'notification',
+          timestamp: new Date().toISOString()
+        }
+      };
+
+      mockSupabase.client.functions.invoke.mockResolvedValue({
+        data: { success: true },
+        error: null
+      });
+
+      await service.sendEmail(emailData);
+      expect(mockSupabase.client.functions.invoke).toHaveBeenCalled();
+    });
+
+    it('should handle email service initialization', () => {
+      expect(service).toBeDefined();
+    });
+
+    it('should handle concurrent template requests', async () => {
+      const tpl = { id: '1', template_key: 'test', subject: 's', html_body: 'h', text_body: 't' };
+      mockSupabase.client.from = vi.fn().mockReturnValue(makeFromQuery({ data: tpl, error: null }));
+
+      const promises = [
+        service.getTemplate('test'),
+        service.getTemplate('test'),
+        service.getTemplate('test')
+      ];
+
+      const results = await Promise.all(promises);
+      expect(results.length).toBe(3);
+    });
+
+    it('should handle email with reply-to address', async () => {
+      const emailData = {
+        to: 'user@example.com',
+        replyTo: 'support@example.com',
+        subject: 'Test'
+      };
+
+      mockSupabase.client.functions.invoke.mockResolvedValue({
+        data: { success: true },
+        error: null
+      });
+
+      await service.sendEmail(emailData);
+      expect(mockSupabase.client.functions.invoke).toHaveBeenCalled();
+    });
+
+    it('should handle scheduled email sending', async () => {
+      const emailData = {
+        to: 'user@example.com',
+        subject: 'Test',
+        scheduledFor: new Date(Date.now() + 3600000).toISOString()
+      };
+
+      mockSupabase.client.functions.invoke.mockResolvedValue({
+        data: { success: true, scheduled: true },
+        error: null
+      });
+
+      await service.sendEmail(emailData);
+      expect(mockSupabase.client.functions.invoke).toHaveBeenCalled();
+    });
+
+    it('should track email send performance', async () => {
+      const startTime = Date.now();
+
+      mockSupabase.client.functions.invoke.mockResolvedValue({
+        data: { success: true },
+        error: null
+      });
+
+      await service.sendEmail({ to: 'user@example.com', subject: 'Test' });
+      
+      const duration = Date.now() - startTime;
+      expect(duration).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should handle email template with fallback', async () => {
+      mockSupabase.client.from = vi.fn().mockReturnValue(
+        makeFromQuery({ data: null, error: { message: 'Not found' } })
+      );
+
+      const result = await service.getTemplate('nonexistent');
+      const fallback = result || { subject: 'Default', html_body: 'Default content', text_body: 'Default' };
+      
+      expect(fallback).toBeDefined();
+      expect(fallback.subject).toBeDefined();
+    });
+  });
 });

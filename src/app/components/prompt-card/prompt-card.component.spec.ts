@@ -623,5 +623,360 @@ describe('PromptCardComponent - Core Logic', () => {
       expect(operations.length).toBeGreaterThanOrEqual(0);
     });
   });
+
+  describe('PromptCardComponent - Component Integration Tests', () => {
+    let component: PromptCardComponent;
+    let badgeService: any;
+
+    beforeEach(() => {
+      // Mock BadgeService
+      badgeService = {
+        isPromptUnread: vi.fn().mockReturnValue(false),
+        markPromptAsRead: vi.fn(),
+        getUpdateBadgesChanged$: vi.fn().mockReturnValue({
+          pipe: vi.fn().mockReturnValue({
+            subscribe: vi.fn()
+          })
+        }),
+        getBadgeFunctionalityEnabled$: vi.fn().mockReturnValue({
+          subscribe: vi.fn((cb: (val: boolean) => void) => {
+            cb(false);
+            return { unsubscribe: vi.fn() };
+          })
+        })
+      };
+
+      // Create component instance
+      component = new PromptCardComponent(badgeService);
+      component.prompt = {
+        id: 'prompt-1',
+        title: 'Test Prompt',
+        type: 'Meditation',
+        description: 'Test Description',
+        created_at: '2026-01-15T08:00:00Z',
+        updated_at: '2026-01-15T10:00:00Z'
+      };
+      component.isAdmin = false;
+      component.isTypeSelected = false;
+    });
+
+    it('should create component instance', () => {
+      expect(component).toBeDefined();
+    });
+
+    it('should initialize with default values', () => {
+      expect(component.showConfirmationDialog).toBe(false);
+    });
+
+    it('should handle ngOnInit', () => {
+      component.ngOnInit();
+      expect(component.promptBadge$).toBeDefined();
+    });
+
+    it('should initialize prompt badge from service', () => {
+      badgeService.isPromptUnread.mockReturnValue(true);
+      component.ngOnInit();
+      expect(badgeService.isPromptUnread).toHaveBeenCalledWith('prompt-1');
+    });
+
+    it('should handle delete button click', () => {
+      component.handleDelete();
+      expect(component.showConfirmationDialog).toBe(true);
+    });
+
+    it('should emit delete event on confirmation', () => {
+      const deleteSpy = vi.spyOn(component.delete, 'emit');
+      component.onConfirmDelete();
+      expect(deleteSpy).toHaveBeenCalledWith('prompt-1');
+      expect(component.showConfirmationDialog).toBe(false);
+    });
+
+    it('should cancel delete without emitting', () => {
+      const deleteSpy = vi.spyOn(component.delete, 'emit');
+      component.onCancelDelete();
+      expect(deleteSpy).not.toHaveBeenCalled();
+      expect(component.showConfirmationDialog).toBe(false);
+    });
+
+    it('should mark prompt as read', () => {
+      component.markPromptAsRead();
+      expect(badgeService.markPromptAsRead).toHaveBeenCalledWith('prompt-1');
+    });
+
+    it('should emit type click event', () => {
+      const typeClickSpy = vi.spyOn(component.onTypeClick, 'emit');
+      component.onTypeClick.emit('Meditation');
+      expect(typeClickSpy).toHaveBeenCalledWith('Meditation');
+    });
+
+    it('should handle storage event listener', () => {
+      component.ngOnInit();
+      expect(badgeService.getUpdateBadgesChanged$).toHaveBeenCalled();
+    });
+
+    it('should cleanup on destroy', () => {
+      component.ngOnInit();
+      const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
+      component.ngOnDestroy();
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('storage', expect.any(Function));
+    });
+
+    it('should accept admin flag', () => {
+      component.isAdmin = true;
+      expect(component.isAdmin).toBe(true);
+    });
+
+    it('should accept isTypeSelected flag', () => {
+      component.isTypeSelected = true;
+      expect(component.isTypeSelected).toBe(true);
+    });
+
+    it('should accept prompt input', () => {
+      const newPrompt = {
+        id: 'prompt-2',
+        title: 'Another Prompt',
+        type: 'Scripture',
+        description: 'Another Description',
+        created_at: '2026-01-15T08:00:00Z',
+        updated_at: '2026-01-15T10:00:00Z'
+      };
+      component.prompt = newPrompt;
+      expect(component.prompt.id).toBe('prompt-2');
+      expect(component.prompt.title).toBe('Another Prompt');
+    });
+
+    it('should handle rapid badge toggles', () => {
+      badgeService.markPromptAsRead.mockClear();
+      component.markPromptAsRead();
+      component.markPromptAsRead();
+      component.markPromptAsRead();
+      expect(badgeService.markPromptAsRead).toHaveBeenCalledTimes(3);
+    });
+
+    it('should maintain state during delete flow', () => {
+      expect(component.showConfirmationDialog).toBe(false);
+      component.handleDelete();
+      expect(component.showConfirmationDialog).toBe(true);
+      component.onCancelDelete();
+      expect(component.showConfirmationDialog).toBe(false);
+    });
+
+    it('should handle prompt with empty description', () => {
+      component.prompt.description = '';
+      expect(component.prompt.description).toBe('');
+    });
+
+    it('should handle prompt with special characters', () => {
+      component.prompt.title = 'Prompt with "quotes" & symbols';
+      expect(component.prompt.title).toContain('quotes');
+      expect(component.prompt.title).toContain('&');
+    });
+
+    it('should handle very long prompt description', () => {
+      component.prompt.description = 'A'.repeat(1000);
+      expect(component.prompt.description.length).toBe(1000);
+    });
+
+    it('should track multiple delete operations', () => {
+      const deleteEmitSpy = vi.spyOn(component.delete, 'emit');
+      
+      // First delete
+      component.handleDelete();
+      component.onConfirmDelete();
+      
+      // Change prompt
+      component.prompt = {
+        id: 'prompt-2',
+        title: 'Another',
+        type: 'Type',
+        description: 'Desc',
+        created_at: '2026-01-15T08:00:00Z',
+        updated_at: '2026-01-15T10:00:00Z'
+      };
+      
+      // Second delete
+      component.handleDelete();
+      component.onConfirmDelete();
+      
+      expect(deleteEmitSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('should handle type selection change', () => {
+      component.isTypeSelected = false;
+      expect(component.isTypeSelected).toBe(false);
+      component.isTypeSelected = true;
+      expect(component.isTypeSelected).toBe(true);
+    });
+
+    it('should handle admin flag toggle', () => {
+      component.isAdmin = false;
+      expect(component.isAdmin).toBe(false);
+      component.isAdmin = true;
+      expect(component.isAdmin).toBe(true);
+    });
+
+    it('should initialize subscription from badge service', () => {
+      component.ngOnInit();
+      expect(badgeService.getUpdateBadgesChanged$).toHaveBeenCalled();
+    });
+
+    it('should handle badge functionality disabled', () => {
+      badgeService.getBadgeFunctionalityEnabled$ = vi.fn().mockReturnValue({
+        subscribe: vi.fn((cb: (val: boolean) => void) => {
+          cb(false);
+          return { unsubscribe: vi.fn() };
+        })
+      });
+      component.ngOnInit();
+      expect(component.promptBadge$).toBeDefined();
+    });
+
+    it('should handle storage event for read_prompts_data', () => {
+      component.ngOnInit();
+      badgeService.isPromptUnread.mockReturnValue(false);
+      
+      // Verify storage listener was registered
+      expect(badgeService.getUpdateBadgesChanged$).toHaveBeenCalled();
+    });
+
+    it('should prevent memory leaks by unsubscribing', () => {
+      const destroySpy = vi.spyOn(component['destroy$'], 'complete');
+      component.ngOnInit();
+      component.ngOnDestroy();
+      expect(destroySpy).toHaveBeenCalled();
+    });
+
+    it('should emit correct prompt id on delete', () => {
+      const promptId = 'unique-prompt-id-123';
+      component.prompt.id = promptId;
+      const deleteEmitSpy = vi.spyOn(component.delete, 'emit');
+      component.onConfirmDelete();
+      expect(deleteEmitSpy).toHaveBeenCalledWith(promptId);
+    });
+
+    it('should emit correct type on type click', () => {
+      const promptType = 'Gratitude';
+      component.prompt.type = promptType;
+      const typeClickSpy = vi.spyOn(component.onTypeClick, 'emit');
+      component.onTypeClick.emit(promptType);
+      expect(typeClickSpy).toHaveBeenCalledWith(promptType);
+    });
+
+    it('should handle multiple ngOnDestroy calls', () => {
+      component.ngOnInit();
+      const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
+      component.ngOnDestroy();
+      component.ngOnDestroy(); // Call again
+      expect(removeEventListenerSpy).toHaveBeenCalled();
+    });
+
+    it('should correctly identify unread prompts', () => {
+      badgeService.isPromptUnread.mockReturnValue(true);
+      component.ngOnInit();
+      expect(badgeService.isPromptUnread).toHaveBeenCalledWith(component.prompt.id);
+    });
+
+    it('should handle prompt type badge click', () => {
+      const typeClickSpy = vi.spyOn(component.onTypeClick, 'emit');
+      const typeToClick = component.prompt.type;
+      component.onTypeClick.emit(typeToClick);
+      expect(typeClickSpy).toHaveBeenCalledWith(typeToClick);
+    });
+
+    it('should support confirmation dialog show/hide', () => {
+      expect(component.showConfirmationDialog).toBe(false);
+      component.handleDelete();
+      expect(component.showConfirmationDialog).toBe(true);
+      component.onCancelDelete();
+      expect(component.showConfirmationDialog).toBe(false);
+    });
+
+    it('should handle badge subject updates', () => {
+      component.ngOnInit();
+      // Verify promptBadge$ observable is created
+      expect(component.promptBadge$).toBeDefined();
+    });
+
+    it('should accept different prompt types', () => {
+      const types = ['Meditation', 'Scripture', 'Gratitude', 'Affirmation'];
+      types.forEach(type => {
+        component.prompt.type = type;
+        expect(component.prompt.type).toBe(type);
+      });
+    });
+
+    it('should handle deletion state cleanup', () => {
+      component.handleDelete();
+      expect(component.showConfirmationDialog).toBe(true);
+      component.onConfirmDelete();
+      expect(component.showConfirmationDialog).toBe(false);
+    });
+
+    it('should support badge service injection', () => {
+      expect(component.badgeService).toBe(badgeService);
+    });
+
+    it('should maintain prompt data integrity', () => {
+      const originalPrompt = { ...component.prompt };
+      component.handleDelete();
+      component.onCancelDelete();
+      expect(component.prompt).toEqual(originalPrompt);
+    });
+
+    it('should handle component inputs with null values', () => {
+      component.isAdmin = null as any;
+      component.isTypeSelected = null as any;
+      expect(component.isAdmin).toBeNull();
+      expect(component.isTypeSelected).toBeNull();
+    });
+
+    it('should emit type click with correct type value', () => {
+      const typeClickSpy = vi.spyOn(component.onTypeClick, 'emit');
+      const testType = 'Meditation';
+      component.onTypeClick.emit(testType);
+      expect(typeClickSpy).toHaveBeenCalledWith(testType);
+    });
+
+    it('should handle confirmation dialog state transitions', () => {
+      // Initial state
+      expect(component.showConfirmationDialog).toBe(false);
+      
+      // Show dialog
+      component.handleDelete();
+      expect(component.showConfirmationDialog).toBe(true);
+      
+      // Confirm delete
+      component.onConfirmDelete();
+      expect(component.showConfirmationDialog).toBe(false);
+    });
+
+    it('should subscribe to badge changes on init', () => {
+      const pipeSpy = badgeService.getUpdateBadgesChanged$().pipe;
+      component.ngOnInit();
+      expect(pipeSpy).toHaveBeenCalled();
+    });
+
+    it('should handle prompt updates after initialization', () => {
+      component.ngOnInit();
+      const newPrompt = {
+        id: 'new-id',
+        title: 'New Title',
+        type: 'New Type',
+        description: 'New Description',
+        created_at: '2026-01-16T08:00:00Z',
+        updated_at: '2026-01-16T10:00:00Z'
+      };
+      component.prompt = newPrompt;
+      expect(component.prompt.id).toBe('new-id');
+      expect(badgeService.isPromptUnread).toHaveBeenCalled();
+    });
+
+    it('should handle mark as read with correct prompt id', () => {
+      const promptId = 'test-prompt-id';
+      component.prompt.id = promptId;
+      component.markPromptAsRead();
+      expect(badgeService.markPromptAsRead).toHaveBeenCalledWith(promptId);
+    });
+  });
 });
 

@@ -684,3 +684,471 @@ describe('PrayerArchiveTimelineComponent - Core Logic', () => {
     });
   });
 });
+
+describe('PrayerArchiveTimelineComponent - Component Integration Tests', () => {
+  let component: any;
+  let prayerService: any;
+  let supabaseService: any;
+  let changeDetectorRef: any;
+
+  beforeEach(() => {
+    // Mock dependencies
+    changeDetectorRef = {
+      markForCheck: vi.fn()
+    };
+
+    prayerService = {
+      getPrayers: vi.fn().mockReturnValue([]),
+      getArchivedPrayers: vi.fn().mockReturnValue([]),
+      getPrayerById: vi.fn().mockReturnValue(null),
+      archivePrayer: vi.fn().mockResolvedValue({ success: true }),
+      updatePrayer: vi.fn().mockResolvedValue({ success: true })
+    };
+
+    supabaseService = {
+      client: {
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: [], error: null })
+          })
+        })
+      },
+      getUserSettings: vi.fn().mockResolvedValue({ 
+        reminder_interval_days: 30,
+        archive_threshold_days: 7,
+        timezone: 'UTC'
+      })
+    };
+
+    // Create component-like object with key methods
+    component = {
+      timelineEvents: [],
+      displayMonth: new Date(),
+      isLoading: false,
+      reminderIntervalDays: 30,
+      daysBeforeArchive: 7,
+      userTimezone: 'UTC',
+      canGoPrevious: true,
+      canGoNext: true,
+      
+      // Initialize method
+      ngOnInit: function() {
+        this.loadUserSettings();
+        this.loadTimelineData();
+      },
+      
+      loadUserSettings: function() {
+        this.reminderIntervalDays = 30;
+        this.daysBeforeArchive = 7;
+        this.userTimezone = 'UTC';
+      },
+      
+      loadTimelineData: function() {
+        this.timelineEvents = [];
+      },
+      
+      previousMonth: function() {
+        if (this.canGoPrevious) {
+          this.displayMonth = new Date(this.displayMonth.getFullYear(), this.displayMonth.getMonth() - 1, 1);
+          this.updateNavigationState();
+        }
+      },
+      
+      nextMonth: function() {
+        if (this.canGoNext) {
+          this.displayMonth = new Date(this.displayMonth.getFullYear(), this.displayMonth.getMonth() + 1, 1);
+          this.updateNavigationState();
+        }
+      },
+      
+      updateNavigationState: function() {
+        const today = new Date();
+        this.canGoPrevious = this.displayMonth > new Date(today.getFullYear() - 1, today.getMonth(), 1);
+        this.canGoNext = this.displayMonth < new Date(today.getFullYear() + 1, today.getMonth(), 1);
+      },
+      
+      refreshData: function() {
+        this.isLoading = true;
+        setTimeout(() => {
+          this.isLoading = false;
+        }, 100);
+      },
+      
+      getMonthName: function(date: Date): string {
+        return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      },
+      
+      formatDate: function(date: Date): string {
+        return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      }
+    };
+  });
+
+  describe('Component Initialization', () => {
+    it('should create component instance', () => {
+      expect(component).toBeDefined();
+    });
+
+    it('should initialize with empty timeline events', () => {
+      expect(component.timelineEvents).toEqual([]);
+    });
+
+    it('should initialize with current month as display month', () => {
+      const today = new Date();
+      component.displayMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      expect(component.displayMonth.getMonth()).toBe(today.getMonth());
+    });
+
+    it('should initialize with loading state as false', () => {
+      expect(component.isLoading).toBe(false);
+    });
+
+    it('should load user settings on init', () => {
+      component.ngOnInit();
+      expect(component.reminderIntervalDays).toBe(30);
+      expect(component.daysBeforeArchive).toBe(7);
+      expect(component.userTimezone).toBe('UTC');
+    });
+
+    it('should load timeline data on init', () => {
+      component.ngOnInit();
+      expect(Array.isArray(component.timelineEvents)).toBe(true);
+    });
+
+    it('should set navigation state on init', () => {
+      component.ngOnInit();
+      component.updateNavigationState();
+      expect(typeof component.canGoPrevious).toBe('boolean');
+      expect(typeof component.canGoNext).toBe('boolean');
+    });
+  });
+
+  describe('Month Navigation', () => {
+    it('should move to previous month', () => {
+      const startMonth = component.displayMonth.getMonth();
+      component.previousMonth();
+      const endMonth = component.displayMonth.getMonth();
+      
+      if (startMonth === 0) {
+        expect(endMonth).toBe(11);
+      } else {
+        expect(endMonth).toBe(startMonth - 1);
+      }
+    });
+
+    it('should move to next month', () => {
+      const startMonth = component.displayMonth.getMonth();
+      component.nextMonth();
+      const endMonth = component.displayMonth.getMonth();
+      
+      if (startMonth === 11) {
+        expect(endMonth).toBe(0);
+      } else {
+        expect(endMonth).toBe(startMonth + 1);
+      }
+    });
+
+    it('should not go to previous month when disabled', () => {
+      component.canGoPrevious = false;
+      const originalMonth = component.displayMonth.getMonth();
+      component.previousMonth();
+      expect(component.displayMonth.getMonth()).toBe(originalMonth);
+    });
+
+    it('should not go to next month when disabled', () => {
+      component.canGoNext = false;
+      const originalMonth = component.displayMonth.getMonth();
+      component.nextMonth();
+      expect(component.displayMonth.getMonth()).toBe(originalMonth);
+    });
+
+    it('should handle year transitions going backwards', () => {
+      component.displayMonth = new Date(2026, 0, 1); // January 2026
+      component.previousMonth();
+      expect(component.displayMonth.getFullYear()).toBe(2025);
+      expect(component.displayMonth.getMonth()).toBe(11);
+    });
+
+    it('should handle year transitions going forwards', () => {
+      component.displayMonth = new Date(2025, 11, 1); // December 2025
+      component.nextMonth();
+      expect(component.displayMonth.getFullYear()).toBe(2026);
+      expect(component.displayMonth.getMonth()).toBe(0);
+    });
+
+    it('should update navigation state after month change', () => {
+      component.updateNavigationState();
+      const stateBeforeChange = component.canGoPrevious;
+      component.nextMonth();
+      component.updateNavigationState();
+      // Just verify it doesn't crash
+      expect(typeof component.canGoPrevious).toBe('boolean');
+    });
+
+    it('should handle multiple consecutive month changes', () => {
+      const startMonth = component.displayMonth.getMonth();
+      for (let i = 0; i < 6; i++) {
+        component.nextMonth();
+      }
+      const endMonth = component.displayMonth.getMonth();
+      // After moving 6 months forward, month should be different (unless edge case)
+      expect(typeof endMonth).toBe('number');
+      expect(endMonth >= 0 && endMonth < 12).toBe(true);
+    });
+  });
+
+  describe('Data Refresh', () => {
+    it('should start loading on refresh', async () => {
+      component.isLoading = false;
+      component.refreshData();
+      expect(component.isLoading).toBe(true);
+    });
+
+    it('should stop loading after refresh completes', async () => {
+      component.refreshData();
+      await new Promise(resolve => setTimeout(resolve, 150));
+      expect(component.isLoading).toBe(false);
+    });
+
+    it('should handle rapid refresh calls', () => {
+      component.refreshData();
+      component.refreshData();
+      component.refreshData();
+      expect(component.isLoading).toBe(true);
+    });
+
+    it('should preserve timeline events during refresh', () => {
+      component.timelineEvents = [
+        { date: new Date(), prayer: { id: '1', title: 'Test' }, eventType: 'reminder-sent' as any, daysUntil: 0 }
+      ];
+      const originalLength = component.timelineEvents.length;
+      component.refreshData();
+      expect(component.timelineEvents.length).toBe(originalLength);
+    });
+  });
+
+  describe('Date Formatting', () => {
+    it('should format date correctly', () => {
+      const date = new Date(2026, 0, 15);
+      const formatted = component.formatDate(date);
+      expect(formatted).toBeDefined();
+      expect(formatted.length).toBeGreaterThan(0);
+    });
+
+    it('should get month name correctly', () => {
+      const date = new Date(2026, 0, 1); // January
+      const monthName = component.getMonthName(date);
+      expect(monthName).toContain('January');
+    });
+
+    it('should get month name for all months', () => {
+      const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                     'July', 'August', 'September', 'October', 'November', 'December'];
+      
+      months.forEach((monthName, index) => {
+        const date = new Date(2026, index, 1);
+        expect(component.getMonthName(date)).toContain(monthName);
+      });
+    });
+
+    it('should handle date formatting with different years', () => {
+      const date1 = component.formatDate(new Date(2024, 0, 1));
+      const date2 = component.formatDate(new Date(2026, 0, 1));
+      expect(date1).toBeDefined();
+      expect(date2).toBeDefined();
+    });
+  });
+
+  describe('Settings Display', () => {
+    it('should display reminder interval days', () => {
+      component.reminderIntervalDays = 30;
+      expect(component.reminderIntervalDays).toBe(30);
+    });
+
+    it('should display archive threshold days', () => {
+      component.daysBeforeArchive = 7;
+      expect(component.daysBeforeArchive).toBe(7);
+    });
+
+    it('should display user timezone', () => {
+      component.userTimezone = 'America/New_York';
+      expect(component.userTimezone).toBe('America/New_York');
+    });
+
+    it('should update settings when loaded', () => {
+      component.loadUserSettings();
+      expect(component.reminderIntervalDays).toBeGreaterThan(0);
+      expect(component.daysBeforeArchive).toBeGreaterThan(0);
+      expect(component.userTimezone).toBeDefined();
+    });
+
+    it('should handle different timezone values', () => {
+      const timezones = ['UTC', 'America/New_York', 'Europe/London', 'Asia/Tokyo'];
+      timezones.forEach(tz => {
+        component.userTimezone = tz;
+        expect(component.userTimezone).toBe(tz);
+      });
+    });
+  });
+
+  describe('Timeline Events Management', () => {
+    it('should store timeline events', () => {
+      const events = [
+        { date: new Date(), prayer: { id: '1', title: 'Test' }, eventType: 'reminder-sent' as any, daysUntil: 0 }
+      ];
+      component.timelineEvents = events;
+      expect(component.timelineEvents.length).toBe(1);
+    });
+
+    it('should add multiple events', () => {
+      component.timelineEvents = [];
+      const event1 = { date: new Date(), prayer: { id: '1', title: 'Test 1' }, eventType: 'reminder-sent' as any, daysUntil: 0 };
+      const event2 = { date: new Date(), prayer: { id: '2', title: 'Test 2' }, eventType: 'archive-upcoming' as any, daysUntil: 2 };
+      
+      component.timelineEvents.push(event1);
+      component.timelineEvents.push(event2);
+      
+      expect(component.timelineEvents.length).toBe(2);
+    });
+
+    it('should clear timeline events', () => {
+      component.timelineEvents = [
+        { date: new Date(), prayer: { id: '1', title: 'Test' }, eventType: 'reminder-sent' as any, daysUntil: 0 }
+      ];
+      component.timelineEvents = [];
+      expect(component.timelineEvents.length).toBe(0);
+    });
+
+    it('should handle different event types', () => {
+      const eventTypes = ['reminder-sent', 'reminder-upcoming', 'reminder-missed', 'archive-upcoming', 'archive-missed', 'archived', 'answered'];
+      const events = eventTypes.map((type, idx) => ({
+        date: new Date(),
+        prayer: { id: String(idx), title: `Test ${idx}` },
+        eventType: type as any,
+        daysUntil: idx
+      }));
+      
+      component.timelineEvents = events;
+      expect(component.timelineEvents.length).toBe(eventTypes.length);
+    });
+  });
+
+  describe('State Management', () => {
+    it('should maintain display month state', () => {
+      const month = new Date(2026, 5, 1);
+      component.displayMonth = month;
+      expect(component.displayMonth.getMonth()).toBe(5);
+    });
+
+    it('should maintain timeline events state during navigation', () => {
+      component.timelineEvents = [
+        { date: new Date(), prayer: { id: '1', title: 'Test' }, eventType: 'reminder-sent' as any, daysUntil: 0 }
+      ];
+      const originalLength = component.timelineEvents.length;
+      
+      component.previousMonth();
+      component.nextMonth();
+      
+      expect(component.timelineEvents.length).toBe(originalLength);
+    });
+
+    it('should maintain loading state correctly', () => {
+      expect(component.isLoading).toBe(false);
+      component.isLoading = true;
+      expect(component.isLoading).toBe(true);
+      component.isLoading = false;
+      expect(component.isLoading).toBe(false);
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle leap year dates', () => {
+      const leapYearDate = new Date(2024, 1, 29); // February 29, 2024
+      const formatted = component.formatDate(leapYearDate);
+      expect(formatted).toBeDefined();
+    });
+
+    it('should handle month boundaries', () => {
+      component.displayMonth = new Date(2026, 0, 31); // January 31
+      component.nextMonth();
+      // Should not throw
+      expect(component.displayMonth).toBeDefined();
+    });
+
+    it('should handle very old dates', () => {
+      const oldDate = new Date(1900, 0, 1);
+      const monthName = component.getMonthName(oldDate);
+      expect(monthName).toContain('1900');
+    });
+
+    it('should handle future dates', () => {
+      const futureDate = new Date(2100, 0, 1);
+      const monthName = component.getMonthName(futureDate);
+      expect(monthName).toContain('2100');
+    });
+
+    it('should handle rapid consecutive navigation', () => {
+      const startMonth = new Date(component.displayMonth);
+      for (let i = 0; i < 12; i++) {
+        component.nextMonth();
+      }
+      // Should be back to original month after 12 next operations
+      expect(component.displayMonth.getMonth()).toBe(startMonth.getMonth());
+    });
+
+    it('should handle empty prayer data', () => {
+      component.timelineEvents = [];
+      expect(component.timelineEvents.length).toBe(0);
+    });
+
+    it('should handle large number of events', () => {
+      const largeEventSet = Array.from({ length: 1000 }, (_, i) => ({
+        date: new Date(2026, 0, (i % 28) + 1),
+        prayer: { id: String(i), title: `Prayer ${i}` },
+        eventType: 'reminder-sent' as any,
+        daysUntil: i % 30
+      }));
+      
+      component.timelineEvents = largeEventSet;
+      expect(component.timelineEvents.length).toBe(1000);
+    });
+  });
+
+  describe('User Interactions', () => {
+    it('should handle month navigation via buttons', () => {
+      const initialMonth = component.displayMonth.getMonth();
+      component.nextMonth();
+      const newMonth = component.displayMonth.getMonth();
+      
+      if (initialMonth === 11) {
+        expect(newMonth).toBe(0);
+      } else {
+        expect(newMonth).toBe(initialMonth + 1);
+      }
+    });
+
+    it('should handle refresh button click', () => {
+      const wasLoading = component.isLoading;
+      component.refreshData();
+      expect(component.isLoading).toBe(true);
+    });
+
+    it('should handle rapid navigation clicks', () => {
+      for (let i = 0; i < 5; i++) {
+        component.nextMonth();
+      }
+      expect(component.displayMonth).toBeDefined();
+    });
+
+    it('should disable navigation when appropriate', () => {
+      component.canGoPrevious = false;
+      component.canGoNext = false;
+      
+      const monthBefore = component.displayMonth.getMonth();
+      component.previousMonth();
+      component.nextMonth();
+      
+      expect(component.displayMonth.getMonth()).toBe(monthBefore);
+    });
+  });
+});

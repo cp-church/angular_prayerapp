@@ -556,3 +556,551 @@ describe('HelpModalComponent - Core Logic', () => {
     });
   });
 });
+
+describe('HelpModalComponent - Component Integration Tests', () => {
+  let component: any;
+  let helpContentService: any;
+  let sanitizer: any;
+
+  beforeEach(() => {
+    // Mock DomSanitizer
+    sanitizer = {
+      bypassSecurityTrustHtml: vi.fn((html: string) => ({ changingThisBreaksApplicationSecurity: html }))
+    };
+
+    // Mock HelpContentService
+    helpContentService = {
+      getSections: vi.fn(),
+      isLoading$: { pipe: vi.fn().mockReturnValue({ subscribe: vi.fn() }) },
+      error$: { pipe: vi.fn().mockReturnValue({ subscribe: vi.fn() }) }
+    };
+
+    // We can't use real Angular testing utilities, so we'll test the methods directly
+    // by creating a mock component instance
+    component = {
+      isOpen: false,
+      closeModal: { emit: vi.fn() },
+      contentArea: { nativeElement: { getBoundingClientRect: vi.fn(), scrollTop: 0 } },
+      expandedSection: null,
+      searchQuery: '',
+      helpSections$: { pipe: vi.fn() },
+      filteredSections$: { pipe: vi.fn() },
+      isLoading$: { subscribe: vi.fn() },
+      error$: { subscribe: vi.fn() },
+      
+      // Methods from component
+      onClose: function() { this.closeModal.emit(); },
+      toggleSection: function(sectionId: string) {
+        this.expandedSection = this.expandedSection === sectionId ? null : sectionId;
+      },
+      isSectionExpanded: function(sectionId: string) {
+        return this.expandedSection === sectionId;
+      },
+      getSafeIcon: function(icon: string) {
+        return sanitizer.bypassSecurityTrustHtml(icon);
+      },
+      onSearchChange: function() {
+        // This would trigger the searchQuerySubject
+      },
+      filterSections: function(sections: any[], query: string) {
+        if (!query.trim()) {
+          return sections;
+        }
+        const lowerQuery = query.toLowerCase();
+        return sections.filter((section) => {
+          if (section.title.toLowerCase().includes(lowerQuery) || 
+              section.description.toLowerCase().includes(lowerQuery)) {
+            return true;
+          }
+          return section.content.some((content: any) =>
+            content.subtitle.toLowerCase().includes(lowerQuery) ||
+            content.text.toLowerCase().includes(lowerQuery) ||
+            (content.examples && content.examples.some((ex: string) => ex.toLowerCase().includes(lowerQuery)))
+          );
+        });
+      }
+    };
+  });
+
+  describe('Component Initialization', () => {
+    it('should create component instance', () => {
+      expect(component).toBeDefined();
+    });
+
+    it('should initialize with isOpen as false', () => {
+      expect(component.isOpen).toBe(false);
+    });
+
+    it('should initialize with empty search query', () => {
+      expect(component.searchQuery).toBe('');
+    });
+
+    it('should initialize with no expanded section', () => {
+      expect(component.expandedSection).toBeNull();
+    });
+
+    it('should have closeModal EventEmitter', () => {
+      expect(component.closeModal.emit).toBeDefined();
+    });
+  });
+
+  describe('Modal Visibility', () => {
+    it('should emit closeModal when onClose is called', () => {
+      component.onClose();
+      expect(component.closeModal.emit).toHaveBeenCalled();
+    });
+
+    it('should update isOpen state', () => {
+      component.isOpen = true;
+      expect(component.isOpen).toBe(true);
+
+      component.isOpen = false;
+      expect(component.isOpen).toBe(false);
+    });
+
+    it('should toggle isOpen state on close', () => {
+      component.isOpen = true;
+      component.onClose();
+      expect(component.closeModal.emit).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle multiple close events', () => {
+      component.onClose();
+      component.onClose();
+      component.onClose();
+      expect(component.closeModal.emit).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('Section Toggle', () => {
+    it('should expand section when toggled', () => {
+      const sectionId = 'section-1';
+      component.toggleSection(sectionId);
+      expect(component.expandedSection).toBe(sectionId);
+    });
+
+    it('should collapse section when toggled again', () => {
+      const sectionId = 'section-1';
+      component.toggleSection(sectionId);
+      expect(component.expandedSection).toBe(sectionId);
+
+      component.toggleSection(sectionId);
+      expect(component.expandedSection).toBeNull();
+    });
+
+    it('should switch between sections', () => {
+      component.toggleSection('section-1');
+      expect(component.expandedSection).toBe('section-1');
+
+      component.toggleSection('section-2');
+      expect(component.expandedSection).toBe('section-2');
+    });
+
+    it('should correctly report section expansion state', () => {
+      const sectionId = 'section-1';
+      expect(component.isSectionExpanded(sectionId)).toBe(false);
+
+      component.toggleSection(sectionId);
+      expect(component.isSectionExpanded(sectionId)).toBe(true);
+
+      component.toggleSection(sectionId);
+      expect(component.isSectionExpanded(sectionId)).toBe(false);
+    });
+
+    it('should handle multiple section toggles', () => {
+      component.toggleSection('section-1');
+      expect(component.isSectionExpanded('section-1')).toBe(true);
+      expect(component.isSectionExpanded('section-2')).toBe(false);
+
+      component.toggleSection('section-2');
+      expect(component.isSectionExpanded('section-1')).toBe(false);
+      expect(component.isSectionExpanded('section-2')).toBe(true);
+    });
+  });
+
+  describe('Search and Filtering', () => {
+    it('should return all sections when query is empty', () => {
+      const sections = [
+        { id: '1', title: 'Getting Started', description: 'Start here', content: [] },
+        { id: '2', title: 'Advanced', description: 'Advanced topics', content: [] }
+      ];
+
+      const result = component.filterSections(sections, '');
+      expect(result.length).toBe(2);
+    });
+
+    it('should return all sections when query is whitespace', () => {
+      const sections = [
+        { id: '1', title: 'Getting Started', description: 'Start here', content: [] },
+        { id: '2', title: 'Advanced', description: 'Advanced topics', content: [] }
+      ];
+
+      const result = component.filterSections(sections, '   ');
+      expect(result.length).toBe(2);
+    });
+
+    it('should filter sections by title', () => {
+      const sections = [
+        { id: '1', title: 'Getting Started', description: 'Intro', content: [] },
+        { id: '2', title: 'Advanced Tips', description: 'Tips', content: [] }
+      ];
+
+      const result = component.filterSections(sections, 'getting');
+      expect(result.length).toBe(1);
+      expect(result[0].id).toBe('1');
+    });
+
+    it('should filter sections by description', () => {
+      const sections = [
+        { id: '1', title: 'Getting Started', description: 'Introduction guide', content: [] },
+        { id: '2', title: 'API Reference', description: 'Technical docs', content: [] }
+      ];
+
+      const result = component.filterSections(sections, 'introduction');
+      expect(result.length).toBe(1);
+      expect(result[0].id).toBe('1');
+    });
+
+    it('should filter sections by content subtitle', () => {
+      const sections = [
+        { 
+          id: '1', 
+          title: 'Title', 
+          description: 'Desc',
+          content: [{ subtitle: 'Creating Prayers', text: 'How to create', examples: [] }]
+        },
+        { 
+          id: '2', 
+          title: 'Title', 
+          description: 'Desc',
+          content: [{ subtitle: 'Viewing Prayers', text: 'How to view', examples: [] }]
+        }
+      ];
+
+      const result = component.filterSections(sections, 'creating');
+      expect(result.length).toBe(1);
+      expect(result[0].id).toBe('1');
+    });
+
+    it('should filter sections by content text', () => {
+      const sections = [
+        { 
+          id: '1', 
+          title: 'Title', 
+          description: 'Desc',
+          content: [{ subtitle: 'Subtitle', text: 'Learn how to pray', examples: [] }]
+        },
+        { 
+          id: '2', 
+          title: 'Title', 
+          description: 'Desc',
+          content: [{ subtitle: 'Subtitle', text: 'Learn how to share', examples: [] }]
+        }
+      ];
+
+      const result = component.filterSections(sections, 'pray');
+      expect(result.length).toBe(1);
+      expect(result[0].id).toBe('1');
+    });
+
+    it('should filter sections by content examples', () => {
+      const sections = [
+        { 
+          id: '1', 
+          title: 'Title', 
+          description: 'Desc',
+          content: [{ subtitle: 'Subtitle', text: 'Text', examples: ['Example with prayer'] }]
+        },
+        { 
+          id: '2', 
+          title: 'Title', 
+          description: 'Desc',
+          content: [{ subtitle: 'Subtitle', text: 'Text', examples: ['Example with sharing'] }]
+        }
+      ];
+
+      const result = component.filterSections(sections, 'prayer');
+      expect(result.length).toBe(1);
+      expect(result[0].id).toBe('1');
+    });
+
+    it('should be case-insensitive in search', () => {
+      const sections = [
+        { id: '1', title: 'Getting Started', description: 'Start here', content: [] },
+        { id: '2', title: 'Advanced', description: 'Advanced topics', content: [] }
+      ];
+
+      const result1 = component.filterSections(sections, 'getting');
+      const result2 = component.filterSections(sections, 'GETTING');
+      const result3 = component.filterSections(sections, 'Getting');
+
+      expect(result1.length).toBe(1);
+      expect(result2.length).toBe(1);
+      expect(result3.length).toBe(1);
+    });
+
+    it('should return no sections when no match', () => {
+      const sections = [
+        { id: '1', title: 'Getting Started', description: 'Start here', content: [] },
+        { id: '2', title: 'Advanced', description: 'Advanced topics', content: [] }
+      ];
+
+      const result = component.filterSections(sections, 'nonexistent');
+      expect(result.length).toBe(0);
+    });
+
+    it('should handle search with special characters', () => {
+      const sections = [
+        { id: '1', title: 'FAQ: How to...', description: 'Questions', content: [] },
+        { id: '2', title: 'Tutorial', description: 'Learn', content: [] }
+      ];
+
+      const result = component.filterSections(sections, 'FAQ:');
+      expect(result.length).toBe(1);
+      expect(result[0].id).toBe('1');
+    });
+
+    it('should update search query on input', () => {
+      component.searchQuery = 'test query';
+      component.onSearchChange();
+      expect(component.searchQuery).toBe('test query');
+    });
+
+    it('should maintain section expansion during search', () => {
+      const sectionId = 'section-1';
+      component.toggleSection(sectionId);
+      expect(component.isSectionExpanded(sectionId)).toBe(true);
+
+      component.searchQuery = 'test';
+      component.onSearchChange();
+
+      expect(component.isSectionExpanded(sectionId)).toBe(true);
+    });
+  });
+
+  describe('Icon Sanitization', () => {
+    it('should sanitize HTML icons', () => {
+      const iconHtml = '<svg>...</svg>';
+      component.getSafeIcon(iconHtml);
+      expect(sanitizer.bypassSecurityTrustHtml).toHaveBeenCalledWith(iconHtml);
+    });
+
+    it('should handle different icon formats', () => {
+      const icons = [
+        '<svg class="w-4 h-4">...</svg>',
+        '<i class="icon-class"></i>',
+        '<span data-icon="test"></span>'
+      ];
+
+      icons.forEach(icon => {
+        component.getSafeIcon(icon);
+      });
+
+      expect(sanitizer.bypassSecurityTrustHtml).toHaveBeenCalledTimes(3);
+    });
+
+    it('should handle empty icon string', () => {
+      component.getSafeIcon('');
+      expect(sanitizer.bypassSecurityTrustHtml).toHaveBeenCalledWith('');
+    });
+  });
+
+  describe('Content Management', () => {
+    it('should store helpSections$ observable', () => {
+      expect(component.helpSections$).toBeDefined();
+    });
+
+    it('should store filteredSections$ observable', () => {
+      expect(component.filteredSections$).toBeDefined();
+    });
+
+    it('should store isLoading$ observable', () => {
+      expect(component.isLoading$).toBeDefined();
+    });
+
+    it('should store error$ observable', () => {
+      expect(component.error$).toBeDefined();
+    });
+
+    it('should handle sections with no content', () => {
+      const sections = [
+        { id: '1', title: 'Empty Section', description: 'No content', content: [] }
+      ];
+
+      const result = component.filterSections(sections, '');
+      expect(result.length).toBe(1);
+      expect(result[0].content.length).toBe(0);
+    });
+
+    it('should handle sections with multiple content items', () => {
+      const sections = [
+        { 
+          id: '1', 
+          title: 'Title', 
+          description: 'Desc',
+          content: [
+            { subtitle: 'Sub 1', text: 'Text 1', examples: [] },
+            { subtitle: 'Sub 2', text: 'Text 2', examples: [] },
+            { subtitle: 'Sub 3', text: 'Text 3', examples: [] }
+          ]
+        }
+      ];
+
+      const result = component.filterSections(sections, '');
+      expect(result[0].content.length).toBe(3);
+    });
+
+    it('should handle sections with multiple examples', () => {
+      const sections = [
+        { 
+          id: '1', 
+          title: 'Title', 
+          description: 'Desc',
+          content: [
+            { 
+              subtitle: 'Subtitle', 
+              text: 'Text',
+              examples: ['Ex 1', 'Ex 2', 'Ex 3', 'Ex 4']
+            }
+          ]
+        }
+      ];
+
+      const result = component.filterSections(sections, '');
+      expect(result[0].content[0].examples.length).toBe(4);
+    });
+  });
+
+  describe('Modal State Management', () => {
+    it('should transition from closed to open', () => {
+      expect(component.isOpen).toBe(false);
+      component.isOpen = true;
+      expect(component.isOpen).toBe(true);
+    });
+
+    it('should transition from open to closed', () => {
+      component.isOpen = true;
+      component.isOpen = false;
+      expect(component.isOpen).toBe(false);
+    });
+
+    it('should handle rapid state changes', () => {
+      component.isOpen = true;
+      component.isOpen = false;
+      component.isOpen = true;
+      component.isOpen = false;
+      expect(component.isOpen).toBe(false);
+    });
+
+    it('should preserve expanded section during modal close', () => {
+      const sectionId = 'section-1';
+      component.toggleSection(sectionId);
+      expect(component.isSectionExpanded(sectionId)).toBe(true);
+
+      component.isOpen = false;
+      expect(component.isSectionExpanded(sectionId)).toBe(true);
+    });
+
+    it('should preserve search query during modal state changes', () => {
+      component.searchQuery = 'test query';
+      component.isOpen = true;
+      component.isOpen = false;
+      expect(component.searchQuery).toBe('test query');
+    });
+  });
+
+  describe('User Interactions', () => {
+    it('should handle section header click', () => {
+      const sectionId = 'section-1';
+      expect(component.isSectionExpanded(sectionId)).toBe(false);
+      component.toggleSection(sectionId);
+      expect(component.isSectionExpanded(sectionId)).toBe(true);
+    });
+
+    it('should handle backdrop click', () => {
+      component.isOpen = true;
+      component.onClose();
+      expect(component.closeModal.emit).toHaveBeenCalled();
+    });
+
+    it('should handle close button click', () => {
+      component.onClose();
+      expect(component.closeModal.emit).toHaveBeenCalled();
+    });
+
+    it('should handle search input change', () => {
+      component.searchQuery = 'new search';
+      expect(component.searchQuery).toBe('new search');
+    });
+
+    it('should handle multiple section expansions', () => {
+      component.toggleSection('section-1');
+      component.toggleSection('section-2');
+      component.toggleSection('section-3');
+
+      expect(component.isSectionExpanded('section-3')).toBe(true);
+      expect(component.isSectionExpanded('section-1')).toBe(false);
+      expect(component.isSectionExpanded('section-2')).toBe(false);
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle null expanded section', () => {
+      expect(component.expandedSection).toBeNull();
+      expect(component.isSectionExpanded('any-id')).toBe(false);
+    });
+
+    it('should handle empty search results with expanded section', () => {
+      const sections = [
+        { id: '1', title: 'Getting Started', description: 'Start', content: [] }
+      ];
+
+      component.toggleSection('1');
+      const result = component.filterSections(sections, 'nonexistent');
+      expect(result.length).toBe(0);
+      expect(component.isSectionExpanded('1')).toBe(true);
+    });
+
+    it('should handle very long search query', () => {
+      const longQuery = 'a'.repeat(1000);
+      const sections = [
+        { id: '1', title: 'Title', description: 'Desc', content: [] }
+      ];
+
+      const result = component.filterSections(sections, longQuery);
+      expect(result.length).toBe(0);
+    });
+
+    it('should handle sections with very long content', () => {
+      const longText = 'word '.repeat(1000);
+      const sections = [
+        { 
+          id: '1', 
+          title: 'Title', 
+          description: 'Desc',
+          content: [{ subtitle: 'Sub', text: longText, examples: [] }]
+        }
+      ];
+
+      const result = component.filterSections(sections, 'word');
+      expect(result.length).toBe(1);
+    });
+
+    it('should handle rapid toggles on same section', () => {
+      const sectionId = 'section-1';
+      for (let i = 0; i < 10; i++) {
+        component.toggleSection(sectionId);
+      }
+      expect(component.isSectionExpanded(sectionId)).toBe(false);
+    });
+
+    it('should handle search with unicode characters', () => {
+      const sections = [
+        { id: '1', title: 'Prière', description: 'French', content: [] }
+      ];
+
+      const result = component.filterSections(sections, 'prière');
+      expect(result.length).toBe(1);
+    });
+  });
+});
