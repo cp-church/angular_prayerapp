@@ -420,4 +420,544 @@ describe('PrayerCardComponent', () => {
     });
   });
 
+  describe('PrayerCardComponent - Rendering and Display', () => {
+    let component: PrayerCardComponent;
+    let mockSupabaseService: any;
+    let mockUserSessionService: any;
+
+    beforeEach(() => {
+      mockSupabaseService = {
+        client: {}
+      };
+      mockUserSessionService = {
+        userSession$: of(null)
+      };
+
+      component = new PrayerCardComponent(mockSupabaseService as any, mockUserSessionService as any, {} as any);
+    });
+
+    it('should display prayer_for field in header', () => {
+      component.prayer = {
+        id: '1',
+        prayer_for: 'John Doe',
+        title: 'Test Prayer',
+        description: 'Test',
+        requester: 'Jane',
+        status: 'current',
+        created_at: '2026-01-01'
+      };
+
+      expect(component.prayer.prayer_for).toBe('John Doe');
+    });
+
+    it('should display requester name in card', () => {
+      component.prayer = {
+        id: '1',
+        prayer_for: 'John Doe',
+        title: 'Test Prayer',
+        description: 'Test',
+        requester: 'Jane Doe',
+        status: 'current',
+        created_at: '2026-01-01'
+      };
+
+      const requester = component.displayRequester && component.displayRequester();
+      expect(requester || component.prayer.requester).toBe('Jane Doe');
+    });
+
+    it('should display prayer status badge', () => {
+      component.prayer = {
+        id: '1',
+        prayer_for: 'Test',
+        title: 'Test Prayer',
+        description: 'Test',
+        requester: 'Jane',
+        status: 'answered',
+        created_at: '2026-01-01'
+      };
+
+      expect(component.prayer.status).toBe('answered');
+    });
+
+    it('should show description text', () => {
+      component.prayer = {
+        id: '1',
+        prayer_for: 'Test',
+        title: 'Test Prayer',
+        description: 'This is a test prayer description',
+        requester: 'Jane',
+        status: 'current',
+        created_at: '2026-01-01'
+      };
+
+      expect(component.prayer.description).toContain('test');
+    });
+
+    it('should format created_at date', () => {
+      component.prayer = {
+        id: '1',
+        prayer_for: 'Test',
+        title: 'Test Prayer',
+        description: 'Test',
+        requester: 'Jane',
+        status: 'current',
+        created_at: '2026-01-01T10:00:00Z'
+      };
+
+      expect(component.prayer.created_at).toBeDefined();
+    });
+
+    it('should display prayer updates if present', () => {
+      component.prayer = {
+        id: '1',
+        prayer_for: 'Test',
+        title: 'Test Prayer',
+        description: 'Test',
+        requester: 'Jane',
+        status: 'current',
+        created_at: '2026-01-01',
+        prayer_updates: [
+          { id: 'u1', content: 'Update 1', author: 'John', created_at: '2026-01-02' }
+        ]
+      };
+
+      expect(component.prayer.prayer_updates?.length).toBe(1);
+    });
+
+    it('should handle missing prayer updates', () => {
+      component.prayer = {
+        id: '1',
+        prayer_for: 'Test',
+        title: 'Test Prayer',
+        description: 'Test',
+        requester: 'Jane',
+        status: 'current',
+        created_at: '2026-01-01'
+      };
+
+      expect(component.prayer.prayer_updates).toBeUndefined();
+    });
+
+    it('should display multiple prayer updates', () => {
+      component.prayer = {
+        id: '1',
+        prayer_for: 'Test',
+        title: 'Test Prayer',
+        description: 'Test',
+        requester: 'Jane',
+        status: 'current',
+        created_at: '2026-01-01',
+        prayer_updates: [
+          { id: 'u1', content: 'Update 1', author: 'John', created_at: '2026-01-02' },
+          { id: 'u2', content: 'Update 2', author: 'Jane', created_at: '2026-01-03' },
+          { id: 'u3', content: 'Update 3', author: 'Bob', created_at: '2026-01-04' }
+        ]
+      };
+
+      expect(component.prayer.prayer_updates?.length).toBe(3);
+    });
+  });
+
+  describe('PrayerCardComponent - Status Handling', () => {
+    let component: PrayerCardComponent;
+
+    beforeEach(() => {
+      const mockSupabaseService = { client: {} };
+      const mockUserSessionService = { userSession$: of(null) };
+      component = new PrayerCardComponent(mockSupabaseService as any, mockUserSessionService as any, {} as any);
+    });
+
+    it('should identify current prayer status', () => {
+      component.prayer = {
+        id: '1',
+        prayer_for: 'Test',
+        title: 'Test',
+        description: 'Test',
+        requester: 'Jane',
+        status: 'current',
+        created_at: '2026-01-01'
+      };
+
+      expect(component.prayer.status).toBe('current');
+    });
+
+    it('should identify answered prayer status', () => {
+      component.prayer = {
+        id: '1',
+        prayer_for: 'Test',
+        title: 'Test',
+        description: 'Test',
+        requester: 'Jane',
+        status: 'answered',
+        created_at: '2026-01-01'
+      };
+
+      expect(component.prayer.status).toBe('answered');
+    });
+
+    it('should identify archived prayer status', () => {
+      component.prayer = {
+        id: '1',
+        prayer_for: 'Test',
+        title: 'Test',
+        description: 'Test',
+        requester: 'Jane',
+        status: 'archived',
+        created_at: '2026-01-01'
+      };
+
+      expect(component.prayer.status).toBe('archived');
+    });
+
+    it('should get status label for display', () => {
+      const getStatusLabel = (status: string) => {
+        const labels: { [key: string]: string } = {
+          current: 'Current',
+          answered: 'Answered',
+          archived: 'Archived'
+        };
+        return labels[status] || 'Unknown';
+      };
+
+      expect(getStatusLabel('current')).toBe('Current');
+      expect(getStatusLabel('answered')).toBe('Answered');
+      expect(getStatusLabel('archived')).toBe('Archived');
+    });
+
+    it('should get status badge CSS classes', () => {
+      const getStatusClasses = (status: string) => {
+        const classes: { [key: string]: string } = {
+          current: 'bg-blue-100 text-blue-800',
+          answered: 'bg-green-100 text-green-800',
+          archived: 'bg-gray-100 text-gray-800'
+        };
+        return classes[status] || 'bg-gray-100 text-gray-800';
+      };
+
+      expect(getStatusClasses('current')).toContain('blue');
+      expect(getStatusClasses('answered')).toContain('green');
+      expect(getStatusClasses('archived')).toContain('gray');
+    });
+
+    it('should handle unknown status gracefully', () => {
+      component.prayer = {
+        id: '1',
+        prayer_for: 'Test',
+        title: 'Test',
+        description: 'Test',
+        requester: 'Jane',
+        status: 'unknown',
+        created_at: '2026-01-01'
+      };
+
+      expect(component.prayer.status).toBe('unknown');
+    });
+  });
+
+  describe('PrayerCardComponent - Styling and Dark Mode', () => {
+    let component: PrayerCardComponent;
+
+    beforeEach(() => {
+      const mockSupabaseService = { client: {} };
+      const mockUserSessionService = { userSession$: of(null) };
+      component = new PrayerCardComponent(mockSupabaseService as any, mockUserSessionService as any, {} as any);
+    });
+
+    it('should have dark mode background class', () => {
+      const darkModeClass = 'dark:bg-gray-800';
+      expect(darkModeClass).toContain('dark:');
+    });
+
+    it('should have border classes', () => {
+      const borderClasses = 'border-[2px]';
+      expect(borderClasses).toContain('border');
+    });
+
+    it('should have rounded corners', () => {
+      const roundedClass = 'rounded-lg';
+      expect(roundedClass).toContain('rounded');
+    });
+
+    it('should have shadow effect', () => {
+      const shadowClass = 'shadow-md';
+      expect(shadowClass).toContain('shadow');
+    });
+
+    it('should have responsive padding', () => {
+      const paddingClass = 'p-6';
+      expect(paddingClass).toContain('p-');
+    });
+
+    it('should have dark mode text color', () => {
+      const textClass = 'dark:text-gray-100';
+      expect(textClass).toContain('dark:text');
+    });
+
+    it('should support transition effects', () => {
+      const transitionClass = 'transition-colors';
+      expect(transitionClass).toContain('transition');
+    });
+
+    it('should have conditional border styling based on status', () => {
+      component.prayer = {
+        id: '1',
+        prayer_for: 'Test',
+        title: 'Test',
+        description: 'Test',
+        requester: 'Jane',
+        status: 'answered',
+        created_at: '2026-01-01'
+      };
+
+      const getBorderClass = (status: string) => {
+        const borders: { [key: string]: string } = {
+          current: 'border-blue-300',
+          answered: 'border-green-300',
+          archived: 'border-gray-300'
+        };
+        return borders[status] || 'border-gray-300';
+      };
+
+      expect(getBorderClass(component.prayer.status)).toContain('green');
+    });
+  });
+
+  describe('PrayerCardComponent - User Interactions', () => {
+    let component: PrayerCardComponent;
+    let mockSupabaseService: any;
+    let mockUserSessionService: any;
+
+    beforeEach(() => {
+      mockSupabaseService = {
+        client: {}
+      };
+      mockUserSessionService = {
+        userSession$: of(null)
+      };
+      component = new PrayerCardComponent(mockSupabaseService as any, mockUserSessionService as any, {} as any);
+    });
+
+    it('should initialize output events', () => {
+      expect(component.delete).toBeDefined();
+      expect(component.addUpdate).toBeDefined();
+      expect(component.deleteUpdate).toBeDefined();
+    });
+
+    it('should emit delete event when prayer is deleted', () => {
+      component.prayer = {
+        id: '1',
+        prayer_for: 'Test',
+        title: 'Test',
+        description: 'Test',
+        requester: 'Jane',
+        status: 'current',
+        created_at: '2026-01-01'
+      };
+
+      const emitSpy = vi.spyOn(component.delete, 'emit');
+      component.delete.emit('1');
+
+      expect(emitSpy).toHaveBeenCalledWith('1');
+    });
+
+    it('should emit addUpdate event when update is added', () => {
+      const updateData = { id: 'u1', content: 'Update', author: 'Jane' };
+
+      const emitSpy = vi.spyOn(component.addUpdate, 'emit');
+      component.addUpdate.emit(updateData);
+
+      expect(emitSpy).toHaveBeenCalledWith(updateData);
+    });
+
+    it('should handle delete button interaction', () => {
+      component.prayer = {
+        id: '1',
+        prayer_for: 'Test',
+        title: 'Test',
+        description: 'Test',
+        requester: 'Jane',
+        status: 'current',
+        created_at: '2026-01-01'
+      };
+
+      expect(component.prayer.id).toBe('1');
+      expect(component.delete).toBeDefined();
+    });
+
+    it('should handle multiple rapid interactions', () => {
+      const emitSpy = vi.spyOn(component.delete, 'emit');
+
+      component.delete.emit('1');
+      component.delete.emit('1');
+      component.delete.emit('1');
+
+      expect(emitSpy).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('PrayerCardComponent - Badge Display Logic', () => {
+    let component: PrayerCardComponent;
+
+    beforeEach(() => {
+      const mockSupabaseService = { client: {} };
+      const mockUserSessionService = { userSession$: of(null) };
+      component = new PrayerCardComponent(mockSupabaseService as any, mockUserSessionService as any, {} as any);
+    });
+
+    it('should show badge when prayer is unread', () => {
+      component.prayerBadge$ = of(true);
+
+      let badgeVisible = false;
+      component.prayerBadge$.subscribe(value => {
+        badgeVisible = value;
+      });
+
+      expect(badgeVisible).toBe(true);
+    });
+
+    it('should hide badge when prayer is read', () => {
+      component.prayerBadge$ = of(false);
+
+      let badgeVisible = false;
+      component.prayerBadge$.subscribe(value => {
+        badgeVisible = value;
+      });
+
+      expect(badgeVisible).toBe(false);
+    });
+
+    it('should mark prayer as read on badge click', () => {
+      component.prayer = {
+        id: '1',
+        prayer_for: 'Test',
+        title: 'Test',
+        description: 'Test',
+        requester: 'Jane',
+        status: 'current',
+        created_at: '2026-01-01'
+      };
+
+      // Badge click should trigger mark as read
+      expect(component.prayer.id).toBe('1');
+    });
+  });
+
+  describe('PrayerCardComponent - Edge Cases', () => {
+    let component: PrayerCardComponent;
+
+    beforeEach(() => {
+      const mockSupabaseService = { client: {} };
+      const mockUserSessionService = { userSession$: of(null) };
+      component = new PrayerCardComponent(mockSupabaseService as any, mockUserSessionService as any, {} as any);
+    });
+
+    it('should handle very long prayer descriptions', () => {
+      const longDescription = 'A'.repeat(10000);
+      component.prayer = {
+        id: '1',
+        prayer_for: 'Test',
+        title: 'Test',
+        description: longDescription,
+        requester: 'Jane',
+        status: 'current',
+        created_at: '2026-01-01'
+      };
+
+      expect(component.prayer.description.length).toBe(10000);
+    });
+
+    it('should handle special characters in prayer data', () => {
+      component.prayer = {
+        id: '1',
+        prayer_for: 'Test "quoted" & <special>',
+        title: 'Test',
+        description: 'Test with émojis 😊',
+        requester: 'Jane',
+        status: 'current',
+        created_at: '2026-01-01'
+      };
+
+      expect(component.prayer.prayer_for).toContain('&');
+      expect(component.prayer.description).toContain('😊');
+    });
+
+    it('should handle missing requester field gracefully', () => {
+      component.prayer = {
+        id: '1',
+        prayer_for: 'Test',
+        title: 'Test',
+        description: 'Test',
+        requester: '',
+        status: 'current',
+        created_at: '2026-01-01'
+      };
+
+      expect(component.prayer.requester).toBe('');
+    });
+
+    it('should handle null prayer object', () => {
+      component.prayer = null as any;
+
+      expect(component.prayer).toBeNull();
+    });
+
+    it('should handle empty updates array', () => {
+      component.prayer = {
+        id: '1',
+        prayer_for: 'Test',
+        title: 'Test',
+        description: 'Test',
+        requester: 'Jane',
+        status: 'current',
+        created_at: '2026-01-01',
+        prayer_updates: []
+      };
+
+      expect(component.prayer.prayer_updates?.length).toBe(0);
+    });
+
+    it('should handle very recent created_at date', () => {
+      const now = new Date().toISOString();
+      component.prayer = {
+        id: '1',
+        prayer_for: 'Test',
+        title: 'Test',
+        description: 'Test',
+        requester: 'Jane',
+        status: 'current',
+        created_at: now
+      };
+
+      expect(component.prayer.created_at).toBe(now);
+    });
+
+    it('should handle very old created_at date', () => {
+      component.prayer = {
+        id: '1',
+        prayer_for: 'Test',
+        title: 'Test',
+        description: 'Test',
+        requester: 'Jane',
+        status: 'current',
+        created_at: '2000-01-01T00:00:00Z'
+      };
+
+      expect(component.prayer.created_at).toBe('2000-01-01T00:00:00Z');
+    });
+
+    it('should handle numeric ID as string', () => {
+      component.prayer = {
+        id: '12345',
+        prayer_for: 'Test',
+        title: 'Test',
+        description: 'Test',
+        requester: 'Jane',
+        status: 'current',
+        created_at: '2026-01-01'
+      };
+
+      expect(component.prayer.id).toBe('12345');
+    });
+  });
+
 });

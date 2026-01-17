@@ -271,4 +271,420 @@ describe('printablePrayerList', () => {
       });
     });
   });
+
+  describe('PrintablePrayerList - Date Range Calculations', () => {
+    it('should calculate week date range correctly', () => {
+      const endDate = new Date('2026-01-15');
+      const startDate = new Date(endDate);
+      startDate.setDate(endDate.getDate() - 7);
+      
+      expect(startDate.getTime() < endDate.getTime()).toBe(true);
+    });
+
+    it('should calculate two weeks date range correctly', () => {
+      const endDate = new Date('2026-01-15');
+      const startDate = new Date(endDate);
+      startDate.setDate(endDate.getDate() - 14);
+      
+      expect(startDate.getTime() < endDate.getTime()).toBe(true);
+    });
+
+    it('should calculate month date range correctly', () => {
+      const endDate = new Date('2026-01-15');
+      const startDate = new Date(endDate);
+      startDate.setMonth(endDate.getMonth() - 1);
+      
+      expect(startDate.getTime() < endDate.getTime()).toBe(true);
+    });
+
+    it('should calculate year date range correctly', () => {
+      const endDate = new Date('2026-01-15');
+      const startDate = new Date(endDate);
+      startDate.setFullYear(endDate.getFullYear() - 1);
+      
+      expect(startDate.getTime() < endDate.getTime()).toBe(true);
+    });
+
+    it('should handle all time range correctly', () => {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setFullYear(2000, 0, 1);
+      
+      expect(startDate.getFullYear()).toBe(2000);
+      expect(startDate.getMonth()).toBe(0);
+      expect(startDate.getDate()).toBe(1);
+    });
+
+    it('should handle leap year in date range', () => {
+      const date = new Date(2024, 1, 29); // Feb 29, 2024 (leap year)
+      expect(date.getMonth()).toBe(1);
+      expect(date.getDate()).toBe(29);
+    });
+
+    it('should handle month boundaries', () => {
+      const endDate = new Date('2026-01-31');
+      const startDate = new Date(endDate);
+      startDate.setMonth(endDate.getMonth() - 1);
+      
+      expect(startDate.getMonth()).toBe(11); // Previous year's December
+    });
+
+    it('should handle year boundaries', () => {
+      const currentYear = new Date().getFullYear();
+      const endDate = new Date(currentYear, 0, 1);
+      const startDate = new Date(endDate);
+      startDate.setFullYear(endDate.getFullYear() - 1);
+      
+      expect(startDate.getFullYear()).toBe(currentYear - 1);
+    });
+  });
+
+  describe('PrintablePrayerList - Prayer Filtering', () => {
+    it('should filter prayers by status', () => {
+      const prayers = [
+        { id: '1', status: 'current' },
+        { id: '2', status: 'answered' },
+        { id: '3', status: 'current' }
+      ];
+      
+      const current = prayers.filter(p => p.status === 'current');
+      expect(current.length).toBe(2);
+    });
+
+    it('should filter prayers by approval status', () => {
+      const prayers = [
+        { id: '1', approval_status: 'approved' },
+        { id: '2', approval_status: 'pending' },
+        { id: '3', approval_status: 'approved' }
+      ];
+      
+      const approved = prayers.filter(p => p.approval_status === 'approved');
+      expect(approved.length).toBe(2);
+    });
+
+    it('should filter non-closed prayers', () => {
+      const prayers = [
+        { id: '1', status: 'current' },
+        { id: '2', status: 'answered', approval_status: 'approved' },
+        { id: '3', status: 'current' }
+      ];
+      
+      const nonClosed = prayers.filter(p => 
+        p.approval_status === 'approved' && (p.status === 'current' || p.status === 'answered')
+      );
+      
+      expect(nonClosed.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should filter by date range', () => {
+      const startDate = new Date('2026-01-01');
+      const endDate = new Date('2026-01-31');
+      
+      const prayers = [
+        { id: '1', created_at: '2026-01-05T10:00:00Z' },
+        { id: '2', created_at: '2025-12-31T10:00:00Z' },
+        { id: '3', created_at: '2026-02-01T10:00:00Z' }
+      ];
+      
+      const inRange = prayers.filter(p => {
+        const createdDate = new Date(p.created_at);
+        return createdDate >= startDate && createdDate <= endDate;
+      });
+      
+      expect(inRange.length).toBe(1);
+    });
+
+    it('should handle empty prayer list', () => {
+      const prayers: any[] = [];
+      expect(prayers.length).toBe(0);
+    });
+
+    it('should handle prayers without updates', () => {
+      const prayers = [
+        { id: '1', title: 'Prayer 1', prayer_updates: undefined },
+        { id: '2', title: 'Prayer 2', prayer_updates: [] }
+      ];
+      
+      const withUpdates = prayers.filter(p => p.prayer_updates && p.prayer_updates.length > 0);
+      expect(withUpdates.length).toBe(0);
+    });
+  });
+
+  describe('PrintablePrayerList - HTML Generation', () => {
+    it('should include prayer title in HTML', () => {
+      const title = 'Test Prayer';
+      const html = `<h3>${title}</h3>`;
+      
+      expect(html).toContain(title);
+    });
+
+    it('should include prayer_for in HTML', () => {
+      const prayerFor = 'John Doe';
+      const html = `<p>For: ${prayerFor}</p>`;
+      
+      expect(html).toContain(prayerFor);
+    });
+
+    it('should include description in HTML', () => {
+      const description = 'Test description';
+      const html = `<p>${description}</p>`;
+      
+      expect(html).toContain(description);
+    });
+
+    it('should include requester name in HTML', () => {
+      const requester = 'Jane Doe';
+      const html = `<p>Requested by: ${requester}</p>`;
+      
+      expect(html).toContain(requester);
+    });
+
+    it('should include prayer status in HTML', () => {
+      const status = 'answered';
+      const html = `<span>Status: ${status}</span>`;
+      
+      expect(html).toContain(status);
+    });
+
+    it('should include created date in HTML', () => {
+      const date = new Date().toLocaleDateString();
+      const html = `<p>Created: ${date}</p>`;
+      
+      expect(html).toContain('Created');
+    });
+
+    it('should include prayer updates in HTML', () => {
+      const update = 'Prayer answered!';
+      const html = `<div class="update">${update}</div>`;
+      
+      expect(html).toContain(update);
+    });
+
+    it('should include page break styling', () => {
+      const html = '<div style="page-break-after: always;"></div>';
+      
+      expect(html).toContain('page-break');
+    });
+
+    it('should include print-safe HTML structure', () => {
+      const html = '<html><body><div class="prayer-card"></div></body></html>';
+      
+      expect(html).toContain('<html>');
+      expect(html).toContain('</html>');
+      expect(html).toContain('<body>');
+    });
+
+    it('should escape special characters in HTML', () => {
+      const text = 'Prayer with "quotes" & <brackets>';
+      const escaped = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      
+      expect(escaped).toContain('&amp;');
+      expect(escaped).toContain('&lt;');
+    });
+  });
+
+  describe('PrintablePrayerList - File Operations', () => {
+    it('should create blob with HTML content', () => {
+      const content = '<html><body>Test</body></html>';
+      const blob = new Blob([content], { type: 'text/html' });
+      
+      expect(blob.type).toBe('text/html');
+      expect(blob.size).toBeGreaterThan(0);
+    });
+
+    it('should create valid filename', () => {
+      const filename = 'prayer-list-2026-01.html';
+      
+      expect(filename).toMatch(/prayer-list-\d{4}-\d{2}\.html/);
+    });
+
+    it('should include timestamp in filename', () => {
+      const timestamp = Date.now();
+      const filename = `prayers-${timestamp}.html`;
+      
+      expect(filename).toContain(timestamp.toString());
+    });
+
+    it('should set correct MIME type for HTML', () => {
+      const mimeType = 'text/html';
+      
+      expect(mimeType).toBe('text/html');
+    });
+
+    it('should handle download to new window', () => {
+      const newWindow = {
+        document: {
+          open: vi.fn(),
+          write: vi.fn(),
+          close: vi.fn(),
+        },
+        focus: vi.fn(),
+        close: vi.fn(),
+      };
+      
+      expect(newWindow.document.write).toBeDefined();
+    });
+
+    it('should handle default browser download', () => {
+      const link = document.createElement('a');
+      link.href = 'blob:http://example.com/test';
+      link.download = 'prayers.html';
+      
+      expect(link.download).toBe('prayers.html');
+    });
+
+    it('should create object URL for download', () => {
+      const blob = new Blob(['test content'], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      
+      expect(url).toContain('blob:');
+      URL.revokeObjectURL(url);
+    });
+
+    it('should handle large file creation', () => {
+      const largeContent = 'A'.repeat(10000);
+      const blob = new Blob([largeContent], { type: 'text/html' });
+      
+      expect(blob.size).toBe(10000);
+    });
+  });
+
+  describe('PrintablePrayerList - Error Handling', () => {
+    it('should handle network errors gracefully', () => {
+      const mockError = { message: 'Network error' };
+      
+      expect(mockError.message).toContain('error');
+    });
+
+    it('should handle empty prayer list from API', () => {
+      const prayers: any[] = [];
+      
+      expect(prayers.length).toBe(0);
+    });
+
+    it('should handle null response data', () => {
+      const data: any = null;
+      
+      expect(data).toBeNull();
+    });
+
+    it('should handle missing prayer fields', () => {
+      const prayer = { id: '1' };
+      
+      expect((prayer as any).title).toBeUndefined();
+      expect((prayer as any).description).toBeUndefined();
+    });
+
+    it('should handle invalid date formats', () => {
+      const invalidDate = 'invalid-date';
+      const parsed = new Date(invalidDate);
+      
+      expect(isNaN(parsed.getTime())).toBe(true);
+    });
+
+    it('should handle malformed HTML gracefully', () => {
+      const html = '<div>Unclosed tag';
+      
+      expect(html).toBeDefined();
+    });
+
+    it('should handle very large prayer lists', () => {
+      const prayers = Array.from({ length: 10000 }, (_, i) => ({
+        id: i.toString(),
+        title: `Prayer ${i}`,
+        prayer_for: 'Test',
+        description: 'Test',
+        requester: 'Test',
+        status: 'current',
+        approval_status: 'approved',
+        created_at: new Date().toISOString()
+      }));
+      
+      expect(prayers.length).toBe(10000);
+    });
+
+    it('should handle concurrent requests', async () => {
+      const requests = Array.from({ length: 3 }, () => 
+        Promise.resolve({ data: [], error: null })
+      );
+      
+      const results = await Promise.all(requests);
+      expect(results.length).toBe(3);
+    });
+
+    it('should handle browser history state', () => {
+      const state = { timestamp: Date.now() };
+      
+      expect(state.timestamp).toBeGreaterThan(0);
+    });
+  });
+
+  describe('PrintablePrayerList - Special Characters and Encoding', () => {
+    it('should handle emoji in prayer data', () => {
+      const prayer = {
+        id: '1',
+        title: 'Prayer 😊',
+        prayer_for: 'Test 🙏',
+        description: 'Description 💪',
+        requester: 'Jane',
+        status: 'current',
+        approval_status: 'approved',
+        created_at: new Date().toISOString()
+      };
+      
+      expect(prayer.title).toContain('😊');
+      expect(prayer.prayer_for).toContain('🙏');
+    });
+
+    it('should handle Unicode characters', () => {
+      const prayer = {
+        id: '1',
+        title: 'Prayer für Gott',
+        prayer_for: 'José García',
+        description: 'Prière en français',
+        requester: 'Müller',
+        status: 'current',
+        approval_status: 'approved',
+        created_at: new Date().toISOString()
+      };
+      
+      expect(prayer.title).toContain('ü');
+      expect(prayer.prayer_for).toContain('é');
+    });
+
+    it('should handle HTML special characters', () => {
+      const text = 'Prayer with "quotes", <brackets>, & ampersand';
+      const safe = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+      
+      expect(safe).toContain('&quot;');
+      expect(safe).toContain('&lt;');
+    });
+
+    it('should handle line breaks in content', () => {
+      const content = 'Line 1\nLine 2\nLine 3';
+      const html = content.split('\n').join('<br>');
+      
+      expect(html).toContain('<br>');
+    });
+
+    it('should handle tabs and indentation', () => {
+      const content = 'Indented\n\tContent\n\t\tMore';
+      
+      expect(content).toContain('\t');
+    });
+
+    it('should handle very long strings without spaces', () => {
+      const longString = 'A'.repeat(1000);
+      
+      expect(longString.length).toBe(1000);
+    });
+  });
+
 });

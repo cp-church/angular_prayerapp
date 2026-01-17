@@ -3,14 +3,14 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 describe('HelpModalComponent - Core Logic', () => {
   describe('Search and Filtering', () => {
     it('should filter help sections by search query', () => {
-      const sections = [
+      const sections: Array<{ id: string; title: string; content: string; category?: string }> = [
         { id: '1', title: 'Getting Started', content: 'Introduction guide', category: 'basics' },
         { id: '2', title: 'Advanced Tips', content: 'Power user features', category: 'advanced' },
         { id: '3', title: 'Troubleshooting', content: 'Fix common issues', category: 'support' }
       ];
 
       const query = 'getting';
-      const filtered = sections.filter(s => 
+      const filtered = sections.filter((s: { id: string; title: string; content: string; category?: string }) => 
         s.title.toLowerCase().includes(query.toLowerCase()) || 
         s.content.toLowerCase().includes(query.toLowerCase())
       );
@@ -20,14 +20,14 @@ describe('HelpModalComponent - Core Logic', () => {
     });
 
     it('should handle case-insensitive search', () => {
-      const sections = [
+      const sections: Array<{ id: string; title: string; content: string }> = [
         { id: '1', title: 'Getting Started', content: 'Introduction guide' },
         { id: '2', title: 'API Reference', content: 'Technical documentation' }
       ];
 
       const queries = ['GETTING', 'api', 'API', 'getting'];
       queries.forEach(query => {
-        const filtered = sections.filter(s => 
+        const filtered = sections.filter((s: { id: string; title: string; content: string }) => 
           s.title.toLowerCase().includes(query.toLowerCase())
         );
         expect(filtered.length).toBeGreaterThan(0);
@@ -35,29 +35,31 @@ describe('HelpModalComponent - Core Logic', () => {
     });
 
     it('should return all sections when search is empty', () => {
-      const sections: Array<{ id: string; title: string; content: string }> = [
+      type Section = { id: string; title: string; content: string };
+      const sections: Array<Section> = [
         { id: '1', title: 'Guide 1', content: 'Content 1' },
         { id: '2', title: 'Guide 2', content: 'Content 2' },
         { id: '3', title: 'Guide 3', content: 'Content 3' }
       ];
 
-      const query = '';
-      const filtered = sections.filter(s => 
-        query === '' || 
-        s.title.toLowerCase().includes(query.toLowerCase())
-      );
+      const query: string = '';
+      const filtered: Section[] = sections.filter((s) => {
+        const section = s as Section;
+        const q = query as string;
+        return q === '' || section.title.toLowerCase().includes(q.toLowerCase());
+      });
 
       expect(filtered.length).toBe(sections.length);
     });
 
     it('should handle no search results', () => {
-      const sections = [
+      const sections: Array<{ id: string; title: string; content: string }> = [
         { id: '1', title: 'Getting Started', content: 'Introduction' },
         { id: '2', title: 'Advanced Tips', content: 'Features' }
       ];
 
       const query = 'nonexistent';
-      const filtered = sections.filter(s => 
+      const filtered = sections.filter((s: { id: string; title: string; content: string }) => 
         s.title.toLowerCase().includes(query.toLowerCase())
       );
 
@@ -65,13 +67,13 @@ describe('HelpModalComponent - Core Logic', () => {
     });
 
     it('should filter by content in addition to title', () => {
-      const sections = [
+      const sections: Array<{ id: string; title: string; content: string }> = [
         { id: '1', title: 'Prayer Tips', content: 'Focus on breathing techniques' },
         { id: '2', title: 'Meditation', content: 'Quiet reflection practices' }
       ];
 
       const query = 'breathing';
-      const filtered = sections.filter(s => 
+      const filtered = sections.filter((s: { id: string; title: string; content: string }) => 
         s.title.toLowerCase().includes(query.toLowerCase()) ||
         s.content.toLowerCase().includes(query.toLowerCase())
       );
@@ -81,13 +83,13 @@ describe('HelpModalComponent - Core Logic', () => {
     });
 
     it('should handle special characters in search', () => {
-      const sections = [
+      const sections: Array<{ id: string; title: string; content: string }> = [
         { id: '1', title: 'How to use Prayer App?', content: 'FAQ content' },
         { id: '2', title: 'Getting Started!', content: 'Intro content' }
       ];
 
       const query = '?';
-      const filtered = sections.filter(s => 
+      const filtered = sections.filter((s: { id: string; title: string; content: string }) => 
         s.title.includes(query)
       );
 
@@ -95,7 +97,7 @@ describe('HelpModalComponent - Core Logic', () => {
     });
 
     it('should preserve order of sections after filtering', () => {
-      const sections = [
+      const sections: Array<{ id: string; title: string }> = [
         { id: '1', title: 'First Help' },
         { id: '2', title: 'Help Accordion' },
         { id: '3', title: 'Second Help' },
@@ -103,7 +105,7 @@ describe('HelpModalComponent - Core Logic', () => {
       ];
 
       const query = 'help';
-      const filtered = sections.filter(s => 
+      const filtered = sections.filter((s: { id: string; title: string }) => 
         s.title.toLowerCase().includes(query.toLowerCase())
       );
 
@@ -471,14 +473,14 @@ describe('HelpModalComponent - Core Logic', () => {
 
   describe('Help Content Categories', () => {
     it('should organize sections by category', () => {
-      const sections = [
+      const sections: Array<{ id: string; title: string; category: string }> = [
         { id: '1', title: 'Getting Started', category: 'basics' },
         { id: '2', title: 'API Reference', category: 'advanced' },
         { id: '3', title: 'Quick Tips', category: 'basics' },
         { id: '4', title: 'Troubleshooting', category: 'support' }
       ];
 
-      const basicsSections = sections.filter(s => s.category === 'basics');
+      const basicsSections = sections.filter((s: { id: string; title: string; category: string }) => s.category === 'basics');
       expect(basicsSections.length).toBe(2);
     });
 
@@ -488,13 +490,13 @@ describe('HelpModalComponent - Core Logic', () => {
     });
 
     it('should filter by category', () => {
-      const sections = [
+      const sections: Array<{ id: string; title: string; category: string }> = [
         { id: '1', title: 'Help 1', category: 'basics' },
         { id: '2', title: 'Help 2', category: 'advanced' }
       ];
 
       const selectedCategory = 'advanced';
-      const filtered = sections.filter(s => s.category === selectedCategory);
+      const filtered = sections.filter((s: { id: string; title: string; category: string }) => s.category === selectedCategory);
 
       expect(filtered.length).toBe(1);
       expect(filtered[0].category).toBe('advanced');
@@ -507,15 +509,15 @@ describe('HelpModalComponent - Core Logic', () => {
     });
 
     it('should count sections per category', () => {
-      const sections = [
+      const sections: Array<{ category: string }> = [
         { category: 'basics' },
         { category: 'basics' },
         { category: 'advanced' }
       ];
 
       const categoryCounts = {
-        basics: sections.filter(s => s.category === 'basics').length,
-        advanced: sections.filter(s => s.category === 'advanced').length
+        basics: sections.filter((s: { category: string }) => s.category === 'basics').length,
+        advanced: sections.filter((s: { category: string }) => s.category === 'advanced').length
       };
 
       expect(categoryCounts.basics).toBe(2);

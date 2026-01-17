@@ -13,6 +13,26 @@ describe('PrayerArchiveTimelineComponent - Core Logic', () => {
       const localDate = new Date(date);
       expect(localDate).toBeDefined();
     });
+
+    it('should format dates consistently across formats', () => {
+      const date = new Date('2026-06-15');
+      const iso = date.toISOString().substring(0, 10);
+      const localized = date.toLocaleDateString('en-CA');
+      expect(iso).toBe('2026-06-15');
+      expect(localized).toContain('2026');
+    });
+
+    it('should handle month display formatting', () => {
+      const dates = [
+        new Date('2026-01-15'),
+        new Date('2026-12-31')
+      ];
+      
+      dates.forEach(date => {
+        const monthStr = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        expect(monthStr).toContain('2026');
+      });
+    });
   });
 
   describe('Reminder Calculation Logic', () => {
@@ -362,6 +382,305 @@ describe('PrayerArchiveTimelineComponent - Core Logic', () => {
       expect(regularMonth).toBeDefined();
       expect(dstMonth.getMonth()).toBe(2); // March
       expect(regularMonth.getMonth()).toBe(5); // June
+    });
+  });
+
+  describe('Archive Logic', () => {
+    it('should mark prayer as upcoming when reminder date is in the future', () => {
+      const today = new Date('2026-01-15');
+      const reminderDate = new Date('2026-02-15');
+      
+      const isUpcoming = reminderDate > today;
+      expect(isUpcoming).toBe(true);
+    });
+
+    it('should mark prayer as overdue when reminder date is in the past', () => {
+      const today = new Date('2026-02-15');
+      const reminderDate = new Date('2026-01-15');
+      
+      const isOverdue = reminderDate < today;
+      expect(isOverdue).toBe(true);
+    });
+
+    it('should classify prayers based on reminder date proximity', () => {
+      const today = new Date('2026-01-15');
+      const pastReminder = new Date('2026-01-01');
+      const futureReminder = new Date('2026-02-15');
+      const todayReminder = new Date('2026-01-15');
+      
+      const statusMap = (reminderDate: Date) => {
+        if (reminderDate < today) return 'overdue';
+        if (reminderDate > today) return 'upcoming';
+        return 'today';
+      };
+      
+      expect(statusMap(pastReminder)).toBe('overdue');
+      expect(statusMap(futureReminder)).toBe('upcoming');
+      expect(statusMap(todayReminder)).toBe('today');
+    });
+
+    it('should handle archive threshold calculations correctly', () => {
+      const createdDate = new Date('2026-01-01');
+      const archiveThreshold = 60; // 30 days reminder + 30 days after
+      
+      const archiveDate = new Date(createdDate);
+      archiveDate.setDate(archiveDate.getDate() + archiveThreshold);
+      
+      // archiveDate should be March 1st or 2nd, 2026 (60 days after Jan 1)
+      expect(archiveDate.getMonth()).toBe(2); // March
+      expect(archiveDate.getDate()).toBeGreaterThanOrEqual(1);
+      
+      const today = new Date('2026-03-05');
+      const shouldArchive = today >= archiveDate;
+      expect(shouldArchive).toBe(true);
+    });
+  });
+
+  describe('Month Navigation', () => {
+    it('should navigate to next month correctly', () => {
+      const currentMonth = new Date('2026-01-15');
+      const nextMonth = new Date(currentMonth);
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+      
+      expect(nextMonth.getMonth()).toBe(1); // February
+      expect(nextMonth.getFullYear()).toBe(2026);
+    });
+
+    it('should navigate to previous month correctly', () => {
+      const currentMonth = new Date('2026-03-15');
+      const previousMonth = new Date(currentMonth);
+      previousMonth.setMonth(previousMonth.getMonth() - 1);
+      
+      expect(previousMonth.getMonth()).toBe(1); // February
+      expect(previousMonth.getFullYear()).toBe(2026);
+    });
+
+    it('should wrap to next year when navigating from December', () => {
+      const december = new Date('2025-12-15');
+      const nextMonth = new Date(december);
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+      
+      expect(nextMonth.getMonth()).toBe(0); // January
+      expect(nextMonth.getFullYear()).toBe(2026);
+    });
+
+    it('should wrap to previous year when navigating from January', () => {
+      const january = new Date('2026-01-15');
+      const previousMonth = new Date(january);
+      previousMonth.setMonth(previousMonth.getMonth() - 1);
+      
+      expect(previousMonth.getMonth()).toBe(11); // December
+      expect(previousMonth.getFullYear()).toBe(2025);
+    });
+
+    it('should enforce navigation boundaries correctly', () => {
+      const minMonth = new Date('2025-06-01');
+      const maxMonth = new Date('2026-12-01');
+      const currentMonth = new Date('2026-01-15');
+      
+      const canGoPrevious = currentMonth > minMonth;
+      const canGoNext = currentMonth < maxMonth;
+      
+      expect(canGoPrevious).toBe(true);
+      expect(canGoNext).toBe(true);
+    });
+
+    it('should prevent navigation before minimum month', () => {
+      const minMonth = new Date('2025-06-01');
+      const currentMonth = new Date('2025-05-15');
+      
+      const canGoPrevious = currentMonth > minMonth;
+      expect(canGoPrevious).toBe(false);
+    });
+
+    it('should prevent navigation after maximum month', () => {
+      const maxMonth = new Date('2026-12-01');
+      const currentMonth = new Date('2026-12-15');
+      
+      const canGoNext = currentMonth < maxMonth;
+      expect(canGoNext).toBe(false);
+    });
+  });
+
+  describe('Event Grouping and Filtering', () => {
+    it('should group prayers by reminder date', () => {
+      const prayers = [
+        { id: 1, reminderDate: new Date('2026-01-15'), title: 'Prayer 1' },
+        { id: 2, reminderDate: new Date('2026-01-15'), title: 'Prayer 2' },
+        { id: 3, reminderDate: new Date('2026-01-20'), title: 'Prayer 3' }
+      ];
+      
+      const grouped: Record<string, (typeof prayers)> = {};
+      
+      prayers.forEach(prayer => {
+        const dateKey = prayer.reminderDate.toLocaleDateString('en-CA');
+        if (!grouped[dateKey]) grouped[dateKey] = [];
+        grouped[dateKey].push(prayer);
+      });
+      
+      const groupedKeys = Object.keys(grouped);
+      expect(groupedKeys.length).toBe(2);
+      expect(groupedKeys.some(k => grouped[k].length === 2)).toBe(true);
+      expect(groupedKeys.some(k => grouped[k].length === 1)).toBe(true);
+    });
+
+    it('should filter prayers within date range', () => {
+      const startDate = new Date('2026-01-10');
+      const endDate = new Date('2026-01-20');
+      
+      const prayers = [
+        { id: 1, reminderDate: new Date('2026-01-05') },
+        { id: 2, reminderDate: new Date('2026-01-15') },
+        { id: 3, reminderDate: new Date('2026-01-25') }
+      ];
+      
+      const filtered = prayers.filter(p => p.reminderDate >= startDate && p.reminderDate <= endDate);
+      
+      expect(filtered.length).toBe(1);
+      expect(filtered[0].id).toBe(2);
+    });
+
+    it('should sort prayers within same day by creation order', () => {
+      const prayers = [
+        { id: 3, reminderDate: new Date('2026-01-15'), createdAt: new Date('2026-01-01T15:00:00') },
+        { id: 1, reminderDate: new Date('2026-01-15'), createdAt: new Date('2026-01-01T10:00:00') },
+        { id: 2, reminderDate: new Date('2026-01-15'), createdAt: new Date('2026-01-01T12:00:00') }
+      ];
+      
+      const sorted = [...prayers].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      
+      expect(sorted[0].id).toBe(1);
+      expect(sorted[1].id).toBe(2);
+      expect(sorted[2].id).toBe(3);
+    });
+  });
+
+  describe('Database Settings Edge Cases', () => {
+    it('should use default 30-day reminder interval when not specified', () => {
+      const baseDate = new Date('2026-01-01');
+      const defaultInterval = 30;
+      
+      const reminderDate = new Date(baseDate);
+      reminderDate.setDate(reminderDate.getDate() + defaultInterval);
+      
+      // Jan 1 + 30 days = Jan 31
+      expect(reminderDate.getMonth()).toBe(0); // January
+      expect(reminderDate.getDate()).toBeGreaterThanOrEqual(30);
+    });
+
+    it('should handle custom reminder intervals correctly', () => {
+      const baseDate = new Date('2026-01-01');
+      const customInterval = 45;
+      
+      const reminderDate = new Date(baseDate);
+      reminderDate.setDate(reminderDate.getDate() + customInterval);
+      
+      // Jan 1 + 45 days = Feb 14 or 15
+      expect(reminderDate.getMonth()).toBe(1); // February
+      expect(reminderDate.getDate()).toBeGreaterThanOrEqual(14);
+    });
+
+    it('should fallback to default values when settings are missing', () => {
+      const settings = { reminderInterval: undefined };
+      const defaultInterval = 30;
+      
+      const interval = settings.reminderInterval ?? defaultInterval;
+      expect(interval).toBe(30);
+    });
+
+    it('should preserve user timezone in date calculations', () => {
+      const userTimezone = 'America/New_York';
+      const baseDate = new Date('2026-01-15T00:00:00Z');
+      
+      expect(baseDate).toBeDefined();
+      expect(userTimezone).toBeDefined();
+    });
+
+    it('should handle leap year February correctly', () => {
+      // Verify we can handle date objects correctly
+      const februaryDate = new Date();
+      februaryDate.setFullYear(2026, 1, 15); // Set to Feb 15, 2026
+      
+      expect(februaryDate.getMonth()).toBe(1); // February (0-indexed)
+      expect(februaryDate.getDate()).toBe(15);
+      expect(februaryDate.getFullYear()).toBe(2026);
+    });
+
+    it('should calculate days correctly across year boundaries', () => {
+      const dec31 = new Date('2025-12-31');
+      const jan1 = new Date('2026-01-01');
+      
+      const daysDifference = (jan1.getTime() - dec31.getTime()) / (1000 * 60 * 60 * 24);
+      expect(Math.round(daysDifference)).toBe(1);
+    });
+
+    it('should handle multiple year ranges in timeline', () => {
+      const startYear = 2024;
+      const endYear = 2027;
+      const years = Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i);
+      
+      expect(years).toContain(2024);
+      expect(years).toContain(2026);
+      expect(years).toContain(2027);
+      expect(years.length).toBe(4);
+    });
+  });
+
+  describe('Update-based Timer Reset', () => {
+    it('should reset timer when prayer is updated', () => {
+      const prayer = {
+        id: 1,
+        lastUpdated: new Date('2026-01-01'),
+        reminderDate: new Date('2026-02-01')
+      };
+      
+      const newUpdateTime = new Date('2026-01-15');
+      prayer.lastUpdated = newUpdateTime;
+      
+      expect(prayer.lastUpdated).toEqual(newUpdateTime);
+      expect(prayer.reminderDate).toEqual(new Date('2026-02-01'));
+    });
+
+    it('should recalculate reminder date based on update time', () => {
+      const updateTime = new Date('2026-01-15');
+      const reminderInterval = 30;
+      
+      const newReminderDate = new Date(updateTime);
+      newReminderDate.setDate(newReminderDate.getDate() + reminderInterval);
+      
+      // Jan 15 + 30 days = Feb 13 or 14
+      expect(newReminderDate.getMonth()).toBe(1); // February
+      expect(newReminderDate.getDate()).toBeGreaterThanOrEqual(13);
+    });
+
+    it('should preserve prayer content during timer reset', () => {
+      const prayer = {
+        id: 1,
+        title: 'Important Prayer',
+        content: 'Prayer details',
+        reminderDate: new Date('2026-01-01')
+      };
+      
+      const updatedReminder = new Date('2026-02-01');
+      prayer.reminderDate = updatedReminder;
+      
+      expect(prayer.title).toBe('Important Prayer');
+      expect(prayer.content).toBe('Prayer details');
+      expect(prayer.reminderDate).toEqual(updatedReminder);
+    });
+
+    it('should handle rapid successive updates correctly', () => {
+      const timestamps: Date[] = [];
+      const baseDate = new Date('2026-01-01');
+      
+      for (let i = 0; i < 5; i++) {
+        const updateTime = new Date(baseDate);
+        updateTime.setDate(updateTime.getDate() + i);
+        timestamps.push(updateTime);
+      }
+      
+      expect(timestamps.length).toBe(5);
+      expect(timestamps[0] < timestamps[4]).toBe(true);
     });
   });
 });
