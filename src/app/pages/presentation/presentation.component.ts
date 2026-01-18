@@ -17,6 +17,7 @@ interface Prayer {
   requester: string;
   status: string;
   created_at: string;
+  category?: string;
   prayer_updates?: Array<{
     id: string;
     content: string;
@@ -121,6 +122,8 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
         [statusFiltersCurrent]="statusFilters.current"
         [statusFiltersAnswered]="statusFilters.answered"
         [prayerTimerMinutes]="prayerTimerMinutes"
+        [availableCategories]="uniquePersonalCategories"
+        [selectedCategories]="selectedPersonalCategories"
         (close)="showSettings = false"
         (themeChange)="handleThemeChange($event)"
         (smartModeChange)="smartMode = $event"
@@ -130,6 +133,7 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
         (timeFilterChange)="timeFilter = $event; handleTimeFilterChange()"
         (statusFiltersChange)="statusFilters = $event; handleStatusFilterChange()"
         (prayerTimerMinutesChange)="prayerTimerMinutes = $event"
+        (categoriesChange)="selectedPersonalCategories = $event"
         (startPrayerTimer)="startPrayerTimer()"
         (refresh)="refreshContent()">
       </app-presentation-settings-modal>
@@ -182,6 +186,8 @@ export class PresentationComponent implements OnInit, OnDestroy {
   randomize = false;
   countdownRemaining = 0;
   currentDuration = 10;
+  selectedPersonalCategories: string[] = [];
+  uniquePersonalCategories: string[] = [];
   
   prayerTimerMinutes = 10;
   prayerTimerActive = false;
@@ -566,6 +572,7 @@ export class PresentationComponent implements OnInit, OnDestroy {
         this.personalPrayers = this.personalPrayers.filter((p: any) => statuses.includes(p.status));
       }
 
+      this.extractUniquePersonalCategories();
       this.cdr.markForCheck();
     } catch (error) {
       console.error('Error fetching personal prayers:', error);
@@ -577,8 +584,49 @@ export class PresentationComponent implements OnInit, OnDestroy {
   get items(): any[] {
     if (this.contentType === 'prayers') return this.prayers;
     if (this.contentType === 'prompts') return this.prompts;
-    if (this.contentType === 'personal') return this.personalPrayers;
-    return [...this.prayers, ...this.prompts, ...this.personalPrayers];
+    if (this.contentType === 'personal') {
+      // Filter personal prayers by category if categories are selected
+      if (this.selectedPersonalCategories.length > 0) {
+        return this.personalPrayers.filter(p => 
+          p.category && this.selectedPersonalCategories.includes(p.category)
+        );
+      }
+      return this.personalPrayers;
+    }
+    return [...this.prayers, ...this.prompts, ...this.getFilteredPersonalPrayers()];
+  }
+
+  private getFilteredPersonalPrayers(): any[] {
+    if (this.selectedPersonalCategories.length > 0) {
+      return this.personalPrayers.filter(p => 
+        p.category && this.selectedPersonalCategories.includes(p.category)
+      );
+    }
+    return this.personalPrayers;
+  }
+
+  togglePersonalCategory(category: string): void {
+    const index = this.selectedPersonalCategories.indexOf(category);
+    if (index > -1) {
+      this.selectedPersonalCategories.splice(index, 1);
+    } else {
+      this.selectedPersonalCategories.push(category);
+    }
+    this.currentIndex = 0; // Reset to first item when filters change
+  }
+
+  isPersonalCategorySelected(category: string): boolean {
+    return this.selectedPersonalCategories.includes(category);
+  }
+
+  private extractUniquePersonalCategories(): void {
+    const categories = new Set<string>();
+    this.personalPrayers.forEach(prayer => {
+      if (prayer.category && prayer.category.trim()) {
+        categories.add(prayer.category.trim());
+      }
+    });
+    this.uniquePersonalCategories = Array.from(categories).sort();
   }
 
   get currentItem(): any {

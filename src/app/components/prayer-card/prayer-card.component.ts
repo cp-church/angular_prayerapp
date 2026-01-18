@@ -28,6 +28,11 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
               {{ getStatusLabel() }}
             </span>
             }
+            @if (isPersonal && prayer.category) {
+            <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-700">
+              {{ prayer.category }}
+            </span>
+            }
             @if (!isPersonal) {
             <span class="text-sm text-gray-600 dark:text-gray-400">
               Requested by: <span class="font-medium text-gray-800 dark:text-gray-100">{{ displayRequester() }}</span>
@@ -35,19 +40,34 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
             }
           </div>
         </div>
-        @if (showDeleteButton()) {
-        <button
-          (click)="handleDeleteClick()"
-          aria-label="Delete prayer request"
-          title="Delete prayer request"
-          class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 focus:outline-none focus:ring-2 focus:ring-red-500 rounded-md"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-          </svg>
-        </button>
-        }
+        <div class="flex items-center gap-2">
+          @if (isPersonal) {
+          <button
+            (click)="editPersonalPrayer.emit(prayer)"
+            aria-label="Edit personal prayer"
+            title="Edit prayer"
+            class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+          </button>
+          }
+          @if (showDeleteButton()) {
+          <button
+            (click)="handleDeleteClick()"
+            aria-label="Delete prayer request"
+            title="Delete prayer request"
+            class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 focus:outline-none focus:ring-2 focus:ring-red-500 rounded-md"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+          }
+        </div>
       </div>
 
       <!-- Badge in top-right corner -->
@@ -212,19 +232,34 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
                   Updated by: <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ update.author }}</span>
                 </span>
                 }
-                @if (showUpdateDeleteButton()) {
-                <button
-                  (click)="handleDeleteUpdate(update.id)"
-                  aria-label="Delete prayer update"
-                  title="Delete this update"
-                  class="ml-auto text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 focus:outline-none focus:ring-2 focus:ring-red-500 rounded-md"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  </svg>
-                </button>
-                }
+                <div class="ml-auto flex items-center gap-1">
+                  @if (isPersonal) {
+                  <button
+                    (click)="editPersonalUpdate.emit({update: update, prayerId: prayer.id})"
+                    aria-label="Edit prayer update"
+                    title="Edit update"
+                    class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                  </button>
+                  }
+                  @if (showUpdateDeleteButton()) {
+                  <button
+                    (click)="handleDeleteUpdate(update.id)"
+                    aria-label="Delete prayer update"
+                    title="Delete this update"
+                    class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 focus:outline-none focus:ring-2 focus:ring-red-500 rounded-md"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                  </button>
+                  }
+                </div>
               </div>
               <span class="absolute left-1/2 top-0 transform -translate-x-1/2 -translate-y-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                 {{ formatDate(update.created_at) }}
@@ -325,6 +360,8 @@ export class PrayerCardComponent implements OnInit, OnChanges, OnDestroy {
   @Output() deleteUpdate = new EventEmitter<string>();
   @Output() requestDeletion = new EventEmitter<any>();
   @Output() requestUpdateDeletion = new EventEmitter<any>();
+  @Output() editPersonalPrayer = new EventEmitter<PrayerRequest>();
+  @Output() editPersonalUpdate = new EventEmitter<any>();
 
   prayerBadge$: Observable<boolean> | null = null;
   updateBadges$: Map<string, BehaviorSubject<boolean>> = new Map();

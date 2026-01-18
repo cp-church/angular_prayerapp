@@ -12,6 +12,7 @@ export interface PrayerRequest {
   created_at: string;
   updated_at: string;
   updates?: PrayerUpdate[];
+  category?: string;
   approval_status?: 'pending' | 'approved' | 'denied';
   denial_reason?: string | null;
   approved_at?: string | null;

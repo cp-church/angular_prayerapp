@@ -275,6 +275,15 @@ export class HelpContentService {
             text: 'Click the filter button labeled "Personal" to view your private personal prayers. These are prayers that are visible only to you. Click "Add Request" while in the Personal filter to create a personal prayer. Personal prayers are immediately available without requiring administrator approval, making them perfect for private prayer mangement.',
           },
           {
+            subtitle: 'Adding Categories to Personal Prayers',
+            text: 'When creating or editing a personal prayer, you can optionally assign a category to help organize your prayers. Categories are user-defined and can be anything meaningful to you - such as "Health", "Family", "Work", "Finances", or "Spiritual Growth". As you create personal prayers with categories, your app builds a library of your most-used categories that appear in a dropdown for easy selection. You can leave the category empty if you prefer, or type a new category name to create one on the fly.',
+            examples: [
+              'Example: Create a prayer "My Family" with category "Family"',
+              'Example: Create a prayer "Job Interview" with category "Work"',
+              'Example: Create a prayer with no category for prayers you don\'t want to organize',
+            ],
+          },
+          {
             subtitle: 'Updating Prayers',
             text: 'Click the "Update" button to add an update about the prayer request. This allows you to share progress, answered prayers, or new developments with your prayer community. You can update both regular prayers and personal prayers with new information.',
           },
@@ -352,6 +361,72 @@ export class HelpContentService {
         createdBy: 'system',
       },
       {
+        id: 'help_personal_prayers',
+        title: 'Personal Prayers & Categories',
+        description: 'Manage your private prayers with custom categories and editing',
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>',
+        content: [
+          {
+            subtitle: 'What are Personal Prayers?',
+            text: 'Personal prayers are private prayer requests that are visible only to you. Unlike community prayers that are shared with others, personal prayers give you a private space to track your own prayer requests, answered prayers, and personal spiritual journey. They don\'t require administrator approval and are immediately available for you to use.',
+          },
+          {
+            subtitle: 'Creating Personal Prayers',
+            text: 'Click the "Personal" filter button to view your personal prayers section. Click the "Add Request" button while in the Personal filter to create a new personal prayer. Fill in "Prayer For" (the subject of your prayer), add prayer details in the description field, and optionally assign a category. Your personal prayer is created instantly without waiting for approval.',
+            examples: [
+              'Example: Prayer For: "My Family", Details: "Pray for stronger relationships and more quality time together"',
+              'Example: Prayer For: "Personal Growth", Details: "Help me develop patience and wisdom in my daily decisions"',
+              'Example: Prayer For: "Health Journey", Details: "Thank you for good health checkup results, continue healing"',
+            ],
+          },
+          {
+            subtitle: 'Using Categories',
+            text: 'Assign categories to your personal prayers to organize them by topic. As you create personal prayers with categories, your app builds a library of your most-used categories. Click the category field dropdown to select from existing categories or type to create a new category. Categories help you quickly filter and find prayers about similar topics.',
+            examples: [
+              'Popular categories: Health, Family, Work, Finances, Relationships, Spiritual Growth, Guidance',
+              'You can create custom categories tailored to your personal prayer topics',
+            ],
+          },
+          {
+            subtitle: 'Filtering Personal Prayers by Category',
+            text: 'Once you have personal prayers with categories, you can filter them by category. In the Personal filter view, category filter buttons appear showing each category and the number of prayers in that category. Click a category button to show only prayers in that category. Click "All Categories" to show all your personal prayers again. This makes it easy to focus on prayers in specific areas of your life.',
+          },
+          {
+            subtitle: 'Editing Personal Prayers',
+            text: 'Click the edit button (pencil icon) on any personal prayer card to modify it. You can update the prayer subject (Prayer For field), change the description, or reassign the category. All changes are saved immediately. This is helpful when you need to add more details or track the evolution of your prayer request over time.',
+          },
+          {
+            subtitle: 'Adding Prayer Updates',
+            text: 'Click the "Update" button on a personal prayer to add a prayer update. Prayer updates let you track progress, answered prayers, or new developments. You can add multiple updates to show how your prayer has progressed. When adding an update, you can check "Mark this prayer as answered" to move it to the answered section once you see God\'s answer.',
+          },
+          {
+            subtitle: 'Editing Prayer Updates',
+            text: 'Click the edit button (pencil icon) on any prayer update to modify the update content. This allows you to correct typos, add more details, or clarify what you wrote. Your edits are saved instantly. You can also delete updates if needed.',
+          },
+          {
+            subtitle: 'Managing Prayer Status',
+            text: 'As you pray and see answers, you can mark prayers as "Answered" by adding an update with the "Mark this prayer as answered" option checked. Answered prayers move to the Answered section. You can still view and update answered prayers from the Total filter. Archive old prayers or keep them for reflection on how God has worked in your life.',
+          },
+          {
+            subtitle: 'Personal Prayers in Presentation Mode',
+            text: 'You can display your personal prayers in presentation mode for focused prayer time. Select "Personal" content type in the presentation settings to display only your personal prayers. Use the timer feature to spend dedicated time praying through each personal prayer request.',
+          },
+          {
+            subtitle: 'Searching Personal Prayers',
+            text: 'The search feature works with personal prayers too. Use the search bar to find personal prayers by the prayer subject, description, or category. This is helpful when you have many personal prayers and want to quickly find prayers about a specific topic.',
+          },
+          {
+            subtitle: 'Privacy & Personal Data',
+            text: 'Your personal prayers are completely private and stored securely. They are never shared with other users or the prayer community. Only you can see, edit, or manage your personal prayers. Your privacy is fully protected while you maintain your personal prayer journal.',
+          },
+        ],
+        order: 4,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'system',
+      },
+      {
         id: 'help_filtering',
         title: 'Filtering Prayers',
         description: 'Filter and sort your prayers',
@@ -374,7 +449,7 @@ export class HelpContentService {
             text: 'The search functionality works across all prayer filters. Whether you\'re viewing current prayers, answered prayers, personal prayers, or prompts, you can search to narrow down the results. Search looks through prayer titles, descriptions, and prayer prompts.',
           },
         ],
-        order: 4,
+        order: 5,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -399,7 +474,7 @@ export class HelpContentService {
             text: 'Access the settings icon during presentation mode to customize your experience. You can enable a timer to track prayer time, sort prayers by different criteria, and filter which prayers are displayed. These options help you control the flow and focus of your group prayer time.',
           },
         ],
-        order: 5,
+        order: 6,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -428,7 +503,7 @@ export class HelpContentService {
             text: 'Modern browsers allow you to "Print to PDF" which creates a digital copy you can save and share.',
           },
         ],
-        order: 6,
+        order: 7,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -448,43 +523,6 @@ export class HelpContentService {
             subtitle: 'Accessing Email Subscription Settings',
             text: 'To manage your email subscription, open the Settings menu (gear icon) in the top right corner of the app. You\'ll find the Email Subscription toggle in the settings panel. Simply toggle it on or off to enable or disable email notifications.',
           },
-          {
-            subtitle: 'Unsubscribe from Mass Emails',
-            text: 'Disabling the Email Subscription toggle will unsubscribe you from all mass email blasts and automated notification emails sent by the app. This means you\'ll stop receiving prayer updates, but you\'ll still be able to use the app normally.',
-          },
-          {
-            subtitle: 'Your Preference is Saved',
-            text: 'Your email subscription preference is saved automatically and will persist across sessions. You can change your subscription status at any time by revisiting the Settings menu.',
-          },
-        ],
-        order: 7,
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        createdBy: 'system',
-      },
-      {
-        id: 'help_feedback',
-        title: 'Send Feedback',
-        description: 'Share suggestions, report bugs, and request features',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
-        content: [
-          {
-            subtitle: 'Feedback Types',
-            text: 'You can submit three types of feedback: Suggestions for improvements, Feature Requests for new functionality, or Bug Reports to help us fix issues.',
-          },
-          {
-            subtitle: 'Submitting Feedback',
-            text: 'Fill in the feedback form with a clear title (up to 100 characters) and detailed description (up to 1000 characters). Your feedback is sent directly to our development team for review.',
-          },
-          {
-            subtitle: 'What Happens Next',
-            text: 'Once submitted, your feedback is logged and our team will review it. You\'ll receive confirmation that your feedback was received, and we use your input to improve the app.',
-          },
-          {
-            subtitle: 'Help Us Improve',
-            text: 'Your feedback is valuable! Whether you find a bug, want a new feature, or have a suggestion to make the app better, please share it with us. We read and consider all feedback from our users.',
-          },
         ],
         order: 8,
         isActive: true,
@@ -494,29 +532,21 @@ export class HelpContentService {
       },
       {
         id: 'help_settings',
-        title: 'App Settings',
-        description: 'Customize the app to your preferences',
-        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
+        title: 'Settings',
+        description: 'Manage your app preferences and account',
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m3.08 3.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m3.08-3.08l4.24-4.24M19.78 19.78l-4.24-4.24m-3.08-3.08l-4.24-4.24"/></svg>',
         content: [
           {
-            subtitle: 'Print Buttons',
-            text: 'The "Print Prayers" button allows you to print or export your current prayers as a PDF. The "Print Prompts" button prints the prayer prompts so you can use them offline or share them with others. The "Print Personal Prayers" button allows you to print your personal prayers.',
+            subtitle: 'What is in Settings?',
+            text: 'The settings menu gives you control over your app experience. You can manage email notifications, view your profile, provide feedback, and more.',
           },
           {
-            subtitle: 'Theme Options',
-            text: 'Choose from different theme options to customize the app appearance. Light mode is best for bright environments, dark mode reduces eye strain in low light, and system mode automatically follows your device\'s theme preference. Your selected theme preference is saved automatically.',
+            subtitle: 'Accessing Settings',
+            text: 'Click the gear icon in the top right corner of the app to open the settings menu.',
           },
           {
-            subtitle: 'Email Subscription',
-            text: 'Enable email subscription to receive notifications about prayer updates and community activities. When enabled, you\'ll get email notifications for new prayers, prayer updates, and other important app notifications. You can toggle this setting at any time to start or stop receiving emails.',
-          },
-          {
-            subtitle: 'Notification Badges',
-            text: 'Badges appear on the prayer count cards and filter buttons to notify you of new prayers that haven\'t been read yet. You can dismiss badges by clicking directly on the badge number. Or, click the badge in the filter buttons to clear all badges for that specific prayer category at once.',
-          },
-          {
-            subtitle: 'Enabling Badges',
-            text: 'To turn on the badge feature, enable "Badge Functionality" in settings. Once enabled, you\'ll see notifications for unread prayers. You can toggle this setting at any time based on your preference.',
+            subtitle: 'Managing Preferences',
+            text: 'Within settings, you can customize how the app works for you, including notification preferences and display options.',
           },
           {
             subtitle: 'Feedback Form',
@@ -525,6 +555,14 @@ export class HelpContentService {
           {
             subtitle: 'Logout',
             text: 'Click the logout button to sign out of your account. This will end your session and return you to the login screen.',
+          },
+          {
+            subtitle: 'Unsubscribe from Mass Emails',
+            text: 'Disabling the Email Subscription toggle will unsubscribe you from all mass email blasts and automated notification emails sent by the app. This means you\'ll stop receiving prayer updates, but you\'ll still be able to use the app normally.',
+          },
+          {
+            subtitle: 'Your Preference is Saved',
+            text: 'Your email subscription preference is saved automatically and will persist across sessions. You can change your subscription status at any time by revisiting the Settings menu.',
           },
         ],
         order: 9,

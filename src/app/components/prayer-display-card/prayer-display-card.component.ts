@@ -9,6 +9,7 @@ interface Prayer {
   requester: string;
   status: string;
   created_at: string;
+  category?: string;
   user_email?: string;
   prayer_updates?: Array<{
     id: string;
@@ -50,6 +51,15 @@ interface PrayerPrompt {
       <div class="mb-6">
         <div class="text-lg md:text-2xl lg:text-3xl leading-relaxed text-gray-800 dark:text-gray-100">{{ prayer.description }}</div>
       </div>
+
+      <!-- Category Badge -->
+      @if (prayer.category) {
+      <div class="mb-6">
+        <span class="inline-block px-3 md:px-4 lg:px-5 py-1 md:py-1.5 lg:py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm md:text-base lg:text-lg font-medium">
+          {{ prayer.category }}
+        </span>
+      </div>
+      }
 
       <!-- Meta Info -->
       <div class="flex justify-between items-center mb-1 text-sm md:text-base lg:text-xl text-gray-700 dark:text-gray-300 flex-wrap gap-4">

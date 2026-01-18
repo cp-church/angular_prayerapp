@@ -11,7 +11,9 @@ import { PromptCardComponent, PrayerPrompt } from '../../components/prompt-card/
 import { UserSettingsComponent } from '../../components/user-settings/user-settings.component';
 import { VerificationDialogComponent } from '../../components/verification-dialog/verification-dialog.component';
 import { HelpModalComponent } from '../../components/help-modal/help-modal.component';
-import { PrayerService, PrayerRequest } from '../../services/prayer.service';
+import { PersonalPrayerEditModalComponent } from '../../components/personal-prayer-edit-modal/personal-prayer-edit-modal.component';
+import { PersonalPrayerUpdateEditModalComponent } from '../../components/personal-prayer-update-edit-modal/personal-prayer-update-edit-modal.component';
+import { PrayerService, PrayerRequest, PrayerUpdate } from '../../services/prayer.service';
 import { PromptService } from '../../services/prompt.service';
 import { CacheService } from '../../services/cache.service';
 import { AdminAuthService } from '../../services/admin-auth.service';
@@ -26,7 +28,7 @@ import type { User } from '@supabase/supabase-js';
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterModule, PrayerFormComponent, PrayerFiltersComponent, SkeletonLoaderComponent, AppLogoComponent, PrayerCardComponent, PromptCardComponent, UserSettingsComponent, HelpModalComponent],
+  imports: [CommonModule, RouterModule, PrayerFormComponent, PrayerFiltersComponent, SkeletonLoaderComponent, AppLogoComponent, PrayerCardComponent, PromptCardComponent, UserSettingsComponent, HelpModalComponent, PersonalPrayerEditModalComponent, PersonalPrayerUpdateEditModalComponent],
   template: `
     <div class="w-full min-h-screen bg-gray-50 dark:bg-gray-900">
       <!-- Header -->
@@ -191,6 +193,23 @@ import type { User } from '@supabase/supabase-js';
           (closeModal)="showHelp = false"
         ></app-help-modal>
 
+        <!-- Personal Prayer Edit Modal -->
+        <app-personal-prayer-edit-modal
+          [isOpen]="showEditPersonalPrayer"
+          [prayer]="editingPrayer"
+          (close)="showEditPersonalPrayer = false"
+          (save)="onPersonalPrayerSaved()"
+        ></app-personal-prayer-edit-modal>
+
+        <!-- Personal Prayer Update Edit Modal -->
+        <app-personal-prayer-update-edit-modal
+          [isOpen]="showEditPersonalUpdate"
+          [update]="editingUpdate"
+          [prayerId]="editingUpdatePrayerId"
+          (close)="showEditPersonalUpdate = false"
+          (save)="onPersonalUpdateSaved()"
+        ></app-personal-prayer-update-edit-modal>
+
         <!-- Prayer Filters -->
         <app-prayer-filters
           [filters]="filters"
@@ -326,6 +345,29 @@ import type { User } from '@supabase/supabase-js';
           </div>
         }
 
+        <!-- Personal Category Filters -->
+        @if (activeFilter === 'personal' && uniquePersonalCategories.length > 0) {
+          <div class="flex flex-wrap gap-2 mb-4">
+            <!-- All Categories Button -->
+            <button
+              (click)="selectedPersonalCategories = []"
+              [class]="'flex-1 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-medium transition-all ' + (selectedPersonalCategories.length === 0 ? 'bg-[#2F5F54] text-white shadow-md' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:border-[#2F5F54] dark:hover:border-[#2F5F54]')"
+            >
+              All Categories ({{ personalPrayersCount }})
+            </button>
+            
+            <!-- Individual Category Buttons -->
+            @for (category of uniquePersonalCategories; track category) {
+              <button
+                (click)="togglePersonalCategory(category)"
+                [class]="'flex-1 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-medium transition-all ' + (isPersonalCategorySelected(category) ? 'bg-[#2F5F54] text-white shadow-md' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:border-[#2F5F54] dark:hover:border-[#2F5F54]')"
+              >
+                {{ category }} ({{ getPersonalCategoryCount(category) }})
+              </button>
+            }
+          </div>
+        }
+
         <!-- Prayers or Prompts List -->
         @if (!(loading$ | async) && !(error$ | async)) {
           <div class="space-y-4">
@@ -392,6 +434,8 @@ import type { User } from '@supabase/supabase-js';
                   (delete)="deletePersonalPrayer($event)"
                   (addUpdate)="addPersonalUpdate($event)"
                   (deleteUpdate)="deletePersonalUpdate($event)"
+                  (editPersonalPrayer)="openEditModal($event)"
+                  (editPersonalUpdate)="openEditUpdateModal($event)"
                 ></app-prayer-card>
               }
             }
@@ -453,10 +497,17 @@ export class HomeComponent implements OnInit, OnDestroy {
   showPrayerForm = false;
   showSettings = false;
   showHelp = false;
+  showEditPersonalPrayer = false;
+  editingPrayer: PrayerRequest | null = null;
+  showEditPersonalUpdate = false;
+  editingUpdate: PrayerUpdate | null = null;
+  editingUpdatePrayerId = '';
   filters: PrayerFilters = { status: 'current' };
   hasLogo = false;
   activeFilter: 'current' | 'answered' | 'total' | 'prompts' | 'personal' = 'current';
   selectedPromptTypes: string[] = [];
+  selectedPersonalCategories: string[] = [];
+  uniquePersonalCategories: string[] = [];
   
   isAdmin = false;
   // Admin settings for access control policies
@@ -559,6 +610,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       if (cached) {
         this.personalPrayers = cached;
         this.personalPrayersCount = cached.length;
+        this.extractUniqueCategories(cached);
         this.cdr.markForCheck();
         return;
       }
@@ -570,6 +622,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       
       this.personalPrayers = personalPrayers;
       this.personalPrayersCount = personalPrayers.length;
+      this.extractUniqueCategories(personalPrayers);
       this.cdr.markForCheck();
     } catch (error) {
       console.error('Error loading personal prayers:', error);
@@ -768,6 +821,33 @@ export class HomeComponent implements OnInit, OnDestroy {
     return this.selectedPromptTypes.includes(type);
   }
 
+  togglePersonalCategory(category: string): void {
+    const index = this.selectedPersonalCategories.indexOf(category);
+    if (index > -1) {
+      this.selectedPersonalCategories.splice(index, 1);
+    } else {
+      this.selectedPersonalCategories.push(category);
+    }
+  }
+
+  isPersonalCategorySelected(category: string): boolean {
+    return this.selectedPersonalCategories.includes(category);
+  }
+
+  private extractUniqueCategories(prayers: PrayerRequest[]): void {
+    const categories = new Set<string>();
+    prayers.forEach(prayer => {
+      if (prayer.category && prayer.category.trim()) {
+        categories.add(prayer.category.trim());
+      }
+    });
+    this.uniquePersonalCategories = Array.from(categories).sort();
+  }
+
+  getPersonalCategoryCount(category: string): number {
+    return this.personalPrayers.filter(p => p.category === category).length;
+  }
+
   getDisplayedPrompts(): PrayerPrompt[] {
     let prompts = this.promptService.promptsSubject.value;
     if (this.activeFilter !== 'prompts') return [];
@@ -819,7 +899,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Get personal prayers filtered by search term
+   * Get personal prayers filtered by search term and category
    */
   getFilteredPersonalPrayers(): PrayerRequest[] {
     let filtered = this.personalPrayers;
@@ -831,6 +911,13 @@ export class HomeComponent implements OnInit, OnDestroy {
         p.prayer_for.toLowerCase().includes(searchLower) ||
         p.description.toLowerCase().includes(searchLower) ||
         p.title.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Filter by selected categories
+    if (this.selectedPersonalCategories.length > 0) {
+      filtered = filtered.filter(p => 
+        p.category && this.selectedPersonalCategories.includes(p.category)
       );
     }
     
@@ -929,5 +1016,35 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   markAllPromptsAsRead(): void {
     this.badgeService.markAllAsRead('prompts');
+  }
+
+  openEditModal(prayer: PrayerRequest): void {
+    this.editingPrayer = prayer;
+    this.showEditPersonalPrayer = true;
+    this.cdr.markForCheck();
+  }
+
+  onPersonalPrayerSaved(): void {
+    this.showEditPersonalPrayer = false;
+    this.editingPrayer = null;
+    this.cdr.markForCheck();
+    // Reload personal prayers to reflect the changes
+    this.loadPersonalPrayers();
+  }
+
+  openEditUpdateModal(event: {update: PrayerUpdate, prayerId: string}): void {
+    this.editingUpdate = event.update;
+    this.editingUpdatePrayerId = event.prayerId;
+    this.showEditPersonalUpdate = true;
+    this.cdr.markForCheck();
+  }
+
+  onPersonalUpdateSaved(): void {
+    this.showEditPersonalUpdate = false;
+    this.editingUpdate = null;
+    this.editingUpdatePrayerId = '';
+    this.cdr.markForCheck();
+    // Reload personal prayers to reflect the changes
+    this.loadPersonalPrayers();
   }
 }

@@ -218,6 +218,25 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           </div>
           }
 
+          <!-- Personal Prayer Categories (only for personal content) -->
+          @if (localContentType === 'personal' && availableCategories && availableCategories.length > 0) {
+          <div>
+            <label class="block text-base sm:text-lg lg:text-xl mb-2 sm:mb-3 text-gray-900 dark:text-gray-100">Categories</label>
+            <div class="space-y-2">
+              @for (category of availableCategories; track category) {
+                <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded">
+                  <input
+                    type="checkbox"
+                    [checked]="isCategorySelected(category)"
+                    (change)="toggleCategory($event, category)"
+                    class="w-4 h-4 sm:w-5 sm:h-5 rounded text-blue-600">
+                  <span class="text-base sm:text-lg text-gray-900 dark:text-gray-100">{{ category }}</span>
+                </label>
+              }
+            </div>
+          </div>
+          }
+
           <!-- Prayer Status (for prayers and personal prayers) -->
           @if (localContentType === 'prayers' || localContentType === 'personal') {
           <div>
@@ -324,6 +343,8 @@ export class PresentationSettingsModalComponent implements OnInit, OnChanges {
   @Input() statusFiltersCurrent = true;
   @Input() statusFiltersAnswered = true;
   @Input() prayerTimerMinutes = 10;
+  @Input() availableCategories: string[] = [];
+  @Input() selectedCategories: string[] = [];
   
   @Output() close = new EventEmitter<void>();
   @Output() themeChange = new EventEmitter<ThemeOption>();
@@ -336,6 +357,7 @@ export class PresentationSettingsModalComponent implements OnInit, OnChanges {
   @Output() prayerTimerMinutesChange = new EventEmitter<number>();
   @Output() startPrayerTimer = new EventEmitter<void>();
   @Output() refresh = new EventEmitter<void>();
+  @Output() categoriesChange = new EventEmitter<string[]>();
 
   // Local state for two-way binding
   localSmartMode = true;
@@ -344,6 +366,7 @@ export class PresentationSettingsModalComponent implements OnInit, OnChanges {
   localRandomize = false;
   localTimeFilter: TimeFilter = 'month';
   localPrayerTimerMinutes = 10;
+  localSelectedCategories: string[] = [];
   
   showSmartModeDetails = false;
   showStatusDropdown = false;
@@ -366,6 +389,7 @@ export class PresentationSettingsModalComponent implements OnInit, OnChanges {
     this.localRandomize = this.randomize;
     this.localTimeFilter = this.timeFilter;
     this.localPrayerTimerMinutes = this.prayerTimerMinutes;
+    this.localSelectedCategories = [...this.selectedCategories];
   }
 
   initPendingStatusFilter() {
@@ -420,5 +444,21 @@ export class PresentationSettingsModalComponent implements OnInit, OnChanges {
     
     if (filters.length === 0) return 'All Statuses';
     return filters.join(', ');
+  }
+
+  isCategorySelected(category: string): boolean {
+    return this.localSelectedCategories.includes(category);
+  }
+
+  toggleCategory(event: Event, category: string) {
+    const checkbox = event.target as HTMLInputElement;
+    if (checkbox.checked) {
+      if (!this.localSelectedCategories.includes(category)) {
+        this.localSelectedCategories = [...this.localSelectedCategories, category];
+      }
+    } else {
+      this.localSelectedCategories = this.localSelectedCategories.filter(c => c !== category);
+    }
+    this.categoriesChange.emit(this.localSelectedCategories);
   }
 }

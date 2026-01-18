@@ -149,6 +149,31 @@ import { ToastService } from '../../services/toast.service';
             </div>
           </div>
 
+          <!-- Category Field - only show for personal prayers -->
+          @if (formData.is_personal) {
+          <div>
+            <label for="category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Category <span class="text-gray-500 dark:text-gray-400">(optional)</span>
+            </label>
+            <input
+              type="text"
+              id="category"
+              [(ngModel)]="formData.category"
+              name="category"
+              list="categories"
+              autocomplete="off"
+              aria-label="Prayer category"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              placeholder="e.g., Health, Family, Work (or create a new category)"
+            />
+            <datalist id="categories">
+              @for (category of availableCategories; track category) {
+              <option [value]="category"></option>
+              }
+            </datalist>
+          </div>
+          }
+
           <!-- Buttons -->
           <div class="flex gap-3 pt-4">
             <button
@@ -180,18 +205,27 @@ export class PrayerFormComponent implements OnInit, OnChanges {
   @Input() isOpen = false;
   @Output() close = new EventEmitter<{isPersonal?: boolean}>();
 
-  formData = {
+  formData: {
+    title: string;
+    description: string;
+    prayer_for: string;
+    is_anonymous: boolean;
+    is_personal: boolean;
+    category: string;
+  } = {
     title: '',
     description: '',
     prayer_for: '',
     is_anonymous: false,
-    is_personal: false
+    is_personal: false,
+    category: ''
   };
 
   isSubmitting = false;
   showSuccessMessage = false;
   isAdmin = false;
   currentUserEmail = '';
+  availableCategories: string[] = [];
   user$!: Observable<User | null>;
 
   constructor(
@@ -209,11 +243,14 @@ export class PrayerFormComponent implements OnInit, OnChanges {
     this.adminAuthService.isAdmin$.subscribe(isAdmin => {
       this.isAdmin = isAdmin;
     });
+    // Load available categories for personal prayers
+    this.availableCategories = this.prayerService.getUniqueCategoriesForUser();
   }
 
   ngOnChanges(): void {
     if (this.isOpen) {
       this.loadUserInfo();
+      this.availableCategories = this.prayerService.getUniqueCategoriesForUser();
     }
   }
 
@@ -266,6 +303,7 @@ export class PrayerFormComponent implements OnInit, OnChanges {
         prayer_for: this.formData.prayer_for,
         email: this.currentUserEmail,
         is_anonymous: this.formData.is_anonymous,
+        category: this.formData.category || undefined,
         status: 'current' as const
       };
 
@@ -299,7 +337,8 @@ export class PrayerFormComponent implements OnInit, OnChanges {
           description: '',
           prayer_for: '',
           is_anonymous: false,
-          is_personal: false
+          is_personal: false,
+          category: ''
         };
 
         // Auto-close after 5 seconds
@@ -327,7 +366,8 @@ export class PrayerFormComponent implements OnInit, OnChanges {
       description: '',
       prayer_for: '',
       is_anonymous: false,
-      is_personal: false
+      is_personal: false,
+      category: ''
     };
     this.showSuccessMessage = false;
     this.isSubmitting = false;

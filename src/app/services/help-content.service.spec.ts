@@ -73,11 +73,11 @@ describe('HelpContentService', () => {
         'help_prayers',
         'help_prompts',
         'help_search',
+        'help_personal_prayers',
         'help_filtering',
         'help_presentation',
         'help_printing',
         'help_email_subscription',
-        'help_feedback',
         'help_settings',
       ];
 

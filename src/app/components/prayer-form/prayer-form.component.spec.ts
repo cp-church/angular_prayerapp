@@ -38,7 +38,9 @@ describe('PrayerFormComponent', () => {
     };
 
     mockPrayerService = {
-      addPrayer: vi.fn()
+      addPrayer: vi.fn(),
+      addPersonalPrayer: vi.fn(),
+      getUniqueCategoriesForUser: vi.fn(() => [])
     };
 
     mockAdminAuthService = {
@@ -124,7 +126,8 @@ describe('PrayerFormComponent', () => {
         description: '',
         prayer_for: '',
         is_anonymous: false,
-        is_personal: false
+        is_personal: false,
+        category: ''
       });
       expect(component.isSubmitting).toBe(false);
       expect(component.showSuccessMessage).toBe(false);
@@ -299,7 +302,8 @@ describe('PrayerFormComponent', () => {
         description: '',
         prayer_for: '',
         is_anonymous: false,
-        is_personal: false
+        is_personal: false,
+        category: ''
       });
     });
 

@@ -34,6 +34,7 @@ export interface PrayerRequest {
   created_at: string;
   updated_at: string;
   last_reminder_sent?: string | null;
+  category?: string | null;
   updates: PrayerUpdate[];
 }
 
@@ -204,6 +205,7 @@ export class PrayerService {
           description,
           status,
           prayer_for,
+          category,
           user_email,
           created_at,
           updated_at,
@@ -227,6 +229,7 @@ export class PrayerService {
         description: p.description,
         status: p.status,
         prayer_for: p.prayer_for,
+        category: p.category,
         requester: p.user_email,
         email: p.user_email,
         user_email: p.user_email,
@@ -1068,6 +1071,7 @@ export class PrayerService {
         title: prayer.title,
         description: prayer.description,
         prayer_for: prayer.prayer_for,
+        category: prayer.category || null,
         user_email: userEmail
       };
 
@@ -1086,6 +1090,7 @@ export class PrayerService {
         description: data.description,
         status: 'current',
         prayer_for: data.prayer_for,
+        category: data.category,
         requester: userEmail,
         email: userEmail,
         is_anonymous: false,
@@ -1198,6 +1203,133 @@ export class PrayerService {
       this.toast.error('Failed to delete personal prayer');
       return false;
     }
+  }
+
+  /**
+   * Update personal prayer (title, description, and/or category)
+   */
+  async updatePersonalPrayer(
+    id: string,
+    updates: Partial<Pick<PrayerRequest, 'title' | 'description' | 'category'>>
+  ): Promise<boolean> {
+    try {
+      const userEmail = await this.getUserEmail();
+      if (!userEmail) {
+        this.toast.error('User email not available');
+        return false;
+      }
+
+      const updateData = {
+        ...updates,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await this.supabase.client
+        .from('personal_prayers')
+        .update(updateData)
+        .eq('id', id)
+        .eq('user_email', userEmail);
+
+      if (error) throw error;
+
+      // Update local state and cache
+      const personalPrayers = this.allPersonalPrayersSubject.value;
+      const updatedPrayers = personalPrayers.map(p =>
+        p.id === id 
+          ? { 
+              ...p, 
+              title: updates.title ?? p.title,
+              description: updates.description ?? p.description,
+              category: updates.category !== undefined ? updates.category : p.category,
+              updated_at: updateData.updated_at
+            } 
+          : p
+      );
+      this.allPersonalPrayersSubject.next(updatedPrayers);
+      this.cache.set('personalPrayers', updatedPrayers);
+
+      console.log('[PrayerService] Personal prayer updated successfully');
+      this.toast.success('Personal prayer updated');
+      return true;
+    } catch (error) {
+      console.error('Error updating personal prayer:', error);
+      this.toast.error('Failed to update personal prayer');
+      return false;
+    }
+  }
+
+  /**
+   * Update personal prayer update (content and/or author)
+   */
+  async updatePersonalPrayerUpdate(
+    updateId: string,
+    prayerId: string,
+    updates: Partial<Pick<PrayerUpdate, 'content'>>
+  ): Promise<boolean> {
+    try {
+      const userEmail = await this.getUserEmail();
+      if (!userEmail) {
+        this.toast.error('User email not available');
+        return false;
+      }
+
+      const updateData = {
+        ...updates,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await this.supabase.client
+        .from('personal_prayer_updates')
+        .update(updateData)
+        .eq('id', updateId);
+
+      if (error) throw error;
+
+      // Update local state and cache
+      const personalPrayers = this.allPersonalPrayersSubject.value;
+      const updatedPrayers = personalPrayers.map(p =>
+        p.id === prayerId 
+          ? { 
+              ...p, 
+              updates: (p.updates || []).map(u =>
+                u.id === updateId
+                  ? {
+                      ...u,
+                      content: updates.content ?? u.content
+                    }
+                  : u
+              )
+            } 
+          : p
+      );
+      this.allPersonalPrayersSubject.next(updatedPrayers);
+      this.cache.set('personalPrayers', updatedPrayers);
+
+      console.log('[PrayerService] Personal prayer update updated successfully');
+      this.toast.success('Prayer update saved');
+      return true;
+    } catch (error) {
+      console.error('Error updating personal prayer update:', error);
+      this.toast.error('Failed to update prayer update');
+      return false;
+    }
+  }
+
+
+  /**
+   * Get unique categories for personal prayers of current user
+   */
+  getUniqueCategoriesForUser(): string[] {
+    const personalPrayers = this.allPersonalPrayersSubject.value;
+    const categories = new Set<string>();
+    
+    personalPrayers.forEach(prayer => {
+      if (prayer.category && prayer.category.trim()) {
+        categories.add(prayer.category.trim());
+      }
+    });
+
+    return Array.from(categories).sort();
   }
 
   /**
