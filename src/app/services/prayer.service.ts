@@ -229,6 +229,7 @@ export class PrayerService {
         prayer_for: p.prayer_for,
         requester: p.user_email,
         email: p.user_email,
+        user_email: p.user_email,
         is_anonymous: false,
         date_requested: p.created_at,
         created_at: p.created_at,

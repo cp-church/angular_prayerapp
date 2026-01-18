@@ -85,6 +85,7 @@ describe('PrayerDisplayCardComponent', () => {
       });
       
       expect(container.textContent).toContain('Jane Smith');
+      expect(container.textContent).toContain('Requested by:');
     });
 
     it('should display Anonymous for missing requester', async () => {
@@ -94,6 +95,7 @@ describe('PrayerDisplayCardComponent', () => {
       });
       
       expect(container.textContent).toContain('Anonymous');
+      expect(container.textContent).toContain('Requested by:');
     });
 
     it('should display status', async () => {
@@ -563,6 +565,79 @@ describe('PrayerDisplayCardComponent', () => {
       
       // Component should render without errors
       expect(container).toBeTruthy();
+    });
+  });
+
+  describe('personal prayers', () => {
+    const personalPrayer = {
+      ...mockPrayer,
+      user_email: 'user@example.com',
+      updates: [
+        {
+          id: 'u1',
+          content: 'Update 1',
+          author: 'Author 1',
+          created_at: '2024-12-20T10:00:00Z'
+        },
+        {
+          id: 'u2',
+          content: 'Update 2',
+          author: 'Author 2',
+          created_at: '2024-01-16T10:00:00Z'
+        }
+      ]
+    };
+
+    it('should identify personal prayers', async () => {
+      const { fixture } = await render(PrayerDisplayCardComponent, {
+        componentProperties: { prayer: personalPrayer }
+      });
+      
+      expect(fixture.componentInstance.isPersonalPrayer()).toBe(true);
+    });
+
+    it('should not identify regular prayers as personal', async () => {
+      const { fixture } = await render(PrayerDisplayCardComponent, {
+        componentProperties: { prayer: mockPrayer }
+      });
+      
+      expect(fixture.componentInstance.isPersonalPrayer()).toBe(false);
+    });
+
+    it('should hide requester field for personal prayers', async () => {
+      const { container } = await render(PrayerDisplayCardComponent, {
+        componentProperties: { prayer: personalPrayer }
+      });
+      
+      expect(container.textContent).not.toContain('Requested by:');
+      expect(container.textContent).not.toContain('Jane Smith');
+    });
+
+    it('should show requester field for regular prayers', async () => {
+      const { container } = await render(PrayerDisplayCardComponent, {
+        componentProperties: { prayer: mockPrayer }
+      });
+      
+      expect(container.textContent).toContain('Requested by:');
+      expect(container.textContent).toContain('Jane Smith');
+    });
+
+    it('should show updates section for personal prayers', async () => {
+      const { container } = await render(PrayerDisplayCardComponent, {
+        componentProperties: { prayer: personalPrayer }
+      });
+      
+      expect(container.textContent).toContain('Recent Updates');
+      expect(container.textContent).toContain('Update 1');
+    });
+
+    it('should show updates section for regular prayers', async () => {
+      const { container } = await render(PrayerDisplayCardComponent, {
+        componentProperties: { prayer: mockPrayer }
+      });
+      
+      expect(container.textContent).toContain('Recent Updates');
+      expect(container.textContent).toContain('Update 1');
     });
   });
 });

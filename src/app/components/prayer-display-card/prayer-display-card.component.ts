@@ -9,7 +9,14 @@ interface Prayer {
   requester: string;
   status: string;
   created_at: string;
+  user_email?: string;
   prayer_updates?: Array<{
+    id: string;
+    content: string;
+    author: string;
+    created_at: string;
+  }>;
+  updates?: Array<{
     id: string;
     content: string;
     author: string;
@@ -46,9 +53,11 @@ interface PrayerPrompt {
 
       <!-- Meta Info -->
       <div class="flex justify-between items-center mb-1 text-sm md:text-base lg:text-xl text-gray-700 dark:text-gray-300 flex-wrap gap-4">
+        @if (!isPersonalPrayer()) {
         <div>
           <span class="font-semibold">Requested by:</span> {{ prayer.requester || 'Anonymous' }}
         </div>
+        }
         <div [ngClass]="getStatusBadgeClasses(prayer.status)">
           {{ prayer.status.charAt(0).toUpperCase() + prayer.status.slice(1) }}
         </div>
@@ -60,12 +69,12 @@ interface PrayerPrompt {
       </div>
 
       <!-- Updates Section -->
-      @if (prayer.prayer_updates && prayer.prayer_updates.length > 0) {
+      @if (getAllUpdates().length > 0) {
       <div 
         class="border-t border-gray-300 dark:border-gray-600 pt-6">
         <div class="flex items-center justify-between mb-4">
           <div class="text-lg md:text-xl lg:text-2xl font-semibold text-gray-900 dark:text-gray-100">
-            Recent Updates @if (!showAllUpdates && getRecentUpdates().length < prayer.prayer_updates.length) {<span>({{ getRecentUpdates().length }} of {{ prayer.prayer_updates.length }})</span>}
+            Recent Updates @if (!showAllUpdates && getRecentUpdates().length < getAllUpdates().length) {<span>({{ getRecentUpdates().length }} of {{ getAllUpdates().length }})</span>}
           </div>
           @if (shouldShowToggleButton()) {
           <button
@@ -83,9 +92,15 @@ interface PrayerPrompt {
           @for (update of getRecentUpdates(); track update.id) {
           <div 
             class="bg-gray-100 dark:bg-gray-700 rounded-xl p-5">
+            @if (!isPersonalPrayer()) {
             <div class="text-sm md:text-base lg:text-lg text-gray-700 dark:text-gray-300 mb-2">
               Updated by: {{ update.author }} • {{ formatDate(update.created_at) }}
             </div>
+            } @else {
+            <div class="text-sm md:text-base lg:text-lg text-gray-700 dark:text-gray-300 mb-2">
+              {{ formatDate(update.created_at) }}
+            </div>
+            }
             <div class="text-base md:text-lg lg:text-xl text-gray-800 dark:text-gray-200">{{ update.content }}</div>
           </div>
           }
@@ -142,8 +157,10 @@ export class PrayerDisplayCardComponent {
   }
 
   getRecentUpdates() {
-    if (!this.prayer?.prayer_updates) return [];
-    const sortedUpdates = [...this.prayer.prayer_updates]
+    const allUpdates = this.getAllUpdates();
+    if (allUpdates.length === 0) return [];
+    
+    const sortedUpdates = [...allUpdates]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     
     if (this.showAllUpdates) return sortedUpdates;
@@ -160,10 +177,16 @@ export class PrayerDisplayCardComponent {
     return recentUpdates.length > 0 ? recentUpdates : sortedUpdates.slice(0, 1);
   }
 
+  getAllUpdates() {
+    if (!this.prayer) return [];
+    return (this.prayer.prayer_updates || []).concat(this.prayer.updates || []);
+  }
+
   shouldShowToggleButton(): boolean {
-    if (!this.prayer?.prayer_updates) return false;
+    const allUpdates = this.getAllUpdates();
+    if (allUpdates.length === 0) return false;
     const displayed = this.getRecentUpdates();
-    return displayed.length < this.prayer.prayer_updates.length || this.showAllUpdates;
+    return displayed.length < allUpdates.length || this.showAllUpdates;
   }
 
   formatDate(dateString: string): string {
@@ -178,5 +201,9 @@ export class PrayerDisplayCardComponent {
       minute: '2-digit',
       hour12: true 
     });
+  }
+
+  isPersonalPrayer(): boolean {
+    return !!this.prayer?.user_email;
   }
 }
