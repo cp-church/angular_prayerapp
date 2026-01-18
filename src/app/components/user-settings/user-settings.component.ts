@@ -60,8 +60,8 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           <!-- Print Buttons -->
           <div class="flex flex-col lg:flex-row flex-nowrap gap-2">
             <!-- Print Prayer List -->
-            <div class="relative">
-              <div class="flex">
+            <div class="relative flex-1 min-w-0">
+              <div class="flex w-full min-w-0">
                 <button
                   (click)="handlePrint()"
                   title="Print prayers for the selected time period"
@@ -151,8 +151,8 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
             </div>
 
             <!-- Print Prompts -->
-            <div class="relative">
-              <div class="flex">
+            <div class="relative flex-1 min-w-0">
+              <div class="flex w-full min-w-0">
                 <button
                   (click)="handlePrintPrompts()"
                   [disabled]="isPrintingPrompts"

@@ -1712,7 +1712,7 @@ describe('EmailNotificationService - Additional Logic', () => {
 
         await service.sendAdminNotification(payload);
         expect(sendAdminSpy).toHaveBeenCalled();
-        const callPayload = sendAdminSpy.mock.calls[0][0];
+        const callPayload = sendAdminSpy.mock.calls[0][0] as any;
         expect(callPayload.requestId).toBe('req-123');
       });
     });
