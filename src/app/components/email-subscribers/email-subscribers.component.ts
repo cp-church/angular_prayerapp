@@ -457,13 +457,13 @@ interface CSVRow {
         <div class="space-y-2">
           @for (subscriber of subscribers; track subscriber.id) { <div [class]="'grid gap-2 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 ' + (isLandscape ? 'grid-cols-12 items-start' : 'grid-cols-2 md:grid-cols-12 md:items-start')">
             <!-- Name column -->
-            <div class="col-span-1 md:col-span-2">
+            <div [class]="'text-left ' + (isLandscape ? 'col-span-2' : 'col-span-1 md:col-span-2')">
               <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden" [class.hidden]="isLandscape">Name</p>
               <h4 class="font-medium text-gray-900 dark:text-gray-100 truncate" [title]="subscriber.name">{{ subscriber.name }}</h4>
             </div>
             
             <!-- Email column -->
-            <div class="col-span-1 md:col-span-4">
+            <div [class]="'text-left ' + (isLandscape ? 'col-span-4' : 'col-span-1 md:col-span-4')">
               <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden" [class.hidden]="isLandscape">Email</p>
               <p class="text-sm text-gray-600 dark:text-gray-400 truncate" [title]="subscriber.email">{{ subscriber.email }}</p>
             </div>
