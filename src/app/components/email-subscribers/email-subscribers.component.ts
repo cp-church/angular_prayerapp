@@ -458,25 +458,25 @@ interface CSVRow {
           @for (subscriber of subscribers; track subscriber.id) { <div [class]="'grid gap-2 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 ' + (isLandscape ? 'grid-cols-12 items-start' : 'grid-cols-2 md:grid-cols-12 md:items-start')">
             <!-- Name column -->
             <div class="col-span-1 md:col-span-2">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Name</p>
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden" [class.hidden]="isLandscape">Name</p>
               <h4 class="font-medium text-gray-900 dark:text-gray-100 truncate" [title]="subscriber.name">{{ subscriber.name }}</h4>
             </div>
             
             <!-- Email column -->
             <div class="col-span-1 md:col-span-4">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Email</p>
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden" [class.hidden]="isLandscape">Email</p>
               <p class="text-sm text-gray-600 dark:text-gray-400 truncate" [title]="subscriber.email">{{ subscriber.email }}</p>
             </div>
             
             <!-- Added column -->
             <div class="col-span-1 md:col-span-1">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Added</p>
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden" [class.hidden]="isLandscape">Added</p>
               <p class="text-xs text-gray-500 dark:text-gray-500" [title]="'Joined: ' + (subscriber.created_at | date:'medium')">{{ subscriber.created_at | date:'short' }}</p>
             </div>
             
             <!-- Activity column -->
             <div class="col-span-1 md:col-span-1">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Activity</p>
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden" [class.hidden]="isLandscape">Activity</p>
               @if (subscriber.last_activity_date) {
               <p class="text-xs text-gray-500 dark:text-gray-500" [title]="'Last active: ' + (subscriber.last_activity_date | date:'medium')">{{ subscriber.last_activity_date | date:'short' }}</p>
               } @else {
@@ -486,7 +486,7 @@ interface CSVRow {
             
             <!-- Status column -->
             <div class="col-span-1 md:col-span-1 flex items-center gap-1">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Status</p>
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden" [class.hidden]="isLandscape">Status</p>
               <button
                 (click)="handleToggleActive(subscriber.id, subscriber.is_active)"
                 [class]="subscriber.is_active ? 
@@ -511,7 +511,7 @@ interface CSVRow {
 
             <!-- Blocked column -->
             <div class="col-span-1 md:col-span-1 flex items-center gap-1">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Blocked</p>
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden" [class.hidden]="isLandscape">Blocked</p>
               <button
                 (click)="handleToggleBlocked(subscriber.id, subscriber.is_blocked)"
                 [class]="subscriber.is_blocked ? 
@@ -528,7 +528,7 @@ interface CSVRow {
 
             <!-- Planning Center column -->
             <div class="col-span-1 md:col-span-1 flex items-center gap-1">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Planning Center</p>
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden" [class.hidden]="isLandscape">Planning Center</p>
               @if (subscriber.in_planning_center === true) {
               <span class="text-lg text-green-600 dark:text-green-400" title="This person is verified in Planning Center">✓</span>
               } @else if (subscriber.in_planning_center === false) {
@@ -540,7 +540,7 @@ interface CSVRow {
 
             <!-- Delete button column -->
             <div class="col-span-1 md:col-span-1 flex items-center gap-1">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Delete</p>
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden" [class.hidden]="isLandscape">Delete</p>
               <button
                 (click)="handleDelete(subscriber.id, subscriber.email)"
                 class="p-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
