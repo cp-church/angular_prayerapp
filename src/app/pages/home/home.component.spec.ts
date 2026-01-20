@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BehaviorSubject, of } from 'rxjs';
 import { HomeComponent } from './home.component';
+import { PrayerRequest } from '../../services/prayer.service';
 
 const makeMocks = () => {
   const prayersSubject = new BehaviorSubject<any[]>([]);
