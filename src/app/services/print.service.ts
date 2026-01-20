@@ -1071,18 +1071,16 @@ export class PrintService {
             month: 'short',
             day: 'numeric'
           });
-          return `<div class="update-item"><span class="update-meta">Updated by: ${this.escapeHtml(update.author || 'Anonymous')} • ${updateDate}:</span> ${this.escapeHtml(update.content)}</div>`;
+          return `<div class="update-item"><span class="update-meta">${updateDate}:</span> ${this.escapeHtml(update.content)}</div>`;
         }).join('')}
       </div>
     ` : '';
 
     return `
       <div class="prayer-item ${prayer.status}">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-          <div class="prayer-for"><strong>Prayer For:</strong> ${this.escapeHtml(prayer.title)}</div>
-        </div>
+        <div class="prayer-title">${this.escapeHtml(prayer.title)}</div>
         <div class="prayer-meta">
-          <span>${prayer.prayer_for ? this.escapeHtml(prayer.prayer_for) : 'Personal Prayer'} • ${createdDate}</span>
+          <span>${createdDate}</span>
         </div>
         ${prayer.description ? `<div class="prayer-description">${this.escapeHtml(prayer.description)}</div>` : ''}
         ${updatesHTML}
