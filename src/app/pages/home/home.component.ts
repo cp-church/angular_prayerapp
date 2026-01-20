@@ -698,6 +698,8 @@ export class HomeComponent implements OnInit, OnDestroy {
       // Show personal prayers only
       this.filters = { searchTerm: this.filters.searchTerm };
       this.prayerService.applyFilters({ search: this.filters.searchTerm });
+      // Ensure personal prayers are loaded and categories are extracted
+      this.loadPersonalPrayers();
     } else if (filter === 'total') {
       this.filters = { searchTerm: this.filters.searchTerm };
       this.prayerService.applyFilters({
@@ -757,10 +759,10 @@ export class HomeComponent implements OnInit, OnDestroy {
       );
 
       if (success) {
-        // If update is marked as answered, also update the prayer status to answered
+        // If update is marked as answered, set the prayer category to "Answered"
         if (updateData.mark_as_answered) {
-          console.log('[Home] Marking prayer as answered:', updateData.prayer_id);
-          await this.prayerService.updatePersonalPrayerStatus(updateData.prayer_id, 'answered');
+          console.log('[Home] Marking prayer as answered (setting category):', updateData.prayer_id);
+          await this.prayerService.updatePersonalPrayer(updateData.prayer_id, { category: 'Answered' });
         }
         // Service updates observable and cache immediately - reload local state
         this.cacheService.invalidate('personalPrayers');

@@ -23,7 +23,7 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
             <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-0 inline">
               Prayer for {{ prayer.prayer_for }}
             </h3>
-            @if (activeFilter === 'total' || isPersonal) {
+            @if (activeFilter === 'total') {
             <span [class]="'px-2 py-1 text-xs font-medium rounded-full ' + getStatusBadgeClasses()">
               {{ getStatusLabel() }}
             </span>

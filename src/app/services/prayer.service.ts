@@ -203,9 +203,8 @@ export class PrayerService {
           id,
           title,
           description,
-          status,
-          prayer_for,
           category,
+          prayer_for,
           user_email,
           created_at,
           updated_at,
@@ -227,9 +226,9 @@ export class PrayerService {
         id: p.id,
         title: p.title,
         description: p.description,
-        status: p.status,
-        prayer_for: p.prayer_for,
         category: p.category,
+        status: (p.category === 'Answered' ? 'answered' : 'current') as PrayerStatus,
+        prayer_for: p.prayer_for,
         requester: p.user_email,
         email: p.user_email,
         user_email: p.user_email,
@@ -1002,7 +1001,7 @@ export class PrayerService {
           id,
           title,
           description,
-          status,
+          category,
           prayer_for,
           user_email,
           created_at,
@@ -1019,14 +1018,18 @@ export class PrayerService {
         .eq('user_email', userEmail)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[PrayerService] Error querying personal_prayers:', error);
+        throw error;
+      }
 
       // Transform personal prayers to PrayerRequest format for reuse
       return (data || []).map(p => ({
         id: p.id,
         title: p.title,
         description: p.description,
-        status: p.status,
+        category: p.category,
+        status: (p.category === 'Answered' ? 'answered' : 'current') as PrayerStatus,
         prayer_for: p.prayer_for,
         requester: p.user_email,
         email: p.user_email,
@@ -1049,7 +1052,7 @@ export class PrayerService {
         }))
       }));
     } catch (error) {
-      console.error('Error fetching personal prayers:', error);
+      console.error('[PrayerService] Failed to load personal prayers:', error);
       return [];
     }
   }
@@ -1130,44 +1133,6 @@ export class PrayerService {
       }
       
       this.toast.error(`Failed to add personal prayer: ${errorMessage}`);
-      return false;
-    }
-  }
-
-  /**
-   * Update personal prayer status
-   */
-  async updatePersonalPrayerStatus(id: string, status: PrayerStatus): Promise<boolean> {
-    try {
-      const userEmail = await this.getUserEmail();
-      if (!userEmail) {
-        this.toast.error('User email not available');
-        return false;
-      }
-
-      console.log('[PrayerService] Updating personal prayer status:', { id, status, userEmail });
-      
-      const { error } = await this.supabase.client
-        .from('personal_prayers')
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq('id', id)
-        .eq('user_email', userEmail);
-
-      if (error) throw error;
-      
-      // Update local state and cache
-      const personalPrayers = this.allPersonalPrayersSubject.value;
-      const updatedPrayers = personalPrayers.map(p =>
-        p.id === id ? { ...p, status, date_answered: status === 'answered' ? new Date().toISOString() : null } : p
-      );
-      this.allPersonalPrayersSubject.next(updatedPrayers);
-      this.cache.set('personalPrayers', updatedPrayers);
-
-      console.log('[PrayerService] Personal prayer status updated successfully');
-      return true;
-    } catch (error) {
-      console.error('Error updating personal prayer status:', error);
-      this.toast.error('Failed to update prayer status');
       return false;
     }
   }

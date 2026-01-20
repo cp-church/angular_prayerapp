@@ -563,13 +563,16 @@ export class PresentationComponent implements OnInit, OnDestroy {
         this.personalPrayers = allPersonalPrayers;
       }
 
-      // Apply status filters
-      const statuses: string[] = [];
-      if (this.statusFilters.current) statuses.push('current');
-      if (this.statusFilters.answered) statuses.push('answered');
+      // Apply status filters based on category
+      // "Answered" prayers have category === 'Answered', others are "Current"
+      const showCurrent = this.statusFilters.current;
+      const showAnswered = this.statusFilters.answered;
       
-      if (statuses.length > 0) {
-        this.personalPrayers = this.personalPrayers.filter((p: any) => statuses.includes(p.status));
+      if (showCurrent || showAnswered) {
+        this.personalPrayers = this.personalPrayers.filter((p: any) => {
+          const isAnswered = p.category === 'Answered';
+          return (showCurrent && !isAnswered) || (showAnswered && isAnswered);
+        });
       }
 
       this.extractUniquePersonalCategories();

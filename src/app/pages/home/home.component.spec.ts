@@ -23,7 +23,7 @@ const makeMocks = () => {
     deletePersonalPrayer: vi.fn(),
     addPersonalPrayerUpdate: vi.fn(),
     deletePersonalPrayerUpdate: vi.fn(),
-    updatePersonalPrayerStatus: vi.fn()
+    updatePersonalPrayer: vi.fn()
   };
 
   const promptService: any = {
@@ -1168,9 +1168,9 @@ describe('HomeComponent', () => {
       expect(mocks.cacheService.invalidate).not.toHaveBeenCalled();
     });
 
-    it('addPersonalUpdate with mark_as_answered=true updates status', async () => {
+    it('addPersonalUpdate with mark_as_answered=true updates category', async () => {
       mocks.prayerService.addPersonalPrayerUpdate.mockResolvedValue(true);
-      mocks.prayerService.updatePersonalPrayerStatus.mockResolvedValue(true);
+      mocks.prayerService.updatePersonalPrayer.mockResolvedValue(true);
       mocks.cacheService.get.mockReturnValue(null);
       mocks.prayerService.getPersonalPrayers.mockResolvedValue([]);
 
@@ -1195,10 +1195,10 @@ describe('HomeComponent', () => {
       });
 
       expect(mocks.prayerService.addPersonalPrayerUpdate).toHaveBeenCalled();
-      expect(mocks.prayerService.updatePersonalPrayerStatus).toHaveBeenCalledWith('p1', 'answered');
+      expect(mocks.prayerService.updatePersonalPrayer).toHaveBeenCalledWith('p1', { category: 'Answered' });
     });
 
-    it('addPersonalUpdate without mark_as_answered does not update status', async () => {
+    it('addPersonalUpdate without mark_as_answered does not update category', async () => {
       mocks.prayerService.addPersonalPrayerUpdate.mockResolvedValue(true);
       mocks.cacheService.get.mockReturnValue(null);
       mocks.prayerService.getPersonalPrayers.mockResolvedValue([]);
@@ -1224,7 +1224,7 @@ describe('HomeComponent', () => {
       });
 
       expect(mocks.prayerService.addPersonalPrayerUpdate).toHaveBeenCalled();
-      expect(mocks.prayerService.updatePersonalPrayerStatus).not.toHaveBeenCalled();
+      expect(mocks.prayerService.updatePersonalPrayer).not.toHaveBeenCalled();
     });
 
     it('addPersonalUpdate error handling', async () => {

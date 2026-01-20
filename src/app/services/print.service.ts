@@ -819,10 +819,10 @@ export class PrintService {
           year: 'numeric' 
         })} - ${today}`;
 
-    // Group prayers by status
+    // Group prayers by category (for personal prayers, 'Answered' category means answered)
     const prayersByStatus = {
-      current: prayers.filter((p: any) => p.status === 'current'),
-      answered: prayers.filter((p: any) => p.status === 'answered')
+      current: prayers.filter((p: any) => p.category !== 'Answered'),
+      answered: prayers.filter((p: any) => p.category === 'Answered')
     };
 
     // Sort prayers within each status by most recent activity

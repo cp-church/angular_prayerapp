@@ -397,7 +397,7 @@ export class HelpContentService {
           },
           {
             subtitle: 'Adding Prayer Updates',
-            text: 'Click the "Update" button on a personal prayer to add a prayer update. Prayer updates let you track progress, answered prayers, or new developments. You can add multiple updates to show how your prayer has progressed. When adding an update, you can check "Mark this prayer as answered" to move it to the answered section once you see God\'s answer.',
+            text: 'Click the "Update" button on a personal prayer to add a prayer update. Prayer updates let you track progress, answered prayers, or new developments. You can add multiple updates to show how your prayer has progressed. When adding an update, you can check "Mark this prayer as answered" to mark it as answered if applicable.',
           },
           {
             subtitle: 'Editing Prayer Updates',
@@ -405,7 +405,7 @@ export class HelpContentService {
           },
           {
             subtitle: 'Managing Prayer Status',
-            text: 'As you pray and see answers, you can mark prayers as "Answered" by adding an update with the "Mark this prayer as answered" option checked. Answered prayers move to the Answered section. You can still view and update answered prayers from the Total filter. Archive old prayers or keep them for reflection on how God has worked in your life.',
+            text: 'As you pray and see answers, you can mark prayers as "Answered" by adding an update with the "Mark this prayer as answered" option checked. Answered personal prayers get marked with an Answered badge.',
           },
           {
             subtitle: 'Personal Prayers in Presentation Mode',

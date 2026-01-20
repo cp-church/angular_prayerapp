@@ -4234,50 +4234,6 @@ describe('PrayerService', () => {
       const updated = (service as any).allPersonalPrayersSubject.value;
       expect(updated.length).toBe(0);
     });
-
-    it('updatePersonalPrayerStatus changes prayer status', async () => {
-      const prayer = {
-        id: 'p1',
-        title: 'Prayer',
-        description: 'Desc',
-        status: 'current' as const,
-        prayer_for: 'John',
-        requester: 'me@test.com',
-        email: 'me@test.com',
-        is_anonymous: false,
-        date_requested: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        approval_status: 'approved' as const,
-        type: 'prayer' as const,
-        updates: []
-      };
-
-      (service as any).allPersonalPrayersSubject.next([prayer]);
-
-      // Mock Supabase auth to return user email
-      mockSupabaseService.client.auth = {
-        getSession: vi.fn().mockResolvedValue({
-          data: {
-            session: { user: { email: 'me@test.com' } }
-          }
-        })
-      };
-
-      mockSupabaseService.client.from = vi.fn(() => ({
-        update: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            eq: vi.fn(() => Promise.resolve({ error: null }))
-          }))
-        }))
-      }));
-
-      const result = await (service as any).updatePersonalPrayerStatus('p1', 'answered');
-
-      expect(result).toBe(true);
-      const updated = (service as any).allPersonalPrayersSubject.value;
-      expect(updated[0].status).toBe('answered');
-    });
   });
 
   describe('getPersonalPrayers', () => {
@@ -4654,54 +4610,3 @@ describe('PrayerService', () => {
     });
   });
 
-  describe('updatePersonalPrayerStatus error cases', () => {
-    beforeEach(() => {
-      service = new PrayerService(
-        mockSupabaseService,
-        mockToastService,
-        mockEmailNotificationService,
-        mockVerificationService,
-        mockCacheService
-      );
-    });
-
-    it('updatePersonalPrayerStatus returns false when no user email', async () => {
-      mockSupabaseService.client.auth = {
-        getSession: vi.fn().mockResolvedValue({
-          data: {
-            session: null
-          }
-        })
-      };
-
-      const result = await (service as any).updatePersonalPrayerStatus('p1', 'answered');
-
-      expect(result).toBe(false);
-      expect(mockToastService.error).toHaveBeenCalled();
-    });
-
-    it('updatePersonalPrayerStatus returns false on database error', async () => {
-      mockSupabaseService.client.auth = {
-        getSession: vi.fn().mockResolvedValue({
-          data: {
-            session: { user: { email: 'me@test.com' } }
-          }
-        })
-      };
-
-      mockSupabaseService.client.from = vi.fn(() => ({
-        update: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            eq: vi.fn(() => Promise.resolve({
-              error: new Error('Update failed')
-            }))
-          }))
-        }))
-      }));
-
-      const result = await (service as any).updatePersonalPrayerStatus('p1', 'answered');
-
-      expect(result).toBe(false);
-    });
-  });
-});
