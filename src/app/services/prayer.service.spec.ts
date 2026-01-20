@@ -4817,11 +4817,13 @@ describe('PrayerService', () => {
 
         await (service as any).updatePersonalPrayerOrder(prayers);
 
-        // Verify update was called with correct display_order values
+        // Verify update was called with correct display_order values (reversed)
+        // First item should get highest value (length - 1 - 0 = 2)
+        // Last item should get lowest value (length - 1 - 2 = 0)
         expect(updateMock).toHaveBeenCalledTimes(3);
-        expect(updateMock).toHaveBeenNthCalledWith(1, { display_order: 0 });
+        expect(updateMock).toHaveBeenNthCalledWith(1, { display_order: 2 });
         expect(updateMock).toHaveBeenNthCalledWith(2, { display_order: 1 });
-        expect(updateMock).toHaveBeenNthCalledWith(3, { display_order: 2 });
+        expect(updateMock).toHaveBeenNthCalledWith(3, { display_order: 0 });
       });
 
       it('updates observable when order is updated successfully', async () => {

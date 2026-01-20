@@ -35,6 +35,7 @@ export interface PrayerRequest {
   updated_at: string;
   last_reminder_sent?: string | null;
   category?: string | null;
+  display_order?: number;
   updates: PrayerUpdate[];
 }
 
@@ -1098,12 +1099,27 @@ export class PrayerService {
 
       console.log('Adding personal prayer for email:', userEmail);
 
+      // Get the max display_order to assign next highest value (so new prayer appears at top)
+      const { data: maxData, error: maxError } = await this.supabase.client
+        .from('personal_prayers')
+        .select('display_order')
+        .eq('user_email', userEmail)
+        .order('display_order', { ascending: false })
+        .limit(1)
+        .single();
+
+      const maxDisplayOrder = (!maxError && maxData?.display_order !== null && maxData?.display_order !== undefined) 
+        ? maxData.display_order 
+        : -1;
+      const newDisplayOrder = maxDisplayOrder + 1;
+
       const prayerData = {
         title: prayer.title,
         description: prayer.description,
         prayer_for: prayer.prayer_for,
         category: this.sanitizeCategory(prayer.category),
-        user_email: userEmail
+        user_email: userEmail,
+        display_order: newDisplayOrder
       };
 
       const { data, error } = await this.supabase.client
@@ -1129,8 +1145,8 @@ export class PrayerService {
         created_at: data.created_at,
         updated_at: data.updated_at,
         approval_status: 'approved' as const,
-        type: 'prayer' as const,
-        updates: []
+        updates: [],
+        display_order: data.display_order || newDisplayOrder
       };
 
       // Add to the beginning of the list (most recent first)
@@ -1264,10 +1280,12 @@ export class PrayerService {
       }
 
       // Batch update all prayers with new display_order
+      // Reverse the index so first item (index 0) gets highest display_order value
+      // This ensures correct DESC sorting: highest values appear first
       const updates = prayers.map((prayer, index) =>
         this.supabase.client
           .from('personal_prayers')
-          .update({ display_order: index })
+          .update({ display_order: prayers.length - 1 - index })
           .eq('id', prayer.id)
           .eq('user_email', userEmail)
       );
