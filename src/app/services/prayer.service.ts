@@ -1465,7 +1465,7 @@ export class PrayerService {
       const prayersByCategory = new Map<string | null | undefined, PrayerRequest[]>();
       
       for (const prayer of prayers) {
-        const category = prayer.category;
+        const category = prayer.category as string | null | undefined;
         if (!prayersByCategory.has(category)) {
           prayersByCategory.set(category, []);
         }
