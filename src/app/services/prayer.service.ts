@@ -43,7 +43,13 @@ export interface PrayerFilters {
   status?: PrayerStatus;
   search?: string;
   type?: string;
+  category?: string; // Filter personal prayers by category
 }
+
+// Category range constants for personal prayer display_order
+const CATEGORY_RANGE_SIZE = 1000;
+const UNCATEGORIZED_MIN = 0;
+const UNCATEGORIZED_MAX = 999;
 
 @Injectable({
   providedIn: 'root'
@@ -513,6 +519,11 @@ export class PrayerService {
 
         return prayerMatch || updateMatch;
       });
+    }
+
+    // Filter by category (for personal prayers)
+    if (filters.category) {
+      filtered = filtered.filter(p => p.category === filters.category);
     }
 
     this.prayersSubject.next(filtered);
@@ -1030,6 +1041,87 @@ export class PrayerService {
   }
 
   /**
+   * Get the display_order range for a category (category-scoped range system)
+   * Uncategorized (null): 0-999
+   * Categories sorted alphabetically: 1000-1999 (1st), 2000-2999 (2nd), etc.
+   */
+  private async getCategoryRange(category: string | null | undefined): Promise<{ min: number; max: number }> {
+    if (!category || category.trim().length === 0) {
+      // Uncategorized prayers use 0-999 range
+      return { min: UNCATEGORIZED_MIN, max: UNCATEGORIZED_MAX };
+    }
+
+    const userEmail = await this.getUserEmail();
+    if (!userEmail) {
+      throw new Error('User email not available');
+    }
+
+    // Get all unique categories for this user (sorted alphabetically)
+    const { data: prayers, error } = await this.supabase.client
+      .from('personal_prayers')
+      .select('category')
+      .eq('user_email', userEmail)
+      .not('category', 'is', null);
+
+    if (error) throw error;
+
+    // Get unique categories and sort alphabetically
+    const uniqueCategories = Array.from(new Set(
+      (prayers || []).map((p: any) => p.category).filter((c: any) => c)
+    )).sort() as string[];
+
+    // Find the index of the current category
+    const categoryIndex = uniqueCategories.indexOf(category);
+    if (categoryIndex === -1) {
+      // New category - will be the next one
+      const nextIndex = uniqueCategories.length;
+      const min = UNCATEGORIZED_MAX + 1 + (nextIndex * CATEGORY_RANGE_SIZE);
+      const max = min + CATEGORY_RANGE_SIZE - 1;
+      return { min, max };
+    }
+
+    // Existing category - calculate its range
+    const min = UNCATEGORIZED_MAX + 1 + (categoryIndex * CATEGORY_RANGE_SIZE);
+    const max = min + CATEGORY_RANGE_SIZE - 1;
+    return { min, max };
+  }
+
+  /**
+   * Count how many personal prayers exist in a category's display_order range
+   */
+  private async getCategoryPrayerCount(category: string | null | undefined): Promise<number> {
+    const userEmail = await this.getUserEmail();
+    if (!userEmail) {
+      return 0;
+    }
+
+    // Get all personal prayers for the user in this category
+    const { data: prayers, error } = await this.supabase.client
+      .from('personal_prayers')
+      .select('id')
+      .eq('user_email', userEmail)
+      .eq('category', category || null); // null for uncategorized
+
+    if (error) {
+      console.error('Error counting category prayers:', error);
+      return 0;
+    }
+
+    return (prayers || []).length;
+  }
+
+  /**
+   * Migrate existing personal prayers to category-scoped display_order ranges
+   * NOTE: This migration is handled by Supabase SQL migration file instead
+   * File: supabase/migrations/20260121_migrate_personal_prayers_to_category_ranges.sql
+   */
+  private async migratePersonalPrayersToRanges(): Promise<void> {
+    // This function is kept for reference but not called
+    // The SQL migration handles reassignment of all existing prayers to category ranges
+    console.log('[Migration] Data migration handled by SQL migration file');
+  }
+
+  /**
    * PERSONAL PRAYERS - User-specific prayers with no admin approval workflow
    */
 
@@ -1122,25 +1214,40 @@ export class PrayerService {
 
       console.log('Adding personal prayer for email:', userEmail);
 
-      // Get the max display_order to assign next highest value (so new prayer appears at top)
+      // Validate category limit (max 1000 prayers per category)
+      const category = this.sanitizeCategory(prayer.category);
+      const categoryCount = await this.getCategoryPrayerCount(category);
+      if (categoryCount >= CATEGORY_RANGE_SIZE) {
+        const categoryName = category || 'Uncategorized';
+        this.toast.error(`Category '${categoryName}' has reached its limit of 1,000 prayers. Please archive or delete some prayers, or organize into multiple categories.`);
+        return false;
+      }
+
+      // Get the category range for display_order assignment
+      const range = await this.getCategoryRange(category);
+
+      // Get the max display_order within this category's range
       const { data: maxData, error: maxError } = await this.supabase.client
         .from('personal_prayers')
         .select('display_order')
         .eq('user_email', userEmail)
+        .eq('category', category || null)
+        .gte('display_order', range.min)
+        .lte('display_order', range.max)
         .order('display_order', { ascending: false })
         .limit(1)
         .single();
 
-      const maxDisplayOrder = (!maxError && maxData?.display_order !== null && maxData?.display_order !== undefined) 
+      const maxDisplayOrderInRange = (!maxError && maxData?.display_order !== null && maxData?.display_order !== undefined) 
         ? maxData.display_order 
-        : -1;
-      const newDisplayOrder = maxDisplayOrder + 1;
+        : range.min - 1;
+      const newDisplayOrder = Math.min(maxDisplayOrderInRange + 1, range.max);
 
       const prayerData = {
         title: prayer.title,
         description: prayer.description,
         prayer_for: prayer.prayer_for,
-        category: this.sanitizeCategory(prayer.category),
+        category: category,
         user_email: userEmail,
         display_order: newDisplayOrder
       };
@@ -1251,9 +1358,50 @@ export class PrayerService {
         return false;
       }
 
+      // Get the current prayer to check if category is changing
+      const currentPrayer = this.allPersonalPrayersSubject.value.find(p => p.id === id);
+      if (!currentPrayer) {
+        this.toast.error('Prayer not found');
+        return false;
+      }
+
+      const newCategory = updates.category !== undefined ? this.sanitizeCategory(updates.category) : currentPrayer.category;
+      const categoryChanged = newCategory !== currentPrayer.category;
+
+      // If category changed, validate new category limit and assign new display_order
+      let newDisplayOrder = currentPrayer.display_order;
+      if (categoryChanged && updates.category !== undefined) {
+        // Validate new category doesn't exceed limit
+        const newCategoryCount = await this.getCategoryPrayerCount(newCategory);
+        if (newCategoryCount >= CATEGORY_RANGE_SIZE) {
+          const categoryName = newCategory || 'Uncategorized';
+          this.toast.error(`Category '${categoryName}' has reached its limit of 1,000 prayers. Please archive or delete some prayers, or organize into multiple categories.`);
+          return false;
+        }
+
+        // Get the new category's range and assign display_order
+        const newRange = await this.getCategoryRange(newCategory);
+        const { data: maxData, error: maxError } = await this.supabase.client
+          .from('personal_prayers')
+          .select('display_order')
+          .eq('user_email', userEmail)
+          .eq('category', newCategory || null)
+          .gte('display_order', newRange.min)
+          .lte('display_order', newRange.max)
+          .order('display_order', { ascending: false })
+          .limit(1)
+          .single();
+
+        const maxDisplayOrderInRange = (!maxError && maxData?.display_order !== null && maxData?.display_order !== undefined) 
+          ? maxData.display_order 
+          : newRange.min - 1;
+        newDisplayOrder = Math.min(maxDisplayOrderInRange + 1, newRange.max);
+      }
+
       const updateData = {
         ...updates,
-        category: updates.category !== undefined ? this.sanitizeCategory(updates.category) : undefined,
+        category: newCategory,
+        ...(categoryChanged && { display_order: newDisplayOrder }),
         updated_at: new Date().toISOString()
       };
 
@@ -1273,7 +1421,8 @@ export class PrayerService {
               ...p, 
               title: updates.title ?? p.title,
               description: updates.description ?? p.description,
-              category: updates.category !== undefined ? updates.category : p.category,
+              category: newCategory,
+              display_order: newDisplayOrder,
               updated_at: updateData.updated_at
             } 
           : p
@@ -1293,8 +1442,9 @@ export class PrayerService {
 
   /**
    * Update display order for personal prayers (used for drag-drop reordering)
+   * Enforces category range boundaries - reordering stays within that category's range
    */
-  async updatePersonalPrayerOrder(prayers: PrayerRequest[]): Promise<boolean> {
+  async updatePersonalPrayerOrder(prayers: PrayerRequest[], categoryFilter?: string): Promise<boolean> {
     try {
       const userEmail = await this.getUserEmail();
       if (!userEmail) {
@@ -1302,16 +1452,34 @@ export class PrayerService {
         return false;
       }
 
+      // If categoryFilter is provided, we're reordering within that category
+      // Get the range for this category
+      let range: { min: number; max: number } | null = null;
+      if (categoryFilter !== undefined) {
+        range = await this.getCategoryRange(categoryFilter);
+      }
+
       // Batch update all prayers with new display_order
       // Reverse the index so first item (index 0) gets highest display_order value
       // This ensures correct DESC sorting: highest values appear first
-      const updates = prayers.map((prayer, index) =>
-        this.supabase.client
+      const updates = prayers.map((prayer, index) => {
+        let displayOrder: number;
+        
+        if (range) {
+          // When filtering by category, assign display_order within that category's range
+          const orderWithinRange = prayers.length - 1 - index;
+          displayOrder = Math.min(range.min + orderWithinRange, range.max);
+        } else {
+          // For uncategorized prayers (no filter), use the simple calculation
+          displayOrder = prayers.length - 1 - index;
+        }
+
+        return this.supabase.client
           .from('personal_prayers')
-          .update({ display_order: prayers.length - 1 - index })
+          .update({ display_order: displayOrder })
           .eq('id', prayer.id)
-          .eq('user_email', userEmail)
-      );
+          .eq('user_email', userEmail);
+      });
 
       const results = await Promise.all(updates);
 
