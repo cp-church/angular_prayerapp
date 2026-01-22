@@ -1270,7 +1270,15 @@ export class PrayerService {
       const maxDisplayOrderInRange = (!maxError && maxData?.display_order !== null && maxData?.display_order !== undefined) 
         ? maxData.display_order 
         : range.min - 1;
-      const newDisplayOrder = Math.min(maxDisplayOrderInRange + 1, range.max);
+      
+      // Check if we're at the top of the range (no room for new prayers)
+      if (maxDisplayOrderInRange >= range.max) {
+        const categoryName = category || 'Uncategorized';
+        this.toast.error(`Category '${categoryName}' is full (display order at maximum). Please reorder prayers or use a different category.`);
+        return false;
+      }
+      
+      const newDisplayOrder = maxDisplayOrderInRange + 1;
 
       const prayerData = {
         title: prayer.title,

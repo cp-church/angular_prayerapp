@@ -988,8 +988,8 @@ export class HomeComponent implements OnInit, OnDestroy {
         // Invalidate cache to ensure fresh data on next load
         this.cacheService.invalidate('personalPrayers');
         
-        // Reload prayers from database but don't re-extract categories
-        const personalPrayers = await this.prayerService.getPersonalPrayers();
+        // Reload prayers from database with force refresh to ensure we get updated display_order
+        const personalPrayers = await this.prayerService.getPersonalPrayers(true);
         this.personalPrayers = personalPrayers;
         this.personalPrayersCount = personalPrayers.length;
         
@@ -1001,7 +1001,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.toastService.error('Failed to reorder prayers');
         // Reload to restore original order
         this.cacheService.invalidate('personalPrayers');
-        const personalPrayers = await this.prayerService.getPersonalPrayers();
+        const personalPrayers = await this.prayerService.getPersonalPrayers(true);
         this.personalPrayers = personalPrayers;
         this.cdr.detectChanges();
       }
