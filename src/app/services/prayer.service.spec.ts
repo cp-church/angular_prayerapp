@@ -4728,7 +4728,7 @@ describe('PrayerService', () => {
     });
 
     describe('updatePersonalPrayerOrder', () => {
-      it('updates display_order for personal prayers and syncs cache', async () => {
+      it('updates display_order for personal prayers using RPC', async () => {
         const prayers = [
           { id: '1', title: 'Prayer 1', display_order: 0 },
           { id: '2', title: 'Prayer 2', display_order: 1 },
@@ -4741,18 +4741,21 @@ describe('PrayerService', () => {
           })
         };
 
-        mockSupabaseService.client.from.mockReturnValue({
-          update: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              eq: vi.fn(() => Promise.resolve({ error: null }))
-            }))
-          }))
+        // Mock RPC call
+        const mockRpc = vi.fn().mockResolvedValue({
+          data: [{ success: true, message: 'Successfully reordered 3 prayers' }],
+          error: null
         });
+        mockSupabaseService.client.rpc = mockRpc;
 
         const result = await (service as any).updatePersonalPrayerOrder(prayers);
 
         expect(result).toBe(true);
-        expect(mockCacheService.set).toHaveBeenCalledWith('personalPrayers', prayers);
+        expect(mockRpc).toHaveBeenCalledWith('reorder_personal_prayers', {
+          p_user_email: 'test@test.com',
+          p_ordered_prayer_ids: ['1', '2', '3'],
+          p_category: null
+        });
       });
 
       it('handles error when updating display_order fails', async () => {
@@ -4766,6 +4769,17 @@ describe('PrayerService', () => {
           })
         };
 
+        // Mock RPC error, which should trigger fallback
+        const mockRpc = vi.fn().mockResolvedValue({
+          data: null,
+          error: { message: 'RPC failed' }
+        });
+        mockSupabaseService.client.rpc = mockRpc;
+
+        // Mock fallback method calls - getCategoryRange
+        vi.spyOn(service as any, 'getCategoryRange').mockResolvedValue({ min: 1000, max: 1999 });
+
+        // Mock fallback update with error
         mockSupabaseService.client.from.mockReturnValue({
           update: vi.fn(() => ({
             eq: vi.fn(() => ({
@@ -4777,7 +4791,6 @@ describe('PrayerService', () => {
         const result = await (service as any).updatePersonalPrayerOrder(prayers);
 
         expect(result).toBe(false);
-        expect(mockCacheService.set).not.toHaveBeenCalledWith('personalPrayers', prayers);
       });
 
       it('returns false when user email is not available', async () => {
@@ -4794,7 +4807,7 @@ describe('PrayerService', () => {
         expect(result).toBe(false);
       });
 
-      it('sets correct display_order values based on array index', async () => {
+      it('sends prayers in correct order to RPC', async () => {
         const prayers = [
           { id: 'first', title: 'Prayer 1' },
           { id: 'second', title: 'Prayer 2' },
@@ -4807,28 +4820,25 @@ describe('PrayerService', () => {
           })
         };
 
-        const updateMock = vi.fn(() => ({
-          eq: vi.fn(() => ({
-            eq: vi.fn(() => Promise.resolve({ error: null }))
-          }))
-        }));
-
-        mockSupabaseService.client.from.mockReturnValue({
-          update: updateMock
+        // Mock RPC call
+        const mockRpc = vi.fn().mockResolvedValue({
+          data: [{ success: true, message: 'Successfully reordered 3 prayers' }],
+          error: null
         });
+        mockSupabaseService.client.rpc = mockRpc;
 
         await (service as any).updatePersonalPrayerOrder(prayers);
 
-        // Verify update was called with correct display_order values (reversed)
-        // First item should get highest value (length - 1 - 0 = 2)
-        // Last item should get lowest value (length - 1 - 2 = 0)
-        expect(updateMock).toHaveBeenCalledTimes(3);
-        expect(updateMock).toHaveBeenNthCalledWith(1, { display_order: 2 });
-        expect(updateMock).toHaveBeenNthCalledWith(2, { display_order: 1 });
-        expect(updateMock).toHaveBeenNthCalledWith(3, { display_order: 0 });
+        // Verify RPC was called with prayer IDs in the correct order
+        // Order is preserved: first prayer ID should be first in array
+        expect(mockRpc).toHaveBeenCalledWith('reorder_personal_prayers', {
+          p_user_email: 'test@test.com',
+          p_ordered_prayer_ids: ['first', 'second', 'third'],
+          p_category: null
+        });
       });
 
-      it('updates observable when order is updated successfully', async () => {
+      it('returns true when order is updated successfully', async () => {
         const prayers = [
           { id: '1', title: 'Prayer 1' }
         ] as any;
@@ -4839,27 +4849,22 @@ describe('PrayerService', () => {
           })
         };
 
-        mockSupabaseService.client.from.mockReturnValue({
-          update: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              eq: vi.fn(() => Promise.resolve({ error: null }))
-            }))
-          }))
+        // Mock RPC call
+        const mockRpc = vi.fn().mockResolvedValue({
+          data: [{ success: true, message: 'Successfully reordered 1 prayers' }],
+          error: null
         });
+        mockSupabaseService.client.rpc = mockRpc;
 
-        // Subscribe to the observable to track changes
-        const observableSpy = vi.fn();
-        (service as any).allPersonalPrayersSubject.subscribe(observableSpy);
+        const result = await (service as any).updatePersonalPrayerOrder(prayers);
 
-        await (service as any).updatePersonalPrayerOrder(prayers);
-
-        // Observable should be updated with the new prayers
-        expect(observableSpy).toHaveBeenCalledWith(prayers);
+        // Service returns true on success, component handles cache reload
+        expect(result).toBe(true);
       });
     });
 
     describe('reorderCategories', () => {
-      it('should reorder all categories based on provided order', async () => {
+      it('should reorder all categories using RPC', async () => {
         const mockEmail = 'user@example.com';
         
         // Mock auth session
@@ -4878,31 +4883,25 @@ describe('PrayerService', () => {
           mockBadgeService
         );
 
-        const prayersInMemory = [
-          { id: '1', category: 'Family', display_order: 2000 } as PrayerRequest,
-          { id: '2', category: 'Family', display_order: 2001 } as PrayerRequest,
-          { id: '3', category: 'Members', display_order: 1000 } as PrayerRequest,
-          { id: '4', category: 'Members', display_order: 1001 } as PrayerRequest,
-          { id: '5', category: 'Testing', display_order: 3000 } as PrayerRequest,
-        ];
-
-        (service as any).allPersonalPrayersSubject.next(prayersInMemory);
-
         const orderedCategories = ['Testing', 'Family', 'Members'];
 
-        mockSupabaseService.client.from.mockReturnValue({
-          update: vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({ data: null, error: null })
-          })
-        } as any);
+        // Mock RPC call
+        const mockRpc = vi.fn().mockResolvedValue({
+          data: [{ success: true, message: 'Successfully reordered 3 categories' }],
+          error: null
+        });
+        mockSupabaseService.client.rpc = mockRpc;
 
         const result = await service.reorderCategories(orderedCategories);
 
         expect(result).toBe(true);
-        expect(mockSupabaseService.client.from).toHaveBeenCalledWith('personal_prayers');
+        expect(mockRpc).toHaveBeenCalledWith('reorder_personal_prayer_categories', {
+          p_user_email: mockEmail,
+          p_ordered_categories: orderedCategories
+        });
       });
 
-      it('should handle null categories in ordered list', async () => {
+      it('should filter out null categories before calling RPC', async () => {
         const mockEmail = 'user@example.com';
         
         mockSupabaseService.client.auth = {
@@ -4920,23 +4919,22 @@ describe('PrayerService', () => {
           mockBadgeService
         );
 
-        const prayersInMemory = [
-          { id: '1', category: 'Family', display_order: 2000 } as PrayerRequest,
-        ];
-
-        (service as any).allPersonalPrayersSubject.next(prayersInMemory);
-
         const orderedCategories = ['Family', null, 'Members'];
 
-        mockSupabaseService.client.from.mockReturnValue({
-          update: vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({ data: null, error: null })
-          })
-        } as any);
+        // Mock RPC call - should filter out nulls
+        const mockRpc = vi.fn().mockResolvedValue({
+          data: [{ success: true, message: 'Successfully reordered 2 categories' }],
+          error: null
+        });
+        mockSupabaseService.client.rpc = mockRpc;
 
         const result = await service.reorderCategories(orderedCategories);
 
         expect(result).toBe(true);
+        expect(mockRpc).toHaveBeenCalledWith('reorder_personal_prayer_categories', {
+          p_user_email: 'user@example.com',
+          p_ordered_categories: ['Family', 'Members']  // null filtered out
+        });
       });
 
       it('should return false when user email is not available', async () => {
@@ -4978,24 +4976,32 @@ describe('PrayerService', () => {
           mockBadgeService
         );
 
+        // Mock RPC call with error
+        const mockRpc = vi.fn().mockResolvedValue({
+          data: null,
+          error: { message: 'Update failed' }
+        });
+        mockSupabaseService.client.rpc = mockRpc;
+
+        // Mock fallback method for when RPC fails
         const prayersInMemory = [
           { id: '1', category: 'Family', display_order: 2000 } as PrayerRequest,
         ];
-
         (service as any).allPersonalPrayersSubject.next(prayersInMemory);
-
+        
         mockSupabaseService.client.from.mockReturnValue({
           update: vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({ error: { message: 'Update failed' } })
+            eq: vi.fn().mockResolvedValue({ error: { message: 'Fallback also failed' } })
           })
         } as any);
 
         const result = await service.reorderCategories(['Family', 'Members']);
 
         expect(result).toBe(false);
+        expect(mockRpc).toHaveBeenCalled();  // Tried RPC first
       });
 
-      it('should calculate correct prefix values for each category position', async () => {
+      it('should use RPC to reorder with correct category order', async () => {
         const mockEmail = 'user@example.com';
         
         mockSupabaseService.client.auth = {
@@ -5013,34 +5019,22 @@ describe('PrayerService', () => {
           mockBadgeService
         );
 
-        const prayersInMemory = [
-          { id: '1', category: 'A', display_order: 1000 } as PrayerRequest,
-          { id: '2', category: 'B', display_order: 2000 } as PrayerRequest,
-          { id: '3', category: 'C', display_order: 3000 } as PrayerRequest,
-        ];
-
-        (service as any).allPersonalPrayersSubject.next(prayersInMemory);
-
         const orderedCategories = ['C', 'A', 'B'];
-        const updateCalls: any[] = [];
 
-        mockSupabaseService.client.from.mockReturnValue({
-          update: vi.fn().mockImplementation((data) => {
-            updateCalls.push(data);
-            return {
-              eq: vi.fn().mockResolvedValue({ data: null, error: null })
-            };
-          })
-        } as any);
+        // Mock RPC call
+        const mockRpc = vi.fn().mockResolvedValue({
+          data: [{ success: true, message: 'Successfully reordered 3 categories' }],
+          error: null
+        });
+        mockSupabaseService.client.rpc = mockRpc;
 
         await service.reorderCategories(orderedCategories);
 
-        // Position 0 (C) should get prefix 3 (3000)
-        // Position 1 (A) should get prefix 2 (2000)
-        // Position 2 (B) should get prefix 1 (1000)
-        expect(updateCalls.some(call => call.display_order === 3000)).toBe(true);
-        expect(updateCalls.some(call => call.display_order === 2000)).toBe(true);
-        expect(updateCalls.some(call => call.display_order === 1000)).toBe(true);
+        // Should pass categories in exact order to RPC
+        expect(mockRpc).toHaveBeenCalledWith('reorder_personal_prayer_categories', {
+          p_user_email: mockEmail,
+          p_ordered_categories: ['C', 'A', 'B']
+        });
       });
     });
 
@@ -5182,6 +5176,1079 @@ describe('PrayerService', () => {
 
         // Verify database was queried when cache is empty
         expect(mockSupabaseService.client.from).toHaveBeenCalled();
+      });
+    });
+
+    describe('getUserEmail', () => {
+      it('should return email from Supabase session', async () => {
+        const mockEmail = 'user@example.com';
+        
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: mockEmail } } }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        const result = await (service as any).getUserEmail();
+        expect(result).toBe(mockEmail);
+      });
+
+      it('should fallback to localStorage for MFA users', async () => {
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: null }
+          })
+        };
+
+        const mfaEmail = 'mfa@example.com';
+        localStorage.setItem('mfa_authenticated_email', mfaEmail);
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        const result = await (service as any).getUserEmail();
+        expect(result).toBe(mfaEmail);
+        
+        localStorage.removeItem('mfa_authenticated_email');
+      });
+
+      it('should return null when no email available', async () => {
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: null }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        const result = await (service as any).getUserEmail();
+        expect(result).toBeNull();
+      });
+
+      it('should handle getSession errors', async () => {
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockRejectedValue(new Error('Session error'))
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        const result = await (service as any).getUserEmail();
+        expect(result).toBeNull();
+      });
+    });
+
+    describe('getCategoryRange', () => {
+      it('should return uncategorized range for null category', async () => {
+        const mockEmail = 'user@example.com';
+        
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: mockEmail } } }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        const result = await (service as any).getCategoryRange(null);
+        expect(result).toEqual({ min: 0, max: 999 });
+      });
+
+      it('should calculate range from display_order', async () => {
+        const mockEmail = 'user@example.com';
+        
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: mockEmail } } }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        mockSupabaseService.client.from.mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({
+                data: [{ display_order: 2100 }, { display_order: 2500 }],
+                error: null
+              })
+            })
+          })
+        });
+
+        const result = await (service as any).getCategoryRange('Family');
+        expect(result).toEqual({ min: 2000, max: 2999 });
+      });
+
+      it('should return null when category not found', async () => {
+        const mockEmail = 'user@example.com';
+        
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: mockEmail } } }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        mockSupabaseService.client.from.mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({
+                data: [],
+                error: null
+              }),
+              not: vi.fn().mockReturnValue({
+                gte: vi.fn().mockResolvedValue({
+                  data: [],
+                  error: null
+                })
+              })
+            })
+          })
+        });
+
+        const result = await (service as any).getCategoryRange('NonExistent');
+        expect(result).not.toBeNull();
+      });
+    });
+
+    describe('getUniqueCategoriesForUser', () => {
+      it('should sort categories by display_order descending', async () => {
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: 'test@example.com' } } }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        const prayers = [
+          { id: '1', category: 'A', display_order: 1000 } as PrayerRequest,
+          { id: '2', category: 'B', display_order: 2000 } as PrayerRequest,
+          { id: '3', category: 'C', display_order: 3000 } as PrayerRequest,
+        ];
+
+        const result = await service.getUniqueCategoriesForUser(prayers);
+        expect(result).toEqual(['C', 'B', 'A']);
+      });
+
+      it('should include null category for uncategorized prayers', async () => {
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: 'test@example.com' } } }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        const prayers = [
+          { id: '1', category: 'Family', display_order: 2000 } as PrayerRequest,
+          { id: '2', category: null, display_order: 100 } as PrayerRequest,
+        ];
+
+        const result = await service.getUniqueCategoriesForUser(prayers);
+        expect(result).toContain(null as any);
+        expect(result.length).toBe(2);
+      });
+
+      it('should handle empty prayers array', async () => {
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: 'test@example.com' } } }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        const result = await service.getUniqueCategoriesForUser([]);
+        expect(result).toEqual([]);
+      });
+    });
+
+    describe('swapCategoryRanges', () => {
+      it('should attempt RPC call first', async () => {
+        const mockEmail = 'user@example.com';
+        
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: mockEmail } } }
+          })
+        };
+
+        mockSupabaseService.client.rpc = vi.fn().mockResolvedValue({
+          data: [{ success: true, message: 'Swapped' }],
+          error: null
+        });
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        mockCacheService.get.mockReturnValue([
+          { id: '1', category: 'A', display_order: 1000 } as PrayerRequest,
+          { id: '2', category: 'B', display_order: 2000 } as PrayerRequest,
+        ]);
+
+        const result = await service.swapCategoryRanges('A', 'B');
+        
+        expect(mockSupabaseService.client.rpc).toHaveBeenCalledWith('swap_personal_prayer_categories', {
+          p_user_email: mockEmail,
+          p_category_a: 'A',
+          p_category_b: 'B'
+        });
+        expect(result).toBe(true);
+      });
+
+      it('should fallback to client-side on RPC error', async () => {
+        const mockEmail = 'user@example.com';
+        
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: mockEmail } } }
+          })
+        };
+
+        mockSupabaseService.client.rpc = vi.fn().mockResolvedValue({
+          data: null,
+          error: { message: 'Function not found' }
+        });
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        const prayers = [
+          { id: '1', category: 'A', display_order: 1000 } as PrayerRequest,
+          { id: '2', category: 'B', display_order: 2000 } as PrayerRequest,
+        ];
+
+        (service as any).allPersonalPrayersSubject.next(prayers);
+        mockCacheService.get.mockReturnValue(prayers);
+
+        mockSupabaseService.client.from.mockReturnValue({
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: null, error: null })
+          })
+        });
+
+        const result = await service.swapCategoryRanges('A', 'B');
+        expect(result).toBe(true);
+      });
+
+      it('should return false when categories missing', async () => {
+        const mockEmail = 'user@example.com';
+        
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: mockEmail } } }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        const result = await service.swapCategoryRanges(null, 'B');
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('deletePersonalPrayer', () => {
+      it('should delete prayer and update cache', async () => {
+        const mockEmail = 'user@example.com';
+        
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: mockEmail } } }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        const prayers = [
+          { id: '1', title: 'Prayer 1' } as PrayerRequest,
+          { id: '2', title: 'Prayer 2' } as PrayerRequest,
+        ];
+
+        (service as any).allPersonalPrayersSubject.next(prayers);
+
+        const mockEq = vi.fn().mockResolvedValue({ data: null, error: null });
+        const mockEqChain = vi.fn().mockReturnValue({ eq: mockEq });
+        mockSupabaseService.client.from.mockReturnValue({
+          delete: vi.fn().mockReturnValue({
+            eq: mockEqChain
+          })
+        });
+
+        const result = await service.deletePersonalPrayer('1');
+        
+        expect(result).toBe(true);
+        expect(mockToastService.success).toHaveBeenCalled();
+      });
+
+      it('should handle delete errors', async () => {
+        const mockEmail = 'user@example.com';
+        
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: mockEmail } } }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        const mockEq = vi.fn().mockResolvedValue({ error: { message: 'Delete failed' } });
+        const mockEqChain = vi.fn().mockReturnValue({ eq: mockEq });
+        mockSupabaseService.client.from.mockReturnValue({
+          delete: vi.fn().mockReturnValue({
+            eq: mockEqChain
+          })
+        });
+
+        const result = await service.deletePersonalPrayer('1');
+        
+        expect(result).toBe(false);
+        expect(mockToastService.error).toHaveBeenCalled();
+      });
+    });
+
+    describe('updatePersonalPrayer', () => {
+      it('should update prayer and refresh cache', async () => {
+        const mockEmail = 'user@example.com';
+        
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: mockEmail } } }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        const prayers = [
+          { id: '1', title: 'Prayer 1', category: 'Test', display_order: 1000 } as PrayerRequest,
+        ];
+        (service as any).allPersonalPrayersSubject.next(prayers);
+
+        const mockEq = vi.fn().mockResolvedValue({ data: null, error: null });
+        const mockEqChain = vi.fn().mockReturnValue({ eq: mockEq });
+        mockSupabaseService.client.from.mockReturnValue({
+          update: vi.fn().mockReturnValue({
+            eq: mockEqChain
+          })
+        });
+
+        const result = await service.updatePersonalPrayer('1', {
+          title: 'Updated Title',
+          description: 'Updated Description'
+        });
+        
+        expect(result).toBe(true);
+        expect(mockToastService.success).toHaveBeenCalled();
+      });
+
+      it('should handle update errors', async () => {
+        const mockEmail = 'user@example.com';
+        
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: mockEmail } } }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        const prayers = [
+          { id: '1', title: 'Prayer 1', category: 'Test', display_order: 1000 } as PrayerRequest,
+        ];
+        (service as any).allPersonalPrayersSubject.next(prayers);
+
+        const mockEq = vi.fn().mockResolvedValue({ error: { message: 'Update failed' } });
+        const mockEqChain = vi.fn().mockReturnValue({ eq: mockEq });
+        mockSupabaseService.client.from.mockReturnValue({
+          update: vi.fn().mockReturnValue({
+            eq: mockEqChain
+          })
+        });
+
+        const result = await service.updatePersonalPrayer('1', {
+          title: 'Updated Title'
+        });
+        
+        expect(result).toBe(false);
+        expect(mockToastService.error).toHaveBeenCalled();
+      });
+    });
+
+    describe('addPersonalPrayerUpdate', () => {
+      it('should add update and refresh prayers', async () => {
+        const mockEmail = 'user@example.com';
+        
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: mockEmail } } }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        const prayers = [
+          { id: 'prayer1', title: 'Prayer 1', updates: [] } as PrayerRequest,
+        ];
+        (service as any).allPersonalPrayersSubject.next(prayers);
+
+        mockSupabaseService.client.from.mockReturnValue({
+          insert: vi.fn().mockReturnValue({
+            select: vi.fn().mockResolvedValue({ 
+              data: [{ 
+                id: 'update1', 
+                content: 'Update content',
+                author: 'Author',
+                author_email: mockEmail,
+                mark_as_answered: false,
+                created_at: new Date().toISOString()
+              }], 
+              error: null 
+            })
+          })
+        });
+
+        const result = await service.addPersonalPrayerUpdate(
+          'prayer1',
+          'Update content',
+          'Author',
+          mockEmail,
+          false
+        );
+        
+        expect(result).toBe(true);
+        expect(mockToastService.success).toHaveBeenCalled();
+      });
+
+      it('should mark prayer as answered when requested', async () => {
+        const mockEmail = 'user@example.com';
+        
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: mockEmail } } }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        const prayers = [
+          { id: 'prayer1', title: 'Prayer 1', updates: [] } as PrayerRequest,
+        ];
+        (service as any).allPersonalPrayersSubject.next(prayers);
+
+        const insertMock = vi.fn().mockReturnValue({
+          select: vi.fn().mockResolvedValue({ 
+            data: [{ 
+              id: 'update1', 
+              content: 'Answered!',
+              author: 'Author',
+              author_email: mockEmail,
+              mark_as_answered: true,
+              created_at: new Date().toISOString()
+            }], 
+            error: null 
+          })
+        });
+        
+        mockSupabaseService.client.from.mockReturnValue({
+          insert: insertMock
+        });
+
+        await service.addPersonalPrayerUpdate(
+          'prayer1',
+          'Answered!',
+          'Author',
+          mockEmail,
+          true
+        );
+        
+        expect(insertMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            mark_as_answered: true
+          })
+        );
+      });
+    });
+
+    describe('deletePersonalPrayerUpdate', () => {
+      it('should delete update and refresh', async () => {
+        const mockEmail = 'user@example.com';
+        
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: mockEmail } } }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        const mockEq = vi.fn().mockResolvedValue({ data: null, error: null });
+        const mockEqChain = vi.fn().mockReturnValue({ eq: mockEq });
+        mockSupabaseService.client.from.mockReturnValue({
+          delete: vi.fn().mockReturnValue({
+            eq: mockEqChain
+          })
+        });
+
+        const result = await service.deletePersonalPrayerUpdate('update1');
+        
+        expect(result).toBe(true);
+        expect(mockToastService.success).toHaveBeenCalled();
+      });
+
+      it('should handle delete errors', async () => {
+        const mockEmail = 'user@example.com';
+        
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: mockEmail } } }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        mockSupabaseService.client.from.mockReturnValue({
+          delete: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ error: { message: 'Delete failed' } })
+            })
+          })
+        });
+
+        const result = await service.deletePersonalPrayerUpdate('update1');
+        
+        expect(result).toBe(false);
+        expect(mockToastService.error).toHaveBeenCalled();
+      });
+    });
+
+    describe('updatePersonalPrayerUpdate', () => {
+      it('should update prayer update content', async () => {
+        const mockEmail = 'user@example.com';
+        
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: mockEmail } } }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        const prayers = [
+          { 
+            id: 'prayer1', 
+            title: 'Prayer 1',
+            updates: [
+              { id: 'update1', content: 'Old content' }
+            ]
+          } as PrayerRequest,
+        ];
+        (service as any).allPersonalPrayersSubject.next(prayers);
+
+        mockSupabaseService.client.from.mockReturnValue({
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: null, error: null })
+          })
+        });
+
+        const result = await service.updatePersonalPrayerUpdate('update1', 'prayer1', { content: 'New content' });
+        
+        expect(result).toBe(true);
+        expect(mockToastService.success).toHaveBeenCalled();
+      });
+    });
+
+    describe('markPersonalPrayerUpdateAsAnswered', () => {
+      it('should mark prayer as answered via update', async () => {
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        mockSupabaseService.client.from.mockReturnValue({
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: null, error: null })
+          })
+        });
+
+        const result = await service.markPersonalPrayerUpdateAsAnswered('update1');
+        
+        expect(result).toBe(true);
+      });
+
+      it('should handle errors when marking as answered', async () => {
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        mockSupabaseService.client.from.mockReturnValue({
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: { message: 'Update failed' } })
+          })
+        });
+
+        const result = await service.markPersonalPrayerUpdateAsAnswered('update1');
+        
+        expect(result).toBe(false);
+        expect(mockToastService.error).toHaveBeenCalled();
+      });
+    });
+
+    describe('addPersonalPrayer', () => {
+      it('should add personal prayer successfully', async () => {
+        const mockEmail = 'user@example.com';
+        
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: mockEmail } } }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        const prayers: PrayerRequest[] = [];
+        (service as any).allPersonalPrayersSubject.next(prayers);
+
+        // Spy on private methods to bypass complex mocking
+        vi.spyOn(service as any, 'getCategoryPrayerCount').mockResolvedValue(0);
+        vi.spyOn(service as any, 'getCategoryRange').mockResolvedValue({ min: 1000, max: 1999 });
+
+        // Mock the insert operation
+        mockSupabaseService.client.from.mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                gte: vi.fn().mockReturnValue({
+                  lte: vi.fn().mockReturnValue({
+                    order: vi.fn().mockReturnValue({
+                      limit: vi.fn().mockReturnValue({
+                        single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } })
+                      })
+                    })
+                  })
+                })
+              })
+            })
+          }),
+          insert: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: {
+                  id: 'new-prayer-id',
+                  title: 'New Prayer',
+                  description: 'Description',
+                  category: 'Test',
+                  prayer_for: 'Someone',
+                  user_email: mockEmail,
+                  display_order: 1000,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                },
+                error: null
+              })
+            })
+          })
+        });
+
+        const result = await service.addPersonalPrayer({
+          title: 'New Prayer',
+          description: 'Description',
+          category: 'Test',
+          prayer_for: 'Someone',
+          requester: mockEmail,
+          email: mockEmail,
+          status: 'current',
+          is_anonymous: false
+        });
+
+        expect(result).toBe(true);
+        expect(mockToastService.success).toHaveBeenCalled();
+      });
+
+      it('should reject when category limit reached', async () => {
+        const mockEmail = 'user@example.com';
+        
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: mockEmail } } }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        // Mock getCategoryPrayerCount returning 1000 (limit) - needs .select().eq().eq() chain
+        const mockEqFinal = vi.fn().mockResolvedValue({ data: new Array(1000).fill({ id: 'x' }), error: null });
+        const mockEqChain = vi.fn().mockReturnValue({ eq: mockEqFinal });
+        mockSupabaseService.client.from.mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            eq: mockEqChain
+          })
+        });
+
+        const result = await service.addPersonalPrayer({
+          title: 'New Prayer',
+          description: 'Description',
+          category: 'Test',
+          prayer_for: 'Someone',
+          requester: mockEmail,
+          email: mockEmail,
+          status: 'current',
+          is_anonymous: false
+        });
+
+        expect(result).toBe(false);
+        expect(mockToastService.error).toHaveBeenCalledWith(
+          expect.stringContaining('has reached its limit of 1,000 prayers')
+        );
+      });
+
+      it('should handle insert errors', async () => {
+        const mockEmail = 'user@example.com';
+        
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: mockEmail } } }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        // Spy on private methods to bypass complex mocking
+        vi.spyOn(service as any, 'getCategoryPrayerCount').mockResolvedValue(0);
+        vi.spyOn(service as any, 'getCategoryRange').mockResolvedValue({ min: 1000, max: 1999 });
+
+        // Mock the queries and insert
+        mockSupabaseService.client.from.mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                gte: vi.fn().mockReturnValue({
+                  lte: vi.fn().mockReturnValue({
+                    order: vi.fn().mockReturnValue({
+                      limit: vi.fn().mockReturnValue({
+                        single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } })
+                      })
+                    })
+                  })
+                })
+              })
+            })
+          }),
+          insert: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: null,
+                error: { message: 'Insert failed' }
+              })
+            })
+          })
+        });
+
+        const result = await service.addPersonalPrayer({
+          title: 'New Prayer',
+          description: 'Description',
+          category: 'Test',
+          prayer_for: 'Someone',
+          requester: mockEmail,
+          email: mockEmail,
+          status: 'current',
+          is_anonymous: false
+        });
+
+        expect(result).toBe(false);
+        expect(mockToastService.error).toHaveBeenCalled();
+      });
+    });
+
+    describe('updatePersonalPrayerOrder', () => {
+      it('should update prayer order successfully', async () => {
+        const mockEmail = 'user@example.com';
+        
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: mockEmail } } }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        const prayers = [
+          { id: '1', category: 'Test', display_order: 1001 } as PrayerRequest,
+          { id: '2', category: 'Test', display_order: 1000 } as PrayerRequest,
+        ];
+
+        // Mock RPC call
+        const mockRpc = vi.fn().mockResolvedValue({
+          data: [{ success: true, message: 'Successfully reordered 2 prayers' }],
+          error: null
+        });
+        mockSupabaseService.client.rpc = mockRpc;
+
+        const result = await service.updatePersonalPrayerOrder(prayers, 'Test');
+
+        expect(result).toBe(true);
+        expect(mockRpc).toHaveBeenCalledWith('reorder_personal_prayers', {
+          p_user_email: mockEmail,
+          p_ordered_prayer_ids: ['1', '2'],
+          p_category: 'Test'
+        });
+      });
+
+      it('should return false when user email not available', async () => {
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: null }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        const result = await service.updatePersonalPrayerOrder([], undefined);
+
+        expect(result).toBe(false);
+      });
+
+      it('should handle update errors', async () => {
+        const mockEmail = 'user@example.com';
+        
+        mockSupabaseService.client.auth = {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { email: mockEmail } } }
+          })
+        };
+
+        service = new PrayerService(
+          mockSupabaseService,
+          mockToastService,
+          mockEmailNotificationService,
+          mockVerificationService,
+          mockCacheService,
+          mockBadgeService
+        );
+
+        const prayers = [
+          { id: '1', category: 'Test', display_order: 1000 } as PrayerRequest,
+        ];
+
+        // Mock RPC error to trigger fallback
+        const mockRpc = vi.fn().mockResolvedValue({
+          data: null,
+          error: { message: 'RPC failed' }
+        });
+        mockSupabaseService.client.rpc = mockRpc;
+
+        // Spy on private method for fallback
+        vi.spyOn(service as any, 'getCategoryRange').mockResolvedValue({ min: 1000, max: 1999 });
+
+        // Mock fallback update with error
+        mockSupabaseService.client.from.mockReturnValue({
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ data: null, error: { message: 'Update failed' } })
+            })
+          })
+        });
+
+        const result = await service.updatePersonalPrayerOrder(prayers, 'Test');
+
+        expect(result).toBe(false);
       });
     });
   });

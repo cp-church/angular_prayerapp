@@ -1493,6 +1493,69 @@ export class PrayerService {
         prayersByCategory.get(category)!.push(prayer);
       }
 
+      // Process each category group using RPC for efficiency
+      for (const [category, categoryPrayers] of prayersByCategory) {
+        // Extract prayer IDs in their desired order
+        const orderedPrayerIds = categoryPrayers.map(p => p.id);
+
+        // Use RPC for maximum efficiency - single server-side transaction per category
+        const { data, error } = await this.supabase.client
+          .rpc('reorder_personal_prayers', {
+            p_user_email: userEmail,
+            p_ordered_prayer_ids: orderedPrayerIds,
+            p_category: category || null
+          });
+
+        if (error) {
+          console.error('[PrayerService] RPC error reordering prayers:', error);
+          // Fall back to client-side implementation if RPC fails
+          return await this.updatePersonalPrayerOrderFallback(prayers, categoryFilter);
+        }
+
+        if (data && data.length > 0) {
+          const result = data[0];
+          if (!result.success) {
+            console.error('[PrayerService] Reorder prayers failed:', result.message);
+            return false;
+          }
+          console.log('[PrayerService]', result.message);
+        }
+      }
+
+      // Note: Do NOT update cache here - the prayers array may be filtered
+      // Component will invalidate cache and reload all prayers after successful update
+
+      console.log('[PrayerService] Personal prayer order updated successfully');
+      return true;
+    } catch (error) {
+      console.error('[PrayerService] Error updating personal prayer order:', error);
+      // Fall back to client-side implementation
+      return await this.updatePersonalPrayerOrderFallback(prayers, categoryFilter);
+    }
+  }
+
+  /**
+   * Fallback method for updating prayer order using client-side batch updates
+   * Used if the RPC function is not available or fails
+   */
+  private async updatePersonalPrayerOrderFallback(prayers: PrayerRequest[], categoryFilter?: string): Promise<boolean> {
+    try {
+      console.log('[PrayerService] Using fallback method for prayer order update');
+      
+      const userEmail = await this.getUserEmail();
+      if (!userEmail) return false;
+
+      // Group prayers by category to handle cross-category reordering
+      const prayersByCategory = new Map<string | null | undefined, PrayerRequest[]>();
+      
+      for (const prayer of prayers) {
+        const category = prayer.category as string | null | undefined;
+        if (!prayersByCategory.has(category)) {
+          prayersByCategory.set(category, []);
+        }
+        prayersByCategory.get(category)!.push(prayer);
+      }
+
       // Process each category group separately with its own range
       const updates: Promise<any>[] = [];
       
@@ -1525,14 +1588,12 @@ export class PrayerService {
       const errorResult = results.find(r => r.error);
       if (errorResult?.error) throw errorResult.error;
 
-      // Update local cache and observable with all prayers
-      this.allPersonalPrayersSubject.next(prayers);
-      this.cache.set('personalPrayers', prayers);
+      // Note: Do NOT update cache here - the prayers array may be filtered
+      // Component will invalidate cache and reload all prayers after successful update
 
-      console.log('[PrayerService] Personal prayer order updated successfully');
       return true;
     } catch (error) {
-      console.error('[PrayerService] Error updating personal prayer order:', error);
+      console.error('[PrayerService] Fallback prayer order update failed:', error);
       return false;
     }
   }
@@ -1803,6 +1864,56 @@ export class PrayerService {
         return false;
       }
 
+      // Filter out null categories for the RPC call
+      const validCategories = orderedCategories.filter(c => c !== null && c !== undefined) as string[];
+      
+      if (validCategories.length === 0) {
+        console.warn('[PrayerService] No valid categories to reorder');
+        return true;
+      }
+
+      // Use RPC for maximum efficiency - single server-side transaction
+      const { data, error } = await this.supabase.client
+        .rpc('reorder_personal_prayer_categories', {
+          p_user_email: userEmail,
+          p_ordered_categories: validCategories
+        });
+
+      if (error) {
+        console.error('[PrayerService] RPC error reordering categories:', error);
+        // Fall back to client-side implementation if RPC fails
+        return await this.reorderCategoriesFallback(orderedCategories);
+      }
+
+      if (data && data.length > 0) {
+        const result = data[0];
+        if (!result.success) {
+          console.error('[PrayerService] Reorder failed:', result.message);
+          return false;
+        }
+        console.log('[PrayerService]', result.message);
+      }
+
+      // Note: Component will invalidate cache and reload with forceRefresh
+      return true;
+    } catch (error) {
+      console.error('[PrayerService] Error reordering categories:', error);
+      // Fall back to client-side implementation
+      return await this.reorderCategoriesFallback(orderedCategories);
+    }
+  }
+
+  /**
+   * Fallback method for reordering categories using client-side batch updates
+   * Used if the RPC function is not available or fails
+   */
+  private async reorderCategoriesFallback(orderedCategories: (string | null)[]): Promise<boolean> {
+    try {
+      console.log('[PrayerService] Using fallback method for category reorder');
+      
+      const userEmail = await this.getUserEmail();
+      if (!userEmail) return false;
+
       // Get all personal prayers
       const allPrayers = this.allPersonalPrayersSubject.value;
       
@@ -1840,10 +1951,9 @@ export class PrayerService {
       const error = results.find(r => r.error);
       if (error?.error) throw error.error;
 
-      // Note: Component will invalidate cache and reload to get fresh data
       return true;
     } catch (error) {
-      console.error('[PrayerService] Error reordering categories:', error);
+      console.error('[PrayerService] Fallback reorder failed:', error);
       return false;
     }
   }
@@ -1890,10 +2000,8 @@ export class PrayerService {
         console.log('[PrayerService]', result.message);
       }
 
-      // Reload personal prayers from database to update the in-memory cache
-      const userPersonalPrayers = await this.getPersonalPrayers();
-      this.allPersonalPrayersSubject.next(userPersonalPrayers);
-
+      // Note: Component will invalidate cache and reload with forceRefresh
+      // No need to reload here since we'd get stale cached data
       return true;
     } catch (error) {
       console.error('[PrayerService] Exception swapping categories:', error);

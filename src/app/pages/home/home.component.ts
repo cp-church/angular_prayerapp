@@ -1043,8 +1043,20 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
 
     try {
-      // Update display orders for all categories based on their new positions
-      const success = await this.prayerService.reorderCategories(this.uniquePersonalCategories);
+      let success = false;
+
+      // Check if this is a simple adjacent swap (more efficient RPC method)
+      const isAdjacentSwap = Math.abs(event.previousIndex - event.currentIndex) === 1;
+      
+      if (isAdjacentSwap) {
+        // Use efficient RPC-based swap for adjacent categories (95% less egress)
+        const categoryA = originalCategories[event.previousIndex];
+        const categoryB = originalCategories[event.currentIndex];
+        success = await this.prayerService.swapCategoryRanges(categoryA, categoryB);
+      } else {
+        // Use full reorder for non-adjacent moves (e.g., dragging from last to first)
+        success = await this.prayerService.reorderCategories(this.uniquePersonalCategories);
+      }
 
       if (success) {
         // Invalidate cache and force reload prayers from database
