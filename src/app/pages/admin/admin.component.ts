@@ -100,66 +100,66 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
       <!-- Content -->
       <main class="w-full max-w-6xl mx-auto px-4 py-6">
         <!-- Stats Grid -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mb-8">
+        <div class="grid grid-cols-5 sm:grid-cols-5 gap-2 sm:gap-4 mb-8">
           <button
             (click)="onTabChange('prayers')"
-            [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md p-2 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 ' + (activeTab === 'prayers' ? 'ring-2 ring-blue-500' : '')"
+            [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md p-1 sm:p-4 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 flex flex-col justify-between ' + (activeTab === 'prayers' ? 'ring-2 ring-blue-500' : '')"
           >
-            <div class="text-center">
-              <div class="text-2xl font-bold text-green-600 dark:text-green-400">
+            <div class="text-center self-start w-full">
+              <div class="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400">
                 {{ adminData?.pendingPrayers?.length || 0 }}
               </div>
-              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">Pending Prayers</div>
             </div>
+            <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400"><span class="hidden lg:inline">Pending </span>Prayers</div>
           </button>
 
           <button
             (click)="onTabChange('updates')"
-            [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md p-2 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 ' + (activeTab === 'updates' ? 'ring-2 ring-blue-500' : '')"
+            [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md p-1 sm:p-4 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 flex flex-col justify-between ' + (activeTab === 'updates' ? 'ring-2 ring-blue-500' : '')"
           >
-            <div class="text-center">
-              <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+            <div class="text-center self-start w-full">
+              <div class="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {{ adminData?.pendingUpdates?.length || 0 }}
               </div>
-              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">Pending Updates</div>
             </div>
+            <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400"><span class="hidden lg:inline">Pending </span>Updates</div>
           </button>
 
           <button
             (click)="onTabChange('deletions')"
-            [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md p-2 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 ' + (activeTab === 'deletions' ? 'ring-2 ring-blue-500' : '')"
+            [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md p-1 sm:p-4 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 flex flex-col justify-between ' + (activeTab === 'deletions' ? 'ring-2 ring-blue-500' : '')"
           >
-            <div class="text-center">
-              <div class="text-2xl font-bold text-red-600 dark:text-red-400">
+            <div class="text-center self-start w-full">
+              <div class="text-lg sm:text-2xl font-bold text-red-600 dark:text-red-400">
                 {{ (adminData?.pendingDeletionRequests?.length || 0) + (adminData?.pendingUpdateDeletionRequests?.length || 0) }}
               </div>
-              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">Pending Deletions</div>
             </div>
+            <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400"><span class="hidden lg:inline">Pending </span>Deletions</div>
           </button>
 
           <button
             (click)="onTabChange('accounts')"
-            [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md p-2 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 ' + (activeTab === 'accounts' ? 'ring-2 ring-blue-500' : '')"
+            [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md p-1 sm:p-4 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 flex flex-col justify-between ' + (activeTab === 'accounts' ? 'ring-2 ring-blue-500' : '')"
           >
-            <div class="text-center">
-              <div class="text-2xl font-bold text-amber-600 dark:text-amber-400">
+            <div class="text-center self-start w-full">
+              <div class="text-lg sm:text-2xl font-bold text-amber-600 dark:text-amber-400">
                 {{ adminData?.pendingAccountRequests?.length || 0 }}
               </div>
-              <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">Pending Accounts</div>
             </div>
+            <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400"><span class="hidden lg:inline">Pending </span>Accounts</div>
           </button>
 
           <button
             (click)="onTabChange('settings')"
-            [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md p-2 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 ' + (activeTab === 'settings' ? 'ring-2 ring-blue-500' : '')"
+            [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md p-1 sm:p-4 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 flex flex-col justify-between ' + (activeTab === 'settings' ? 'ring-2 ring-blue-500' : '')"
           >
-            <div class="text-center">
-              <svg class="w-6 h-6 mx-auto text-gray-600 dark:text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <div class="text-center self-start w-full">
+              <svg class="w-4 sm:w-6 h-4 sm:h-6 mx-auto text-gray-600 dark:text-gray-400 translate-y-2 sm:translate-y-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
                 <circle cx="12" cy="12" r="3"></circle>
               </svg>
-              <div class="text-xs text-gray-600 dark:text-gray-400 mt-2">Settings</div>
             </div>
+            <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Settings</div>
           </button>
         </div>
 
