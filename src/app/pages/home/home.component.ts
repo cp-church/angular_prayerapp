@@ -56,15 +56,6 @@ import type { User } from '@supabase/supabase-js';
           
           <!-- Mobile buttons row -->
           <div class="sm:hidden flex items-center gap-2 flex-wrap">
-                  @if (hasAdminEmail$ | async) {
-                    <button
-                      (click)="navigateToAdmin()"
-                      class="flex items-center gap-1 border border-red-600 dark:border-red-500 text-red-600 dark:text-red-500 px-2 py-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors text-sm"
-                      title="Admin Portal"
-                    >
-                      <span>Admin</span>
-                    </button>
-                  }
                   <button
                     (click)="showHelp = true"
                       class="flex items-center gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
@@ -98,6 +89,15 @@ import type { User } from '@supabase/supabase-js';
                   >
                     <span>Request</span>
                   </button>
+                  @if (hasAdminEmail$ | async) {
+                    <button
+                      (click)="navigateToAdmin()"
+                      class="flex items-center gap-1 border border-red-600 dark:border-red-500 text-red-600 dark:text-red-500 px-2 py-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors text-sm"
+                      title="Admin Portal"
+                    >
+                      <span>Admin</span>
+                    </button>
+                  }
                 </div>
           
           <!-- Desktop layout: single row -->
@@ -122,18 +122,6 @@ import type { User } from '@supabase/supabase-js';
               
               <!-- Desktop buttons -->
               <div class="flex items-center gap-2">
-                    @if (hasAdminEmail$ | async) {
-                      <button
-                        (click)="navigateToAdmin()"
-                        class="flex items-center gap-2 border border-red-600 dark:border-red-500 text-red-600 dark:text-red-500 px-4 py-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors text-base"
-                        title="Admin Portal"
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                        </svg>
-                        <span>Admin</span>
-                      </button>
-                    }
                     <button
                       (click)="showHelp = true"
                       class="flex items-center gap-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-2.5 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
@@ -168,6 +156,18 @@ import type { User } from '@supabase/supabase-js';
                     >
                       <span>Add Request</span>
                     </button>
+                    @if (hasAdminEmail$ | async) {
+                      <button
+                        (click)="navigateToAdmin()"
+                        class="flex items-center gap-2 border border-red-600 dark:border-red-500 text-red-600 dark:text-red-500 px-4 py-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors text-base"
+                        title="Admin Portal"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        </svg>
+                        <span>Admin</span>
+                      </button>
+                    }
                   </div>
             </div>
           </div>
