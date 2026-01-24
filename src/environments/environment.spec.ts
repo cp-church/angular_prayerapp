@@ -13,7 +13,7 @@ describe('environment', () => {
   it('should have supabaseUrl defined', () => {
     expect(environment.supabaseUrl).toBeDefined();
     expect(typeof environment.supabaseUrl).toBe('string');
-    expect(environment.supabaseUrl).toBe('https://eqiafsygvfaifhoaewxi.supabase.co');
+    expect(environment.supabaseUrl).toBe('https://jcdhajfqtzipltvfslhu.supabase.co');
   });
 
   it('should have supabaseAnonKey defined', () => {
