@@ -151,7 +151,7 @@ describe('PrayerFiltersComponent', () => {
         }
       });
       
-      const clearButton = screen.queryByText('Clear search');
+      const clearButton = screen.queryByRole('button', { name: /clear/i });
       expect(clearButton).toBeFalsy();
     });
 
@@ -162,7 +162,7 @@ describe('PrayerFiltersComponent', () => {
         }
       });
       
-      const clearButton = screen.getByText('Clear search');
+      const clearButton = screen.getByRole('button', { name: /clear/i });
       expect(clearButton).toBeTruthy();
     });
 
@@ -175,7 +175,7 @@ describe('PrayerFiltersComponent', () => {
       });
       const clearFiltersSpy = vi.spyOn(fixture.componentInstance, 'clearFilters');
       
-      const clearButton = screen.getByText('Clear search');
+      const clearButton = screen.getByRole('button', { name: /clear/i });
       await user.click(clearButton);
       
       expect(clearFiltersSpy).toHaveBeenCalledOnce();
@@ -189,7 +189,7 @@ describe('PrayerFiltersComponent', () => {
         }
       });
       
-      const clearButton = screen.getByText('Clear search');
+      const clearButton = screen.getByRole('button', { name: /clear/i });
       await user.click(clearButton);
       
       const searchInput = screen.getByPlaceholderText('Search prayers...') as HTMLInputElement;
@@ -219,8 +219,8 @@ describe('PrayerFiltersComponent', () => {
       
       const searchInput = screen.getByPlaceholderText('Search prayers...');
       expect(searchInput.classList.contains('pl-10')).toBe(true);
-      expect(searchInput.classList.contains('pr-3')).toBe(true);
-      expect(searchInput.classList.contains('py-3')).toBe(true);
+      expect(searchInput.classList.contains('pr-24')).toBe(true);
+      expect(searchInput.classList.contains('py-2')).toBe(true);
       expect(searchInput.classList.contains('w-full')).toBe(true);
     });
 
@@ -334,7 +334,7 @@ describe('PrayerFiltersComponent', () => {
         }
       });
       
-      const clearButton = screen.getByText('Clear search');
+      const clearButton = screen.getByRole('button', { name: /clear/i });
       expect(clearButton.tagName).toBe('BUTTON');
     });
   });
