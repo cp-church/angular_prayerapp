@@ -28,6 +28,8 @@ dist-ssr
 *.sw?
 *.env
 
+# Environment files kept for reference, credentials are not sensitive for dev
+
 # Playwright
 test-results/
 test-results.json
@@ -44,6 +46,8 @@ coverage/
 
 # Temporary build/runtime files
 /.temp
+.temp/
+**/.temp/
 supabase/.temp
 
 # React code - kept for reference but not committed
