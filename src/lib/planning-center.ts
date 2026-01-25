@@ -316,3 +316,97 @@ export async function searchPlanningCenterByName(name: string, supabaseUrl: stri
     };
   }
 }
+
+/**
+ * Planning Center List interface
+ */
+export interface PlanningCenterList {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+/**
+ * Fetch all Planning Center lists from the organization
+ */
+export async function fetchPlanningCenterLists(supabaseUrl: string, supabaseKey: string): Promise<{ lists: PlanningCenterList[]; error?: string }> {
+  try {
+    const response = await fetch(
+      `${supabaseUrl}/functions/v1/planning-center-lists`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action: 'lists' })
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Failed to fetch Planning Center lists:', response.status, errorData);
+      return {
+        lists: [],
+        error: errorData.error || 'Failed to fetch Planning Center lists'
+      };
+    }
+
+    const data = await response.json();
+    return {
+      lists: data.lists || []
+    };
+  } catch (error) {
+    console.error('Error in fetchPlanningCenterLists:', error);
+    return {
+      lists: [],
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * Fetch member names from a specific Planning Center list
+ */
+export async function fetchListMembers(listId: string, supabaseUrl: string, supabaseKey: string): Promise<{ members: Array<{ id: string; name: string }>; error?: string }> {
+  if (!listId || listId.trim() === '') {
+    return {
+      members: [],
+      error: 'List ID is required'
+    };
+  }
+
+  try {
+    const response = await fetch(
+      `${supabaseUrl}/functions/v1/planning-center-lists`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action: 'members', listId })
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Failed to fetch Planning Center list members:', response.status, errorData);
+      return {
+        members: [],
+        error: errorData.error || 'Failed to fetch Planning Center list members'
+      };
+    }
+
+    const data = await response.json();
+    return {
+      members: data.members || []
+    };
+  } catch (error) {
+    console.error('Error in fetchListMembers:', error);
+    return {
+      members: [],
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}

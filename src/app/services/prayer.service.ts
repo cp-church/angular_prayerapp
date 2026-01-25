@@ -672,6 +672,155 @@ export class PrayerService {
   }
 
   /**
+   * Add an update to a Planning Center member prayer card
+   */
+  async addMemberPrayerUpdate(personId: string, memberName: string, content: string, author: string, authorEmail: string = ''): Promise<boolean> {
+    try {
+      const { data, error } = await this.supabase.client
+        .from('member_prayer_updates')
+        .insert({
+          person_id: personId,
+          member_name: memberName,
+          content,
+          author,
+          author_email: authorEmail,
+          approval_status: 'approved' // Member updates auto-approve
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      this.toast.success('Update added successfully');
+      return true;
+    } catch (error) {
+      console.error('Error adding member prayer update:', error);
+      this.toast.error('Failed to add update');
+      return false;
+    }
+  }
+  /**
+   * Get updates for a Planning Center member by person_id with caching
+   */
+  async getMemberPrayerUpdates(personId: string): Promise<PrayerUpdate[]> {
+    try {
+      // Check localStorage cache first
+      const cacheKey = `memberPrayerUpdates_${personId}`;
+      const cacheTimestampKey = `${cacheKey}_timestamp`;
+      const cachedData = localStorage.getItem(cacheKey);
+      const cachedTimestamp = localStorage.getItem(cacheTimestampKey);
+
+      const now = Date.now();
+      const thirtyMinutesMs = 30 * 60 * 1000;
+
+      // Check if cache is valid (less than 30 minutes old)
+      if (cachedData && cachedTimestamp) {
+        const age = now - parseInt(cachedTimestamp, 10);
+        if (age < thirtyMinutesMs) {
+          // Cache is still valid
+          try {
+            return JSON.parse(cachedData);
+          } catch (e) {
+            console.error('Error parsing cached member prayer updates:', e);
+          }
+        }
+      }
+
+      // Cache miss or expired - fetch from database
+      const { data, error } = await this.supabase.client
+        .from('member_prayer_updates')
+        .select('*')
+        .eq('person_id', personId)
+        .eq('approval_status', 'approved')
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const updates = (data || []).map(update => ({
+        id: update.id,
+        prayer_id: '', // Not applicable for member updates
+        content: update.content,
+        author: update.author,
+        author_email: update.author_email,
+        is_anonymous: update.is_anonymous || false,
+        created_at: update.created_at,
+        updated_at: update.updated_at,
+        approval_status: update.approval_status
+      }));
+
+      // Store in localStorage with timestamp
+      localStorage.setItem(cacheKey, JSON.stringify(updates));
+      localStorage.setItem(cacheTimestampKey, String(now));
+
+      return updates;
+    } catch (error) {
+      console.error('Error fetching member prayer updates:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Clear cache for member prayer updates (call after adding new update)
+   */
+  clearMemberPrayerUpdatesCache(personId: string): void {
+    const cacheKey = `memberPrayerUpdates_${personId}`;
+    const cacheTimestampKey = `${cacheKey}_timestamp`;
+    localStorage.removeItem(cacheKey);
+    localStorage.removeItem(cacheTimestampKey);
+  }
+
+  /**
+   * Delete a member prayer update by ID and clear cache
+   */
+  async deleteMemberPrayerUpdate(updateId: string, personId: string): Promise<boolean> {
+    try {
+      const { error } = await this.supabase.client
+        .from('member_prayer_updates')
+        .delete()
+        .eq('id', updateId);
+
+      if (error) throw error;
+
+      // Clear cache to force refresh
+      this.clearMemberPrayerUpdatesCache(personId);
+      
+      this.toast.success('Update deleted successfully');
+      return true;
+    } catch (error) {
+      console.error('Error deleting member prayer update:', error);
+      this.toast.error('Failed to delete update');
+      return false;
+    }
+  }
+
+  /**
+   * Update a member prayer update
+   */
+  async updateMemberPrayerUpdate(updateId: string, personId: string, updates: Partial<PrayerUpdate>): Promise<boolean> {
+    try {
+      const updateData: any = {};
+      if (updates.content) updateData.content = updates.content;
+
+      const { error } = await this.supabase.client
+        .from('member_prayer_updates')
+        .update(updateData)
+        .eq('id', updateId);
+
+      if (error) throw error;
+
+      // Clear cache to force refresh
+      this.clearMemberPrayerUpdatesCache(personId);
+      
+      this.toast.success('Update saved successfully');
+      return true;
+    } catch (error) {
+      console.error('Error updating member prayer update:', error);
+      this.toast.error('Failed to save update');
+      return false;
+    }
+  }
+
+  /**
    * Delete a prayer
    */
   async deletePrayer(id: string): Promise<boolean> {

@@ -25,6 +25,8 @@ import { Observable, take, Subject, takeUntil } from 'rxjs';
 import { ToastService } from '../../services/toast.service';
 import { AnalyticsService } from '../../services/analytics.service';
 import type { User } from '@supabase/supabase-js';
+import { fetchListMembers } from '../../../lib/planning-center';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-home',
@@ -211,6 +213,16 @@ import type { User } from '@supabase/supabase-js';
           (save)="onPersonalUpdateSaved()"
         ></app-personal-prayer-update-edit-modal>
 
+        <!-- Member Prayer Update Edit Modal -->
+        <app-personal-prayer-update-edit-modal
+          [isOpen]="showEditMemberUpdate"
+          [update]="editingMemberUpdate"
+          [prayerId]="editingMemberUpdatePrayerId"
+          [isMemberUpdate]="true"
+          (close)="showEditMemberUpdate = false"
+          (save)="onMemberUpdateSaved()"
+        ></app-personal-prayer-update-edit-modal>
+
         <!-- Prayer Filters -->
         <app-prayer-filters
           [filters]="filters"
@@ -218,7 +230,7 @@ import type { User } from '@supabase/supabase-js';
         ></app-prayer-filters>
 
         <!-- Stats Cards -->
-        <div class="grid grid-cols-3 sm:grid-cols-5 gap-4 mb-6">
+        <div class="grid grid-cols-3 sm:grid-cols-6 gap-4 mb-6">
           <button
             (click)="setFilter('current')"
             title="Show current prayers"
@@ -304,6 +316,20 @@ import type { User } from '@supabase/supabase-js';
             </div>
             <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Personal</div>
           </button>
+
+          <!-- Planning Center List Members Filter -->
+          @if (planningCenterListMembers.length > 0) {
+            <button
+              (click)="setFilter('planning_center_list')"
+              title="Show prayers for Planning Center list members"
+              [class]="'rounded-lg shadow-md p-2 sm:p-4 text-center border-[2px] transition-all duration-200 cursor-pointer relative ' + (activeFilter === 'planning_center_list' ? '!border-blue-600 dark:!border-blue-400 bg-slate-100 dark:bg-blue-900/40 ring-3 ring-blue-600 dark:ring-blue-400 ring-offset-0' : 'bg-white dark:bg-gray-800 !border-gray-200 dark:!border-gray-700 hover:!border-blue-600 dark:hover:!border-blue-400 hover:shadow-lg')"
+            >
+              <div class="text-sm sm:text-xl sm:sm:text-2xl font-bold text-gray-700 dark:text-gray-300 tabular-nums">
+                {{ planningCenterListMembers.length }}
+              </div>
+              <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Members</div>
+            </button>
+          }
         </div>
 
         <!-- Loading State -->
@@ -401,7 +427,7 @@ import type { User } from '@supabase/supabase-js';
         @if (!(loading$ | async) && !(error$ | async)) {
           <div class="space-y-4">
             <!-- Empty State for Prayers -->
-            @if (activeFilter !== 'prompts' && activeFilter !== 'personal' && (prayers$ | async)?.length === 0) {
+            @if (activeFilter !== 'prompts' && activeFilter !== 'personal' && activeFilter !== 'planning_center_list' && (prayers$ | async)?.length === 0) {
               <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center border border-gray-200 dark:border-gray-700">
                 @if (filters.searchTerm && filters.searchTerm.trim()) {
                   <svg class="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -458,10 +484,52 @@ import type { User } from '@supabase/supabase-js';
               </div>
             }
 
+            <!-- Empty State for Planning Center List -->
+            @if (activeFilter === 'planning_center_list' && filteredPlanningCenterPrayers.length === 0) {
+              <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center border border-gray-200 dark:border-gray-700">
+                @if (filters.searchTerm && filters.searchTerm.trim()) {
+                  <svg class="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                  </svg>
+                }
+                <h3 class="text-lg font-medium text-gray-700 dark:text-gray-200 mb-2">
+                  @if (filters.searchTerm && filters.searchTerm.trim()) {
+                    <span>No prayers found</span>
+                  } @else {
+                    <span>No prayers for list members</span>
+                  }
+                </h3>
+                <p class="text-gray-500 dark:text-gray-400">
+                  @if (filters.searchTerm && filters.searchTerm.trim()) {
+                    <span>Try adjusting your search terms</span>
+                  } @else {
+                    <span>No current prayers are for the members of this Planning Center list.</span>
+                  }
+                </p>
+              </div>
+            }
+
             <!-- Prayer Cards (only show when not on prompts or personal filter) -->
             @if (activeFilter !== 'prompts' && activeFilter !== 'personal') {
-              @for (prayer of prayers$ | async; track prayer.id) {
-                <app-prayer-card
+              @if (activeFilter === 'planning_center_list') {
+                @for (prayer of filteredPlanningCenterPrayers; track prayer.id) {
+                  <app-prayer-card
+                  [prayer]="prayer"
+                  [isAdmin]="(isAdmin$ | async) || false"
+                  [activeFilter]="activeFilter"
+                  [deletionsAllowed]="deletionsAllowed"
+                  [updatesAllowed]="updatesAllowed"
+                  (delete)="deletePrayer($event)"
+                  (addUpdate)="addUpdate($event)"
+                  (deleteUpdate)="deleteUpdate($event)"
+                  (requestDeletion)="requestDeletion($event)"
+                  (requestUpdateDeletion)="requestUpdateDeletion($event)"
+                  (editMemberUpdate)="openEditMemberUpdateModal($event)"
+                ></app-prayer-card>
+                }
+              } @else {
+                @for (prayer of prayers$ | async; track prayer.id) {
+                  <app-prayer-card
                   [prayer]="prayer"
                   [isAdmin]="(isAdmin$ | async) || false"
                   [activeFilter]="activeFilter"
@@ -473,6 +541,7 @@ import type { User } from '@supabase/supabase-js';
                   (requestDeletion)="requestDeletion($event)"
                   (requestUpdateDeletion)="requestUpdateDeletion($event)"
                 ></app-prayer-card>
+                }
               }
             }
 
@@ -556,6 +625,9 @@ export class HomeComponent implements OnInit, OnDestroy {
   isAdmin$!: Observable<boolean>;
   hasAdminEmail$!: Observable<boolean>;
 
+  // Current prayers array for filtering
+  currentPrayers: PrayerRequest[] = [];
+
   // Personal prayers
   personalPrayers: PrayerRequest[] = [];
   isReorderingPersonalPrayers = false;
@@ -579,14 +651,25 @@ export class HomeComponent implements OnInit, OnDestroy {
   showEditPersonalUpdate = false;
   editingUpdate: PrayerUpdate | null = null;
   editingUpdatePrayerId = '';
+  showEditMemberUpdate = false;
+  editingMemberUpdate: PrayerUpdate | null = null;
+  editingMemberUpdatePrayerId = '';
   filters: PrayerFilters = { status: 'current' };
   hasLogo = false;
-  activeFilter: 'current' | 'answered' | 'total' | 'prompts' | 'personal' = 'current';
+  activeFilter: 'current' | 'answered' | 'total' | 'prompts' | 'personal' | 'planning_center_list' = 'current';
   selectedPromptTypes: string[] = [];
   selectedPersonalCategories: string[] = [];
   isCategoryDragging = false;
   uniquePersonalCategories: string[] = [];
   isSwappingCategories = false;
+  
+  // Planning Center list filtering
+  planningCenterListId: string | null = null;
+  planningCenterListMembers: Array<{ id: string; name: string }> = [];
+  planningCenterListName: string | null = null;
+  loadingPlanningCenterList = false;
+  filteredPlanningCenterPrayers: PrayerRequest[] = [];
+  loadingMemberPrayers = false;
   
   isAdmin = false;
   // Admin settings for access control policies
@@ -626,6 +709,14 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.error$ = this.prayerService.error$;
     this.isAdmin$ = this.adminAuthService.isAdmin$;
     this.hasAdminEmail$ = this.adminAuthService.hasAdminEmail$;
+
+    // Subscribe to prayers for filtering
+    this.prayers$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(prayers => {
+        this.currentPrayers = prayers;
+        this.cdr.markForCheck();
+      });
 
     // Wait for prompts to load before initializing badges
     // This ensures prompts_cache is in localStorage when badges calculate
@@ -681,6 +772,11 @@ export class HomeComponent implements OnInit, OnDestroy {
       console.error('Error loading personal prayers in ngOnInit:', error);
     });
     
+    // Load planning center list data if user has a mapped list
+    this.loadPlanningCenterListData().catch(error => {
+      console.error('Error loading planning center list data:', error);
+    });
+    
     // Subscribe to admin status - with cleanup
     this.adminAuthService.isAdmin$
       .pipe(takeUntil(this.destroy$))
@@ -695,9 +791,12 @@ export class HomeComponent implements OnInit, OnDestroy {
     } else if (this.activeFilter === 'prompts') {
       this.filters = { searchTerm: this.filters.searchTerm };
       this.prayerService.applyFilters({ search: '' });
+    } else if (this.activeFilter === 'planning_center_list') {
+      this.filters = { searchTerm: this.filters.searchTerm };
+      this.prayerService.applyFilters({ search: this.filters.searchTerm });
     } else {
       // Default filters for 'current', 'answered', 'total'
-      this.filters = { status: this.activeFilter === 'total' ? undefined : this.activeFilter, searchTerm: this.filters.searchTerm };
+      this.filters = { status: this.activeFilter === 'total' ? undefined : (this.activeFilter as 'current' | 'answered'), searchTerm: this.filters.searchTerm };
       this.prayerService.applyFilters(this.filters);
     }
   }
@@ -735,6 +834,141 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.cdr.detectChanges();
     } catch (error) {
       console.error('Error loading personal prayers:', error);
+    }
+  }
+
+  private async loadPlanningCenterListData(): Promise<void> {
+    try {
+      // Get current user from session
+      const userSession = this.userSessionService.getCurrentSession();
+      if (!userSession?.email) {
+        return;
+      }
+
+      // Fetch the user's planning center list ID from email_subscribers
+      const { data, error } = await this.supabaseService.client
+        .from('email_subscribers')
+        .select('planning_center_list_id')
+        .eq('email', userSession.email)
+        .maybeSingle();
+
+      if (error || !data?.planning_center_list_id) {
+        return; // User doesn't have a mapped list
+      }
+
+      this.planningCenterListId = data.planning_center_list_id;
+      this.loadingPlanningCenterList = true;
+      this.cdr.markForCheck();
+
+      // Try to get the list name from localStorage if available (from previous loads)
+      const listNameKey = `planningCenterListName_${this.planningCenterListId}`;
+      const cachedListName = localStorage.getItem(listNameKey);
+      if (cachedListName) {
+        this.planningCenterListName = cachedListName;
+      }
+
+      // Check localStorage for cached members with timestamp
+      const cacheKey = `planningCenterMembers_${this.planningCenterListId}`;
+      const cachedData = localStorage.getItem(cacheKey);
+      const cacheTimestampKey = `${cacheKey}_timestamp`;
+      const cachedTimestamp = localStorage.getItem(cacheTimestampKey);
+
+      const now = Date.now();
+      const thirtyMinutesMs = 30 * 60 * 1000;
+
+      // Check if cache is valid (less than 30 minutes old)
+      if (cachedData && cachedTimestamp) {
+        const age = now - parseInt(cachedTimestamp, 10);
+        if (age < thirtyMinutesMs) {
+          // Cache is still valid
+          try {
+            const cached = JSON.parse(cachedData);
+            this.planningCenterListMembers = cached.members || [];
+            this.planningCenterListName = cached.name || null;
+            this.loadingPlanningCenterList = false;
+            this.cdr.markForCheck();
+            return;
+          } catch (e) {
+            console.error('Error parsing cached planning center data:', e);
+          }
+        }
+      }
+
+      // Cache miss or expired - fetch from API
+      const result = await fetchListMembers(
+        this.planningCenterListId!,
+        environment.supabaseUrl,
+        environment.supabaseAnonKey
+      );
+
+      if (result.error) {
+        console.error('Error fetching planning center list members:', result.error);
+        this.loadingPlanningCenterList = false;
+        this.cdr.markForCheck();
+        return;
+      }
+
+      // result.members now returns Array<{id: string, name: string}>
+      this.planningCenterListMembers = result.members;
+      
+      // Store in localStorage with timestamp
+      localStorage.setItem(cacheKey, JSON.stringify({
+        members: result.members,
+        name: this.planningCenterListName
+      }));
+      localStorage.setItem(cacheTimestampKey, String(now));
+      if (this.planningCenterListName) {
+        localStorage.setItem(listNameKey, this.planningCenterListName);
+      }
+
+      console.log(`[Planning Center] Loaded ${result.members.length} members from list ${this.planningCenterListId}:`, result.members);
+
+      this.loadingPlanningCenterList = false;
+      this.cdr.markForCheck();
+    } catch (error) {
+      console.error('Error loading planning center list data:', error);
+      this.loadingPlanningCenterList = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  private async loadPlanningCenterMemberPrayers(): Promise<void> {
+    try {
+      this.loadingMemberPrayers = true;
+      this.cdr.markForCheck();
+
+      // Generate virtual prayer cards for each Planning Center member with their updates
+      this.filteredPlanningCenterPrayers = await Promise.all(
+        this.planningCenterListMembers.map(async (member, index) => {
+          // Fetch any existing updates for this member using their person_id
+          const updates = await this.prayerService.getMemberPrayerUpdates(member.id);
+          
+          return {
+            id: `pc-member-${member.id}`,
+            title: `Prayer for ${member.name}`,
+            description: '',
+            status: 'current' as const,
+            requester: 'Planning Center',
+            prayer_for: member.name,
+            email: '',
+            date_requested: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            updates: updates,
+            approval_status: 'approved' as const,
+            is_anonymous: false,
+            type: 'prayer' as const,
+          };
+        })
+      );
+
+      this.loadingMemberPrayers = false;
+      this.cdr.markForCheck();
+    } catch (error) {
+      console.error('Error loading planning center member prayers:', error);
+      this.loadingMemberPrayers = false;
+      this.filteredPlanningCenterPrayers = [];
+      this.cdr.markForCheck();
     }
   }
 
@@ -782,7 +1016,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     });
   }
 
-  setFilter(filter: 'current' | 'answered' | 'total' | 'prompts' | 'personal'): void {
+  setFilter(filter: 'current' | 'answered' | 'total' | 'prompts' | 'personal' | 'planning_center_list'): void {
     this.activeFilter = filter;
     
     if (filter === 'prompts') {
@@ -797,6 +1031,11 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.prayerService.applyFilters({ search: this.filters.searchTerm });
       // Ensure personal prayers are loaded and categories are extracted
       this.loadPersonalPrayers();
+    } else if (filter === 'planning_center_list') {
+      // Load prayers for planning center list members
+      this.filters = { searchTerm: this.filters.searchTerm };
+      this.prayerService.applyFilters({ search: this.filters.searchTerm });
+      this.loadPlanningCenterMemberPrayers();
     } else if (filter === 'total') {
       this.filters = { searchTerm: this.filters.searchTerm };
       this.prayerService.applyFilters({
@@ -889,8 +1128,41 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   async addUpdate(updateData: any): Promise<void> {
     try {
-      // User is logged in - submit directly without verification
-      await this.submitUpdate(updateData);
+      // Check if this is a member card (synthetic prayer for Planning Center member)
+      if (updateData.prayer_id?.startsWith('pc-member-')) {
+        // Extract person_id from prayer_id format: pc-member-{person_id}
+        const personId = updateData.prayer_id.split('-').slice(2).join('-');
+        // Find the member to get their current name
+        const member = this.planningCenterListMembers.find(m => m.id === personId);
+        
+        if (!member) {
+          console.error('Member not found for person_id:', personId);
+          this.toastService.error('Member not found');
+          return;
+        }
+
+        const userSession = this.userSessionService.getCurrentSession();
+        const author = userSession?.fullName || 'Anonymous';
+        const authorEmail = userSession?.email || '';
+
+        const success = await this.prayerService.addMemberPrayerUpdate(
+          personId,
+          member.name,
+          updateData.content,
+          author,
+          authorEmail
+        );
+
+        if (success) {
+          // Clear the cache for this member's updates so they'll be refetched
+          this.prayerService.clearMemberPrayerUpdatesCache(personId);
+          // Reload the member prayers to show the new update
+          await this.loadPlanningCenterMemberPrayers();
+        }
+      } else {
+        // User is logged in - submit regular prayer update
+        await this.submitUpdate(updateData);
+      }
     } catch (error) {
       console.error('Error adding update:', error);
       this.toastService.error('Failed to submit update');
@@ -929,19 +1201,34 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 
-  async deleteUpdate(updateId: string): Promise<void> {
+  async deleteUpdate(event: {updateId: string; prayerId: string}): Promise<void> {
     try {
-      // User is logged in - submit directly without verification
-      await this.prayerService.deleteUpdate(updateId);
-      this.toastService.success('Update deleted successfully');
+      const {updateId, prayerId} = event;
+      
+      // Check if this is a member update (prayerId starts with 'pc-member-')
+      if (prayerId.startsWith('pc-member-')) {
+        // Extract person_id from prayerId (format: 'pc-member-{person_id}')
+        const personId = prayerId.substring('pc-member-'.length);
+        
+        // Delete from member_prayer_updates table and clear cache
+        const success = await this.prayerService.deleteMemberPrayerUpdate(updateId, personId);
+        if (success) {
+          // Reload all member prayers to show immediate change
+          await this.loadPlanningCenterMemberPrayers();
+        }
+      } else {
+        // Regular prayer update - delete from prayer_updates table
+        await this.prayerService.deleteUpdate(updateId);
+      }
     } catch (error) {
       console.error('Error deleting update:', error);
       this.toastService.error('Failed to delete update');
     }
   }
 
-  async deletePersonalUpdate(updateId: string): Promise<void> {
+  async deletePersonalUpdate(event: {updateId: string; prayerId: string}): Promise<void> {
     try {
+      const {updateId} = event;
       const success = await this.prayerService.deletePersonalPrayerUpdate(updateId);
       if (success) {
         // Service updates cache and observable - just reload local component state
@@ -1254,6 +1541,20 @@ export class HomeComponent implements OnInit, OnDestroy {
     return filtered;
   }
 
+  getFilteredPlanningCenterPrayers(prayers: PrayerRequest[]): PrayerRequest[] {
+    // Apply search term filter if present
+    if (!this.filters.searchTerm || !this.filters.searchTerm.trim()) {
+      return this.filteredPlanningCenterPrayers;
+    }
+
+    const searchLower = this.filters.searchTerm.toLowerCase().trim();
+    return this.filteredPlanningCenterPrayers.filter(p =>
+      p.prayer_for.toLowerCase().includes(searchLower) ||
+      p.description.toLowerCase().includes(searchLower) ||
+      p.title.toLowerCase().includes(searchLower)
+    );
+  }
+
   formatDate(dateString: string): string {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
@@ -1376,5 +1677,21 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
     // Reload personal prayers to reflect the changes
     this.loadPersonalPrayers();
+  }
+
+  openEditMemberUpdateModal(event: {update: PrayerUpdate, prayerId: string}): void {
+    this.editingMemberUpdate = event.update;
+    this.editingMemberUpdatePrayerId = event.prayerId;
+    this.showEditMemberUpdate = true;
+    this.cdr.markForCheck();
+  }
+
+  onMemberUpdateSaved(): void {
+    this.showEditMemberUpdate = false;
+    this.editingMemberUpdate = null;
+    this.editingMemberUpdatePrayerId = '';
+    this.cdr.markForCheck();
+    // Reload member prayers to reflect the changes
+    this.loadPlanningCenterMemberPrayers();
   }
 }

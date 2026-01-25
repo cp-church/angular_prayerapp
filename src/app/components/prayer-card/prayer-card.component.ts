@@ -38,7 +38,7 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
               {{ prayer.category }}
             </span>
             }
-            @if (!isPersonal) {
+            @if (!isPersonal && !prayer.id.startsWith('pc-member-')) {
             <span class="text-sm text-gray-600 dark:text-gray-400">
               Requested by: <span class="font-medium text-gray-800 dark:text-gray-100">{{ displayRequester() }}</span>
             </span>
@@ -77,7 +77,7 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
       </div>
 
       <!-- Badge in top-right corner -->
-      @if ((prayerBadge$ | async) && (badgeService.getBadgeFunctionalityEnabled$() | async) && activeFilter !== 'total' && !isPersonal) {
+      @if ((prayerBadge$ | async) && (badgeService.getBadgeFunctionalityEnabled$() | async) && activeFilter !== 'total' && !isPersonal && !prayer.id.startsWith('pc-member-')) {
         <button
           (click)="markPrayerAsRead()"
           class="absolute -top-2 -right-2 inline-flex items-center justify-center w-6 h-6 bg-[#39704D] dark:bg-[#39704D] text-white rounded-full text-xs font-bold hover:bg-[#2d5a3f] dark:hover:bg-[#2d5a3f] focus:outline-none focus:ring-2 focus:ring-[#39704D] focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors"
@@ -88,11 +88,12 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
         </button>
       }
 
-      <!-- Centered timestamp -->
+      <!-- Centered timestamp (hidden for Planning Center member cards) -->
+      @if (!prayer.id.startsWith('pc-member-')) {
       <span class="absolute left-1/2 top-4 transform -translate-x-1/2 -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400">
         {{ formatDate(prayer.created_at) }}
       </span>
-
+      }
       <!-- Prayer Description -->
       <p class="text-gray-600 dark:text-gray-300 mb-4">{{ prayer.description }}</p>
 
@@ -123,7 +124,7 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
             class="w-full px-3 py-2 text-sm border border-[#39704D] dark:border-[#39704D] rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#39704D] h-20"
             required
           ></textarea>
-          @if (!isPersonal) {
+          @if (!isPersonal && !prayer.id.startsWith('pc-member-')) {
           <div class="flex items-center gap-2">
             <input
               type="checkbox"
@@ -233,7 +234,7 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
           >
             <div class="relative mb-2">
               <div class="flex items-center">
-                @if (!isPersonal) {
+                @if (!isPersonal && !prayer.id.startsWith('pc-member-')) {
                 <span class="text-sm text-gray-600 dark:text-gray-400">
                   Updated by: <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ update.author }}</span>
                 </span>
@@ -243,6 +244,19 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
                   <button
                     (click)="editPersonalUpdate.emit({update: update, prayerId: prayer.id})"
                     aria-label="Edit prayer update"
+                    title="Edit update"
+                    class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                  </button>
+                  }
+                  @if (prayer.id.startsWith('pc-member-')) {
+                  <button
+                    (click)="editMemberUpdate.emit({update: update, prayerId: prayer.id})"
+                    aria-label="Edit member update"
                     title="Edit update"
                     class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md"
                   >
@@ -268,12 +282,12 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
                 </div>
               </div>
               <span class="absolute left-1/2 top-0 transform -translate-x-1/2 -translate-y-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                {{ formatDate(update.created_at) }}
+                {{ getUpdateDisplayDate(update) }}
               </span>
             </div>
             
             <!-- Badge in top-right corner -->
-            @if ((updateBadges$.get(update.id) | async) && (badgeService.getBadgeFunctionalityEnabled$() | async) && activeFilter !== 'total' && !isPersonal) {
+            @if ((updateBadges$.get(update.id) | async) && (badgeService.getBadgeFunctionalityEnabled$() | async) && activeFilter !== 'total' && !isPersonal && !prayer.id.startsWith('pc-member-')) {
               <button
                 (click)="markUpdateAsRead(update.id)"
                 class="absolute -top-2 -right-2 inline-flex items-center justify-center w-6 h-6 bg-[#39704D] dark:bg-[#39704D] text-white rounded-full text-xs font-bold hover:bg-[#2d5a3f] dark:hover:bg-[#2d5a3f] focus:outline-none focus:ring-2 focus:ring-[#39704D] focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors"
@@ -361,15 +375,16 @@ export class PrayerCardComponent implements OnInit, OnChanges, OnDestroy {
   @Input() dragHandle: TemplateRef<any> | null = null;
   @Input() deletionsAllowed: 'everyone' | 'original-requestor' | 'admin-only' = 'everyone';
   @Input() updatesAllowed: 'everyone' | 'original-requestor' | 'admin-only' = 'everyone';
-  @Input() activeFilter: 'current' | 'answered' | 'archived' | 'total' | 'prompts' | 'personal' = 'total';
+  @Input() activeFilter: 'current' | 'answered' | 'archived' | 'total' | 'prompts' | 'personal' | 'planning_center_list' = 'total';
   
   @Output() delete = new EventEmitter<string>();
   @Output() addUpdate = new EventEmitter<any>();
-  @Output() deleteUpdate = new EventEmitter<string>();
+  @Output() deleteUpdate = new EventEmitter<{updateId: string; prayerId: string}>();
   @Output() requestDeletion = new EventEmitter<any>();
   @Output() requestUpdateDeletion = new EventEmitter<any>();
   @Output() editPersonalPrayer = new EventEmitter<PrayerRequest>();
   @Output() editPersonalUpdate = new EventEmitter<any>();
+  @Output() editMemberUpdate = new EventEmitter<any>();
 
   prayerBadge$: Observable<boolean> | null = null;
   updateBadges$: Map<string, BehaviorSubject<boolean>> = new Map();
@@ -563,6 +578,8 @@ export class PrayerCardComponent implements OnInit, OnChanges, OnDestroy {
   // original-requestor: only prayer creator can delete
   // everyone: all users can request deletion
   showDeleteButton(): boolean {
+    // Don't show delete button for synthetic Planning Center member cards
+    if (this.prayer.id?.startsWith('pc-member-')) return false;
     // Personal prayers always allow deletion by owner
     if (this.isPersonal) return true;
     if (this.isAdmin) return true;
@@ -626,7 +643,7 @@ export class PrayerCardComponent implements OnInit, OnChanges, OnDestroy {
     const updateId = this.updateConfirmationId;
     this.showUpdateConfirmationDialog = false;
     this.updateConfirmationId = null;
-    this.deleteUpdate.emit(updateId);
+    this.deleteUpdate.emit({updateId, prayerId: this.prayer.id});
   }
 
   onCancelUpdateDelete(): void {
@@ -728,6 +745,12 @@ export class PrayerCardComponent implements OnInit, OnChanges, OnDestroy {
       hour: '2-digit',
       minute: '2-digit'
     });
+  }
+
+  getUpdateDisplayDate(update: any): string {
+    // Show updated_at if it exists and is different from created_at, otherwise show created_at
+    const dateToShow = update.updated_at || update.created_at;
+    return this.formatDate(dateToShow);
   }
 
   private resetUpdateForm(): void {

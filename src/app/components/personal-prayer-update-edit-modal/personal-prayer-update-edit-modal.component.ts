@@ -84,6 +84,7 @@ export class PersonalPrayerUpdateEditModalComponent implements OnInit, OnChanges
   @Input() isOpen = false;
   @Input() update: PrayerUpdate | null = null;
   @Input() prayerId: string = '';
+  @Input() isMemberUpdate = false;
   @Output() close = new EventEmitter<void>();
   @Output() save = new EventEmitter<Partial<PrayerUpdate>>();
 
@@ -120,11 +121,23 @@ export class PersonalPrayerUpdateEditModalComponent implements OnInit, OnChanges
         content: this.formData.content
       };
 
-      const success = await this.prayerService.updatePersonalPrayerUpdate(
-        this.update.id,
-        this.prayerId,
-        updates
-      );
+      let success: boolean;
+      
+      if (this.isMemberUpdate) {
+        // For member updates, extract person_id from prayerId
+        const personId = this.prayerId.substring('pc-member-'.length);
+        success = await this.prayerService.updateMemberPrayerUpdate(
+          this.update.id,
+          personId,
+          updates
+        );
+      } else {
+        success = await this.prayerService.updatePersonalPrayerUpdate(
+          this.update.id,
+          this.prayerId,
+          updates
+        );
+      }
 
       if (success) {
         this.toast.success('Prayer update saved successfully');

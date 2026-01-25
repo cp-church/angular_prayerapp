@@ -23,6 +23,7 @@ import { BackupStatusComponent } from '../../components/backup-status/backup-sta
 import { SecurityPolicySettingsComponent } from '../../components/security-policy-settings/security-policy-settings.component';
 import { EmailVerificationSettingsComponent } from '../../components/email-verification-settings/email-verification-settings.component';
 import { GitHubSettingsComponent } from '../../components/github-settings/github-settings.component';
+import { PlanningCenterListMapperComponent } from '../../components/planning-center-list-mapper/planning-center-list-mapper.component';
 
 type AdminTab = 'prayers' | 'updates' | 'deletions' | 'accounts' | 'settings';
 type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
@@ -49,7 +50,8 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
     BackupStatusComponent,
     SecurityPolicySettingsComponent,
     EmailVerificationSettingsComponent,
-    GitHubSettingsComponent
+    GitHubSettingsComponent,
+    PlanningCenterListMapperComponent
   ],
   template: `
     <div class="w-full min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors flex flex-col">
@@ -641,6 +643,9 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
                 <div class="mb-4">
                 <app-prayer-types-manager (onSave)="handlePrayerTypesManagerSave()"></app-prayer-types-manager>
               </div>
+                <div class="mb-4">
+                  <app-planning-center-list-mapper (onSave)="handlePlanningCenterListMapperSave()"></app-planning-center-list-mapper>
+                </div>
               </div>
             }
 
@@ -934,6 +939,11 @@ export class AdminComponent implements OnInit, OnDestroy {
   handlePrayerTypesManagerSave() {
     // Could refresh data or show notification
     console.log('Prayer types manager action completed');
+  }
+
+  handlePlanningCenterListMapperSave() {
+    // Could refresh data or show notification
+    console.log('Planning Center list mapping action completed');
   }
 
   handleEmailSettingsSave() {
