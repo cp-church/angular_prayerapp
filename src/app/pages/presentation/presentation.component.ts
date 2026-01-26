@@ -5,6 +5,8 @@ import { SupabaseService } from '../../services/supabase.service';
 import { PrayerService } from '../../services/prayer.service';
 import { CacheService } from '../../services/cache.service';
 import { ThemeService } from '../../services/theme.service';
+import { fetchListMembers } from '../../../lib/planning-center';
+import { environment } from '../../../environments/environment';
 import { PresentationToolbarComponent } from '../../components/presentation-toolbar/presentation-toolbar.component';
 import { PrayerDisplayCardComponent } from '../../components/prayer-display-card/prayer-display-card.component';
 import { PresentationSettingsModalComponent } from '../../components/presentation-settings-modal/presentation-settings-modal.component';
@@ -18,11 +20,13 @@ interface Prayer {
   status: string;
   created_at: string;
   category?: string;
+  prayer_image?: string | null;
   prayer_updates?: Array<{
     id: string;
     content: string;
     author: string;
     created_at: string;
+    is_answered?: boolean;
   }>;
 }
 
@@ -34,7 +38,7 @@ interface PrayerPrompt {
   created_at: string;
 }
 
-type ContentType = 'prayers' | 'prompts' | 'personal' | 'all';
+type ContentType = 'prayers' | 'prompts' | 'personal' | 'members' | 'all';
 type ThemeOption = 'light' | 'dark' | 'system';
 type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
 
@@ -54,7 +58,7 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
         <div class="flex flex-col items-center gap-4">
           <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           <div class="text-gray-900 dark:text-white text-xl">
-            Loading {{ contentType === 'prayers' ? 'prayers' : contentType === 'prompts' ? 'prompts' : contentType === 'personal' ? 'personal prayers' : 'all content' }}...
+            Loading {{ contentType === 'prayers' ? 'prayers' : contentType === 'prompts' ? 'prompts' : contentType === 'personal' ? 'personal prayers' : contentType === 'members' ? 'member prayers' : 'all content' }}...
           </div>
         </div>
       </div>
@@ -85,6 +89,7 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
             {{ contentType === 'prayers' ? 'No prayers match your current filters' : 
                contentType === 'prompts' ? 'No prayer prompts available' :
                contentType === 'personal' ? 'No personal prayers available' :
+               contentType === 'members' ? 'No member updates available' :
                'No content available' }}
           </p>
           <button
@@ -123,6 +128,7 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
         [statusFiltersAnswered]="statusFilters.answered"
         [prayerTimerMinutes]="prayerTimerMinutes"
         [availableCategories]="uniquePersonalCategories"
+        [hasMappedList]="hasMembers"
         [selectedCategories]="selectedPersonalCategories"
         (close)="showSettings = false"
         (themeChange)="handleThemeChange($event)"
@@ -172,6 +178,11 @@ export class PresentationComponent implements OnInit, OnDestroy {
   prayers: Prayer[] = [];
   prompts: PrayerPrompt[] = [];
   personalPrayers: any[] = [];
+  planningCenterListMembers: Array<{ id: string; name: string; avatar?: string | null }> = [];
+  hasPlanningCenterList = false;
+  get hasMembers(): boolean {
+    return this.hasPlanningCenterList || (this.planningCenterListMembers && this.planningCenterListMembers.length > 0);
+  }
   currentIndex = 0;
   isPlaying = false;
   displayDuration = 10;
@@ -220,8 +231,11 @@ export class PresentationComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadTheme();
-    this.loadContent();
-    this.setupControlsAutoHide();
+    // Load Planning Center members before setting up content
+    this.loadPlanningCenterMembers().then(() => {
+      this.loadContent();
+      this.setupControlsAutoHide();
+    });
   }
 
   ngOnDestroy(): void {
@@ -354,6 +368,79 @@ export class PresentationComponent implements OnInit, OnDestroy {
     }
   }
 
+  async loadPlanningCenterMembers(): Promise<void> {
+    try {
+      // Check cache first for immediate UI feedback
+      const cached = this.cacheService.get<{
+        members: Array<{id: string, name: string, avatar?: string | null}>;
+      }>('planningCenterListData');
+      
+      if (cached?.members?.length) {
+        console.log('[Presentation] DEBUG: Using cached Planning Center members');
+        this.planningCenterListMembers = cached.members;
+        this.hasPlanningCenterList = true;
+        this.cdr.markForCheck();
+      }
+
+      const { data: authData } = await this.supabase.client.auth.getUser();
+      const user = authData?.user;
+      
+      if (!user?.email) {
+        console.warn('[Presentation] DEBUG: No user email found for Planning Center member lookup');
+        if (!this.hasPlanningCenterList) {
+          this.planningCenterListMembers = [];
+          this.hasPlanningCenterList = false;
+        }
+        return;
+      }
+
+      console.log('[Presentation] DEBUG: Looking up subscriber for:', user.email);
+
+      // Get user's email subscriber record with their planning_center_list_id
+      const { data: subscriber, error: subError } = await this.supabase.client
+        .from('email_subscribers')
+        .select('planning_center_list_id')
+        .eq('email', user.email)
+        .maybeSingle();
+
+      if (subError) {
+        console.error('[Presentation] DEBUG: Error fetching subscriber:', subError);
+        return;
+      }
+
+      if (!subscriber?.planning_center_list_id) {
+        console.log('[Presentation] DEBUG: No Planning Center list ID found for user');
+        this.hasPlanningCenterList = false;
+        this.planningCenterListMembers = [];
+        this.cdr.markForCheck();
+        return;
+      }
+
+      console.log('[Presentation] DEBUG: Found list ID:', subscriber.planning_center_list_id);
+      this.hasPlanningCenterList = true;
+      this.cdr.markForCheck();
+
+      // Only fetch if members aren't already loaded from cache
+      if (!this.planningCenterListMembers.length) {
+        const result = await fetchListMembers(
+          subscriber.planning_center_list_id,
+          environment.supabaseUrl,
+          environment.supabaseAnonKey
+        );
+        
+        if (!result.error && result.members) {
+          this.planningCenterListMembers = result.members;
+          console.log(`[Presentation] DEBUG: Loaded ${this.planningCenterListMembers.length} members from API`);
+          this.cdr.markForCheck();
+        } else if (result.error) {
+          console.error('[Presentation] DEBUG: API Error:', result.error);
+        }
+      }
+    } catch (error) {
+      console.error('[Presentation] DEBUG: Unexpected error:', error);
+    }
+  }
+
   async loadContent(): Promise<void> {
     this.loading = true;
     this.cdr.markForCheck();
@@ -365,6 +452,8 @@ export class PresentationComponent implements OnInit, OnDestroy {
         await this.fetchPrompts();
       } else if (this.contentType === 'personal') {
         await this.fetchPersonalPrayers();
+      } else if (this.contentType === 'members') {
+        await this.fetchMemberPrayers();
       } else {
         await Promise.all([this.fetchPrayers(), this.fetchPrompts(), this.fetchPersonalPrayers()]);
       }
@@ -584,6 +673,48 @@ export class PresentationComponent implements OnInit, OnDestroy {
     }
   }
 
+  async fetchMemberPrayers(): Promise<void> {
+    try {
+      if (this.planningCenterListMembers.length === 0) {
+        this.prayers = [];
+        this.cdr.markForCheck();
+        return;
+      }
+
+      // Fetch prayers for all Planning Center members
+      this.prayers = await Promise.all(
+        this.planningCenterListMembers.map(async (member) => {
+          const updates = await this.prayerService.getMemberPrayerUpdates(member.id);
+          return {
+            id: `pc-member-${member.id}`,
+            prayer_for: member.name,
+            title: member.name,
+            description: `Updates from ${member.name}`,
+            requester: member.name,
+            content: '',
+            status: 'current',
+            category: undefined,
+            created_at: new Date().toISOString(),
+            approval_status: 'approved',
+            prayer_updates: updates || [],
+            prayer_image: member.avatar,
+            added_by: 'Planning Center Member'
+          };
+        })
+      );
+
+      if (this.randomize) {
+        this.shuffleItems();
+      }
+
+      this.cdr.markForCheck();
+    } catch (error) {
+      console.error('Error fetching member prayers:', error);
+      this.prayers = [];
+      this.cdr.markForCheck();
+    }
+  }
+
   get items(): any[] {
     if (this.contentType === 'prayers') return this.prayers;
     if (this.contentType === 'prompts') return this.prompts;
@@ -595,6 +726,9 @@ export class PresentationComponent implements OnInit, OnDestroy {
         );
       }
       return this.personalPrayers;
+    }
+    if (this.contentType === 'members') {
+      return this.prayers;
     }
     return [...this.prayers, ...this.prompts, ...this.getFilteredPersonalPrayers()];
   }
