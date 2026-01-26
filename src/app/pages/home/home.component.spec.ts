@@ -2248,7 +2248,8 @@ describe('HomeComponent', () => {
   });
 
   describe('Private member update reloading', () => {
-    it('onMemberUpdateSaved should handle missing member', (done) => {
+    it('onMemberUpdateSaved should handle missing member', async () => {
+      vi.useFakeTimers();
       const comp = new HomeComponent(
         mocks.prayerService,
         mocks.promptService,
@@ -2271,13 +2272,13 @@ describe('HomeComponent', () => {
 
       comp.onMemberUpdateSaved();
 
-      setTimeout(() => {
-        expect(comp.editingMemberUpdate).toBeNull();
-        done();
-      }, 150);
+      await vi.advanceTimersByTimeAsync(150);
+      expect(comp.editingMemberUpdate).toBeNull();
+      vi.useRealTimers();
     });
 
-    it('onMemberUpdateSaved should handle missing prayer card', (done) => {
+    it('onMemberUpdateSaved should handle missing prayer card', async () => {
+      vi.useFakeTimers();
       const comp = new HomeComponent(
         mocks.prayerService,
         mocks.promptService,
@@ -2307,10 +2308,9 @@ describe('HomeComponent', () => {
 
       comp.onMemberUpdateSaved();
 
-      setTimeout(() => {
-        expect(comp.editingMemberUpdate).toBeNull();
-        done();
-      }, 150);
+      await vi.advanceTimersByTimeAsync(150);
+      expect(comp.editingMemberUpdate).toBeNull();
+      vi.useRealTimers();
     });
 
     it('onMemberUpdateSaved should handle getMemberPrayerUpdates error', (done) => {
