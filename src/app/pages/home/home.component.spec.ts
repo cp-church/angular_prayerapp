@@ -2131,7 +2131,8 @@ describe('HomeComponent', () => {
       expect(comp.showEditMemberUpdate).toBe(true);
     });
 
-    it('onMemberUpdateSaved should clear state and reload member updates', (done) => {
+    it('onMemberUpdateSaved should clear state and reload member updates', async () => {
+      vi.useFakeTimers();
       const comp = new HomeComponent(
         mocks.prayerService,
         mocks.promptService,
@@ -2166,10 +2167,9 @@ describe('HomeComponent', () => {
       expect(comp.editingMemberUpdatePrayerId).toBe('');
 
       // Wait for async operations
-      setTimeout(() => {
-        expect(comp.filteredPlanningCenterPrayers[0].updates).toHaveLength(1);
-        done();
-      }, 150);
+      await vi.advanceTimersByTimeAsync(150);
+      expect(comp.filteredPlanningCenterPrayers[0].updates).toHaveLength(1);
+      vi.useRealTimers();
     });
   });
 
@@ -2313,7 +2313,8 @@ describe('HomeComponent', () => {
       vi.useRealTimers();
     });
 
-    it('onMemberUpdateSaved should handle getMemberPrayerUpdates error', (done) => {
+    it('onMemberUpdateSaved should handle getMemberPrayerUpdates error', async () => {
+      vi.useFakeTimers();
       const comp = new HomeComponent(
         mocks.prayerService,
         mocks.promptService,
@@ -2345,11 +2346,10 @@ describe('HomeComponent', () => {
 
       comp.onMemberUpdateSaved();
 
-      setTimeout(() => {
-        expect(consoleSpy).toHaveBeenCalled();
-        consoleSpy.mockRestore();
-        done();
-      }, 150);
+      await vi.advanceTimersByTimeAsync(150);
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+      vi.useRealTimers();
     });
   });
 
@@ -2765,7 +2765,8 @@ describe('HomeComponent', () => {
   });
 
   describe('Error handling in member update reload', () => {
-    it('should handle detectChanges errors gracefully', (done) => {
+    it('should handle detectChanges errors gracefully', async () => {
+      vi.useFakeTimers();
       const comp = new HomeComponent(
         mocks.prayerService,
         mocks.promptService,
@@ -2803,11 +2804,10 @@ describe('HomeComponent', () => {
 
       comp.onMemberUpdateSaved();
 
-      setTimeout(() => {
-        expect(consoleSpy).toHaveBeenCalled();
-        consoleSpy.mockRestore();
-        done();
-      }, 150);
+      await vi.advanceTimersByTimeAsync(150);
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+      vi.useRealTimers();
     });
   });
 
