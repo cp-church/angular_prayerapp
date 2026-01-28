@@ -209,17 +209,17 @@ describe('PresentationComponent', () => {
       
       await component.fetchMemberPrayers();
       
-      expect(component.prayers.length).toBe(1);
-      expect(component.prayers[0].prayer_for).toBe('Member 1');
-      expect(component.prayers[0].prayer_image).toBe('url');
-      expect((component.prayers[0] as any).prayer_updates.length).toBe(1);
+      expect(component.memberPrayers.length).toBe(1);
+      expect(component.memberPrayers[0].prayer_for).toBe('Member 1');
+      expect(component.memberPrayers[0].prayer_image).toBe('url');
+      expect((component.memberPrayers[0] as any).prayer_updates.length).toBe(1);
     });
 
     it('items getter returns member prayers when specified', () => {
       component.contentType = 'members';
-      component.prayers = [{ id: 'pc-member-1', prayer_for: 'Member' } as any];
+      component.memberPrayers = [{ id: 'pc-member-1', prayer_for: 'Member' } as any];
       
-      expect(component.items).toEqual(component.prayers);
+      expect(component.items).toEqual(component.memberPrayers);
     });
 
     it('handleContentTypeChange fetches members when switched to "members"', async () => {

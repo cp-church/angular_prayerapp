@@ -178,6 +178,8 @@ export class PresentationComponent implements OnInit, OnDestroy {
   prayers: Prayer[] = [];
   prompts: PrayerPrompt[] = [];
   personalPrayers: any[] = [];
+  memberPrayers: any[] = [];
+  combinedShuffledItems: any[] = [];
   planningCenterListMembers: Array<{ id: string; name: string; avatar?: string | null }> = [];
   hasPlanningCenterList = false;
   get hasMembers(): boolean {
@@ -455,7 +457,12 @@ export class PresentationComponent implements OnInit, OnDestroy {
       } else if (this.contentType === 'members') {
         await this.fetchMemberPrayers();
       } else {
-        await Promise.all([this.fetchPrayers(), this.fetchPrompts(), this.fetchPersonalPrayers()]);
+        // For 'all' content type, fetch member prayers if they have a members list
+        const fetchPromises = [this.fetchPrayers(), this.fetchPrompts(), this.fetchPersonalPrayers()];
+        if (this.hasMembers) {
+          fetchPromises.push(this.fetchMemberPrayers());
+        }
+        await Promise.all(fetchPromises);
       }
       
       if (this.randomize) {
@@ -493,6 +500,9 @@ export class PresentationComponent implements OnInit, OnDestroy {
         if (statuses.length > 0) {
           query = query.in('status', statuses);
         }
+      } else if (this.contentType === 'all') {
+        // For 'all' content type, exclude archived prayers
+        query = query.in('status', ['current', 'answered']);
       }
       
       // Don't filter by date at database level - we need all prayers to check their updates
@@ -676,13 +686,13 @@ export class PresentationComponent implements OnInit, OnDestroy {
   async fetchMemberPrayers(): Promise<void> {
     try {
       if (this.planningCenterListMembers.length === 0) {
-        this.prayers = [];
+        this.memberPrayers = [];
         this.cdr.markForCheck();
         return;
       }
 
       // Fetch prayers for all Planning Center members
-      this.prayers = await Promise.all(
+      this.memberPrayers = await Promise.all(
         this.planningCenterListMembers.map(async (member) => {
           const updates = await this.prayerService.getMemberPrayerUpdates(member.id);
           return {
@@ -710,7 +720,7 @@ export class PresentationComponent implements OnInit, OnDestroy {
       this.cdr.markForCheck();
     } catch (error) {
       console.error('Error fetching member prayers:', error);
-      this.prayers = [];
+      this.memberPrayers = [];
       this.cdr.markForCheck();
     }
   }
@@ -728,9 +738,13 @@ export class PresentationComponent implements OnInit, OnDestroy {
       return this.personalPrayers;
     }
     if (this.contentType === 'members') {
-      return this.prayers;
+      return this.memberPrayers;
     }
-    return [...this.prayers, ...this.prompts, ...this.getFilteredPersonalPrayers()];
+    // For 'all' content type, return shuffled combined items if randomize is enabled
+    if (this.randomize && this.combinedShuffledItems.length > 0) {
+      return this.combinedShuffledItems;
+    }
+    return [...this.prayers, ...this.prompts, ...this.getFilteredPersonalPrayers(), ...this.memberPrayers];
   }
 
   private getFilteredPersonalPrayers(): any[] {
@@ -922,10 +936,17 @@ export class PresentationComponent implements OnInit, OnDestroy {
       this.prompts = this.shuffleArray([...this.prompts]);
     } else if (this.contentType === 'personal') {
       this.personalPrayers = this.shuffleArray([...this.personalPrayers]);
+    } else if (this.contentType === 'members') {
+      this.memberPrayers = this.shuffleArray([...this.memberPrayers]);
+    } else if (this.contentType === 'all') {
+      // For 'all' content type, combine all items first, then shuffle them together
+      const combined = [...this.prayers, ...this.prompts, ...this.getFilteredPersonalPrayers(), ...this.memberPrayers];
+      this.combinedShuffledItems = this.shuffleArray(combined);
     } else {
       this.prayers = this.shuffleArray([...this.prayers]);
       this.prompts = this.shuffleArray([...this.prompts]);
       this.personalPrayers = this.shuffleArray([...this.personalPrayers]);
+      this.memberPrayers = this.shuffleArray([...this.memberPrayers]);
     }
   }
 
