@@ -1,5 +1,6 @@
 import { Component, Input, Output, EventEmitter, OnInit, OnChanges, ChangeDetectorRef, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { NgClass } from '@angular/common';
 import { Observable } from 'rxjs';
 import type { User } from '@supabase/supabase-js';
 import { PrayerService } from '../../services/prayer.service';
@@ -11,7 +12,7 @@ import { ToastService } from '../../services/toast.service';
 @Component({
   selector: 'app-prayer-form',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, NgClass],
   template: `
     @if (isOpen) {
     <div
@@ -114,38 +115,61 @@ import { ToastService } from '../../services/toast.service';
           </div>
           }
 
-          <!-- Personal vs Public Radio -->
+          <!-- Prayer Visibility Toggle Buttons -->
           <div class="space-y-2">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Prayer Visibility
             </label>
-            <div class="flex items-center space-x-4">
-              <div class="flex items-center">
-                <input
-                  type="radio"
-                  [(ngModel)]="formData.is_personal"
-                  [value]="false"
-                  name="visibility"
-                  id="visibility_public"
-                  class="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
-                />
-                <label for="visibility_public" class="ml-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                  Public Prayer (pending admin approval)
-                </label>
-              </div>
-              <div class="flex items-center">
-                <input
-                  type="radio"
-                  [(ngModel)]="formData.is_personal"
-                  [value]="true"
-                  name="visibility"
-                  id="visibility_personal"
-                  class="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
-                />
-                <label for="visibility_personal" class="ml-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                  Personal Prayer (private, no approval needed)
-                </label>
-              </div>
+            <div class="grid grid-cols-2 gap-3">
+              <!-- Public Prayer Button -->
+              <button
+                type="button"
+                (click)="formData.is_personal = false"
+                [class.ring-2]="!formData.is_personal"
+                class="relative py-3 px-4 rounded-lg border-2 transition-all font-medium"
+                [ngClass]="
+                  !formData.is_personal
+                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 ring-blue-500 dark:ring-blue-400 ring-offset-2 dark:ring-offset-gray-800'
+                    : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500'
+                "
+                aria-pressed="!formData.is_personal"
+                aria-label="Select public prayer - requires admin approval"
+              >
+                <div class="flex items-center justify-center gap-2">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                  </svg>
+                  <div class="text-left">
+                    <div class="font-semibold">Public Prayer</div>
+                    <div class="text-xs opacity-75">Pending admin approval</div>
+                  </div>
+                </div>
+              </button>
+
+              <!-- Personal Prayer Button -->
+              <button
+                type="button"
+                (click)="formData.is_personal = true"
+                [class.ring-2]="formData.is_personal"
+                class="relative py-3 px-4 rounded-lg border-2 transition-all font-medium"
+                [ngClass]="
+                  formData.is_personal
+                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 ring-blue-500 dark:ring-blue-400 ring-offset-2 dark:ring-offset-gray-800'
+                    : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500'
+                "
+                aria-pressed="formData.is_personal"
+                aria-label="Select personal prayer - private, no approval needed"
+              >
+                <div class="flex items-center justify-center gap-2">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                  </svg>
+                  <div class="text-left">
+                    <div class="font-semibold">Personal Prayer</div>
+                    <div class="text-xs opacity-75">Private, no approval</div>
+                  </div>
+                </div>
+              </button>
             </div>
           </div>
 
