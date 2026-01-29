@@ -99,22 +99,6 @@ import { ToastService } from '../../services/toast.service';
             ></textarea>
           </div>
 
-          <!-- Anonymous Checkbox - only show for public prayers -->
-          @if (!formData.is_personal) {
-          <div class="flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              [(ngModel)]="formData.is_anonymous"
-              name="is_anonymous"
-              id="is_anonymous"
-              class="w-4 h-4 text-blue-600 border-gray-900 dark:border-white rounded focus:ring-blue-500 bg-white dark:bg-gray-800"
-            />
-            <label for="is_anonymous" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
-              Make this prayer anonymous (your name will not be shown publicly)
-            </label>
-          </div>
-          }
-
           <!-- Prayer Visibility Toggle Buttons -->
           <div class="space-y-2">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -172,6 +156,22 @@ import { ToastService } from '../../services/toast.service';
               </button>
             </div>
           </div>
+
+          <!-- Anonymous Checkbox - only show for public prayers -->
+          @if (!formData.is_personal) {
+          <div class="flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              [(ngModel)]="formData.is_anonymous"
+              name="is_anonymous"
+              id="is_anonymous"
+              class="w-4 h-4 text-blue-600 border-gray-900 dark:border-white rounded focus:ring-blue-500 bg-white dark:bg-gray-800"
+            />
+            <label for="is_anonymous" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+              Make this prayer anonymous (your name will not be shown publicly)
+            </label>
+          </div>
+          }
 
           <!-- Category Field - only show for personal prayers -->
           @if (formData.is_personal) {
