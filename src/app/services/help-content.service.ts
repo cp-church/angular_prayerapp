@@ -612,7 +612,7 @@ export class HelpContentService {
           },
           {
             subtitle: 'Logout',
-            text: 'Click the logout button to sign out of your account. This will end your session and return you to the login screen.',
+            text: 'Click the logout button in the settings panel to sign out of your account. Alternatively, you can click on your email badge in the top-right corner of the header, which will prompt you with a confirmation dialog before logging out. Both methods will end your session and return you to the login screen.',
           },
         ],
         order: 10,

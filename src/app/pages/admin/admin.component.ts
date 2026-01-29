@@ -24,6 +24,7 @@ import { SecurityPolicySettingsComponent } from '../../components/security-polic
 import { EmailVerificationSettingsComponent } from '../../components/email-verification-settings/email-verification-settings.component';
 import { GitHubSettingsComponent } from '../../components/github-settings/github-settings.component';
 import { PlanningCenterListMapperComponent } from '../../components/planning-center-list-mapper/planning-center-list-mapper.component';
+import { ConfirmationDialogComponent } from '../../components/confirmation-dialog/confirmation-dialog.component';
 
 type AdminTab = 'prayers' | 'updates' | 'deletions' | 'accounts' | 'settings';
 type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
@@ -51,7 +52,8 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
     SecurityPolicySettingsComponent,
     EmailVerificationSettingsComponent,
     GitHubSettingsComponent,
-    PlanningCenterListMapperComponent
+    PlanningCenterListMapperComponent,
+    ConfirmationDialogComponent
   ],
   template: `
     <div class="w-full min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors flex flex-col">
@@ -74,13 +76,21 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
             <div class="flex flex-col items-end gap-3">
               <!-- Email Indicator -->
               @if ((userSessionService.userSession$ | async); as session) {
-                <div class="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded">
+                <button
+                  (click)="showLogoutConfirmation = true"
+                  class="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer"
+                  title="Click to log out"
+                >
                   {{ session.email }}
-                </div>
+                </button>
               } @else {
-                <div class="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded">
+                <button
+                  (click)="showLogoutConfirmation = true"
+                  class="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer"
+                  title="Click to log out"
+                >
                   {{ getAdminEmail() }}
-                </div>
+                </button>
               }
               
               <!-- Navigation Controls -->
@@ -711,6 +721,19 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
           (decline)="onDeclineSendNotification()"
         ></app-send-notification-dialog>
       }
+
+      <!-- Logout Confirmation Modal -->
+      @if (showLogoutConfirmation) {
+        <app-confirmation-dialog
+          title="Log Out?"
+          message="Are you sure you want to log out?"
+          confirmText="Log Out"
+          cancelText="Cancel"
+          [isDangerous]="false"
+          (confirm)="handleLogout()"
+          (cancel)="showLogoutConfirmation = false"
+        ></app-confirmation-dialog>
+      }
     </div>
   `,
   styles: []
@@ -736,6 +759,7 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   // Dialog state for send notification
   showSendNotificationDialog = false;
+  showLogoutConfirmation = false;
   sendDialogType: NotificationType = 'prayer';
   sendDialogPrayerTitle?: string;
   sendDialogPrayerId?: string;
@@ -972,6 +996,12 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   goToHome() {
     this.router.navigate(['/']);
+  }
+
+  async handleLogout(): Promise<void> {
+    this.showLogoutConfirmation = false;
+    await this.adminAuthService.logout();
+    this.router.navigate(['/login']);
   }
 
   refresh() {

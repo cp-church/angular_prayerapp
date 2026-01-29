@@ -14,6 +14,7 @@ import { VerificationDialogComponent } from '../../components/verification-dialo
 import { HelpModalComponent } from '../../components/help-modal/help-modal.component';
 import { PersonalPrayerEditModalComponent } from '../../components/personal-prayer-edit-modal/personal-prayer-edit-modal.component';
 import { PersonalPrayerUpdateEditModalComponent } from '../../components/personal-prayer-update-edit-modal/personal-prayer-update-edit-modal.component';
+import { ConfirmationDialogComponent } from '../../components/confirmation-dialog/confirmation-dialog.component';
 import { PrayerService, PrayerRequest, PrayerUpdate } from '../../services/prayer.service';
 import { PromptService } from '../../services/prompt.service';
 import { CacheService } from '../../services/cache.service';
@@ -31,7 +32,7 @@ import { environment } from '../../../environments/environment';
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterModule, DragDropModule, PrayerFormComponent, PrayerFiltersComponent, SkeletonLoaderComponent, AppLogoComponent, PrayerCardComponent, PromptCardComponent, UserSettingsComponent, HelpModalComponent, PersonalPrayerEditModalComponent, PersonalPrayerUpdateEditModalComponent],
+  imports: [CommonModule, RouterModule, DragDropModule, PrayerFormComponent, PrayerFiltersComponent, SkeletonLoaderComponent, AppLogoComponent, PrayerCardComponent, PromptCardComponent, UserSettingsComponent, HelpModalComponent, PersonalPrayerEditModalComponent, PersonalPrayerUpdateEditModalComponent, ConfirmationDialogComponent],
   template: `
     <div class="w-full min-h-screen bg-gray-50 dark:bg-gray-900">
       <!-- Header -->
@@ -46,13 +47,21 @@ import { environment } from '../../../environments/environment';
             
             <!-- Email Indicator - Top Right -->
             @if ((userSessionService.userSession$ | async); as session) {
-              <div class="text-[10px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded">
+              <button
+                (click)="showLogoutConfirmation = true"
+                class="text-[10px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer"
+                title="Click to log out"
+              >
                 {{ session.email }}
-              </div>
+              </button>
             } @else {
-              <div class="text-[10px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded">
+              <button
+                (click)="showLogoutConfirmation = true"
+                class="text-[10px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer"
+                title="Click to log out"
+              >
                 {{ getUserEmail() }}
-              </div>
+              </button>
             }
           </div>
           
@@ -113,13 +122,21 @@ import { environment } from '../../../environments/environment';
             <div class="flex flex-col items-end gap-2">
               <!-- Email Indicator -->
               @if ((userSessionService.userSession$ | async); as session) {
-                <div class="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded">
+                <button
+                  (click)="showLogoutConfirmation = true"
+                  class="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer"
+                  title="Click to log out"
+                >
                   {{ session.email }}
-                </div>
+                </button>
               } @else {
-                <div class="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded">
+                <button
+                  (click)="showLogoutConfirmation = true"
+                  class="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer"
+                  title="Click to log out"
+                >
                   {{ getUserEmail() }}
-                </div>
+                </button>
               }
               
               <!-- Desktop buttons -->
@@ -195,6 +212,19 @@ import { environment } from '../../../environments/environment';
           [isOpen]="showHelp"
           (closeModal)="showHelp = false"
         ></app-help-modal>
+
+        <!-- Logout Confirmation Modal -->
+        @if (showLogoutConfirmation) {
+          <app-confirmation-dialog
+            title="Log Out?"
+            message="Are you sure you want to log out?"
+            confirmText="Log Out"
+            cancelText="Cancel"
+            [isDangerous]="false"
+            (confirm)="handleLogout()"
+            (cancel)="showLogoutConfirmation = false"
+          ></app-confirmation-dialog>
+        }
 
         <!-- Personal Prayer Edit Modal -->
         <app-personal-prayer-edit-modal
@@ -648,6 +678,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   showPrayerForm = false;
   showSettings = false;
   showHelp = false;
+  showLogoutConfirmation = false;
   showEditPersonalPrayer = false;
   editingPrayer: PrayerRequest | null = null;
   showEditPersonalUpdate = false;
@@ -1587,7 +1618,11 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   async logout(): Promise<void> {
     await this.adminAuthService.logout();
-    this.toastService.success('Logged out successfully');
+  }
+
+  async handleLogout(): Promise<void> {
+    this.showLogoutConfirmation = false;
+    await this.logout();
   }
 
   navigateToAdmin(): void {

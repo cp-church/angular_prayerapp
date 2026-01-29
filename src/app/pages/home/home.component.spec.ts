@@ -680,7 +680,6 @@ describe('HomeComponent', () => {
     );
     await comp.logout();
     expect(mocks.adminAuthService.logout).toHaveBeenCalled();
-    expect(mocks.toastService.success).toHaveBeenCalledWith('Logged out successfully');
   });
 
   it('navigateToAdmin navigates when isAdmin true, otherwise shows MFA modal', () => {
@@ -2637,7 +2636,6 @@ describe('HomeComponent', () => {
       await comp.logout();
 
       expect(mocks.adminAuthService.logout).toHaveBeenCalled();
-      expect(mocks.toastService.success).toHaveBeenCalledWith('Logged out successfully');
     });
   });
 

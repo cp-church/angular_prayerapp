@@ -511,6 +511,57 @@ npm run lint -- --fix
 - Extract magic strings to constants
 - One component per file (except specs)
 
+### User Interface Patterns
+
+#### Logout Functionality
+
+The application provides two ways for users to log out:
+
+1. **Email Badge Logout** (Header)
+   - Email badge displayed in top-right corner of header (both home and admin pages)
+   - Clickable with hover state for discoverability
+   - Shows confirmation modal before logging out
+   - Modal displays "Log Out?" with "Log Out" and "Cancel" options
+   - Implemented in: `home.component.ts`, `admin.component.ts`
+
+2. **Settings Modal Logout**
+   - Logout button in user settings modal footer
+   - Logs out immediately without confirmation
+   - Implemented in: `user-settings.component.ts`
+
+Both methods call `adminAuthService.logout()` which:
+- Signs out from Supabase Auth
+- Clears all session data and localStorage
+- Invalidates all caches (prayers, prompts, personal prayers, etc.)
+- Automatically redirects to `/login` page
+
+**Implementation Example**:
+```typescript
+// In component
+showLogoutConfirmation = false;
+
+async handleLogout(): Promise<void> {
+  this.showLogoutConfirmation = false;
+  await this.adminAuthService.logout();
+}
+
+// In template
+<button (click)="showLogoutConfirmation = true" class="...">
+  {{ userEmail }}
+</button>
+
+@if (showLogoutConfirmation) {
+  <app-confirmation-dialog
+    title="Log Out?"
+    message="Are you sure you want to log out?"
+    confirmText="Log Out"
+    cancelText="Cancel"
+    (confirm)="handleLogout()"
+    (cancel)="showLogoutConfirmation = false"
+  ></app-confirmation-dialog>
+}
+```
+
 ---
 
 ## Performance

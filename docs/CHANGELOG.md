@@ -4,6 +4,14 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - January 2026
 
+### Email Badge Logout with Confirmation Modal ✅
+- ✅ Email badge in header is now clickable to log out
+  - Appears on both home page and admin portal
+  - Shows confirmation dialog before logging out
+  - Dialog displays "Log Out?" with "Log Out" and "Cancel" options
+  - Same logout behavior as settings modal logout button
+  - Badge has hover state for better discoverability
+
 ### Code Cleanup: Removed Unused Approval Codes Infrastructure ✅
 - ✅ Removed unused `approval_codes` table and related code
   - Admin notification emails now link directly to `/admin` portal (standard login required)
