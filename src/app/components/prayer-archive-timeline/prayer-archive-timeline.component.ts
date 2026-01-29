@@ -334,7 +334,7 @@ export class PrayerArchiveTimelineComponent implements OnInit {
   userTimezone: string;
   
   // Month pagination
-  currentMonth = new Date();
+  currentMonth: Date;
   private allPrayers: PrayerRequest[] = [];
   private allEvents: TimelineEvent[] = [];
   private minMonth: Date | null = null;
@@ -347,6 +347,10 @@ export class PrayerArchiveTimelineComponent implements OnInit {
   ) {
     // Detect user's timezone
     this.userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    
+    // Initialize currentMonth to the first day of the current month
+    const now = new Date();
+    this.currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   }
   
   get monthKey(): string {
@@ -431,8 +435,8 @@ export class PrayerArchiveTimelineComponent implements OnInit {
   previousMonth(): void {
     if (!this.canGoPrevious) return;
     const scrollY = window.scrollY;
-    this.currentMonth.setMonth(this.currentMonth.getMonth() - 1);
-    this.currentMonth = new Date(this.currentMonth);
+    // Move to first day of previous month
+    this.currentMonth = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() - 1, 1);
     this.filterCurrentMonth().then(() => {
       window.scrollTo(0, scrollY);
     });
@@ -441,8 +445,8 @@ export class PrayerArchiveTimelineComponent implements OnInit {
   nextMonth(): void {
     if (!this.canGoNext) return;
     const scrollY = window.scrollY;
-    this.currentMonth.setMonth(this.currentMonth.getMonth() + 1);
-    this.currentMonth = new Date(this.currentMonth);
+    // Move to first day of next month
+    this.currentMonth = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() + 1, 1);
     this.filterCurrentMonth().then(() => {
       window.scrollTo(0, scrollY);
     });
