@@ -2911,6 +2911,46 @@ describe('HomeComponent', () => {
       expect(result).toHaveLength(1);
     });
 
+    it('should search in update content', () => {
+      const comp = new HomeComponent(
+        mocks.prayerService,
+        mocks.promptService,
+        mocks.adminAuthService,
+        mocks.userSessionService,
+        mocks.badgeService,
+        mocks.cacheService,
+        mocks.toastService,
+        mocks.analyticsService,
+        mocks.cdr,
+        mocks.router,
+        mocks.supabaseService
+      );
+
+      comp.filteredPlanningCenterPrayers = [
+        { 
+          id: '1', 
+          prayer_for: 'John Doe', 
+          title: 'Healing', 
+          description: '', 
+          updates: [{ content: 'This is a specific update content' }] 
+        } as any,
+        { 
+          id: '2', 
+          prayer_for: 'Jane Smith', 
+          title: 'Wisdom', 
+          description: '', 
+          updates: [] 
+        } as any
+      ];
+
+      comp.filters = { searchTerm: 'specific update' } as any;
+
+      const result = comp.getFilteredPlanningCenterPrayers([]);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('1');
+    });
+
     it('should search in title field', () => {
       const comp = new HomeComponent(
         mocks.prayerService,

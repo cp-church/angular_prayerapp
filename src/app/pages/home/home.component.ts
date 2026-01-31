@@ -516,7 +516,7 @@ import { environment } from '../../../environments/environment';
             }
 
             <!-- Empty State for Planning Center List -->
-            @if (activeFilter === 'planning_center_list' && filteredPlanningCenterPrayers.length === 0) {
+            @if (activeFilter === 'planning_center_list' && getFilteredPlanningCenterPrayers().length === 0) {
               <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center border border-gray-200 dark:border-gray-700">
                 @if (filters.searchTerm && filters.searchTerm.trim()) {
                   <svg class="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -543,7 +543,7 @@ import { environment } from '../../../environments/environment';
             <!-- Prayer Cards (only show when not on prompts or personal filter) -->
             @if (activeFilter !== 'prompts' && activeFilter !== 'personal') {
               @if (activeFilter === 'planning_center_list') {
-                @for (prayer of filteredPlanningCenterPrayers; track prayer.id) {
+                @for (prayer of getFilteredPlanningCenterPrayers(); track prayer.id) {
                   <app-prayer-card
                   [prayer]="prayer"
                   [isAdmin]="(isAdmin$ | async) || false"
@@ -1581,18 +1581,27 @@ export class HomeComponent implements OnInit, OnDestroy {
     return filtered;
   }
 
-  getFilteredPlanningCenterPrayers(prayers: PrayerRequest[]): PrayerRequest[] {
+  getFilteredPlanningCenterPrayers(): PrayerRequest[] {
     // Apply search term filter if present
     if (!this.filters.searchTerm || !this.filters.searchTerm.trim()) {
       return this.filteredPlanningCenterPrayers;
     }
 
     const searchLower = this.filters.searchTerm.toLowerCase().trim();
-    return this.filteredPlanningCenterPrayers.filter(p =>
-      p.prayer_for.toLowerCase().includes(searchLower) ||
-      p.description.toLowerCase().includes(searchLower) ||
-      p.title.toLowerCase().includes(searchLower)
-    );
+    return this.filteredPlanningCenterPrayers.filter(p => {
+      // Search in member name (prayer_for), title, and description
+      const memberMatch = p.prayer_for.toLowerCase().includes(searchLower) ||
+        p.description.toLowerCase().includes(searchLower) ||
+        p.title.toLowerCase().includes(searchLower);
+      
+      // Search in update content
+      const updateMatch = p.updates && p.updates.length > 0 &&
+        p.updates.some(update =>
+          update.content && update.content.toLowerCase().includes(searchLower)
+        );
+      
+      return memberMatch || updateMatch;
+    });
   }
 
   formatDate(dateString: string): string {
