@@ -90,15 +90,57 @@ describe('AdminComponent', () => {
 
   it('autoProgressTabs cycles correctly for updates and deletions', () => {
     component.activeTab = 'updates';
-    component['adminData'] = { pendingUpdates: [], pendingDeletionRequests: [{ id: 'd1' }], pendingPrayers: [] };
+    component['adminData'] = { 
+      pendingUpdates: [], 
+      pendingDeletionRequests: [{ id: 'd1' }], 
+      pendingPrayers: [],
+      pendingUpdateDeletionRequests: [],
+      pendingAccountRequests: []
+    };
     const tabSpy = vi.spyOn(component, 'onTabChange');
     component['autoProgressTabs']();
     expect(tabSpy).toHaveBeenCalledWith('deletions');
 
+    // Test deletions -> settings when no other pending
     component.activeTab = 'deletions';
-    component['adminData'] = { pendingDeletionRequests: [], pendingPrayers: [{ id: 'p1' }], pendingUpdates: [] };
+    component['adminData'] = { 
+      pendingDeletionRequests: [], 
+      pendingUpdateDeletionRequests: [],
+      pendingPrayers: [], 
+      pendingUpdates: [],
+      pendingAccountRequests: []
+    };
+    component['autoProgressTabs']();
+    expect(tabSpy).toHaveBeenCalledWith('settings');
+
+    // Test deletions -> prayers (cycle)
+    component.activeTab = 'deletions';
+    component['adminData'] = { 
+      pendingDeletionRequests: [], 
+      pendingUpdateDeletionRequests: [],
+      pendingPrayers: [{ id: 'p1' }], 
+      pendingUpdates: [],
+      pendingAccountRequests: []
+    };
     component['autoProgressTabs']();
     expect(tabSpy).toHaveBeenCalledWith('prayers');
+  });
+
+  it('autoProgressTabs moves to settings when all done', () => {
+    const tabSpy = vi.spyOn(component, 'onTabChange');
+    
+    // Start on prayers, finish prayers, nothing else pending
+    component.activeTab = 'prayers';
+    component['adminData'] = {
+      pendingPrayers: [],
+      pendingUpdates: [],
+      pendingDeletionRequests: [],
+      pendingUpdateDeletionRequests: [],
+      pendingAccountRequests: []
+    };
+    
+    component['autoProgressTabs']();
+    expect(tabSpy).toHaveBeenCalledWith('settings');
   });
 
   it('loadAnalytics sets stats on success and toggles loading', async () => {
@@ -343,47 +385,45 @@ describe('AdminComponent', () => {
     expect(loadSpy).not.toHaveBeenCalled();
   });
 
-  it('autoProgressTabs does nothing when there are no pending items', () => {
+  it('autoProgressTabs moves to settings when there are no pending items', () => {
     const tabSpy = vi.spyOn(component, 'onTabChange');
     component.activeTab = 'prayers';
     component['adminData'] = { pendingPrayers: [], pendingUpdates: [], pendingDeletionRequests: [] };
     component['autoProgressTabs']();
-    expect(tabSpy).not.toHaveBeenCalled();
+    expect(tabSpy).toHaveBeenCalledWith('settings');
 
+    tabSpy.mockClear();
     component.activeTab = 'updates';
     component['adminData'] = { pendingUpdates: [], pendingDeletionRequests: [], pendingPrayers: [] };
     component['autoProgressTabs']();
-    expect(tabSpy).not.toHaveBeenCalled();
+    expect(tabSpy).toHaveBeenCalledWith('settings');
 
+    tabSpy.mockClear();
     component.activeTab = 'deletions';
     component['adminData'] = { pendingDeletionRequests: [], pendingPrayers: [], pendingUpdates: [] };
     component['autoProgressTabs']();
-    expect(tabSpy).not.toHaveBeenCalled();
+    expect(tabSpy).toHaveBeenCalledWith('settings');
   });
 
-  it('autoProgressTabs handles undefined fields and non-admin tabs gracefully', () => {
+  it('autoProgressTabs handles undefined fields by defaulting to settings', () => {
     const tabSpy = vi.spyOn(component, 'onTabChange');
 
     component.activeTab = 'prayers';
     component['adminData'] = { pendingPrayers: undefined, pendingUpdates: undefined, pendingDeletionRequests: undefined };
     component['autoProgressTabs']();
-    expect(tabSpy).not.toHaveBeenCalled();
+    expect(tabSpy).toHaveBeenCalledWith('settings');
 
+    tabSpy.mockClear();
     component.activeTab = 'updates';
     component['adminData'] = { pendingUpdates: undefined, pendingDeletionRequests: undefined, pendingPrayers: undefined };
     component['autoProgressTabs']();
-    expect(tabSpy).not.toHaveBeenCalled();
+    expect(tabSpy).toHaveBeenCalledWith('settings');
 
+    tabSpy.mockClear();
     component.activeTab = 'deletions';
     component['adminData'] = { pendingDeletionRequests: undefined, pendingPrayers: undefined, pendingUpdates: undefined };
     component['autoProgressTabs']();
-    expect(tabSpy).not.toHaveBeenCalled();
-
-    // if activeTab is unrelated, nothing should happen
-    component.activeTab = 'accounts' as any;
-    component['adminData'] = { pendingPrayers: [], pendingUpdates: [], pendingDeletionRequests: [] };
-    component['autoProgressTabs']();
-    expect(tabSpy).not.toHaveBeenCalled();
+    expect(tabSpy).toHaveBeenCalledWith('settings');
   });
 
   it('autoProgressTabs does not change tabs when pending lists are non-empty (prayers)', () => {
@@ -841,6 +881,128 @@ describe('AdminComponent', () => {
       analyticsService.getStats = vi.fn().mockResolvedValue({});
       await component.loadAnalytics();
       expect(analyticsService.getStats).toHaveBeenCalled();
+    });
+  });
+
+  describe('Initialization Logic', () => {
+    it('defaults to settings tab if no pending items exist', () => {
+      // Setup no pending items
+      component['adminData'] = {
+        pendingPrayers: [],
+        pendingUpdates: [],
+        pendingDeletionRequests: [],
+        pendingUpdateDeletionRequests: [],
+        pendingAccountRequests: []
+      };
+
+      component['setInitialTab']();
+
+      expect(component.activeTab).toBe('settings');
+    });
+
+    it('stays on prayers tab if pending prayers exist', () => {
+      component['adminData'] = {
+        pendingPrayers: [{ id: 'p1' }],
+        pendingUpdates: [],
+        pendingDeletionRequests: [],
+        pendingUpdateDeletionRequests: [],
+        pendingAccountRequests: []
+      };
+
+      component['setInitialTab']();
+
+      expect(component.activeTab).toBe('prayers');
+    });
+
+    it('defaults to updates tab if only pending updates exist', () => {
+      component['adminData'] = {
+        pendingPrayers: [],
+        pendingUpdates: [{ id: 'u1' }],
+        pendingDeletionRequests: [],
+        pendingUpdateDeletionRequests: [],
+        pendingAccountRequests: []
+      };
+
+      component['setInitialTab']();
+
+      expect(component.activeTab).toBe('updates');
+    });
+
+    it('defaults to deletions tab if only pending deletion requests exist', () => {
+      component['adminData'] = {
+        pendingPrayers: [],
+        pendingUpdates: [],
+        pendingDeletionRequests: [{ id: 'd1' }],
+        pendingUpdateDeletionRequests: [],
+        pendingAccountRequests: []
+      };
+
+      component['setInitialTab']();
+
+      expect(component.activeTab).toBe('deletions');
+    });
+
+    it('defaults to deletions tab if only pending update deletion requests exist', () => {
+      component['adminData'] = {
+        pendingPrayers: [],
+        pendingUpdates: [],
+        pendingDeletionRequests: [],
+        pendingUpdateDeletionRequests: [{ id: 'ud1' }],
+        pendingAccountRequests: []
+      };
+
+      component['setInitialTab']();
+
+      expect(component.activeTab).toBe('deletions');
+    });
+
+    it('defaults to accounts tab if only pending account requests exist', () => {
+      component['adminData'] = {
+        pendingPrayers: [],
+        pendingUpdates: [],
+        pendingDeletionRequests: [],
+        pendingUpdateDeletionRequests: [],
+        pendingAccountRequests: [{ id: 'a1' }]
+      };
+
+      component['setInitialTab']();
+
+      expect(component.activeTab).toBe('accounts');
+    });
+
+    it('should NOT run setInitialTab if data is loading', () => {
+      // spy on setInitialTab
+      const spy = vi.spyOn(component as any, 'setInitialTab');
+      
+      component.ngOnInit();
+      
+      // Simulate loading state
+      adminDataService.data$.next({ 
+        loading: true,
+        pendingPrayers: [] 
+      });
+      
+      // Should not have called it yet (except maybe once for initial state if logic allows, 
+      // but initial state in test mock is empty, loading=false from BehaviorSubject default?)
+      // Actually, adminDataService mock uses Subject, so no initial value unless we emit it.
+      // But we subscribed.
+      
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('should run setInitialTab when loading completes with data', () => {
+      const spy = vi.spyOn(component as any, 'setInitialTab');
+      
+      component.ngOnInit();
+      
+      // Complete loading
+      adminDataService.data$.next({ 
+        loading: false,
+        pendingPrayers: [{ id: 'p1' }] 
+      });
+      
+      expect(spy).toHaveBeenCalled();
+      expect(component.activeTab).toBe('prayers');
     });
   });
 });

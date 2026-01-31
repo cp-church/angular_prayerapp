@@ -766,6 +766,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   sendDialogUpdateId?: string;
   
   private destroy$ = new Subject<void>();
+  private hasFetchStarted = false;
 
   constructor(
     private router: Router,
@@ -802,16 +803,21 @@ export class AdminComponent implements OnInit, OnDestroy {
         });
         this.cdr.markForCheck();
         
-        // Set initial tab based on pending items (only if still on default)
-        if (this.activeTab === 'prayers') {
+        // Set initial tab based on pending items (only if still on default and data is loaded)
+        // We skip the initial empty state by checking hasFetchStarted
+        if (this.activeTab === 'prayers' && this.hasFetchStarted && !data.loading) {
           this.setInitialTab();
         }
         
         // Auto-progress through tabs when each section is complete
-        this.autoProgressTabs();
+        // Only run this when we have valid data (fetch started and not loading)
+        if (this.hasFetchStarted && !data.loading) {
+          this.autoProgressTabs();
+        }
       });
 
     // Initial fetch
+    this.hasFetchStarted = true;
     this.adminDataService.fetchAdminData();
     
     // Load analytics if settings tab is already active
@@ -829,7 +835,8 @@ export class AdminComponent implements OnInit, OnDestroy {
 
     const hasPendingPrayers = (this.adminData.pendingPrayers || []).length > 0;
     const hasPendingUpdates = (this.adminData.pendingUpdates || []).length > 0;
-    const hasPendingDeletions = (this.adminData.pendingDeletionRequests || []).length > 0;
+    const hasPendingDeletions = (this.adminData.pendingDeletionRequests || []).length > 0 || 
+                               (this.adminData.pendingUpdateDeletionRequests || []).length > 0;
     const hasPendingAccounts = (this.adminData.pendingAccountRequests || []).length > 0;
 
     // Set tab based on priority
@@ -841,78 +848,101 @@ export class AdminComponent implements OnInit, OnDestroy {
       this.activeTab = 'deletions';
     } else if (hasPendingAccounts) {
       this.activeTab = 'accounts';
+    } else {
+      // If nothing is pending, default to settings
+      this.activeTab = 'settings';
     }
-    // Otherwise stay on 'prayers' (default)
   }
 
   /**
    * Auto-progress through approval tabs when each section is complete
-   * Priority order: prayers -> updates -> deletions -> accounts
+   * Priority order: prayers -> updates -> deletions -> accounts -> settings
    */
   private autoProgressTabs() {
     if (!this.adminData) return;
 
+    // Helper to check for any pending items
+    const hasPendingPrayers = (this.adminData.pendingPrayers || []).length > 0;
+    const hasPendingUpdates = (this.adminData.pendingUpdates || []).length > 0;
+    const hasPendingDeletions = (this.adminData.pendingDeletionRequests || []).length > 0 || 
+                               (this.adminData.pendingUpdateDeletionRequests || []).length > 0;
+    const hasPendingAccounts = (this.adminData.pendingAccountRequests || []).length > 0;
+    const hasAnyPending = hasPendingPrayers || hasPendingUpdates || hasPendingDeletions || hasPendingAccounts;
+
+    // If nothing pending at all, go to settings
+    if (!hasAnyPending) {
+      if (this.activeTab !== 'settings') {
+        this.onTabChange('settings');
+      }
+      return;
+    }
+
     // If on prayers tab, check if all prayers are done
     if (this.activeTab === 'prayers') {
-      const pendingPrayers = this.adminData.pendingPrayers || [];
-      if (pendingPrayers.length === 0) {
+      if (!hasPendingPrayers) {
         // Move to updates if there are any
-        if ((this.adminData.pendingUpdates || []).length > 0) {
+        if (hasPendingUpdates) {
           this.onTabChange('updates');
-        } else if ((this.adminData.pendingDeletionRequests || []).length > 0) {
+        } else if (hasPendingDeletions) {
           // Move to deletions if there are any
           this.onTabChange('deletions');
-        } else if ((this.adminData.pendingAccountRequests || []).length > 0) {
+        } else if (hasPendingAccounts) {
           // Move to accounts if there are any
           this.onTabChange('accounts');
+        } else {
+          // Nothing pending anywhere
+          this.onTabChange('settings');
         }
       }
     }
     // If on updates tab, check if all updates are done
     else if (this.activeTab === 'updates') {
-      const pendingUpdates = this.adminData.pendingUpdates || [];
-      if (pendingUpdates.length === 0) {
+      if (!hasPendingUpdates) {
         // Move to deletions if there are any
-        if ((this.adminData.pendingDeletionRequests || []).length > 0) {
+        if (hasPendingDeletions) {
           this.onTabChange('deletions');
-        } else if ((this.adminData.pendingAccountRequests || []).length > 0) {
+        } else if (hasPendingAccounts) {
           // Move to accounts if there are any
           this.onTabChange('accounts');
-        } else if ((this.adminData.pendingPrayers || []).length > 0) {
+        } else if (hasPendingPrayers) {
           // Cycle back to prayers if any exist
           this.onTabChange('prayers');
+        } else {
+          // Nothing pending anywhere
+          this.onTabChange('settings');
         }
       }
     }
     // If on deletions tab, check if all deletions are done
     else if (this.activeTab === 'deletions') {
-      const pendingDeletions = this.adminData.pendingDeletionRequests || [];
-      if (pendingDeletions.length === 0) {
+      if (!hasPendingDeletions) {
         // Move to accounts if there are any
-        if ((this.adminData.pendingAccountRequests || []).length > 0) {
+        if (hasPendingAccounts) {
           this.onTabChange('accounts');
-        } else if ((this.adminData.pendingPrayers || []).length > 0) {
+        } else if (hasPendingPrayers) {
           // Cycle back to prayers if any exist
           this.onTabChange('prayers');
-        } else if ((this.adminData.pendingUpdates || []).length > 0) {
+        } else if (hasPendingUpdates) {
           // Cycle to updates if any exist
           this.onTabChange('updates');
+        } else {
+          // Nothing pending anywhere
+          this.onTabChange('settings');
         }
       }
     }
     // If on accounts tab, check if all accounts are done
     else if (this.activeTab === 'accounts') {
-      const pendingAccounts = this.adminData.pendingAccountRequests || [];
-      if (pendingAccounts.length === 0) {
-        // Cycle back to prayers if any exist
-        if ((this.adminData.pendingPrayers || []).length > 0) {
+      if (!hasPendingAccounts) {
+        if (hasPendingPrayers) {
           this.onTabChange('prayers');
-        } else if ((this.adminData.pendingUpdates || []).length > 0) {
-          // Cycle to updates if any exist
+        } else if (hasPendingUpdates) {
           this.onTabChange('updates');
-        } else if ((this.adminData.pendingDeletionRequests || []).length > 0) {
-          // Cycle to deletions if any exist
+        } else if (hasPendingDeletions) {
           this.onTabChange('deletions');
+        } else {
+          // Nothing pending anywhere
+          this.onTabChange('settings');
         }
       }
     }
