@@ -10,7 +10,7 @@ interface EmailQueueItem {
   id: string;
   recipient: string;
   template_key: string;
-  template_variables: Record<string, string>;
+  template_variables: Record<string, string | null | undefined>;
   status: string;
   attempts: number;
   last_error: string | null;
@@ -181,12 +181,13 @@ async function sendViaGraphAPI(
  */
 function applyTemplateVariables(
   content: string,
-  variables: Record<string, string>
+  variables: Record<string, string | null | undefined>
 ): string {
   let result = content;
   for (const [key, value] of Object.entries(variables)) {
     const placeholder = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
-    result = result.replace(placeholder, value || '');
+    const stringValue = value !== null && value !== undefined ? String(value) : '';
+    result = result.replace(placeholder, stringValue);
   }
   return result;
 }

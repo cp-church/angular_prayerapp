@@ -445,25 +445,64 @@ describe('EmailSubscribersComponent', () => {
   });
 
   describe('handleToggleBlocked', () => {
-    it('should toggle blocked status', async () => {
+    it('should show confirmation dialog when toggling blocked status', async () => {
+      mockSupabaseService.client.from().select().eq().maybeSingle.mockResolvedValue({
+        data: { email: 'test@example.com' },
+        error: null
+      });
+
       component.allSubscribers = [
         { id: '123', email: 'test@example.com', name: 'Test', is_active: true, is_blocked: false, created_at: '2024-01-01', last_activity_date: '2024-01-01', in_planning_center: false }
       ];
 
       await component.handleToggleBlocked('123', false);
 
-      expect(mockToastService.success).toHaveBeenCalled();
-      expect(component.allSubscribers[0].is_blocked).toBe(true);
+      expect(component.showConfirmationDialog).toBe(true);
+      expect(component.confirmationTitle).toBe('Block User');
+      expect(component.confirmationAction).toBeDefined();
+    });
+
+    it('should execute block action when confirmed', async () => {
+      mockSupabaseService.client.from().select().eq().maybeSingle.mockResolvedValue({
+        data: { email: 'test@example.com' },
+        error: null
+      });
+
+      mockSupabaseService.client.from().update().eq.mockResolvedValue({
+        error: null
+      });
+
+      component.allSubscribers = [
+        { id: '123', email: 'test@example.com', name: 'Test', is_active: true, is_blocked: false, created_at: '2024-01-01', last_activity_date: '2024-01-01', in_planning_center: false }
+      ];
+
+      await component.handleToggleBlocked('123', false);
+
+      expect(component.confirmationAction).toBeDefined();
+      if (component.confirmationAction) {
+        await component.confirmationAction();
+        expect(mockToastService.success).toHaveBeenCalled();
+        expect(component.allSubscribers[0].is_blocked).toBe(true);
+      }
     });
 
     it('should handle toggle error', async () => {
+      mockSupabaseService.client.from().select().eq().maybeSingle.mockResolvedValue({
+        data: { email: 'test@example.com' },
+        error: null
+      });
+
       mockSupabaseService.client.from().update().eq.mockResolvedValue({
         error: new Error('Update failed')
       });
 
       await component.handleToggleBlocked('123', false);
 
-      expect(mockToastService.error).toHaveBeenCalled();
+      expect(component.confirmationAction).toBeDefined();
+      if (component.confirmationAction) {
+        await component.confirmationAction();
+        expect(mockToastService.error).toHaveBeenCalled();
+      }
     });
   });
 

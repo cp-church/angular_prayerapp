@@ -586,22 +586,26 @@ export class AdminDataService {
     // Get the update details and prayer data
     const { data: update, error: fetchError } = await supabaseClient
       .from('prayer_updates')
-      .select('*, prayers(title, status)')
+      .select('*, prayers(title, description, status)')
       .eq('id', id)
       .single();
 
     if (fetchError) throw fetchError;
     if (!update) throw new Error('Update not found');
     
-    // Get the prayer's current status
+    // Get the prayer's current status and description
     const prayerData = update.prayers && typeof update.prayers === 'object' ? update.prayers : null;
 
     // Send mass email notification to all subscribers (don't let email failures block)
     const prayerTitle = prayerData && 'title' in prayerData
       ? String(prayerData.title)
       : 'Prayer';
+    const prayerDescription = prayerData && 'description' in prayerData
+      ? String(prayerData.description)
+      : '';
     this.emailNotification.sendApprovedUpdateNotification({
-      prayerTitle,
+      prayerTitle: prayerTitle,
+      prayerDescription: prayerDescription,
       content: update.content,
       author: update.is_anonymous ? 'Anonymous' : (update.author || 'Anonymous'),
       markedAsAnswered: update.mark_as_answered || false
@@ -619,7 +623,7 @@ export class AdminDataService {
     // First get the update details and prayer title before denying
     const { data: update, error: fetchError } = await supabaseClient
       .from('prayer_updates')
-      .select('*, prayers(title)')
+      .select('*, prayers(title, description)')
       .eq('id', id)
       .single();
 
@@ -679,7 +683,7 @@ export class AdminDataService {
     // Get the update details, prayer title, and prayer status
     const { data: update, error: fetchError } = await supabaseClient
       .from('prayer_updates')
-      .select('*, prayers(title, status)')
+      .select('*, prayers(title, description, status)')
       .eq('id', id)
       .single();
 
@@ -718,8 +722,12 @@ export class AdminDataService {
     const prayerTitle = prayerData && 'title' in prayerData
       ? String(prayerData.title)
       : 'Prayer';
+    const prayerDescription = prayerData && 'description' in prayerData
+      ? String(prayerData.description)
+      : '';
     this.emailNotification.sendApprovedUpdateNotification({
-      prayerTitle,
+      prayerTitle: prayerTitle,
+      prayerDescription: prayerDescription,
       content: update.content,
       author: update.is_anonymous ? 'Anonymous' : (update.author || 'Anonymous'),
       markedAsAnswered: update.mark_as_answered || false

@@ -269,6 +269,7 @@ serve(async (req) => {
         .from('email_subscribers')
         .select('email')
         .eq('is_active', true)
+        .eq('is_blocked', false)
       
       if (error) throw error
       

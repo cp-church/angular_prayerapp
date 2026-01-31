@@ -32,6 +32,7 @@ export interface ApprovedPrayerPayload {
 
 export interface ApprovedUpdatePayload {
   prayerTitle: string;
+  prayerDescription: string;
   content: string;
   author: string;
   markedAsAnswered?: boolean;
@@ -142,14 +143,20 @@ export class EmailNotificationService {
   async enqueueEmail(
     recipient: string,
     templateKey: string,
-    variables: Record<string, string> = {}
+    variables: Record<string, string | null | undefined> = {}
   ): Promise<void> {
+    // Ensure all values are strings (convert undefined/null to empty string)
+    const stringifiedVariables: Record<string, string> = {};
+    for (const [key, value] of Object.entries(variables)) {
+      stringifiedVariables[key] = value !== null && value !== undefined ? String(value) : '';
+    }
+
     const { error } = await this.supabase.client
       .from('email_queue')
       .insert({
         recipient,
         template_key: templateKey,
-        template_variables: variables,
+        template_variables: stringifiedVariables,
         status: 'pending',
         attempts: 0
       });
@@ -283,6 +290,7 @@ export class EmailNotificationService {
       // Template variables to send with queued emails
       const variables = {
         prayerTitle: payload.prayerTitle,
+        prayerDescription: payload.prayerDescription,
         authorName: payload.author,
         updateContent: payload.content,
         appLink: window.location.origin

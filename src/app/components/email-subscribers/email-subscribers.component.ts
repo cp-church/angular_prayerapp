@@ -646,7 +646,7 @@ interface CSVRow {
         [message]="confirmationMessage"
         [details]="confirmationDetails"
         [isDangerous]="isDeleteConfirmation"
-        [confirmText]="isDeleteConfirmation ? 'Delete' : 'Confirm'"
+        [confirmText]="confirmationConfirmText"
         (confirm)="onConfirmDialog()"
         (cancel)="onCancelDialog()">
       </app-confirmation-dialog>
@@ -709,6 +709,7 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
   confirmationDetails: string | null = null;
   confirmationAction: (() => Promise<void>) | null = null;
   isDeleteConfirmation = false;
+  confirmationConfirmText = 'Confirm';
 
   // Landscape/Portrait detection
   isLandscape = false;
@@ -1082,25 +1083,61 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
   }
 
   async handleToggleBlocked(id: string, currentStatus: boolean) {
+    // Fetch subscriber to get their email for the confirmation dialog
     try {
-      const { error } = await this.supabase.client
+      const { data: subscriber, error: fetchError } = await this.supabase.client
         .from('email_subscribers')
-        .update({ is_blocked: !currentStatus })
-        .eq('id', id);
+        .select('email')
+        .eq('id', id)
+        .maybeSingle();
 
-      if (error) throw error;
+      if (fetchError) throw fetchError;
+      if (!subscriber) throw new Error('Subscriber not found');
 
-      this.toast.success(currentStatus ? 'User unblocked - login enabled' : 'User blocked - login disabled');
+      // Show confirmation dialog
+      this.confirmationTitle = currentStatus ? 'Unblock User' : 'Block User';
       
-      // Update the local data instead of resetting pagination
-      const subscriber = this.allSubscribers.find(s => s.id === id);
-      if (subscriber) {
-        subscriber.is_blocked = !currentStatus;
-        this.cdr.markForCheck();
+      if (currentStatus) {
+        // Unblocking
+        this.confirmationMessage = `Unblock ${subscriber.email}?`;
+        this.confirmationDetails = 'This user will be able to log in to the site again.';
+        this.confirmationConfirmText = 'Unblock';
+      } else {
+        // Blocking
+        this.confirmationMessage = `Block ${subscriber.email}?`;
+        this.confirmationDetails = 'This user will not be able to log in to the site.';
+        this.confirmationConfirmText = 'Block';
       }
+
+      this.isDeleteConfirmation = !currentStatus; // Mark as dangerous if blocking
+      this.confirmationAction = async () => {
+        try {
+          const { error } = await this.supabase.client
+            .from('email_subscribers')
+            .update({ is_blocked: !currentStatus })
+            .eq('id', id);
+
+          if (error) throw error;
+
+          this.toast.success(currentStatus ? 'User unblocked - login enabled' : 'User blocked - login disabled');
+          
+          // Update the local data instead of resetting pagination
+          const sub = this.allSubscribers.find(s => s.id === id);
+          if (sub) {
+            sub.is_blocked = !currentStatus;
+            this.cdr.markForCheck();
+          }
+        } catch (err: any) {
+          console.error('Error toggling user blocked status:', err);
+          this.toast.error('Failed to update user blocked status');
+        }
+      };
+
+      this.showConfirmationDialog = true;
+      this.cdr.markForCheck();
     } catch (err: any) {
-      console.error('Error toggling user blocked status:', err);
-      this.toast.error('Failed to update user blocked status');
+      console.error('Error preparing block action:', err);
+      this.toast.error('Failed to prepare block action');
     }
   }
 
@@ -1127,6 +1164,7 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
       }
 
       this.isDeleteConfirmation = true;
+      this.confirmationConfirmText = 'Delete';
       this.confirmationAction = async () => {
         try {
           if (subscriber?.is_admin) {
