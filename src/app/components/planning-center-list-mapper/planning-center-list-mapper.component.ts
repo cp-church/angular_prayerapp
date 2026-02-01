@@ -154,16 +154,16 @@ interface EmailSubscriber {
           @if (mappings.length > 0) {
             <div class="space-y-2">
               @for (mapping of mappings; track mapping.id) {
-                <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <div>
+                <div class="flex items-center justify-between gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <div class="min-w-0 flex-1">
                     <div class="font-medium text-gray-900 dark:text-gray-100">{{ mapping.name }}</div>
-                    <div class="text-sm text-gray-600 dark:text-gray-400">{{ mapping.email }}</div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400 truncate">{{ mapping.email }}</div>
                     <div class="text-sm text-blue-600 dark:text-blue-400 mt-1">{{ mapping.listName }}</div>
                   </div>
                   <button
                     (click)="removeMapping(mapping.id)"
                     [disabled]="saving"
-                    class="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    class="flex-shrink-0 px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
                   >
                     Remove
                   </button>
