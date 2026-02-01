@@ -422,23 +422,73 @@ describe('EmailSubscribersComponent', () => {
   });
 
   describe('handleToggleActive', () => {
-    it('should toggle active status', async () => {
+    it('should show confirmation dialog and toggle active status on confirm', async () => {
       component.allSubscribers = [
         { id: '123', email: 'test@example.com', name: 'Test', is_active: true, is_blocked: false, created_at: '2024-01-01', last_activity_date: '2024-01-01', in_planning_center: false }
       ];
 
+      // Setup mock to return subscriber data for the fetch
+      const selectChain = {
+        eq: vi.fn().mockReturnValue({
+          maybeSingle: vi.fn().mockResolvedValue({
+            data: { email: 'test@example.com' },
+            error: null
+          })
+        })
+      };
+
+      mockSupabaseService.client.from.mockReturnValue({
+        select: vi.fn().mockReturnValue(selectChain),
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null })
+        })
+      });
+
       await component.handleToggleActive('123', true);
+
+      // Should show confirmation dialog
+      expect(component.showConfirmationDialog).toBe(true);
+      expect(component.confirmationTitle).toBe('Deactivate Subscriber');
+
+      // Execute the confirmation action
+      if (component.confirmationAction) {
+        await component.confirmationAction();
+      }
 
       expect(mockToastService.success).toHaveBeenCalled();
       expect(component.allSubscribers[0].is_active).toBe(false);
     });
 
     it('should handle toggle error', async () => {
-      mockSupabaseService.client.from().update().eq.mockResolvedValue({
-        error: new Error('Update failed')
+      component.allSubscribers = [
+        { id: '123', email: 'test@example.com', name: 'Test', is_active: true, is_blocked: false, created_at: '2024-01-01', last_activity_date: '2024-01-01', in_planning_center: false }
+      ];
+
+      // Setup mock to return subscriber data
+      const selectChain = {
+        eq: vi.fn().mockReturnValue({
+          maybeSingle: vi.fn().mockResolvedValue({
+            data: { email: 'test@example.com' },
+            error: null
+          })
+        })
+      };
+
+      mockSupabaseService.client.from.mockReturnValue({
+        select: vi.fn().mockReturnValue(selectChain),
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({
+            error: new Error('Update failed')
+          })
+        })
       });
 
       await component.handleToggleActive('123', true);
+
+      // Execute the confirmation action
+      if (component.confirmationAction) {
+        await component.confirmationAction();
+      }
 
       expect(mockToastService.error).toHaveBeenCalled();
     });
