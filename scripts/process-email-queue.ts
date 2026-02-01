@@ -324,44 +324,74 @@ async function processEmailQueue(): Promise<void> {
     // Get access token
     const token = await getAccessToken();
 
-    // Fetch batch of pending emails
-    const { data: queueItems, error: fetchError } = await supabase
-      .from('email_queue')
-      .select('*')
-      .eq('status', 'pending')
-      .lt('attempts', MAX_RETRIES)
-      .order('created_at', { ascending: true })
-      .limit(BATCH_SIZE);
+    let totalSuccessCount = 0;
+    let totalFailureCount = 0;
+    let batchNumber = 0;
 
-    if (fetchError) {
-      throw new Error(`Failed to fetch email queue: ${fetchError.message}`);
-    }
+    // Keep processing batches until queue is empty
+    while (true) {
+      batchNumber++;
+      console.log(`\n📬 Fetching batch ${batchNumber}...`);
 
-    if (!queueItems || queueItems.length === 0) {
-      console.log('✅ No pending emails in queue');
-      return;
-    }
+      // Fetch batch of pending emails
+      const { data: queueItems, error: fetchError } = await supabase
+        .from('email_queue')
+        .select('*')
+        .eq('status', 'pending')
+        .lt('attempts', MAX_RETRIES)
+        .order('created_at', { ascending: true })
+        .limit(BATCH_SIZE);
 
-    console.log(`📬 Found ${queueItems.length} email(s) to process`);
-
-    // Process each email
-    let successCount = 0;
-    let failureCount = 0;
-
-    for (const email of queueItems) {
-      const success = await processEmail(token, email as EmailQueueItem);
-      if (success) {
-        successCount++;
-      } else {
-        failureCount++;
+      if (fetchError) {
+        throw new Error(`Failed to fetch email queue: ${fetchError.message}`);
       }
 
-      // Small delay between emails to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 100));
+      if (!queueItems || queueItems.length === 0) {
+        console.log('✅ No pending emails in queue');
+        break;
+      }
+
+      console.log(`📧 Found ${queueItems.length} email(s) in batch ${batchNumber}`);
+
+      // Process each email
+      let batchSuccessCount = 0;
+      let batchFailureCount = 0;
+
+      for (const email of queueItems) {
+        const success = await processEmail(token, email as EmailQueueItem);
+        if (success) {
+          batchSuccessCount++;
+        } else {
+          batchFailureCount++;
+        }
+
+        // Small delay between emails to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      totalSuccessCount += batchSuccessCount;
+      totalFailureCount += batchFailureCount;
+
+      console.log(
+        `✅ Batch ${batchNumber} complete: ${batchSuccessCount} sent, ${batchFailureCount} failed/retry`
+      );
+
+      // If batch was smaller than BATCH_SIZE, we've processed everything
+      if (queueItems.length < BATCH_SIZE) {
+        console.log('✅ All emails processed');
+        break;
+      }
+
+      // Pause between batches to respect Graph API rate limits
+      // Microsoft Graph API allows up to 2000 requests per minute per app
+      // A 2 second delay between batches is reasonable and shouldn't impact processing speed
+      const pauseDuration = 2000; // 2 seconds
+      console.log(`⏸️  Pausing ${pauseDuration}ms between batches...`);
+      await new Promise(resolve => setTimeout(resolve, pauseDuration));
     }
 
     console.log(
-      `\n📊 Batch complete: ${successCount} sent, ${failureCount} failed/retry`
+      `\n📊 Processing complete: ${totalSuccessCount} sent, ${totalFailureCount} failed/retry`
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
