@@ -196,12 +196,13 @@ describe('PersonalPrayerUpdateEditModalComponent', () => {
       expect(component.close.emit).toHaveBeenCalled();
     });
 
-    it('should show success toast on successful submission', async () => {
+    it('should emit save event on successful submission', async () => {
       prayerService.updatePersonalPrayerUpdate.mockResolvedValue(true);
+      vi.spyOn(component.save, 'emit');
 
       await component.handleSubmit();
 
-      expect(toastService.success).toHaveBeenCalledWith('Prayer update saved successfully');
+      expect(component.save.emit).toHaveBeenCalled();
     });
 
     it('should set isSubmitting to false after successful submission', async () => {
@@ -529,7 +530,6 @@ describe('PersonalPrayerUpdateEditModalComponent', () => {
       await component.handleSubmit();
 
       expect(component.isSubmitting).toBe(false);
-      expect(toastService.success).toHaveBeenCalled();
     });
 
     it('should reset form data after cancel', () => {

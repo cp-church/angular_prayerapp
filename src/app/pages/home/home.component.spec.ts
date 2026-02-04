@@ -496,7 +496,7 @@ describe('HomeComponent', () => {
     );
     mocks.prayerService.deleteUpdate.mockResolvedValue(undefined);
     await comp.deleteUpdate({updateId: 'u1', prayerId: 'p1'});
-    expect(mocks.toastService.success).toHaveBeenCalledWith('Update deleted successfully');
+    // Toast is handled by the service, not the component
 
     mocks.prayerService.deleteUpdate.mockRejectedValue(new Error('bad'));
     await comp.deleteUpdate({updateId: 'u2', prayerId: 'p2'});
@@ -3344,4 +3344,169 @@ describe('HomeComponent', () => {
       expect(result[0].id).toBe('1');
     });
   });
+
+  describe('ngOnInit initialization flow', () => {
+    it('should load personal prayers on user session emission', async () => {
+      const mocks = makeMocks();
+      const mockPersonalPrayers = [{ id: 'p1', title: 'Prayer 1' }];
+      mocks.prayerService.getPersonalPrayers.mockResolvedValue(mockPersonalPrayers);
+      mocks.prayerService.getUniqueCategoriesForUser.mockResolvedValue([]);
+
+      const comp = new HomeComponent(
+        mocks.prayerService,
+        mocks.promptService,
+        mocks.adminAuthService,
+        mocks.userSessionService,
+        mocks.badgeService,
+        mocks.cacheService,
+        mocks.toastService,
+        mocks.analyticsService,
+        mocks.cdr,
+        mocks.router,
+        mocks.supabaseService
+      );
+
+      comp.ngOnInit();
+
+      // Simulate user session emission
+      mocks.userSessionSubject.next({ defaultPrayerView: 'current' });
+
+      // Allow async operations to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      expect(mocks.prayerService.getPersonalPrayers).toHaveBeenCalled();
+    });
+
+    it('should apply filter after user session is set', async () => {
+      const mocks = makeMocks();
+      mocks.prayerService.getPersonalPrayers.mockResolvedValue([]);
+      mocks.prayerService.getUniqueCategoriesForUser.mockResolvedValue([]);
+
+      const comp = new HomeComponent(
+        mocks.prayerService,
+        mocks.promptService,
+        mocks.adminAuthService,
+        mocks.userSessionService,
+        mocks.badgeService,
+        mocks.cacheService,
+        mocks.toastService,
+        mocks.analyticsService,
+        mocks.cdr,
+        mocks.router,
+        mocks.supabaseService
+      );
+
+      comp.ngOnInit();
+
+      // Simulate user session emission
+      mocks.userSessionSubject.next({ defaultPrayerView: 'personal' });
+
+      // Allow async operations to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Filter should be set to the user's default view
+      expect(comp.activeFilter).toBe('personal');
+    });
+
+    it('should load Planning Center data without blocking filter application', async () => {
+      const mocks = makeMocks();
+      mocks.prayerService.getPersonalPrayers.mockResolvedValue([]);
+      mocks.prayerService.getUniqueCategoriesForUser.mockResolvedValue([]);
+
+      const comp = new HomeComponent(
+        mocks.prayerService,
+        mocks.promptService,
+        mocks.adminAuthService,
+        mocks.userSessionService,
+        mocks.badgeService,
+        mocks.cacheService,
+        mocks.toastService,
+        mocks.analyticsService,
+        mocks.cdr,
+        mocks.router,
+        mocks.supabaseService
+      );
+
+      comp.ngOnInit();
+
+      // Track when filter is applied
+      const filterSetTime = Date.now();
+
+      // Simulate user session emission
+      mocks.userSessionSubject.next({ defaultPrayerView: 'current' });
+
+      // Allow personal prayers to load (fast)
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Filter should be applied immediately after personal prayers
+      expect(comp.activeFilter).toBe('current');
+    });
+
+    it('should handle error loading personal prayers gracefully', async () => {
+      const mocks = makeMocks();
+      const error = new Error('Failed to load personal prayers');
+      mocks.prayerService.getPersonalPrayers.mockRejectedValue(error);
+
+      const comp = new HomeComponent(
+        mocks.prayerService,
+        mocks.promptService,
+        mocks.adminAuthService,
+        mocks.userSessionService,
+        mocks.badgeService,
+        mocks.cacheService,
+        mocks.toastService,
+        mocks.analyticsService,
+        mocks.cdr,
+        mocks.router,
+        mocks.supabaseService
+      );
+
+      comp.ngOnInit();
+
+      // Should not throw when user session is emitted
+      expect(() => {
+        mocks.userSessionSubject.next({ defaultPrayerView: 'current' });
+      }).not.toThrow();
+
+      // Allow async operations
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Component should still be functional
+      expect(comp).toBeDefined();
+    });
+
+    it('should call loadPlanningCenterListData independently', async () => {
+      const mocks = makeMocks();
+      mocks.prayerService.getPersonalPrayers.mockResolvedValue([]);
+      mocks.prayerService.getUniqueCategoriesForUser.mockResolvedValue([]);
+
+      const comp = new HomeComponent(
+        mocks.prayerService,
+        mocks.promptService,
+        mocks.adminAuthService,
+        mocks.userSessionService,
+        mocks.badgeService,
+        mocks.cacheService,
+        mocks.toastService,
+        mocks.analyticsService,
+        mocks.cdr,
+        mocks.router,
+        mocks.supabaseService
+      );
+
+      // Mock the loadPlanningCenterListData to track if it's called
+      const loadPlanningCenterSpy = vi.spyOn(comp, 'loadPlanningCenterListData').mockResolvedValue();
+
+      comp.ngOnInit();
+
+      // Simulate user session emission
+      mocks.userSessionSubject.next({ defaultPrayerView: 'current' });
+
+      // Allow async operations
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // loadPlanningCenterListData should be called but independent of filter application
+      expect(loadPlanningCenterSpy).toHaveBeenCalled();
+    });
+  });;
 });

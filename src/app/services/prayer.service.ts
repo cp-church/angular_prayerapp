@@ -710,27 +710,26 @@ export class PrayerService {
   }
 
   /**
-   * Get updates for a Planning Center member by person_id
-   * Caching is handled at the list level (planningCenterListData_{listId})
-   * This method fetches fresh from the database
+   * Get updates for Planning Center members by batch fetching
+   * Fetches updates only for specified person IDs (much faster than fetching all)
+   * Returns a map keyed by person_id for easy access
    */
-  async getMemberPrayerUpdates(personId: string): Promise<PrayerUpdate[]> {
+  async getMemberPrayerUpdatesBatch(personIds: string[]): Promise<Record<string, any[]>> {
     try {
-      // Try to get all member updates from cache
-      const cachedUpdates = this.cache.get('memberPrayerUpdates') as Record<string, any[]> | undefined;
-      if (cachedUpdates) {
-        return cachedUpdates[personId] || [];
+      if (personIds.length === 0) {
+        return {};
       }
 
-      // Cache miss or expired - fetch all member updates from database
+      // Batch fetch updates for specific members only
       const { data, error } = await this.supabase.client
         .from('member_prayer_updates')
-        .select('*')
+        .select('id, person_id, content, created_at, updated_at, is_answered')
+        .in('person_id', personIds)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
 
-      // Group updates by person_id for efficient caching - only store necessary fields
+      // Group updates by person_id for efficient access
       const updatesMap: Record<string, any[]> = {};
       (data || []).forEach(update => {
         if (!updatesMap[update.person_id]) {
@@ -745,10 +744,52 @@ export class PrayerService {
         });
       });
 
-      // Cache all updates
+      // Cache the batch results
       this.cache.set('memberPrayerUpdates', updatesMap);
 
-      return updatesMap[personId] || [];
+      console.log(`[PrayerService] Batch loaded updates for ${personIds.length} members`);
+      return updatesMap;
+    } catch (error) {
+      console.error('Error fetching batch member prayer updates:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Get updates for a Planning Center member by person_id
+   * Uses cache first, falls back to batch fetch if needed
+   */
+  async getMemberPrayerUpdates(personId: string): Promise<any[]> {
+    try {
+      // Try to get from cache first
+      const cachedUpdates = this.cache.get('memberPrayerUpdates') as Record<string, any[]> | undefined;
+      if (cachedUpdates && cachedUpdates[personId]) {
+        return cachedUpdates[personId];
+      }
+
+      // Cache miss - fetch just this person's updates
+      const { data, error } = await this.supabase.client
+        .from('member_prayer_updates')
+        .select('id, person_id, content, created_at, updated_at, is_answered')
+        .eq('person_id', personId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const updates = (data || []).map(u => ({
+        id: u.id,
+        content: u.content,
+        created_at: u.created_at,
+        updated_at: u.updated_at,
+        is_answered: u.is_answered
+      }));
+
+      // Update cache
+      const cachedMap = cachedUpdates || {};
+      cachedMap[personId] = updates;
+      this.cache.set('memberPrayerUpdates', cachedMap);
+
+      return updates;
     } catch (error) {
       console.error('Error fetching member prayer updates:', error);
       return [];

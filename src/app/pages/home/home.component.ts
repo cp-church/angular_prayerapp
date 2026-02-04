@@ -808,17 +808,17 @@ export class HomeComponent implements OnInit, OnDestroy {
         const s = session!;
         this.activeFilter = s.defaultPrayerView ?? 'current';
 
-        // Load personal prayers and planning center data, then initialize filters
-        Promise.all([
-          this.loadPersonalPrayers().catch(error => {
-            console.error('Error loading personal prayers in ngOnInit:', error);
-          }),
-          this.loadPlanningCenterListData().catch(error => {
-            console.error('Error loading planning center list data:', error);
-          })
-        ]).then(() => {
-          // Apply the user's preferred filter after the necessary data is ready
+        // Load personal prayers first, then apply filter
+        this.loadPersonalPrayers().catch(error => {
+          console.error('Error loading personal prayers in ngOnInit:', error);
+        }).then(() => {
+          // Apply the user's preferred filter after personal prayers are ready
           this.setFilter(this.activeFilter);
+        });
+
+        // Load planning center data in the background (don't wait for it)
+        this.loadPlanningCenterListData().catch(error => {
+          console.error('Error loading planning center list data:', error);
         });
       });
   }
@@ -947,31 +947,32 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.loadingMemberPrayers = true;
       this.cdr.markForCheck();
 
+      // Batch fetch updates for all members at once (much faster than individual requests)
+      const personIds = this.planningCenterListMembers.map(m => m.id);
+      const memberUpdatesMap = await this.prayerService.getMemberPrayerUpdatesBatch(personIds);
+
       // Generate virtual prayer cards for each Planning Center member with their updates
-      this.filteredPlanningCenterPrayers = await Promise.all(
-        this.planningCenterListMembers.map(async (member, index) => {
-          // Fetch any existing updates for this member using their person_id
-          const updates = await this.prayerService.getMemberPrayerUpdates(member.id);
-          
-          return {
-            id: `pc-member-${member.id}`,
-            title: `Prayer for ${member.name}`,
-            description: '',
-            status: 'current' as const,
-            requester: 'Planning Center',
-            prayer_for: member.name,
-            email: '',
-            date_requested: new Date().toISOString(),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            updates: updates,
-            approval_status: 'approved' as const,
-            is_anonymous: false,
-            type: 'prayer' as const,
-            prayer_image: member.avatar || null,
-          };
-        })
-      );
+      this.filteredPlanningCenterPrayers = this.planningCenterListMembers.map((member, index) => {
+        const updates = memberUpdatesMap[member.id] || [];
+        
+        return {
+          id: `pc-member-${member.id}`,
+          title: `Prayer for ${member.name}`,
+          description: '',
+          status: 'current' as const,
+          requester: 'Planning Center',
+          prayer_for: member.name,
+          email: '',
+          date_requested: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          updates: updates,
+          approval_status: 'approved' as const,
+          is_anonymous: false,
+          type: 'prayer' as const,
+          prayer_image: member.avatar || null,
+        };
+      });
 
       this.loadingMemberPrayers = false;
       this.cdr.markForCheck();
@@ -1247,14 +1248,12 @@ export class HomeComponent implements OnInit, OnDestroy {
           this.planningCenterListId ?? undefined // Pass listId for cache invalidation
         );
         if (success) {
-          this.toastService.success('Update deleted successfully');
           // Reload all member prayers to show immediate change
           await this.loadPlanningCenterMemberPrayers();
         }
       } else {
         // Regular prayer update - delete from prayer_updates table
         await this.prayerService.deleteUpdate(updateId);
-        this.toastService.success('Update deleted successfully');
       }
     } catch (error) {
       console.error('Error deleting update:', error);
