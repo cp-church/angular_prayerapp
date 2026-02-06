@@ -49,7 +49,7 @@ import { environment } from '../../../environments/environment';
             @if ((userSessionService.userSession$ | async); as session) {
               <button
                 (click)="showLogoutConfirmation = true"
-                class="text-[10px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer"
+                class="text-[10px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer"
                 title="Click to log out"
               >
                 {{ session.email }}
@@ -57,7 +57,7 @@ import { environment } from '../../../environments/environment';
             } @else {
               <button
                 (click)="showLogoutConfirmation = true"
-                class="text-[10px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer"
+                class="text-[10px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer"
                 title="Click to log out"
               >
                 {{ getUserEmail() }}
@@ -134,7 +134,7 @@ import { environment } from '../../../environments/environment';
                 @if ((userSessionService.userSession$ | async); as session) {
                   <button
                     (click)="showLogoutConfirmation = true"
-                    class="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer"
+                    class="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer"
                     title="Click to log out"
                   >
                     {{ session.email }}
@@ -142,7 +142,7 @@ import { environment } from '../../../environments/environment';
                 } @else {
                   <button
                     (click)="showLogoutConfirmation = true"
-                    class="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer"
+                    class="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer"
                     title="Click to log out"
                   >
                     {{ getUserEmail() }}
@@ -174,14 +174,14 @@ import { environment } from '../../../environments/environment';
                 </button>
                 <button
                   routerLink="/presentation"
-                  class="flex items-center gap-1 bg-[#2F5F54] dark:bg-[#2F5F54] text-white px-3 py-2 rounded-lg hover:bg-[#1a3a2e] dark:hover:bg-[#1a3a2e] focus:outline-none focus:ring-2 focus:ring-[#2F5F54] transition-colors text-sm"
+                  class="flex items-center gap-1 bg-[#2F5F54] dark:bg-[#2F5F54] text-white px-3 py-2.5 rounded-lg hover:bg-[#1a3a2e] dark:hover:bg-[#1a3a2e] focus:outline-none focus:ring-2 focus:ring-[#2F5F54] transition-colors text-sm"
                   title="Prayer Mode"
                 >
                   <span>Pray</span>
                 </button>
                 <button
                   (click)="showPrayerForm = true"
-                  class="flex items-center gap-1 bg-blue-600 dark:bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm"
+                  class="flex items-center gap-1 bg-blue-600 dark:bg-blue-600 text-white px-3 py-2.5 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm"
                 >
                   <span>Request</span>
                 </button>

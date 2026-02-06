@@ -73,12 +73,12 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
             </div>
             
             <!-- Right side: Email indicator and navigation controls -->
-            <div class="flex flex-col items-end gap-3">
+            <div class="flex flex-col items-end gap-2">
               <!-- Email Indicator -->
               @if ((userSessionService.userSession$ | async); as session) {
                 <button
                   (click)="showLogoutConfirmation = true"
-                  class="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer"
+                  class="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer"
                   title="Click to log out"
                 >
                   {{ session.email }}
@@ -86,7 +86,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
               } @else {
                 <button
                   (click)="showLogoutConfirmation = true"
-                  class="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer"
+                  class="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer"
                   title="Click to log out"
                 >
                   {{ getAdminEmail() }}
@@ -96,7 +96,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
               <!-- Navigation Controls -->
               <button
                 (click)="goToHome()"
-                class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-900 transition-colors"
+                class="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-900 transition-colors text-sm"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="19" y1="12" x2="5" y2="12"></line>
