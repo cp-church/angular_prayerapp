@@ -362,7 +362,7 @@ import { environment } from '../../../environments/environment';
         </div>
 
         <!-- Loading State -->
-        @if (loading$ | async) {
+        @if (!viewReady || (loading$ | async) || (activeFilter === 'personal' && (prayerService.loadingPersonalPrayers$ | async))) {
           <app-skeleton-loader [count]="5" type="card"></app-skeleton-loader>
         }
 
@@ -453,7 +453,7 @@ import { environment } from '../../../environments/environment';
         }
 
         <!-- Prayers or Prompts List -->
-        @if (!(loading$ | async) && !(error$ | async)) {
+        @if (viewReady && !(loading$ | async) && !(error$ | async) && !(activeFilter === 'personal' && (prayerService.loadingPersonalPrayers$ | async))) {
           <div class="space-y-4">
             <!-- Empty State for Prayers -->
             @if (activeFilter !== 'prompts' && activeFilter !== 'personal' && activeFilter !== 'planning_center_list' && (prayers$ | async)?.length === 0) {
@@ -489,7 +489,7 @@ import { environment } from '../../../environments/environment';
             }
 
             <!-- Empty State for Personal Prayers -->
-            @if (activeFilter === 'personal' && getFilteredPersonalPrayers().length === 0) {
+            @if (activeFilter === 'personal' && !(prayerService.loadingPersonalPrayers$ | async) && getFilteredPersonalPrayers().length === 0) {
               <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center border border-gray-200 dark:border-gray-700">
                 @if (filters.searchTerm && filters.searchTerm.trim()) {
                   <svg class="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -688,6 +688,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   filters: PrayerFilters = { status: 'current' };
   hasLogo = false;
   activeFilter: 'current' | 'answered' | 'total' | 'prompts' | 'personal' | 'planning_center_list' = 'current';
+  viewReady = false;
   selectedPromptTypes: string[] = [];
   selectedPersonalCategories: string[] = [];
   isCategoryDragging = false;
@@ -823,6 +824,8 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.activeFilter = s.defaultPrayerView ?? 'current';
         // Apply the user's preferred filter
         this.setFilter(this.activeFilter);
+        this.viewReady = true;
+        this.cdr.markForCheck();
 
         // Load planning center data in the background (don't wait for it)
         this.loadPlanningCenterListData().catch(error => {

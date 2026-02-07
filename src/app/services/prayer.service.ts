@@ -65,6 +65,7 @@ export class PrayerService {
   private allPrayersSubject = new BehaviorSubject<PrayerRequest[]>([]);
   private prayersSubject = new BehaviorSubject<PrayerRequest[]>([]);
   private allPersonalPrayersSubject = new BehaviorSubject<PrayerRequest[]>([]);
+  private loadingPersonalPrayersSubject = new BehaviorSubject<boolean>(true);
   private loadingSubject = new BehaviorSubject<boolean>(true);
   private errorSubject = new BehaviorSubject<string | null>(null);
   private realtimeChannel: RealtimeChannel | null = null;
@@ -77,6 +78,7 @@ export class PrayerService {
   public allPrayers$ = this.allPrayersSubject.asObservable();
   public prayers$ = this.prayersSubject.asObservable();
   public allPersonalPrayers$ = this.allPersonalPrayersSubject.asObservable();
+  public loadingPersonalPrayers$ = this.loadingPersonalPrayersSubject.asObservable();
   public loading$ = this.loadingSubject.asObservable();
   public error$ = this.errorSubject.asObservable();
 
@@ -247,11 +249,13 @@ export class PrayerService {
    */
   async loadPersonalPrayers(silentRefresh = false): Promise<void> {
     try {
+      this.loadingPersonalPrayersSubject.next(true);
       console.log('[PrayerService] Loading personal prayers...');
       
       const userEmail = await this.getUserEmail();
       if (!userEmail) {
         console.warn('[PrayerService] User email not available for personal prayers');
+        this.loadingPersonalPrayersSubject.next(false);
         return;
       }
 
@@ -330,6 +334,7 @@ export class PrayerService {
       console.log(`[PrayerService] Loaded ${personalPrayers.length} personal prayers from database`);
       this.allPersonalPrayersSubject.next(personalPrayers);
       this.cache.set('personalPrayers', personalPrayers);
+      this.loadingPersonalPrayersSubject.next(false);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load personal prayers';
       console.error('[PrayerService] Failed to load personal prayers:', err);
@@ -351,6 +356,7 @@ export class PrayerService {
           this.allPersonalPrayersSubject.next([]);
         }
       }
+      this.loadingPersonalPrayersSubject.next(false);
     }
   }
   async getPrayersByMonth(year: number, month: number): Promise<PrayerRequest[]> {
