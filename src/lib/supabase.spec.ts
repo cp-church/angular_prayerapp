@@ -28,7 +28,15 @@ describe('supabase', () => {
     // Verify createClient was called with correct parameters
     expect(createClient).toHaveBeenCalledWith(
       'https://test.supabase.co',
-      'test-anon-key'
+      'test-anon-key',
+      expect.objectContaining({
+        auth: expect.objectContaining({
+          autoRefreshToken: true,
+          persistSession: true,
+          detectSessionInUrl: true,
+          lock: expect.any(Function)
+        })
+      })
     );
 
     // Verify the exported client exists

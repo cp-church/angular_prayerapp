@@ -27,7 +27,11 @@ export class SupabaseService {
       auth: {
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: true
+        detectSessionInUrl: true,
+        // Bypass Navigator LockManager to prevent lock acquisition failures
+        // across multiple tabs/windows. Safe because this app uses MFA-based
+        // auth with localStorage, not Supabase OAuth token refresh.
+        lock: async <R>(_name: string, _acquireTimeout: number, fn: () => Promise<R>): Promise<R> => await fn()
       },
       global: {
         headers: {
@@ -131,7 +135,8 @@ export class SupabaseService {
         auth: {
           autoRefreshToken: true,
           persistSession: true,
-          detectSessionInUrl: true
+          detectSessionInUrl: true,
+          lock: async <R>(_name: string, _acquireTimeout: number, fn: () => Promise<R>): Promise<R> => await fn()
         },
         global: {
           headers: {
