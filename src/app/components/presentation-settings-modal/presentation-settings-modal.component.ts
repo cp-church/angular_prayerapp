@@ -90,9 +90,15 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
 
           <!-- Smart Mode -->
           <div>
-            <label class="flex items-start gap-2 sm:gap-3 cursor-pointer mb-4 sm:mb-6">
-              <input type="checkbox" [(ngModel)]="localSmartMode" (ngModelChange)="smartModeChange.emit($event)" class="w-5 h-5 sm:w-6 sm:h-6 rounded text-blue-600 mt-0.5 flex-shrink-0">
-              <span class="text-base sm:text-lg lg:text-xl text-gray-900 dark:text-gray-100">Smart Mode (adjust time based on content length)</span>
+            <label class="flex items-center gap-2 sm:gap-3 cursor-pointer mb-4 sm:mb-6">
+              <input
+                type="checkbox"
+                [(ngModel)]="localSmartMode"
+                (ngModelChange)="smartModeChange.emit($event)"
+                class="w-4 h-4 sm:w-5 sm:h-5 rounded border-gray-900 dark:border-white focus:ring-2 focus:ring-[#39704D] flex-shrink-0">
+              <span class="text-base sm:text-lg lg:text-xl text-gray-900 dark:text-gray-100">
+                Smart Mode (adjust time based on content length)
+              </span>
             </label>
           </div>
 
