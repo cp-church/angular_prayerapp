@@ -136,7 +136,6 @@ export class PrayerService {
   async loadPrayers(silentRefresh = false): Promise<void> {
     try {
       console.log('[PrayerService] Loading prayers...');
-      
       // ✅ TIER 1: Check cache first
       const cachedPrayers = this.cache.get<PrayerRequest[]>('prayers');
       if (cachedPrayers && cachedPrayers.length > 0) {
@@ -915,9 +914,16 @@ export class PrayerService {
 
       if (error) throw error;
 
-      // Update local state
-      const prayers = this.prayersSubject.value;
-      this.prayersSubject.next(prayers.filter(p => p.id !== id));
+      // Update local state immediately for responsive UI
+      const filteredPrayers = this.prayersSubject.value.filter(p => p.id !== id);
+      this.prayersSubject.next(filteredPrayers);
+
+      // Also update the canonical allPrayers$ stream and cache so counts and filters stay in sync
+      const filteredAllPrayers = this.allPrayersSubject.value.filter(p => p.id !== id);
+      this.allPrayersSubject.next(filteredAllPrayers);
+      this.cache.set('prayers', filteredAllPrayers);
+      this.applyFilters(this.currentFilters);
+      this.badgeService.refreshBadgeCounts();
 
       this.toast.success('Prayer deleted');
       return true;
