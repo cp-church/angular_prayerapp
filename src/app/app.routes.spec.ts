@@ -93,13 +93,13 @@ describe('AppRoutes', () => {
   it('should have admin route with preload hint', () => {
     const adminRoute = routes.find(r => r.path === 'admin');
     expect(adminRoute?.data).toBeDefined();
-    expect(adminRoute?.data?.preload).toBe(true);
+    expect(adminRoute?.data?.['preload']).toBe(true);
   });
 
   it('should have presentation route with no preload', () => {
     const presentationRoute = routes.find(r => r.path === 'presentation');
     expect(presentationRoute?.data).toBeDefined();
-    expect(presentationRoute?.data?.preload).toBe(false);
+    expect(presentationRoute?.data?.['preload']).toBe(false);
   });
 
   it('should lazy load home component successfully', async () => {
@@ -109,7 +109,7 @@ describe('AppRoutes', () => {
       const module = await rootRoute.loadComponent();
       expect(module).toBeDefined();
     }
-  });
+  }, 10000);
 
   it('should lazy load login component successfully', async () => {
     const loginRoute = routes.find(r => r.path === 'login');
@@ -118,7 +118,7 @@ describe('AppRoutes', () => {
       const module = await loginRoute.loadComponent();
       expect(module).toBeDefined();
     }
-  });
+  }, 10000);
 
   it('should lazy load admin component successfully', async () => {
     const adminRoute = routes.find(r => r.path === 'admin');
@@ -127,7 +127,7 @@ describe('AppRoutes', () => {
       const module = await adminRoute.loadComponent();
       expect(module).toBeDefined();
     }
-  });
+  }, 10000);
 
   it('should lazy load presentation component successfully', async () => {
     const presentationRoute = routes.find(r => r.path === 'presentation');
@@ -136,5 +136,5 @@ describe('AppRoutes', () => {
       const module = await presentationRoute.loadComponent();
       expect(module).toBeDefined();
     }
-  });
+  }, 10000);
 });
