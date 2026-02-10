@@ -2428,7 +2428,7 @@ export class PrayerService {
         type: 'prayer',
         title: personalPrayer.title,
         description: personalPrayer.description,
-        requester: personalPrayer.user_email,
+        requester: requesterName,
         requestId: newPrayer.id
       }).catch(err => console.error('Failed to send admin notification:', err));
 
