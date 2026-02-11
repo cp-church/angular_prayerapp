@@ -136,7 +136,7 @@ interface TimelineDay {
                         'border-purple-200 dark:border-purple-600': event.eventType === 'reminder-sent',
                         'border-orange-200 dark:border-orange-600': event.eventType === 'reminder-missed',
                         'border-red-200 dark:border-red-600': event.eventType === 'archive-upcoming',
-                        'border-red-400 dark:border-red-600': event.eventType === 'archive-missed',
+                        'border-red-400 dark:border-red-800': event.eventType === 'archive-missed',
                         'border-green-200 dark:border-green-600': event.eventType === 'answered',
                         'border-gray-300 dark:border-gray-600': event.eventType === 'archived'
                       }">
@@ -148,8 +148,8 @@ interface TimelineDay {
                               'text-blue-700 dark:text-blue-300': event.eventType === 'reminder-upcoming',
                               'text-purple-700 dark:text-purple-300': event.eventType === 'reminder-sent',
                               'text-orange-700 dark:text-orange-300': event.eventType === 'reminder-missed',
-                              'text-red-800 archive-label-red': event.eventType === 'archive-upcoming',
-                              'text-red-900 archive-label-red': event.eventType === 'archive-missed',
+                              'text-red-800 dark:text-red-200': event.eventType === 'archive-upcoming',
+                              'text-red-900 dark:text-red-400': event.eventType === 'archive-missed',
                               'text-green-700 dark:text-green-300': event.eventType === 'answered',
                               'text-gray-800 dark:text-gray-300': event.eventType === 'archived'
                             }">
