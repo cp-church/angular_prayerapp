@@ -143,13 +143,13 @@ interface TimelineDay {
                       <div class="flex items-start justify-between">
                         <div class="flex-1">
                           <p class="font-semibold text-gray-800 dark:text-gray-100">{{ event.prayer.title }}</p>
-                          <div class="flex items-center gap-2 mt-1"
+                          <div class="flex items-center gap-2 mt-1 timeline-event-label"
                             [ngClass]="{
                               'text-blue-700 dark:text-blue-300': event.eventType === 'reminder-upcoming',
                               'text-purple-700 dark:text-purple-300': event.eventType === 'reminder-sent',
                               'text-orange-700 dark:text-orange-300': event.eventType === 'reminder-missed',
-                              'text-red-800 dark:text-red-100': event.eventType === 'archive-upcoming',
-                              'text-red-900 dark:text-red-100': event.eventType === 'archive-missed',
+                              'text-red-800 archive-label-red': event.eventType === 'archive-upcoming',
+                              'text-red-900 archive-label-red': event.eventType === 'archive-missed',
                               'text-green-700 dark:text-green-300': event.eventType === 'answered',
                               'text-gray-800 dark:text-gray-300': event.eventType === 'archived'
                             }">
@@ -308,7 +308,13 @@ interface TimelineDay {
     :host {
       display: block;
     }
-    
+    /* Force light red for Will archive / Archive missed in dark mode (high contrast on gray-700 card) */
+    :host-context(.dark) .archive-label-red {
+      color: #fecaca !important;
+    }
+    :host-context(.dark) .archive-label-red svg {
+      color: #fecaca !important;
+    }
     @keyframes spin {
       from {
         transform: rotate(0deg);
