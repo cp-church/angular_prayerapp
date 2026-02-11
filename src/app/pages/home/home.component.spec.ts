@@ -37,7 +37,8 @@ const makeMocks = () => {
   const promptService: any = {
     prompts$: promptsSubject.asObservable(),
     promptsSubject,
-    deletePrompt: vi.fn()
+    deletePrompt: vi.fn(),
+    loadPrompts: vi.fn(() => Promise.resolve())
   };
 
   const adminAuthService: any = {

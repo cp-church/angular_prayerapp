@@ -742,29 +742,24 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.isAdmin$ = this.adminAuthService.isAdmin$;
     this.hasAdminEmail$ = this.adminAuthService.hasAdminEmail$;
 
+    // Initialize badge observables immediately so badges can show on first load
+    // (no longer waiting for prompts$; refreshBadgeCounts runs when prayers/prompts load and once below)
+    this.currentPrayerBadge$ = this.badgeService.getBadgeCount$('prayers', 'current');
+    this.answeredPrayerBadge$ = this.badgeService.getBadgeCount$('prayers', 'answered');
+    this.promptBadge$ = this.badgeService.getBadgeCount$('prompts');
+    // Ensure prompts (and prompts_cache) are loaded when Home is shown. Required after logout:
+    // logout invalidates prompts_cache, but PromptService does not re-run loadPrompts() until
+    // next full page load; calling loadPrompts() here repopulates cache so badge counts are correct.
+    this.promptService.loadPrompts();
+    this.badgeService.refreshBadgeCounts();
+    this.cdr.markForCheck();
+
     // Subscribe to prayers for filtering
     this.prayers$
       .pipe(takeUntil(this.destroy$))
       .subscribe(prayers => {
         this.currentPrayers = prayers;
         this.cdr.markForCheck();
-      });
-
-    // Wait for prompts to load before initializing badges
-    // This ensures prompts_cache is in localStorage when badges calculate
-    this.prompts$
-      .pipe(
-        take(1),  // Only take the first emission
-        takeUntil(this.destroy$)
-      )
-      .subscribe(() => {
-        // Initialize badge observables after prompts are loaded
-        this.currentPrayerBadge$ = this.badgeService.getBadgeCount$('prayers', 'current');
-        this.answeredPrayerBadge$ = this.badgeService.getBadgeCount$('prayers', 'answered');
-        this.promptBadge$ = this.badgeService.getBadgeCount$('prompts');
-        
-        // Trigger a badge refresh to ensure correct counts
-        this.badgeService.refreshBadgeCounts();
       });
 
     // Load admin settings (deletion and update policies)
@@ -778,8 +773,9 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.answeredPrayersCount = prayers.filter(p => p.status === 'answered').length;
         this.totalPrayersCount = prayers.length;
 
-        // Refresh badge counts when prayers data loads/changes
+        // Refresh badge counts when prayers data loads/changes (ensures badges show on first load)
         this.badgeService.refreshBadgeCounts();
+        this.cdr.markForCheck();
       });
 
     // Subscribe to prompts for count - with cleanup
@@ -789,8 +785,9 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.promptsCount = prompts.length;
         this.cdr.markForCheck();
 
-        // Refresh badge counts when prompts data loads/changes
+        // Refresh badge counts when prompts data loads/changes (ensures badges show on first load)
         this.badgeService.refreshBadgeCounts();
+        this.cdr.markForCheck();
       });
 
     // Subscribe to admin status - with cleanup
