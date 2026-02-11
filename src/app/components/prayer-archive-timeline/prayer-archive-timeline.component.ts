@@ -145,13 +145,13 @@ interface TimelineDay {
                           <p class="font-semibold text-gray-800 dark:text-gray-100">{{ event.prayer.title }}</p>
                           <div class="flex items-center gap-2 mt-1"
                             [ngClass]="{
-                              'text-blue-700 dark:text-blue-400': event.eventType === 'reminder-upcoming',
-                              'text-purple-700 dark:text-purple-400': event.eventType === 'reminder-sent',
-                              'text-orange-700 dark:text-orange-400': event.eventType === 'reminder-missed',
-                              'text-red-700 dark:text-red-400': event.eventType === 'archive-upcoming',
-                              'text-red-800 dark:text-red-400': event.eventType === 'archive-missed',
-                              'text-green-700 dark:text-green-400': event.eventType === 'answered',
-                              'text-gray-700 dark:text-gray-400': event.eventType === 'archived'
+                              'text-blue-700 dark:text-blue-300': event.eventType === 'reminder-upcoming',
+                              'text-purple-700 dark:text-purple-300': event.eventType === 'reminder-sent',
+                              'text-orange-700 dark:text-orange-300': event.eventType === 'reminder-missed',
+                              'text-red-800 dark:text-red-300': event.eventType === 'archive-upcoming',
+                              'text-red-900 dark:text-red-300': event.eventType === 'archive-missed',
+                              'text-green-700 dark:text-green-300': event.eventType === 'answered',
+                              'text-gray-800 dark:text-gray-300': event.eventType === 'archived'
                             }">
                             @switch (event.eventType) {
                               @case ('reminder-upcoming') {
