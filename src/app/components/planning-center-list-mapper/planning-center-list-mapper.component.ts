@@ -52,7 +52,7 @@ interface EmailSubscriber {
               @for (subscriber of filteredSubscribers; track subscriber.id) {
                 <button
                   (click)="selectSubscriber(subscriber)"
-                  class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors border-b border-gray-200 dark:border-gray-600 last:border-b-0"
+                  class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors border-b border-gray-200 dark:border-gray-600 last:border-b-0 cursor-pointer"
                 >
                   <div class="font-medium text-gray-900 dark:text-gray-100">{{ subscriber.name }}</div>
                   <div class="text-sm text-gray-500 dark:text-gray-400">{{ subscriber.email }}</div>
@@ -98,7 +98,7 @@ interface EmailSubscriber {
                 @for (list of filteredLists; track list.id) {
                   <button
                     (click)="selectList(list)"
-                    class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors border-b border-gray-200 dark:border-gray-600 last:border-b-0"
+                    class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors border-b border-gray-200 dark:border-gray-600 last:border-b-0 cursor-pointer"
                   >
                     <div class="font-medium text-gray-900 dark:text-gray-100">{{ list.name }}</div>
                     @if (list.description) {
@@ -127,7 +127,7 @@ interface EmailSubscriber {
             <button
               (click)="mapListToSubscriber()"
               [disabled]="saving"
-              class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium cursor-pointer"
             >
               @if (saving) {
                 <span class="flex items-center justify-center gap-2">
@@ -140,7 +140,7 @@ interface EmailSubscriber {
             </button>
             <button
               (click)="clearSelection()"
-              class="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 transition-colors font-medium"
+              class="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 transition-colors font-medium cursor-pointer"
             >
               Clear
             </button>
@@ -163,7 +163,7 @@ interface EmailSubscriber {
                   <button
                     (click)="removeMapping(mapping.id)"
                     [disabled]="saving"
-                    class="flex-shrink-0 px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
+                    class="flex-shrink-0 px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap cursor-pointer"
                   >
                     Remove
                   </button>

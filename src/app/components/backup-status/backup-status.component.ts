@@ -72,7 +72,7 @@ interface BackupLog {
       <button
         (click)="handleManualBackup()"
         [disabled]="backingUp"
-        class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition-colors"
+        class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer"
       >
         @if (backingUp) {
         <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -89,7 +89,7 @@ interface BackupLog {
       <button
         (click)="showRestoreDialog = true"
         [disabled]="restoring"
-        class="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition-colors"
+        class="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer"
       >
         @if (restoring) {
         <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -261,7 +261,7 @@ interface BackupLog {
       <div class="mt-4 text-center">
         <button
           (click)="toggleShowFullLog()"
-          class="px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+          class="px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors cursor-pointer"
         >
           Show More ({{ allBackups.length - 5 }} older backups)
         </button>
@@ -273,7 +273,7 @@ interface BackupLog {
       <div class="mt-4 text-center">
         <button
           (click)="toggleShowFullLog()"
-          class="px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+          class="px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors cursor-pointer"
         >
           Show Less
         </button>

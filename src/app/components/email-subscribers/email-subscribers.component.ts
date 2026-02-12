@@ -49,7 +49,7 @@ interface CSVRow {
         <button
           (click)="handleSearch()"
           [disabled]="searching"
-          class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
           title="Refresh subscribers"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" [class.animate-spin]="searching" class="text-gray-600 dark:text-gray-400">
@@ -64,7 +64,7 @@ interface CSVRow {
         <button
           (click)="toggleCSVUpload()"
           title="Toggle CSV upload"
-          class="inline-flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors text-sm"
+          class="inline-flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors text-sm cursor-pointer"
         >
           @if (!showCSVUpload) {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -84,7 +84,7 @@ interface CSVRow {
         <button
           (click)="toggleAddForm()"
           title="Add new subscriber"
-          class="inline-flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
+          class="inline-flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm cursor-pointer"
         >
           @if (!showAddForm) {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -216,7 +216,7 @@ interface CSVRow {
           <button
             (click)="uploadCSVData()"
             [disabled]="uploadingCSV || getValidRowsCount() === 0"
-            class="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 transition-colors text-sm"
+            class="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 transition-colors text-sm cursor-pointer"
           >
             {{ uploadingCSV ? 'Uploading...' : 'Upload ' + getValidRowsCount() + ' Subscribers' }}
           </button>
@@ -233,14 +233,14 @@ interface CSVRow {
           <div class="flex gap-2 border-b border-gray-300 dark:border-gray-600">
             <button
               (click)="pcSearchTab = false"
-              [class]="!pcSearchTab ? 'px-4 py-2 border-b-2 border-blue-600 text-blue-600 font-medium' : 'px-4 py-2 border-b-2 border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'"
+              [class]="!pcSearchTab ? 'px-4 py-2 border-b-2 border-blue-600 text-blue-600 font-medium cursor-pointer' : 'px-4 py-2 border-b-2 border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 cursor-pointer'"
               class="focus:outline-none"
             >
               Manual Entry
             </button>
             <button
               (click)="pcSearchTab = true"
-              [class]="pcSearchTab ? 'px-4 py-2 border-b-2 border-blue-600 text-blue-600 font-medium' : 'px-4 py-2 border-b-2 border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'"
+              [class]="pcSearchTab ? 'px-4 py-2 border-b-2 border-blue-600 text-blue-600 font-medium cursor-pointer' : 'px-4 py-2 border-b-2 border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 cursor-pointer'"
               class="focus:outline-none"
             >
               Search Planning Center
@@ -279,14 +279,14 @@ interface CSVRow {
             <button
               type="submit"
               [disabled]="submitting"
-              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 transition-colors text-sm"
+              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 transition-colors text-sm cursor-pointer"
             >
               {{ submitting ? 'Adding...' : 'Add Subscriber' }}
             </button>
             <button
               type="button"
               (click)="toggleAddForm()"
-              class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm cursor-pointer"
             >
               Cancel
             </button>
@@ -310,7 +310,7 @@ interface CSVRow {
               <button
                 (click)="handleSearchPlanningCenter()"
                 [disabled]="pcSearching || !pcSearchQuery.trim()"
-                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 transition-colors text-sm"
+                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 transition-colors text-sm cursor-pointer"
               >
                 @if (pcSearching) {
                   Searching...
@@ -371,13 +371,13 @@ interface CSVRow {
             <button
               (click)="handleAddSelectedPlanningCenterPerson()"
               [disabled]="submitting || !pcSelectedPerson"
-              class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400 transition-colors text-sm"
+              class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400 transition-colors text-sm cursor-pointer"
             >
               {{ submitting ? 'Adding...' : 'Add Selected Subscriber' }}
             </button>
             <button
               (click)="toggleAddForm()"
-              class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm cursor-pointer"
             >
               Cancel
             </button>
@@ -402,7 +402,7 @@ interface CSVRow {
           <button
             (click)="handleSearch()"
             [disabled]="searching"
-            class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:bg-blue-400 text-sm"
+            class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:bg-blue-400 text-sm cursor-pointer"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11" cy="11" r="8"></circle>
@@ -446,13 +446,13 @@ interface CSVRow {
       @if (!searching && hasSearched && subscribers.length > 0) {
       <div>
         <div [class]="'grid mb-3 gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-300 ' + (isLandscape ? 'grid-cols-12' : 'hidden md:grid-cols-12')">
-          <button (click)="toggleSort('name')" class="col-span-2 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors" title="Click to sort by name">Name{{ getSortIndicator('name') }}</button>
-          <button (click)="toggleSort('email')" class="col-span-4 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors" title="Click to sort by email">Email{{ getSortIndicator('email') }}</button>
-          <button (click)="toggleSort('created_at')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors" title="Click to sort by join date">Added{{ getSortIndicator('created_at') }}</button>
-          <button (click)="toggleSort('last_activity_date')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors" title="Click to sort by last activity">Activity{{ getSortIndicator('last_activity_date') }}</button>
-          <button (click)="toggleSort('is_active')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors" title="Click to sort by status">Status{{ getSortIndicator('is_active') }}</button>
-          <button (click)="toggleSort('is_blocked')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors" title="Click to sort by blocked status">Blocked{{ getSortIndicator('is_blocked') }}</button>
-          <button (click)="toggleSort('in_planning_center')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors" title="Click to sort by Planning Center status">Planning Center{{ getSortIndicator('in_planning_center') }}</button>
+          <button (click)="toggleSort('name')" class="col-span-2 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by name">Name{{ getSortIndicator('name') }}</button>
+          <button (click)="toggleSort('email')" class="col-span-4 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by email">Email{{ getSortIndicator('email') }}</button>
+          <button (click)="toggleSort('created_at')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by join date">Added{{ getSortIndicator('created_at') }}</button>
+          <button (click)="toggleSort('last_activity_date')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by last activity">Activity{{ getSortIndicator('last_activity_date') }}</button>
+          <button (click)="toggleSort('is_active')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by status">Status{{ getSortIndicator('is_active') }}</button>
+          <button (click)="toggleSort('is_blocked')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by blocked status">Blocked{{ getSortIndicator('is_blocked') }}</button>
+          <button (click)="toggleSort('in_planning_center')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by Planning Center status">Planning Center{{ getSortIndicator('in_planning_center') }}</button>
         </div>
         <div class="space-y-2">
           @for (subscriber of subscribers; track subscriber.id) { <div [class]="'grid gap-2 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 ' + (isLandscape ? 'grid-cols-12 items-start' : 'grid-cols-2 md:grid-cols-12 md:items-start')">
@@ -490,8 +490,8 @@ interface CSVRow {
               <button
                 (click)="handleToggleActive(subscriber.id, subscriber.is_active)"
                 [class]="subscriber.is_active ? 
-                  'p-2 rounded-lg transition-colors text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30' : 
-                  'p-2 rounded-lg transition-colors text-gray-400 dark:text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700'"
+                  'p-2 rounded-lg transition-colors cursor-pointer text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30' : 
+                  'p-2 rounded-lg transition-colors cursor-pointer text-gray-400 dark:text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700'"
                 [title]="subscriber.is_active ? 'Stop sending email notifications to this user' : 'Start sending email notifications to this user'"
               >
                 @if (subscriber.is_active) {
@@ -515,8 +515,8 @@ interface CSVRow {
               <button
                 (click)="handleToggleBlocked(subscriber.id, subscriber.is_blocked)"
                 [class]="subscriber.is_blocked ? 
-                  'p-2 rounded-lg transition-colors text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30' : 
-                  'p-2 rounded-lg transition-colors text-gray-400 dark:text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700'"
+                  'p-2 rounded-lg transition-colors cursor-pointer text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30' : 
+                  'p-2 rounded-lg transition-colors cursor-pointer text-gray-400 dark:text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700'"
                 [title]="subscriber.is_blocked ? 'Allow this user to log in to the site' : 'Prevent this user from logging in to the site'"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -543,7 +543,7 @@ interface CSVRow {
               <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden" [class.hidden]="isLandscape">Delete</p>
               <button
                 (click)="handleDelete(subscriber.id, subscriber.email)"
-                class="p-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                class="p-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors cursor-pointer"
                 [title]="subscriber.is_admin ? 'Remove this admin from email list (they keep their admin login access)' : 'Permanently delete this subscriber from the list'"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -591,14 +591,14 @@ interface CSVRow {
               <button
                 (click)="previousPage()"
                 [disabled]="isFirstPage"
-                class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm cursor-pointer"
               >
                 ← Previous
               </button>
               <button
                 (click)="nextPage()"
                 [disabled]="isLastPage"
-                class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm cursor-pointer"
               >
                 Next →
               </button>
@@ -614,8 +614,8 @@ interface CSVRow {
                 <button
                   (click)="goToPage(page)"
                   [class]="page === currentPage ? 
-                    'px-3 py-1 bg-blue-600 text-white rounded-lg text-sm' :
-                    'px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm'"
+                    'px-3 py-1 bg-blue-600 text-white rounded-lg text-sm cursor-pointer' :
+                    'px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm cursor-pointer'"
                 >
                   {{ page }}
                 </button>

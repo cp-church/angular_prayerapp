@@ -64,7 +64,7 @@ import type { PrayerRequest } from '../../services/prayer.service';
           (click)="showEditPrayer = true"
           aria-label="Edit prayer"
           title="Edit prayer"
-          class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md flex-shrink-0"
+          class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md flex-shrink-0 cursor-pointer"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -138,7 +138,7 @@ import type { PrayerRequest } from '../../services/prayer.service';
                     (click)="editUpdate = update; showEditUpdate = true"
                     aria-label="Edit update"
                     title="Edit update"
-                    class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md ml-2 flex-shrink-0"
+                    class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md ml-2 flex-shrink-0 cursor-pointer"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -171,7 +171,7 @@ import type { PrayerRequest } from '../../services/prayer.service';
                     @if (denyingUpdateId !== update.id) {
                       <button
                         (click)="startDenyingUpdate(update.id)"
-                        class="flex items-center gap-1 px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs font-medium"
+                        class="flex items-center gap-1 px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs font-medium cursor-pointer"
                       >
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                           <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -181,7 +181,7 @@ import type { PrayerRequest } from '../../services/prayer.service';
                       </button>
                       <button
                         (click)="handleApproveUpdate(update.id)"
-                        class="flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs font-medium"
+                        class="flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs font-medium cursor-pointer"
                       >
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                           <polyline points="20 6 9 17 4 12"></polyline>
@@ -191,13 +191,13 @@ import type { PrayerRequest } from '../../services/prayer.service';
                     } @else {
                       <button
                         (click)="handleDenyUpdate(update.id)"
-                        class="flex items-center gap-1 px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs font-medium"
+                        class="flex items-center gap-1 px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs font-medium cursor-pointer"
                       >
                         Confirm Denial
                       </button>
                       <button
                         (click)="cancelDenyingUpdate()"
-                        class="flex items-center gap-1 px-3 py-1 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-xs font-medium"
+                        class="flex items-center gap-1 px-3 py-1 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-xs font-medium cursor-pointer"
                       >
                         Cancel
                       </button>
@@ -232,7 +232,7 @@ import type { PrayerRequest } from '../../services/prayer.service';
           @if (!isDenyingPrayer) {
           <button
             (click)="isDenyingPrayer = true"
-            class="flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm"
+            class="flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm cursor-pointer"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -242,7 +242,7 @@ import type { PrayerRequest } from '../../services/prayer.service';
           </button>
           <button
             (click)="handleApprovePrayer()"
-            class="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
+            class="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm cursor-pointer"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="20 6 9 17 4 12"></polyline>
@@ -252,7 +252,7 @@ import type { PrayerRequest } from '../../services/prayer.service';
         } @else {
           <button
             (click)="handleDenyPrayer()"
-            class="flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm"
+            class="flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm cursor-pointer"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -262,7 +262,7 @@ import type { PrayerRequest } from '../../services/prayer.service';
           </button>
           <button
             (click)="isDenyingPrayer = false; prayerDenialReason = ''"
-            class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium text-sm"
+            class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium text-sm cursor-pointer"
           >
             Cancel
           </button>

@@ -18,7 +18,7 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           <h2 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100">Settings</h2>
           <button
             (click)="close.emit()"
-            class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg transition-colors">
+            class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg transition-colors cursor-pointer">
             <svg class="w-6 h-6 sm:w-7 sm:h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -37,7 +37,7 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                 <div class="grid grid-cols-3 gap-1.5 sm:gap-2">
                   <button
                     (click)="themeChange.emit('light')"
-                    class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all"
+                    class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all cursor-pointer"
                     [ngClass]="{
                       'border-blue-500 bg-blue-50 dark:bg-blue-900/20': theme === 'light',
                       'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600': theme !== 'light'
@@ -57,7 +57,7 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                   </button>
                   <button
                     (click)="themeChange.emit('dark')"
-                    class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all"
+                    class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all cursor-pointer"
                     [ngClass]="{
                       'border-blue-500 bg-blue-50 dark:bg-blue-900/20': theme === 'dark',
                       'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600': theme !== 'dark'
@@ -69,7 +69,7 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                   </button>
                   <button
                     (click)="themeChange.emit('system')"
-                    class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all"
+                    class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all cursor-pointer"
                     [ngClass]="{
                       'border-blue-500 bg-blue-50 dark:bg-blue-900/20': theme === 'system',
                       'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600': theme !== 'system'
@@ -113,24 +113,26 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
               step="5"
               [(ngModel)]="localDisplayDuration"
               (ngModelChange)="displayDurationChange.emit($event)"
-              class="w-full h-2.5 sm:h-3 bg-gray-300 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600">
+              [style.--value-percent]="((localDisplayDuration - 5) / 55 * 100) + '%'"
+              style="--fill-color: #2563eb"
+              class="presentation-range w-full h-2.5 sm:h-3 bg-gray-300 dark:bg-gray-700 rounded-lg cursor-pointer accent-blue-600">
             <div class="text-center text-xl sm:text-2xl mt-2 font-semibold text-gray-900 dark:text-gray-100">{{ localDisplayDuration }}s</div>
             
             <!-- Quick Duration Buttons -->
             <div class="flex gap-2 sm:gap-3 mt-3 sm:mt-4">
               <button
                 (click)="setDuration(10)"
-                class="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-lg text-base sm:text-lg transition-colors">
+                class="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-lg text-base sm:text-lg transition-colors cursor-pointer">
                 10s
               </button>
               <button
                 (click)="setDuration(20)"
-                class="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-lg text-base sm:text-lg transition-colors">
+                class="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-lg text-base sm:text-lg transition-colors cursor-pointer">
                 20s
               </button>
               <button
                 (click)="setDuration(30)"
-                class="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-lg text-base sm:text-lg transition-colors">
+                class="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-lg text-base sm:text-lg transition-colors cursor-pointer">
                 30s
               </button>
             </div>
@@ -145,7 +147,7 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
             </p>
             <button
               (click)="showSmartModeDetails = !showSmartModeDetails"
-              class="text-blue-600 dark:text-blue-400 hover:underline text-base font-medium flex items-center gap-1">
+              class="text-blue-600 dark:text-blue-400 hover:underline text-base font-medium flex items-center gap-1 cursor-pointer">
               {{ showSmartModeDetails ? '− Hide details' : '+ Show details' }}
             </button>
             @if (showSmartModeDetails) {
@@ -255,7 +257,7 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                 </div>
                 <button
                   (click)="toggleStatusDropdown()"
-                  class="flex items-center justify-center px-2.5 sm:px-3 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-r-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                  class="flex items-center justify-center px-2.5 sm:px-3 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-r-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer">
                   <svg class="w-5 h-5 sm:w-6 sm:h-6 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                     [class.rotate-180]="showStatusDropdown">
                     <polyline points="6 9 12 15 18 9"></polyline>
@@ -312,12 +314,14 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
               step="1"
               [(ngModel)]="localPrayerTimerMinutes"
               (ngModelChange)="prayerTimerMinutesChange.emit($event)"
-              class="w-full h-2.5 sm:h-3 bg-gray-300 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-[#2F5F54]">
+              [style.--value-percent]="((localPrayerTimerMinutes - 1) / 59 * 100) + '%'"
+              style="--fill-color: #2F5F54"
+              class="presentation-range w-full h-2.5 sm:h-3 bg-gray-300 dark:bg-gray-700 rounded-lg cursor-pointer accent-[#2F5F54]">
             <div class="text-center text-xl sm:text-2xl mt-2 font-semibold text-gray-900 dark:text-gray-100">{{ localPrayerTimerMinutes }} min</div>
             
             <button
               (click)="startPrayerTimer.emit()"
-              class="w-full mt-3 sm:mt-4 px-4 sm:px-6 py-2.5 sm:py-3 bg-[#2F5F54] hover:bg-[#1a3a2e] text-white rounded-lg text-base sm:text-lg font-semibold transition-colors">
+              class="w-full mt-3 sm:mt-4 px-4 sm:px-6 py-2.5 sm:py-3 bg-[#2F5F54] hover:bg-[#1a3a2e] text-white rounded-lg text-base sm:text-lg font-semibold transition-colors cursor-pointer">
               Start Prayer Timer
             </button>
           </div>
@@ -325,7 +329,7 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           <!-- Refresh Button -->
           <button
             (click)="refresh.emit()"
-            class="w-full px-4 sm:px-6 py-2.5 sm:py-3 bg-blue-600 hover:bg-blue-700 text-gray-100 rounded-lg text-base sm:text-lg font-semibold transition-colors">
+            class="w-full px-4 sm:px-6 py-2.5 sm:py-3 bg-blue-600 hover:bg-blue-700 text-gray-100 rounded-lg text-base sm:text-lg font-semibold transition-colors cursor-pointer">
             Refresh Prayers
           </button>
         </div>
@@ -336,6 +340,54 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
   styles: [`
     :host {
       display: contents;
+    }
+    :host .presentation-range {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+    }
+    :host .presentation-range::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 12px;
+      background: linear-gradient(to right, var(--fill-color, #2F5F54) 0%, var(--fill-color, #2F5F54) var(--value-percent, 0%), #d1d5db var(--value-percent, 0%), #d1d5db 100%);
+      border-radius: 0.5rem;
+    }
+    :host .presentation-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 32px !important;
+      height: 32px !important;
+      min-width: 32px;
+      min-height: 32px;
+      border-radius: 50%;
+      background: #2F5F54;
+      cursor: pointer;
+      margin-top: -10px;
+      border: 2px solid white;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    :host .presentation-range.accent-blue-600::-webkit-slider-thumb {
+      background: #2563eb;
+    }
+    :host .presentation-range::-moz-range-track {
+      width: 100%;
+      height: 12px;
+      background: linear-gradient(to right, var(--fill-color, #2F5F54) 0%, var(--fill-color, #2F5F54) var(--value-percent, 0%), #d1d5db var(--value-percent, 0%), #d1d5db 100%);
+      border-radius: 0.5rem;
+    }
+    :host .presentation-range::-moz-range-thumb {
+      width: 32px !important;
+      height: 32px !important;
+      min-width: 32px;
+      min-height: 32px;
+      border-radius: 50%;
+      background: #2F5F54;
+      cursor: pointer;
+      border: 2px solid white;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    :host .presentation-range.accent-blue-600::-moz-range-thumb {
+      background: #2563eb;
     }
   `]
 })

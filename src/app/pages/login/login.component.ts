@@ -126,7 +126,7 @@ import { environment } from '../../../environments/environment';
                   (click)="handleResendCode()"
                   [disabled]="resendLoading"
                   type="button"
-                  class="w-full py-2 px-4 text-sm font-medium text-[#2F5F54] dark:text-emerald-400 hover:text-[#1a3a2e] dark:hover:text-emerald-300 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  class="w-full py-2 px-4 text-sm font-medium text-[#2F5F54] dark:text-emerald-400 hover:text-[#1a3a2e] dark:hover:text-emerald-300 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >
                   {{ resendLoading ? 'Sending...' : 'Resend Code' }}
                 </button>
@@ -343,7 +343,7 @@ import { environment } from '../../../environments/environment';
           @if (waitingForMfaCode) {
           <button
             (click)="resetForm()"
-            class="w-full py-2 text-center text-sm font-medium text-[#2F5F54] dark:text-emerald-400 hover:text-[#1a3a2e] dark:hover:text-emerald-300 border border-emerald-300 dark:border-emerald-600 rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
+            class="w-full py-2 text-center text-sm font-medium text-[#2F5F54] dark:text-emerald-400 hover:text-[#1a3a2e] dark:hover:text-emerald-300 border border-emerald-300 dark:border-emerald-600 rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors cursor-pointer"
           >
             ← Try a different email
           </button>
@@ -392,7 +392,7 @@ import { environment } from '../../../environments/environment';
           <button
             type="submit"
             [disabled]="loading || !isValidEmail()"
-            class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#2F5F54] hover:bg-[#1a3a2e] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2F5F54] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#2F5F54] hover:bg-[#1a3a2e] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2F5F54] disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
           >
             @if (loading) {
               <div class="flex items-center gap-2">

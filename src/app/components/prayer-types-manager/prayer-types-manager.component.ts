@@ -29,7 +29,7 @@ import type { PrayerTypeRecord } from '../../types/prayer';
         <button
           (click)="toggleAddForm()"
           title="Add new prayer type"
-          class="flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm whitespace-nowrap w-fit ml-auto"
+          class="flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm whitespace-nowrap w-fit ml-auto cursor-pointer"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -123,14 +123,14 @@ import type { PrayerTypeRecord } from '../../types/prayer';
           <button
             type="submit"
             [disabled]="submitting"
-            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 transition-colors text-sm"
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 transition-colors text-sm cursor-pointer"
           >
             {{ submitting ? 'Saving...' : (editingId ? 'Update Type' : 'Add Type') }}
           </button>
           <button
             type="button"
             (click)="cancelEdit()"
-            class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-sm"
+            class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-sm cursor-pointer"
           >
             Cancel
           </button>
@@ -199,7 +199,7 @@ import type { PrayerTypeRecord } from '../../types/prayer';
           <div class="flex items-center gap-2">
             <button
               (click)="toggleActive(type)"
-              [class]="'p-2 rounded-lg transition-colors ' + 
+              [class]="'p-2 rounded-lg transition-colors cursor-pointer ' + 
                 (type.is_active ? 'text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30' : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800')"
               [title]="type.is_active ? 'Deactivate' : 'Activate'"
             >
@@ -218,7 +218,7 @@ import type { PrayerTypeRecord } from '../../types/prayer';
             </button>
             <button
               (click)="handleEdit(type)"
-              class="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+              class="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors cursor-pointer"
               title="Edit"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -228,7 +228,7 @@ import type { PrayerTypeRecord } from '../../types/prayer';
             </button>
             <button
               (click)="handleDelete(type.id, type.name)"
-              class="p-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+              class="p-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors cursor-pointer"
               title="Delete"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

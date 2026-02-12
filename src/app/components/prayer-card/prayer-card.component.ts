@@ -61,7 +61,7 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
             (click)="showShareModal = true"
             aria-label="Share personal prayer"
             title="Share prayer to public"
-            class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md"
+            class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md cursor-pointer"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
@@ -75,7 +75,7 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
             (click)="editPersonalPrayer.emit(prayer)"
             aria-label="Edit personal prayer"
             title="Edit prayer"
-            class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md"
+            class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md cursor-pointer"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -88,7 +88,7 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
             (click)="handleDeleteClick()"
             aria-label="Delete prayer request"
             title="Delete prayer request"
-            class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 focus:outline-none focus:ring-2 focus:ring-red-500 rounded-md"
+            class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 focus:outline-none focus:ring-2 focus:ring-red-500 rounded-md cursor-pointer"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="3 6 5 6 21 6"></polyline>
@@ -126,7 +126,7 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
         <button
           (click)="toggleAddUpdate()"
           title="Add an update to this prayer"
-          class="px-3 py-1 text-xs font-medium bg-green-50 dark:bg-green-900/20 text-[#39704D] dark:text-[#5FB876] rounded-md border border-[#39704D] dark:border-[#39704D] hover:bg-green-100 dark:hover:bg-green-900/30 focus:outline-none focus:ring-2 focus:ring-[#39704D] focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+          class="px-3 py-1 text-xs font-medium bg-green-50 dark:bg-green-900/20 text-[#39704D] dark:text-[#5FB876] rounded-md border border-[#39704D] dark:border-[#39704D] hover:bg-green-100 dark:hover:bg-green-900/30 focus:outline-none focus:ring-2 focus:ring-[#39704D] focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer"
         >
           Add Update
         </button>
@@ -177,7 +177,7 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
             <button
               type="submit"
               [disabled]="!updateForm.valid"
-              class="px-3 py-1.5 text-sm font-medium bg-[#39704D] text-white rounded-md border border-[#2d5a3f] hover:bg-[#2d5a3f] focus:outline-none focus:ring-2 focus:ring-[#39704D] focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              class="px-3 py-1.5 text-sm font-medium bg-[#39704D] text-white rounded-md border border-[#2d5a3f] hover:bg-[#2d5a3f] focus:outline-none focus:ring-2 focus:ring-[#39704D] focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm cursor-pointer"
               aria-label="Submit prayer update"
             >
               Add Update
@@ -185,7 +185,7 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
             <button
               type="button"
               (click)="showAddUpdateForm = false"
-              class="px-3 py-1.5 text-sm font-medium bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+              class="px-3 py-1.5 text-sm font-medium bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer"
               aria-label="Cancel prayer update form"
             >
               Cancel
@@ -287,7 +287,7 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
                     (click)="editMemberUpdate.emit({update: update, prayerId: prayer.id})"
                     aria-label="Edit member update"
                     title="Edit update"
-                    class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md"
+                    class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md cursor-pointer"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -298,7 +298,7 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
                     (click)="toggleMemberUpdateAnswered(update)"
                     [title]="update.is_answered ? 'Mark as unanswered' : 'Mark as answered'"
                     [attr.aria-label]="update.is_answered ? 'Mark as unanswered' : 'Mark as answered'"
-                    [class]="'p-1 focus:outline-none focus:ring-2 focus:ring-green-500 rounded-md ' + (update.is_answered ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400')"
+                    [class]="'p-1 focus:outline-none focus:ring-2 focus:ring-green-500 rounded-md cursor-pointer ' + (update.is_answered ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400')"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <polyline points="20 6 9 17 4 12"></polyline>
@@ -310,7 +310,7 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
                     (click)="handleDeleteUpdate(update.id)"
                     aria-label="Delete prayer update"
                     title="Delete this update"
-                    class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 focus:outline-none focus:ring-2 focus:ring-red-500 rounded-md"
+                    class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 focus:outline-none focus:ring-2 focus:ring-red-500 rounded-md cursor-pointer"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <polyline points="3 6 5 6 21 6"></polyline>

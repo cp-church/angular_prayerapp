@@ -32,7 +32,7 @@ interface EmailTemplate {
         </div>
         <button
           (click)="loadTemplates()"
-          class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
           title="Refresh templates"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600 dark:text-gray-400">
@@ -75,7 +75,7 @@ interface EmailTemplate {
             <!-- Template Card -->
             <button
               (click)="handleSelectTemplate(template)"
-              [class]="'w-full text-left p-3 rounded-lg border transition-colors ' + 
+              [class]="'w-full text-left p-3 rounded-lg border transition-colors cursor-pointer ' + 
                 (selectedTemplate?.id === template.id 
                   ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-600'
                   : 'bg-gray-50 dark:bg-gray-800/50 border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700')"
@@ -92,7 +92,7 @@ interface EmailTemplate {
                 <label class="text-sm font-semibold text-gray-900 dark:text-gray-100">Edit Template</label>
                 <button
                   (click)="showPreview = !showPreview"
-                  class="flex items-center gap-2 px-3 py-1 bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                  class="flex items-center gap-2 px-3 py-1 bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors cursor-pointer"
                 >
                   @if (showPreview) {
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -251,7 +251,7 @@ interface EmailTemplate {
                 <button
                   (click)="handleSave()"
                   [disabled]="saving"
-                  class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors text-sm font-medium"
+                  class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors text-sm font-medium cursor-pointer"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
@@ -262,7 +262,7 @@ interface EmailTemplate {
                 </button>
                 <button
                   (click)="handleRevert()"
-                  class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
+                  class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium cursor-pointer"
                 >
                   Revert
                 </button>

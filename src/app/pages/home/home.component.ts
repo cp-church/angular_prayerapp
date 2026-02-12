@@ -69,7 +69,7 @@ import { environment } from '../../../environments/environment';
           <div class="sm:hidden flex items-center gap-2 flex-wrap">
             <button
               (click)="showHelp = true"
-              class="flex items-center gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
+              class="flex items-center gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors cursor-pointer"
               title="Help"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -79,7 +79,7 @@ import { environment } from '../../../environments/environment';
             </button>
             <button
               (click)="showSettings = true"
-              class="flex items-center gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
+              class="flex items-center gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors cursor-pointer"
               title="Settings"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -89,21 +89,21 @@ import { environment } from '../../../environments/environment';
             </button>
             <button
               routerLink="/presentation"
-              class="flex items-center gap-1 bg-[#2F5F54] dark:bg-[#2F5F54] text-white px-3 py-2 rounded-lg hover:bg-[#1a3a2e] dark:hover:bg-[#1a3a2e] focus:outline-none focus:ring-2 focus:ring-[#2F5F54] transition-colors text-sm"
+              class="flex items-center gap-1 bg-[#2F5F54] dark:bg-[#2F5F54] text-white px-3 py-2 rounded-lg hover:bg-[#1a3a2e] dark:hover:bg-[#1a3a2e] focus:outline-none focus:ring-2 focus:ring-[#2F5F54] transition-colors text-sm cursor-pointer"
               title="Prayer Mode"
             >
               <span>Pray</span>
             </button>
             <button
               (click)="showPrayerForm = true"
-              class="flex items-center gap-1 bg-blue-600 dark:bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm"
+              class="flex items-center gap-1 bg-blue-600 dark:bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm cursor-pointer"
             >
               <span>Request</span>
             </button>
             @if (hasAdminEmail$ | async) {
               <button
                 (click)="navigateToAdmin()"
-                class="flex items-center gap-1 border border-red-600 dark:border-red-500 text-red-600 dark:text-red-500 px-2 py-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors text-sm"
+                class="flex items-center gap-1 border border-red-600 dark:border-red-500 text-red-600 dark:text-red-500 px-2 py-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors text-sm cursor-pointer"
                 title="Admin Portal"
               >
                 <span>Admin</span>
@@ -123,11 +123,11 @@ import { environment } from '../../../environments/environment';
               <!-- Top row: Admin button and Email Indicator -->
               <div class="flex items-center gap-2">
                 @if (hasAdminEmail$ | async) {
-                  <button
-                    (click)="navigateToAdmin()"
-                    class="flex items-center gap-1 border border-red-600 dark:border-red-500 text-red-600 dark:text-red-500 px-2 py-1 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors text-xs"
-                    title="Admin Portal"
-                  >
+                <button
+                  (click)="navigateToAdmin()"
+                  class="flex items-center gap-1 border border-red-600 dark:border-red-500 text-red-600 dark:text-red-500 px-2 py-1 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors text-xs cursor-pointer"
+                  title="Admin Portal"
+                >
                   <span>Admin</span>
                   </button>
                 }
@@ -154,7 +154,7 @@ import { environment } from '../../../environments/environment';
               <div class="flex items-center gap-2">
                 <button
                   (click)="showHelp = true"
-                  class="flex items-center gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-2.5 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
+                  class="flex items-center gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-2.5 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors cursor-pointer"
                   title="Help & Guidance"
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -164,7 +164,7 @@ import { environment } from '../../../environments/environment';
                 </button>
                 <button
                   (click)="showSettings = true"
-                  class="flex items-center gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-2.5 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors"
+                  class="flex items-center gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-2.5 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors cursor-pointer"
                   title="Settings"
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -174,14 +174,14 @@ import { environment } from '../../../environments/environment';
                 </button>
                 <button
                   routerLink="/presentation"
-                  class="flex items-center gap-1 bg-[#2F5F54] dark:bg-[#2F5F54] text-white px-3 py-2.5 rounded-lg hover:bg-[#1a3a2e] dark:hover:bg-[#1a3a2e] focus:outline-none focus:ring-2 focus:ring-[#2F5F54] transition-colors text-sm"
+                  class="flex items-center gap-1 bg-[#2F5F54] dark:bg-[#2F5F54] text-white px-3 py-2.5 rounded-lg hover:bg-[#1a3a2e] dark:hover:bg-[#1a3a2e] focus:outline-none focus:ring-2 focus:ring-[#2F5F54] transition-colors text-sm cursor-pointer"
                   title="Prayer Mode"
                 >
                   <span>Pray</span>
                 </button>
                 <button
                   (click)="showPrayerForm = true"
-                  class="flex items-center gap-1 bg-blue-600 dark:bg-blue-600 text-white px-3 py-2.5 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm"
+                  class="flex items-center gap-1 bg-blue-600 dark:bg-blue-600 text-white px-3 py-2.5 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm cursor-pointer"
                 >
                   <span>Request</span>
                 </button>
@@ -379,7 +379,7 @@ import { environment } from '../../../environments/environment';
             <!-- All Types Button -->
             <button
               (click)="selectedPromptTypes = []"
-              [class]="'flex-1 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-medium transition-all ' + (selectedPromptTypes.length === 0 ? 'bg-[#988F83] text-white shadow-md' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:border-[#988F83] dark:hover:border-[#988F83]')"
+              [class]="'flex-1 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ' + (selectedPromptTypes.length === 0 ? 'bg-[#988F83] text-white shadow-md' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:border-[#988F83] dark:hover:border-[#988F83]')"
             >
               All Types ({{ promptsCount }})
             </button>
@@ -388,7 +388,7 @@ import { environment } from '../../../environments/environment';
             @for (type of getUniquePromptTypes(); track type) {
               <button
                 (click)="togglePromptType(type)"
-                [class]="'flex-1 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-medium transition-all relative ' + (isPromptTypeSelected(type) ? 'bg-[#988F83] text-white shadow-md' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:border-[#988F83] dark:hover:border-[#988F83]')"
+                [class]="'flex-1 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-medium transition-all relative cursor-pointer ' + (isPromptTypeSelected(type) ? 'bg-[#988F83] text-white shadow-md' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:border-[#988F83] dark:hover:border-[#988F83]')"
               >
                 {{ type }} ({{ getPromptCountByType(type) }})
                 @if ((badgeService.getBadgeFunctionalityEnabled$() | async) && getUnreadPromptCountByType(type) > 0) {
@@ -413,7 +413,7 @@ import { environment } from '../../../environments/environment';
             <button
               (click)="selectedPersonalCategories = []"
               [disabled]="isSwappingCategories"
-              [class]="'flex-1 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-medium transition-all ' + (selectedPersonalCategories.length === 0 ? 'bg-[#2F5F54] text-white shadow-md' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:border-[#2F5F54] dark:hover:border-[#2F5F54]') + (isSwappingCategories ? ' opacity-50 cursor-not-allowed' : '')"
+              [class]="'flex-1 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-medium transition-all ' + (selectedPersonalCategories.length === 0 ? 'bg-[#2F5F54] text-white shadow-md' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:border-[#2F5F54] dark:hover:border-[#2F5F54]') + (isSwappingCategories ? ' opacity-50 cursor-not-allowed' : ' cursor-pointer')"
             >
               All Categories ({{ personalPrayersCount }})
             </button>
@@ -429,7 +429,7 @@ import { environment } from '../../../environments/environment';
                 <button
                   (click)="togglePersonalCategory(category)"
                   [disabled]="isSwappingCategories"
-                  [class]="'w-full whitespace-nowrap pl-7 pr-3 py-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-2 relative ' + (isPersonalCategorySelected(category) ? 'bg-[#2F5F54] text-white shadow-md' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:border-[#2F5F54] dark:hover:border-[#2F5F54]') + (isSwappingCategories ? ' opacity-50 cursor-not-allowed' : '')"
+                  [class]="'w-full whitespace-nowrap pl-7 pr-3 py-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-2 relative ' + (isPersonalCategorySelected(category) ? 'bg-[#2F5F54] text-white shadow-md' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:border-[#2F5F54] dark:hover:border-[#2F5F54]') + (isSwappingCategories ? ' opacity-50 cursor-not-allowed' : ' cursor-pointer')"
                 >
                   <svg cdkDragHandle width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" [class]="'flex-shrink-0 absolute left-2 top-1/2 -translate-y-1/2 ' + (isSwappingCategories ? 'cursor-not-allowed' : 'cursor-grab')">
                     <circle cx="9" cy="5" r="1"></circle>

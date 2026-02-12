@@ -47,7 +47,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           <button
             (click)="onClose.emit()"
             title="Close settings"
-            class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+            class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -67,7 +67,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                   (click)="handlePrint()"
                   title="Print prayers for the selected time period"
                   [disabled]="isPrinting"
-                  class="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:py-3 bg-green-600 text-white rounded-l-lg hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors"
+                  class="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:py-3 bg-green-600 text-white rounded-l-lg hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >
                   @if (!isPrinting) {
                     <svg 
@@ -107,7 +107,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                   (click)="showPrintDropdown = !showPrintDropdown"
                   [disabled]="isPrinting"
                   title="Select time period for prayers to print"
-                  class="flex items-center justify-center px-2 bg-green-600 text-white rounded-r-lg border-l border-green-500 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors"
+                  class="flex items-center justify-center px-2 bg-green-600 text-white rounded-r-lg border-l border-green-500 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >
                   <svg 
                     width="18" 
@@ -137,7 +137,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                   @for (option of printRangeOptions; track option.value) {
                   <button
                     (click)="setPrintRange(option.value); showPrintDropdown = false"
-                    class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between"
+                    class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between cursor-pointer"
                     [title]="'Print prayers from the last ' + option.label"
                   >
                     <span>{{ option.label }}</span>
@@ -158,7 +158,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                   (click)="handlePrintPrompts()"
                   [disabled]="isPrintingPrompts"
                   title="Print prayer prompts for the selected time period"
-                  class="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:py-3 bg-green-600 text-white rounded-l-lg hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors"
+                  class="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:py-3 bg-green-600 text-white rounded-l-lg hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >
                   @if (!isPrintingPrompts) {
                     <svg 
@@ -198,7 +198,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                   (click)="showPromptTypesDropdown = !showPromptTypesDropdown"
                   [disabled]="isPrintingPrompts"
                   title="Select which types of prompts to print"
-                  class="flex items-center justify-center px-2 bg-green-600 text-white rounded-r-lg border-l border-green-500 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors"
+                  class="flex items-center justify-center px-2 bg-green-600 text-white rounded-r-lg border-l border-green-500 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >
                   <svg 
                     width="18" 
@@ -227,7 +227,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                 <div class="absolute left-0 right-0 mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-20 max-h-60 overflow-y-auto">
                   <button
                     (click)="selectedPromptTypes = []; showPromptTypesDropdown = false"
-                    class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between"
+                    class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between cursor-pointer"
                     title="Print all prompt types"
                   >
                     <span>All Types</span>
@@ -238,7 +238,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                   @for (type of promptTypes; track type) {
                   <button
                     (click)="togglePromptType(type)"
-                    class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between"
+                    class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between cursor-pointer"
                     [title]="'Toggle ' + type + ' prompts for printing'"
                   >
                     <span>{{ type }}</span>
@@ -259,7 +259,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                   (click)="handlePrintPersonalPrayers()"
                   title="Print personal prayers for the selected categories"
                   [disabled]="isPrintingPersonal"
-                  class="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:py-3 bg-green-600 text-white rounded-l-lg hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors"
+                  class="flex-1 flex items-center justify-center gap-2 px-4 py-2 sm:py-3 bg-green-600 text-white rounded-l-lg hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >
                   @if (!isPrintingPersonal) {
                     <svg 
@@ -299,7 +299,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                   (click)="showPrintPersonalDropdown = !showPrintPersonalDropdown"
                   [disabled]="isPrintingPersonal"
                   title="Select which personal prayer categories to print"
-                  class="flex items-center justify-center px-2 bg-green-600 text-white rounded-r-lg border-l border-green-500 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors"
+                  class="flex items-center justify-center px-2 bg-green-600 text-white rounded-r-lg border-l border-green-500 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >
                   <svg 
                     width="18" 
@@ -328,7 +328,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                 <div class="absolute left-0 right-0 mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-20 max-h-60 overflow-y-auto">
                   <button
                     (click)="selectedPersonalCategories = []; showPrintPersonalDropdown = false"
-                    class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between"
+                    class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between cursor-pointer"
                     title="Print all personal prayer categories"
                   >
                     <span>All Categories</span>
@@ -339,7 +339,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                   @for (category of personalCategories; track category) {
                   <button
                     (click)="togglePersonalCategory(category)"
-                    class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between"
+                    class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between cursor-pointer"
                     [title]="'Toggle ' + category + ' category for printing'"
                   >
                     <span>{{ category }}</span>
@@ -369,7 +369,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                       'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600': theme !== 'light'
                     }"
                     title="Use light theme for the application"
-                    class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all"
+                    class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all cursor-pointer"
                   >
                     <svg width="18" height="18" class="text-amber-600 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <circle cx="12" cy="12" r="5"></circle>
@@ -391,7 +391,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                       'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600': theme !== 'dark'
                     }"
                     title="Use dark theme for the application"
-                    class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all"
+                    class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all cursor-pointer"
                   >
                     <svg width="18" height="18" class="text-blue-600 dark:text-blue-400 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
@@ -405,7 +405,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                       'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600': theme !== 'system'
                     }"
                     title="Use your operating system's theme preference"
-                    class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all"
+                    class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all cursor-pointer"
                   >
                     <svg width="18" height="18" class="text-gray-600 dark:text-gray-400 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
@@ -633,7 +633,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
             <button
               (click)="logout()"
               title="Sign out of your account"
-              class="flex items-center justify-center gap-2 px-4 py-2 sm:py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors text-sm sm:text-base font-medium"
+              class="flex items-center justify-center gap-2 px-4 py-2 sm:py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors text-sm sm:text-base font-medium cursor-pointer"
               aria-label="Logout"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -646,7 +646,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
             <button
               (click)="onClose.emit()"
               title="Close the settings modal"
-              class="px-4 py-2 sm:py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors text-sm sm:text-base font-medium sm:min-w-[100px]"
+              class="px-4 py-2 sm:py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors text-sm sm:text-base font-medium sm:min-w-[100px] cursor-pointer"
               aria-label="Close settings"
             >
               Close

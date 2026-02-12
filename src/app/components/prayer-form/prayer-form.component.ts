@@ -34,7 +34,7 @@ import { ToastService } from '../../services/toast.service';
           <button
             (click)="cancel()"
             aria-label="Close prayer form dialog"
-            class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-1"
+            class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-1 cursor-pointer"
           >
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -110,7 +110,7 @@ import { ToastService } from '../../services/toast.service';
                 type="button"
                 (click)="formData.is_personal = false"
                 [class.ring-2]="!formData.is_personal"
-                class="relative py-3 px-4 rounded-lg border-2 transition-all font-medium"
+                class="relative py-3 px-4 rounded-lg border-2 transition-all font-medium cursor-pointer"
                 [ngClass]="
                   !formData.is_personal
                     ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 ring-blue-500 dark:ring-blue-400 ring-offset-2 dark:ring-offset-gray-800'
@@ -135,7 +135,7 @@ import { ToastService } from '../../services/toast.service';
                 type="button"
                 (click)="formData.is_personal = true"
                 [class.ring-2]="formData.is_personal"
-                class="relative py-3 px-4 rounded-lg border-2 transition-all font-medium"
+                class="relative py-3 px-4 rounded-lg border-2 transition-all font-medium cursor-pointer"
                 [ngClass]="
                   formData.is_personal
                     ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 ring-blue-500 dark:ring-blue-400 ring-offset-2 dark:ring-offset-gray-800'
@@ -202,7 +202,7 @@ import { ToastService } from '../../services/toast.service';
                 (click)="selectCategory(category)"
                 [class.bg-blue-100]="i === selectedCategoryIndex"
                 [class.dark:bg-gray-600]="i === selectedCategoryIndex"
-                class="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 focus:outline-none focus:bg-blue-100 dark:focus:bg-gray-600 transition-colors"
+                class="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 focus:outline-none focus:bg-blue-100 dark:focus:bg-gray-600 transition-colors cursor-pointer"
               >
                 {{ category }}
               </button>
@@ -217,7 +217,7 @@ import { ToastService } from '../../services/toast.service';
             <button
               type="submit"
               [disabled]="!prayerForm.valid || !isFormValid() || isSubmitting || showSuccessMessage"
-              class="flex-1 bg-blue-600 dark:bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              class="flex-1 bg-blue-600 dark:bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
               aria-label="Submit prayer request"
             >
               {{ isSubmitting ? 'Submitting...' : (showSuccessMessage ? 'Submitted' : 'Submit Prayer Request') }}
@@ -226,7 +226,7 @@ import { ToastService } from '../../services/toast.service';
               type="button"
               (click)="cancel()"
               [disabled]="showSuccessMessage"
-              class="flex-1 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 py-2 px-4 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              class="flex-1 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 py-2 px-4 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
               aria-label="Cancel and close form"
             >
               {{ showSuccessMessage ? 'Closing...' : 'Close' }}

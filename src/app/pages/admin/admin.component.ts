@@ -96,7 +96,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
               <!-- Navigation Controls -->
               <button
                 (click)="goToHome()"
-                class="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-900 transition-colors text-sm"
+                class="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-900 transition-colors text-sm cursor-pointer"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="19" y1="12" x2="5" y2="12"></line>
@@ -115,7 +115,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
         <div class="grid grid-cols-4 gap-2 sm:gap-4 mb-8">
           <button
             (click)="onTabChange('prayers')"
-            [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md p-1 sm:p-4 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 flex flex-col justify-between ' + (activeTab === 'prayers' ? 'ring-2 ring-blue-500' : '')"
+            [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md p-1 sm:p-4 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 flex flex-col justify-between cursor-pointer ' + (activeTab === 'prayers' ? 'ring-2 ring-blue-500' : '')"
           >
             <div class="text-center self-start w-full">
               <div class="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400">
@@ -127,7 +127,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
 
           <button
             (click)="onTabChange('deletions')"
-            [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md p-1 sm:p-4 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 flex flex-col justify-between ' + (activeTab === 'deletions' ? 'ring-2 ring-blue-500' : '')"
+            [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md p-1 sm:p-4 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 flex flex-col justify-between cursor-pointer ' + (activeTab === 'deletions' ? 'ring-2 ring-blue-500' : '')"
           >
             <div class="text-center self-start w-full">
               <div class="text-lg sm:text-2xl font-bold text-red-600 dark:text-red-400">
@@ -139,7 +139,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
 
           <button
             (click)="onTabChange('accounts')"
-            [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md p-1 sm:p-4 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 flex flex-col justify-between ' + (activeTab === 'accounts' ? 'ring-2 ring-blue-500' : '')"
+            [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md p-1 sm:p-4 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 flex flex-col justify-between cursor-pointer ' + (activeTab === 'accounts' ? 'ring-2 ring-blue-500' : '')"
           >
             <div class="text-center self-start w-full">
               <div class="text-lg sm:text-2xl font-bold text-amber-600 dark:text-amber-400">
@@ -151,7 +151,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
 
           <button
             (click)="onTabChange('settings')"
-            [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md p-1 sm:p-4 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 flex flex-col justify-between ' + (activeTab === 'settings' ? 'ring-2 ring-blue-500' : '')"
+            [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md p-1 sm:p-4 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 flex flex-col justify-between cursor-pointer ' + (activeTab === 'settings' ? 'ring-2 ring-blue-500' : '')"
           >
             <div class="text-center self-start w-full">
               <svg class="w-4 sm:w-6 h-4 sm:h-6 mx-auto text-gray-600 dark:text-gray-400 translate-y-2 sm:translate-y-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -177,7 +177,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
             <p class="text-red-800 dark:text-red-200">{{ adminData.error }}</p>
             <button 
               (click)="refresh()"
-              class="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              class="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors cursor-pointer"
             >
               Try Again
             </button>
@@ -328,7 +328,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
             <div class="flex flex-wrap gap-2 mb-6 border-b border-gray-200 dark:border-gray-700">
               <button
                 (click)="onSettingsTabChange('analytics')"
-                [class]="'px-4 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-2 ' + (activeSettingsTab === 'analytics' ? 'bg-blue-600 text-white border-b-2 border-blue-600' : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200')"
+                [class]="'px-4 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-2 cursor-pointer ' + (activeSettingsTab === 'analytics' ? 'bg-blue-600 text-white border-b-2 border-blue-600' : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200')"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
@@ -338,7 +338,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
               </button>
               <button
                 (click)="onSettingsTabChange('content')"
-                [class]="'px-4 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-2 ' + (activeSettingsTab === 'content' ? 'bg-blue-600 text-white border-b-2 border-blue-600' : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200')"
+                [class]="'px-4 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-2 cursor-pointer ' + (activeSettingsTab === 'content' ? 'bg-blue-600 text-white border-b-2 border-blue-600' : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200')"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -347,7 +347,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
               </button>
               <button
                 (click)="onSettingsTabChange('email')"
-                [class]="'px-4 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-2 ' + (activeSettingsTab === 'email' ? 'bg-blue-600 text-white border-b-2 border-blue-600' : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200')"
+                [class]="'px-4 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-2 cursor-pointer ' + (activeSettingsTab === 'email' ? 'bg-blue-600 text-white border-b-2 border-blue-600' : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200')"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
@@ -357,7 +357,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
               </button>
               <button
                 (click)="onSettingsTabChange('tools')"
-                [class]="'px-4 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-2 ' + (activeSettingsTab === 'tools' ? 'bg-blue-600 text-white border-b-2 border-blue-600' : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200')"
+                [class]="'px-4 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-2 cursor-pointer ' + (activeSettingsTab === 'tools' ? 'bg-blue-600 text-white border-b-2 border-blue-600' : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200')"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
@@ -366,7 +366,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
               </button>
               <button
                 (click)="onSettingsTabChange('security')"
-                [class]="'px-4 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-2 ' + (activeSettingsTab === 'security' ? 'bg-blue-600 text-white border-b-2 border-blue-600' : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200')"
+                [class]="'px-4 py-2 font-medium rounded-t-lg transition-colors flex items-center gap-2 cursor-pointer ' + (activeSettingsTab === 'security' ? 'bg-blue-600 text-white border-b-2 border-blue-600' : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200')"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>

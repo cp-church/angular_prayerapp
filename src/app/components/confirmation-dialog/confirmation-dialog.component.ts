@@ -39,15 +39,15 @@ import { CommonModule } from '@angular/common';
         <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex gap-3 justify-end">
           <button
             (click)="onCancel()"
-            class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
+            class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium cursor-pointer"
           >
             {{ cancelText }}
           </button>
           <button
             (click)="onConfirm()"
             [class]="isDangerous ? 
-              'px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors font-medium' :
-              'px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium'"
+              'px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors font-medium cursor-pointer' :
+              'px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium cursor-pointer'"
           >
             {{ confirmText }}
           </button>

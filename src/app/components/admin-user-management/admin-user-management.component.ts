@@ -35,7 +35,7 @@ interface AdminUser {
         @if (!showAddForm) {
         <button
           (click)="showAddForm = true"
-          class="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+          class="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors cursor-pointer"
           title="Click to add a new administrator. You will be able to enter their email address and send them an invitation to join as an admin."
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -237,7 +237,7 @@ interface AdminUser {
             <!-- Receive Admin Emails Toggle -->
             <button
               (click)="toggleReceiveEmails(admin.email, admin.receive_admin_emails)"
-              [class]="'p-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ' + (admin.receive_admin_emails ? 'text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 focus:ring-green-500' : 'text-gray-400 dark:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 focus:ring-gray-500')"
+              [class]="'p-2 rounded-lg transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ' + (admin.receive_admin_emails ? 'text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 focus:ring-green-500' : 'text-gray-400 dark:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 focus:ring-gray-500')"
               [attr.aria-label]="'Email notifications for ' + admin.name + ' are ' + (admin.receive_admin_emails ? 'enabled' : 'disabled')"
               [attr.aria-pressed]="admin.receive_admin_emails"
               [title]="admin.receive_admin_emails ? 'Click to disable email notifications for ' + admin.name + '. They will no longer receive admin alerts and updates.' : 'Click to enable email notifications for ' + admin.name + '. They will receive admin alerts and updates about prayers and system events.'"
@@ -261,7 +261,7 @@ interface AdminUser {
             <button
               (click)="deletingEmail = admin.email"
               [disabled]="admins.length === 1"
-              class="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+              class="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer"
               [attr.aria-label]="admins.length === 1 ? 'Cannot delete, this is the last admin' : 'Remove admin access for ' + admin.name"
               [title]="admins.length === 1 ? 'Cannot remove the last admin. At least one admin must be present to manage the application.' : 'Click to remove admin access for ' + admin.name + '. You will be asked to confirm this action.'"
             >
