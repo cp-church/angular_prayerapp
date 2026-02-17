@@ -447,7 +447,7 @@ interface CSVRow {
 
       @if (!searching && hasSearched && subscribers.length > 0) {
       <div>
-        <div class="hidden mb-3 gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-300 md:grid md:grid-cols-12">
+        <div class="hidden mb-3 gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-300 sm:grid sm:grid-cols-12">
           <button (click)="toggleSort('name')" class="col-span-3 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by name">Name{{ getSortIndicator('name') }}</button>
           <button (click)="toggleSort('email')" class="col-span-3 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by email">Email{{ getSortIndicator('email') }}</button>
           <button (click)="toggleSort('created_at')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by join date">Added{{ getSortIndicator('created_at') }}</button>
@@ -457,28 +457,28 @@ interface CSVRow {
           <button (click)="toggleSort('in_planning_center')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by Planning Center status">Planning Center{{ getSortIndicator('in_planning_center') }}</button>
         </div>
         <div class="space-y-2">
-          @for (subscriber of subscribers; track subscriber.id) { <div class="grid gap-2 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 grid-cols-2 md:grid-cols-12 md:items-start">
+          @for (subscriber of subscribers; track subscriber.id) { <div class="grid gap-2 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 grid-cols-2 sm:grid-cols-12 sm:items-start">
             <!-- Name column -->
-            <div class="text-left col-span-1 md:col-span-3">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Name</p>
+            <div class="text-left col-span-1 sm:col-span-3">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Name</p>
               <h4 class="font-medium text-gray-900 dark:text-gray-100 truncate" [title]="subscriber.name">{{ subscriber.name }}</h4>
             </div>
             
             <!-- Email column -->
-            <div class="text-left col-span-1 md:col-span-3">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Email</p>
+            <div class="text-left col-span-1 sm:col-span-3">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Email</p>
               <p class="text-sm text-gray-600 dark:text-gray-400 truncate" [title]="subscriber.email">{{ subscriber.email }}</p>
             </div>
             
             <!-- Added column -->
-            <div class="col-span-1 md:col-span-1">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Added</p>
+            <div class="col-span-1 sm:col-span-1">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Added</p>
               <p class="text-xs text-gray-500 dark:text-gray-500" [title]="'Joined: ' + (subscriber.created_at | date:'medium')">{{ subscriber.created_at | date:'short' }}</p>
             </div>
             
             <!-- Activity column -->
-            <div class="col-span-1 md:col-span-1">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Activity</p>
+            <div class="col-span-1 sm:col-span-1">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Activity</p>
               @if (subscriber.last_activity_date) {
               <p class="text-xs text-gray-500 dark:text-gray-500" [title]="'Last active: ' + (subscriber.last_activity_date | date:'medium')">{{ subscriber.last_activity_date | date:'short' }}</p>
               } @else {
@@ -487,8 +487,8 @@ interface CSVRow {
             </div>
             
             <!-- Status column -->
-            <div class="col-span-1 md:col-span-1 flex items-center gap-1">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Status</p>
+            <div class="col-span-1 sm:col-span-1 flex items-center gap-1">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Status</p>
               <button
                 (click)="handleToggleActive(subscriber.id, subscriber.is_active)"
                 [class]="subscriber.is_active ? 
@@ -512,8 +512,8 @@ interface CSVRow {
             </div>
 
             <!-- Blocked column -->
-            <div class="col-span-1 md:col-span-1 flex items-center gap-1">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Blocked</p>
+            <div class="col-span-1 sm:col-span-1 flex items-center gap-1">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Blocked</p>
               <button
                 (click)="handleToggleBlocked(subscriber.id, subscriber.is_blocked)"
                 [class]="subscriber.is_blocked ? 
@@ -529,8 +529,8 @@ interface CSVRow {
             </div>
 
             <!-- Planning Center column -->
-            <div class="col-span-1 md:col-span-1 flex items-center gap-1">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Planning Center</p>
+            <div class="col-span-1 sm:col-span-1 flex items-center gap-1">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Planning Center</p>
               @if (subscriber.in_planning_center === true) {
               <span class="text-lg text-green-600 dark:text-green-400" title="This person is verified in Planning Center">✓</span>
               } @else if (subscriber.in_planning_center === false) {
@@ -541,13 +541,13 @@ interface CSVRow {
             </div>
 
             <!-- Actions (Edit + Delete) column -->
-            <div class="col-span-1 md:col-span-1">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Actions</p>
+            <div class="col-span-1 sm:col-span-1">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Actions</p>
               <!-- Keep actions comfortably inside the row container on all screen sizes -->
-              <div class="flex items-center pr-1 justify-start gap-3 md:justify-center md:gap-1">
+              <div class="flex items-center pr-1 justify-start gap-3 sm:justify-center sm:gap-1">
                 <!-- Edit subscriber -->
                 <div class="flex items-center gap-1">
-                  <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Edit</span>
+                  <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Edit</span>
                   <button
                     (click)="openEditSubscriberModal(subscriber)"
                     class="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
@@ -562,7 +562,7 @@ interface CSVRow {
 
                 <!-- Delete subscriber -->
                 <div class="flex items-center gap-1">
-                  <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 md:hidden">Delete</span>
+                  <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Delete</span>
                   <button
                     (click)="handleDelete(subscriber.id, subscriber.email)"
                     class="p-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors cursor-pointer"
