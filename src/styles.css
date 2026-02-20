@@ -383,6 +383,46 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Safe area padding for notch/camera cutout - Capacitor only */
+@supports (padding: env(safe-area-inset-top)) {
+  html {
+    /* Ensure document scroll works in native WebView (iOS/Android) */
+    -webkit-overflow-scrolling: touch;
+  }
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    /* Explicitly allow vertical touch scroll in native WebView */
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Safe area strip uses same background as header (white / dark gray-800) */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: env(safe-area-inset-top);
+    background-color: #ffffff;
+    z-index: 9999;
+  }
+  html.dark body::before {
+    background-color: #1f2937;
+  }
+  /* Keep sticky header below the safe area (do not scroll into notch) */
+  header.sticky {
+    top: env(safe-area-inset-top);
+  }
+  /* Utility class for full-screen overlays/modals to respect safe area */
+  .safe-area-overlay {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
 @media print {
   @page {
     margin: 0.5in;

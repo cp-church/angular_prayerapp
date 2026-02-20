@@ -3,6 +3,7 @@ import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
 import { SupabaseService } from './supabase.service';
 import { PrayerService } from './prayer.service';
 import { EmailNotificationService } from './email-notification.service';
+import { PushNotificationService } from './push-notification.service';
 import type { 
   PrayerRequest, 
   PrayerUpdate, 
@@ -81,7 +82,8 @@ export class AdminDataService {
   constructor(
     private supabase: SupabaseService,
     private prayerService: PrayerService,
-    private emailNotification: EmailNotificationService
+    private emailNotification: EmailNotificationService,
+    private pushNotification: PushNotificationService
   ) {}
 
   async fetchAdminData(silent = false, force = false): Promise<void> {
@@ -485,6 +487,18 @@ export class AdminDataService {
       }).catch(err => console.error('Failed to send broadcast notification:', err));
     }
 
+    // Push notification: title = prayer title, body = description (truncated) or fallback
+    const pushTitle = prayer.title.length > 50 ? prayer.title.slice(0, 47) + '...' : prayer.title;
+    const desc = (prayer.description || '').trim();
+    const pushBody = desc.length > 0
+      ? (desc.length > 120 ? desc.slice(0, 117) + '...' : desc)
+      : 'A new prayer has been shared.';
+    this.pushNotification.sendPushToSubscribers({
+      title: pushTitle,
+      body: pushBody,
+      data: { type: 'prayer_approved', prayerId: id }
+    }).catch(() => {});
+
     // Email processor is already triggered by sendApprovedPrayerNotification/sendApprovedUpdateNotification
   }
 
@@ -587,6 +601,18 @@ export class AdminDataService {
       prayerFor: prayer.prayer_for,
       status: prayer.status
     }).catch(err => console.error('Failed to send broadcast notification:', err));
+
+    // Push to subscribers: title = prayer title, body = description (truncated) or fallback
+    const pushTitle = prayer.title.length > 50 ? prayer.title.slice(0, 47) + '...' : prayer.title;
+    const desc = (prayer.description || '').trim();
+    const pushBody = desc.length > 0
+      ? (desc.length > 120 ? desc.slice(0, 117) + '...' : desc)
+      : 'A new prayer has been shared.';
+    this.pushNotification.sendPushToSubscribers({
+      title: pushTitle,
+      body: pushBody,
+      data: { type: 'prayer_approved', prayerId: id }
+    }).catch(() => {});
   }
 
   async approveUpdate(id: string): Promise<void> {
@@ -701,6 +727,18 @@ export class AdminDataService {
       author: update.is_anonymous ? 'Anonymous' : (update.author || 'Anonymous'),
       markedAsAnswered: update.mark_as_answered || false
     }).catch(err => console.error('Failed to send update notification:', err));
+
+    // Push: title = prayer title, body = update content (truncated)
+    const pushTitle = prayerTitle.length > 50 ? prayerTitle.slice(0, 47) + '...' : prayerTitle;
+    const updateContent = (update.content || '').trim();
+    const pushBody = updateContent.length > 0
+      ? (updateContent.length > 120 ? updateContent.slice(0, 117) + '...' : updateContent)
+      : 'New prayer update.';
+    this.pushNotification.sendPushToSubscribers({
+      title: pushTitle,
+      body: pushBody,
+      data: { type: 'prayer_update', prayerId: update.prayer_id, updateId: id }
+    }).catch(() => {});
 
     // Email processor is already triggered by sendApprovedUpdateNotification
   }
@@ -820,6 +858,18 @@ export class AdminDataService {
       author: update.is_anonymous ? 'Anonymous' : (update.author || 'Anonymous'),
       markedAsAnswered: update.mark_as_answered || false
     }).catch(err => console.error('Failed to send update notification:', err));
+
+    // Push: title = prayer title, body = update content (truncated)
+    const pushTitle = prayerTitle.length > 50 ? prayerTitle.slice(0, 47) + '...' : prayerTitle;
+    const updateContent = (update.content || '').trim();
+    const pushBody = updateContent.length > 0
+      ? (updateContent.length > 120 ? updateContent.slice(0, 117) + '...' : updateContent)
+      : 'New prayer update.';
+    this.pushNotification.sendPushToSubscribers({
+      title: pushTitle,
+      body: pushBody,
+      data: { type: 'prayer_update', prayerId: update.prayer_id, updateId: id }
+    }).catch(() => {});
   }
 
   async approveDeletionRequest(id: string): Promise<void> {

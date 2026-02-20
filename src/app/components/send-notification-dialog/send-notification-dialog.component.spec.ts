@@ -40,7 +40,7 @@ describe('SendNotificationDialogComponent', () => {
       component.notificationType = 'prayer';
       const message = component.getMessageText();
       expect(message).toBe(
-        'Would you like to send an email notification to all subscribers about this new prayer?'
+        'Would you like to send an email and push notification to all subscribers about this new prayer?'
       );
     });
 
@@ -48,7 +48,7 @@ describe('SendNotificationDialogComponent', () => {
       component.notificationType = 'update';
       const message = component.getMessageText();
       expect(message).toBe(
-        'Would you like to send an email notification to all subscribers about this prayer update?'
+        'Would you like to send an email and push notification to all subscribers about this prayer update?'
       );
     });
 
@@ -79,23 +79,51 @@ describe('SendNotificationDialogComponent', () => {
     });
   });
 
+  describe('getHeaderText()', () => {
+    it('should return email & push header for prayer and update', () => {
+      component.notificationType = 'prayer';
+      expect(component.getHeaderText()).toBe('Send Email & Push Notification?');
+      component.notificationType = 'update';
+      expect(component.getHeaderText()).toBe('Send Email & Push Notification?');
+    });
+
+    it('should return email-only header for subscriber', () => {
+      component.notificationType = 'subscriber';
+      expect(component.getHeaderText()).toBe('Send Email Notification?');
+    });
+  });
+
+  describe('getConfirmButtonText()', () => {
+    it('should return "Send Email & Push" for prayer and update', () => {
+      component.notificationType = 'prayer';
+      expect(component.getConfirmButtonText()).toBe('Send Email & Push');
+      component.notificationType = 'update';
+      expect(component.getConfirmButtonText()).toBe('Send Email & Push');
+    });
+
+    it('should return "Send Email" for subscriber', () => {
+      component.notificationType = 'subscriber';
+      expect(component.getConfirmButtonText()).toBe('Send Email');
+    });
+  });
+
   describe('getNotificationInfoText()', () => {
     it('should return subscriber info text when notificationType is "subscriber"', () => {
       component.notificationType = 'subscriber';
       const infoText = component.getNotificationInfoText();
-      expect(infoText).toBe('Email will be sent to this new subscriber with the welcome template.');
+      expect(infoText).toBe('📧 Email will be sent to this new subscriber with the welcome template.');
     });
 
     it('should return default info text for prayer notification type', () => {
       component.notificationType = 'prayer';
       const infoText = component.getNotificationInfoText();
-      expect(infoText).toBe('Email will be sent to all active subscribers with the appropriate notification template.');
+      expect(infoText).toBe('📧 Email will be sent to all active subscribers. 📱 Push notifications will be sent to subscribers who have the app installed.');
     });
 
     it('should return default info text for update notification type', () => {
       component.notificationType = 'update';
       const infoText = component.getNotificationInfoText();
-      expect(infoText).toBe('Email will be sent to all active subscribers with the appropriate notification template.');
+      expect(infoText).toBe('📧 Email will be sent to all active subscribers. 📱 Push notifications will be sent to subscribers who have the app installed.');
     });
 
     it('should handle all notification type variations', () => {
@@ -178,7 +206,8 @@ describe('SendNotificationDialogComponent', () => {
     it('should render dialog header with title', () => {
       const header = fixture.nativeElement.querySelector('h2');
       expect(header).toBeTruthy();
-      expect(header.textContent).toContain('Send Email Notification?');
+      // Default notificationType is prayer: email & push header
+      expect(header.textContent).toContain('Send Email & Push Notification?');
     });
 
     it('should have message text available from getMessageText for prayer type', () => {
@@ -262,7 +291,7 @@ describe('SendNotificationDialogComponent', () => {
   });
 
   describe('Button Actions', () => {
-    it('should call onConfirm when Send Email button is clicked', () => {
+    it('should call onConfirm when confirm button is clicked', () => {
       const confirmSpy = vi.spyOn(component, 'onConfirm');
       
       const sendButton = fixture.nativeElement.querySelectorAll('button')[1];
@@ -285,9 +314,10 @@ describe('SendNotificationDialogComponent', () => {
       expect(buttons[0].textContent).toContain('Don\'t Send');
     });
 
-    it('should render Send Email button with correct text', () => {
+    it('should render confirm button with correct text', () => {
       const buttons = fixture.nativeElement.querySelectorAll('button');
-      expect(buttons[1].textContent).toContain('Send Email');
+      // Default is prayer: "Send Email & Push"
+      expect(buttons[1].textContent).toContain('Send Email & Push');
     });
 
     it('should have two buttons in the dialog', () => {
@@ -295,7 +325,7 @@ describe('SendNotificationDialogComponent', () => {
       expect(buttons.length).toBe(2);
     });
 
-    it('should emit confirm event when Send Email button is clicked', () => {
+    it('should emit confirm event when confirm button is clicked', () => {
       const confirmSpy = vi.spyOn(component.confirm, 'emit');
       
       const sendButton = fixture.nativeElement.querySelectorAll('button')[1];

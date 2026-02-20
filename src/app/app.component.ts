@@ -34,12 +34,15 @@ export class AppComponent implements OnInit {
   }
 
   /**
-   * Initialize Capacitor service for mobile app features
+   * Initialize Capacitor service for mobile app features.
+   * Also inject PushNotificationService so it subscribes to pushToken$ and stores device tokens in the backend.
    */
   private async initializeCapacitor(): Promise<void> {
     try {
       const { CapacitorService } = await import('./services/capacitor.service');
+      const { PushNotificationService } = await import('./services/push-notification.service');
       this.injector.get(CapacitorService);
+      this.injector.get(PushNotificationService);
     } catch (error) {
       console.debug('Capacitor service not available (running on web)', error);
     }
@@ -154,6 +157,7 @@ export class AppComponent implements OnInit {
 
   ngOnInit() {
     this.handleApprovalCode();
+    this.setupPushRefreshListener();
   }
 
   /**
@@ -369,10 +373,49 @@ export class AppComponent implements OnInit {
       this.router.navigate(['/login']);
     } catch (error) {
       console.error('Error handling account approval code:', error);
-      const { ToastService } = await import('./services/toast.service');
-      const toast = this.injector.get(ToastService);
-      toast.showToast('Failed to process approval', 'error');
+      try {
+        const { ToastService } = await import('./services/toast.service');
+        const toast = this.injector.get(ToastService) as { showToast?: (msg: string, type: string) => void };
+        if (toast && typeof toast.showToast === 'function') {
+          toast.showToast('Failed to process approval', 'error');
+        }
+      } catch (toastError) {
+        console.error('Failed to show approval error toast:', toastError);
+      }
       this.router.navigate(['/login']);
+    }
+  }
+
+  /**
+   * Subscribe to native push notification events and refresh prayers when relevant.
+   * This only has effect in the Capacitor (native) app where push notifications are active.
+   */
+  private async setupPushRefreshListener(): Promise<void> {
+    try {
+      const { CapacitorService } = await import('./services/capacitor.service');
+      const { PrayerService } = await import('./services/prayer.service');
+
+      const capacitorService = this.injector.get(CapacitorService);
+      const prayerService = this.injector.get(PrayerService);
+
+      capacitorService.notificationEvents$
+        .pipe(
+          // Only refresh when user taps the notification (not on receive) to avoid extra egress
+          filter((event) => event.source === 'tap'),
+          filter((event) =>
+            event.type === 'prayer_update' ||
+            event.type === 'prayer_approved'
+          )
+        )
+        .subscribe((event) => {
+          console.log('[AppComponent] Push notification tapped, refreshing prayers:', event);
+          prayerService.loadPrayers(false).catch((err) => {
+            console.error('[AppComponent] Failed to refresh prayers after push:', err);
+          });
+        });
+    } catch (error) {
+      // Likely running on web where Capacitor/PrayerService lazy imports may not be needed
+      console.debug('[AppComponent] Push refresh listener not initialized (probably web):', error);
     }
   }
 }

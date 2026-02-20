@@ -3,6 +3,7 @@ import { AdminDataService, type AdminData } from './admin-data.service';
 import { SupabaseService } from './supabase.service';
 import { PrayerService } from './prayer.service';
 import { EmailNotificationService } from './email-notification.service';
+import { PushNotificationService } from './push-notification.service';
 import { firstValueFrom } from 'rxjs';
 
 // Mock the planning-center module
@@ -24,6 +25,7 @@ describe('AdminDataService', () => {
   let mockSupabaseClient: any;
   let mockPrayerService: any;
   let mockEmailNotificationService: any;
+  let mockPushNotificationService: any;
 
   const createMockQueryChain = (returnData: any = null, returnError: any = null) => ({
     select: vi.fn(() => ({
@@ -103,7 +105,16 @@ describe('AdminDataService', () => {
       sendEmail: vi.fn(() => Promise.resolve())
     } as unknown as EmailNotificationService;
 
-    service = new AdminDataService(mockSupabaseService, mockPrayerService, mockEmailNotificationService);
+    mockPushNotificationService = {
+      sendPushToSubscribers: vi.fn(() => Promise.resolve())
+    } as unknown as PushNotificationService;
+
+    service = new AdminDataService(
+      mockSupabaseService,
+      mockPrayerService,
+      mockEmailNotificationService,
+      mockPushNotificationService
+    );
   });
 
   afterEach(() => {

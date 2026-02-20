@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { SupabaseService } from './supabase.service';
+import { UserSessionService } from './user-session.service';
 import { CapacitorService, PushNotificationToken } from './capacitor.service';
 
 /**
@@ -13,6 +14,7 @@ import { CapacitorService, PushNotificationToken } from './capacitor.service';
 export class PushNotificationService {
   constructor(
     private supabase: SupabaseService,
+    private userSession: UserSessionService,
     private capacitor: CapacitorService
   ) {
     this.setupDeviceTokenHandling();
@@ -38,9 +40,15 @@ export class PushNotificationService {
    */
   async storeDeviceToken(token: PushNotificationToken): Promise<void> {
     try {
-      // Get current user (you may need to adjust based on your auth setup)
-      const userEmail = localStorage.getItem('user_email');
-      
+      // Prefer session (portal + admin MFA); fall back to localStorage when token arrives before session is loaded
+      const sessionEmail = this.userSession.getCurrentSession()?.email?.trim();
+      const userEmail =
+        sessionEmail ||
+        localStorage.getItem('prayerapp_user_email')?.trim() ||
+        localStorage.getItem('mfa_authenticated_email')?.trim() ||
+        (await this.supabase.client.auth.getSession()).data.session?.user?.email?.trim() ||
+        '';
+
       if (!userEmail) {
         console.warn('Cannot store device token: no user logged in');
         return;
@@ -131,7 +139,8 @@ export class PushNotificationService {
       const { data, error } = await this.supabase.client
         .from('device_tokens')
         .delete()
-        .lt('last_seen_at', thirtyDaysAgo.toISOString());
+        .lt('last_seen_at', thirtyDaysAgo.toISOString())
+        .select('id');
 
       if (error) {
         console.error('Error cleaning up old tokens:', error);
@@ -139,10 +148,54 @@ export class PushNotificationService {
       }
 
       console.log('Cleaned up old device tokens');
-      return data?.length || 0;
+      return Array.isArray(data) ? data.length : 0;
     } catch (error) {
       console.error('Error in cleanupOldTokens:', error);
       return 0;
+    }
+  }
+
+  /**
+   * Send a push notification to all active email subscribers who have the app installed.
+   * Use when sending prayer/update notifications (same audience as email).
+   * Failures are logged but do not throw.
+   */
+  async sendPushToSubscribers(params: {
+    title: string;
+    body: string;
+    data?: Record<string, string>;
+  }): Promise<void> {
+    try {
+      const { data: subscribers, error: fetchError } = await this.supabase.client
+        .from('email_subscribers')
+        .select('email')
+        .eq('is_active', true)
+        .eq('is_blocked', false);
+
+      if (fetchError) {
+        console.error('Failed to fetch subscribers for push:', fetchError);
+        return;
+      }
+      if (!subscribers?.length) return;
+
+      const emails = subscribers.map((s: { email: string }) => s.email);
+      const { error: invokeError } = await this.supabase.client.functions.invoke(
+        'send-push-notification',
+        {
+          body: {
+            emails,
+            title: params.title,
+            body: params.body,
+            data: params.data ?? undefined,
+          },
+        }
+      );
+
+      if (invokeError) {
+        console.error('Push notification send failed:', invokeError);
+      }
+    } catch (err) {
+      console.error('Error sending push to subscribers:', err);
     }
   }
 

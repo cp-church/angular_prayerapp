@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Capacitor, CapacitorException } from '@capacitor/core';
 import { PushNotifications, PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
 import { ToastService } from './toast.service';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Subject, Observable } from 'rxjs';
 
 export interface PushNotificationToken {
   token: string;
@@ -15,12 +15,32 @@ export interface PushNotificationPayload {
   data?: Record<string, any>;
 }
 
+export type PushNotificationEventType =
+  | 'prayer_approved'
+  | 'prayer_update'
+  | 'reminder'
+  | 'generic';
+
+export interface PushNotificationEvent {
+  type: PushNotificationEventType;
+  source: 'received' | 'tap';
+  data?: Record<string, any>;
+  raw: PushNotificationSchema | ActionPerformed['notification'];
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class CapacitorService {
   private pushTokenSubject = new BehaviorSubject<PushNotificationToken | null>(null);
   public pushToken$ = this.pushTokenSubject.asObservable();
+
+  private notificationEventsSubject = new Subject<PushNotificationEvent>();
+  /**
+   * Stream of push notification events for the app to react to (e.g. refresh prayers).
+   * Only emits in native apps where Capacitor PushNotifications is active.
+   */
+  public notificationEvents$ = this.notificationEventsSubject.asObservable();
 
   private isNativeApp = Capacitor.isNativePlatform();
   private currentPlatform = Capacitor.getPlatform();
@@ -56,10 +76,14 @@ export class CapacitorService {
       const permission = await PushNotifications.requestPermissions();
       
       if (permission.receive === 'granted') {
-        // Register with push notifications
-        await PushNotifications.register();
+        // Add listeners BEFORE register() so we don't miss the token if APNs returns it immediately (real device).
+        PushNotifications.addListener(
+          'registrationError',
+          (err: { error: string }) => {
+            console.error('[Capacitor] Push registration error:', err?.error || err);
+          }
+        );
 
-        // Listen for the registration token
         PushNotifications.addListener(
           'registration',
           (token) => {
@@ -69,12 +93,17 @@ export class CapacitorService {
             };
             this.pushTokenSubject.next(pushToken);
             console.log('Push token received:', token.value);
-            
-            // You would typically send this token to your backend
-            // to store it for sending push notifications to this device
             this.storePushToken(pushToken);
           }
         );
+
+        // On Android, register() requires Firebase (google-services.json). Without it the app crashes.
+        if (this.currentPlatform === 'android') {
+          console.warn('Push on Android requires google-services.json in android/app/. Skipping registration.');
+        } else {
+          await PushNotifications.register();
+          console.log('[Capacitor] Push register() called; token will arrive via registration listener if APNs succeeds.');
+        }
 
         // Listen for push notifications when the app is in the foreground
         PushNotifications.addListener(
@@ -155,7 +184,15 @@ export class CapacitorService {
     // Show toast notification
     this.toastService.success(body);
 
-    // You can emit events or navigate based on notification data
+    // Emit an app-level event so services/components can react (e.g. refresh prayers)
+    const type = (notification.data?.type as PushNotificationEventType) || 'generic';
+    this.notificationEventsSubject.next({
+      type,
+      source: 'received',
+      data: notification.data || undefined,
+      raw: notification
+    });
+
     if (notification.data) {
       console.log('Notification data:', notification.data);
     }
@@ -168,8 +205,17 @@ export class CapacitorService {
     console.log('User interacted with push notification:', action);
 
     const notification = action.notification;
+
+    // Emit an app-level event so services/components can react (e.g. refresh prayers)
+    const type = (notification.data?.type as PushNotificationEventType) || 'generic';
+    this.notificationEventsSubject.next({
+      type,
+      source: 'tap',
+      data: notification.data || undefined,
+      raw: notification
+    });
     
-    // Navigate based on notification data
+    // Navigate based on notification data (navigation wiring can be added later if desired)
     if (notification.data?.type === 'prayer_update') {
       // Navigate to prayer details
       console.log('Navigate to prayer:', notification.data.prayerId);
