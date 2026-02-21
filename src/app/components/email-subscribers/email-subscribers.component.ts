@@ -1,6 +1,8 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { Subscription } from 'rxjs';
 import { SupabaseService } from '../../services/supabase.service';
 import { ToastService } from '../../services/toast.service';
 import { AdminDataService } from '../../services/admin-data.service';
@@ -629,9 +631,9 @@ interface CSVRow {
             </select>
           </div>
 
-          <!-- Pagination Controls -->
+          <!-- Pagination Controls: fewer page buttons on small screens to avoid overflow -->
           @if (totalPages > 1) {
-          <div class="flex items-center justify-between">
+          <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex gap-2">
               <button
                 (click)="previousPage()"
@@ -649,7 +651,7 @@ interface CSVRow {
               </button>
             </div>
             
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
               <span class="text-gray-600 dark:text-gray-400 text-sm">
                 Page <span class="font-semibold">{{ currentPage }}</span> of <span class="font-semibold">{{ totalPages }}</span>
               </span>
@@ -668,7 +670,6 @@ interface CSVRow {
               </div>
             </div>
           </div>
-          <!-- end @for -->
           }
         </div>
       </div>
@@ -787,6 +788,9 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
   totalItems = 0;
   totalActiveCount = 0;
   allSubscribers: EmailSubscriber[] = [];
+  /** Max page number buttons to show; 3 on narrow screens to avoid overflow, 5 on larger. */
+  maxPaginationButtons = 3;
+  private breakpointSub: Subscription | null = null;
 
   // Sorting properties
   sortBy: 'name' | 'email' | 'created_at' | 'last_activity_date' | 'is_active' | 'receive_push' | 'is_blocked' | 'in_planning_center' = 'last_activity_date';
@@ -833,12 +837,21 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
     private supabase: SupabaseService,
     private toast: ToastService,
     private cdr: ChangeDetectorRef,
-    private adminDataService: AdminDataService
+    private adminDataService: AdminDataService,
+    private breakpointObserver: BreakpointObserver
   ) {}
 
   ngOnInit() {
     // Auto-load first 10 subscribers on component init
     this.handleSearch();
+    
+    // Fewer pagination buttons on small screens so they don't overflow
+    this.breakpointSub = this.breakpointObserver
+      .observe('(max-width: 640px)')
+      .subscribe(state => {
+        this.maxPaginationButtons = state.matches ? 3 : 5;
+        this.cdr.markForCheck();
+      });
     
     // Detect landscape/portrait mode on init
     this.updateOrientationMode();
@@ -854,7 +867,7 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    // Clean up event listeners
+    this.breakpointSub?.unsubscribe();
     if (this.orientationChangeListener) {
       window.removeEventListener('orientationchange', this.orientationChangeListener);
     }
@@ -1138,29 +1151,24 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
 
   getPaginationRange(): number[] {
     const pages: number[] = [];
-    const maxPagesToShow = 5;
+    const maxPagesToShow = this.maxPaginationButtons;
     const totalPages = this.totalPages;
     
     if (totalPages <= maxPagesToShow) {
-      // Show all pages if total is less than or equal to max
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
       }
     } else {
-      // Show pages with ellipsis
       const half = Math.floor(maxPagesToShow / 2);
       let start = Math.max(1, this.currentPage - half);
       let end = Math.min(totalPages, start + maxPagesToShow - 1);
-      
       if (end - start + 1 < maxPagesToShow) {
         start = Math.max(1, end - maxPagesToShow + 1);
       }
-      
       for (let i = start; i <= end; i++) {
         pages.push(i);
       }
     }
-    
     return pages;
   }
 

@@ -18,6 +18,7 @@ describe('EmailSubscribersComponent', () => {
   let mockToastService: any;
   let mockChangeDetectorRef: any;
   let mockAdminDataService: any;
+  let mockBreakpointObserver: any;
 
   const mockSubscriber = {
     id: '123',
@@ -80,11 +81,21 @@ describe('EmailSubscribersComponent', () => {
       sendSubscriberWelcomeEmail: vi.fn().mockResolvedValue({})
     };
 
+    mockBreakpointObserver = {
+      observe: vi.fn().mockReturnValue({
+        subscribe: vi.fn().mockImplementation((fn: (v: { matches: boolean }) => void) => {
+          fn({ matches: false });
+          return { unsubscribe: vi.fn() };
+        })
+      })
+    };
+
     component = new EmailSubscribersComponent(
       mockSupabaseService,
       mockToastService,
       mockChangeDetectorRef,
-      mockAdminDataService
+      mockAdminDataService,
+      mockBreakpointObserver
     );
   });
 
