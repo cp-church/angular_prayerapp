@@ -14,6 +14,7 @@ function makeFromQuery(result: any) {
 describe('EmailNotificationService', () => {
   let service: EmailNotificationService;
   let mockSupabase: any;
+  let mockPushNotification: any;
 
   beforeEach(() => {
     mockSupabase = {
@@ -24,7 +25,11 @@ describe('EmailNotificationService', () => {
       directQuery: vi.fn()
     };
 
-    service = new EmailNotificationService(mockSupabase as any);
+    mockPushNotification = {
+      sendPushToAdmins: vi.fn().mockResolvedValue(undefined)
+    };
+
+    service = new EmailNotificationService(mockSupabase as any, mockPushNotification as any);
   });
 
   afterEach(() => {
@@ -178,13 +183,11 @@ describe('EmailNotificationService', () => {
   });
 
   it('sendAdminNotification sends to admins when configured and calls helper for each admin', async () => {
-    // return one admin
+    // return one admin (chain: select -> eq -> eq)
     mockSupabase.client.from = vi.fn().mockReturnValue({
       select: () => ({
         eq: () => ({
-          eq: () => ({
-            eq: async () => ({ data: [{ email: 'admin@a' }], error: null })
-          })
+          eq: async () => ({ data: [{ email: 'admin@a' }], error: null })
         })
       })
     });
@@ -192,13 +195,28 @@ describe('EmailNotificationService', () => {
     const spyHelper = vi.spyOn(service as any, 'sendAdminNotificationToEmail').mockResolvedValue(undefined as any);
     await service.sendAdminNotification({ type: 'prayer', title: 'Need approval', requester: 'John' } as any);
     expect(spyHelper).toHaveBeenCalled();
+    expect(mockPushNotification.sendPushToAdmins).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Need approval', body: expect.stringContaining('John') })
+    );
+  });
+
+  it('sendAccountApprovalNotification calls sendPushToAdmins with account approval payload', async () => {
+    mockSupabase.directQuery.mockResolvedValue({ data: [{ email: 'admin@x.com' }], error: null });
+    const spyHelper = vi.spyOn(service as any, 'sendAccountApprovalNotificationToEmail').mockResolvedValue(undefined as any);
+    await service.sendAccountApprovalNotification('user@test.com', 'Jane', 'Doe');
+    expect(spyHelper).toHaveBeenCalled();
+    expect(mockPushNotification.sendPushToAdmins).toHaveBeenCalledWith({
+      title: 'Account approval request',
+      body: 'Jane Doe (user@test.com)',
+      data: { type: 'account_approval_request' },
+    });
   });
 });
 
 describe('EmailNotificationService - Additional Logic', () => {
   let service: EmailNotificationService;
   let mockSupabase: any;
-  let mockApprovalLinks: any;
+  let mockPushNotification: any;
 
   beforeEach(() => {
     mockSupabase = {
@@ -209,12 +227,11 @@ describe('EmailNotificationService - Additional Logic', () => {
       directQuery: vi.fn()
     };
 
-    mockApprovalLinks = {
-      generateCode: vi.fn().mockReturnValue('code-123'),
-      generateApprovalLink: vi.fn().mockResolvedValue('https://example.com/approve')
+    mockPushNotification = {
+      sendPushToAdmins: vi.fn().mockResolvedValue(undefined)
     };
 
-    service = new EmailNotificationService(mockSupabase as any, mockApprovalLinks as any);
+    service = new EmailNotificationService(mockSupabase as any, mockPushNotification as any);
   });
 
   afterEach(() => {
@@ -287,7 +304,6 @@ describe('EmailNotificationService - Additional Logic', () => {
 
   describe('Email Content Generation', () => {
     it('should generate approval link in content', async () => {
-      mockApprovalLinks.generateApprovalLink.mockResolvedValue('https://app.com/approve/123');
       const content = 'Approve: {{ approveLink }}';
       const result = service.applyTemplateVariables(content, { approveLink: 'https://app.com/approve/123' });
       expect(result).toContain('https://');
@@ -464,29 +480,20 @@ describe('EmailNotificationService - Additional Logic', () => {
     });
   });
 
-  describe('Approval Link Generation', () => {
-    it('should generate valid approval link', async () => {
-      const link = await mockApprovalLinks.generateApprovalLink('12345');
-      expect(link).toBeDefined();
-      expect(link && link.length > 0).toBe(true);
-    });
-
-    it('should generate unique approval codes', () => {
-      const code1 = mockApprovalLinks.generateCode();
-      const code2 = mockApprovalLinks.generateCode();
-      expect(code1).toBeDefined();
-      expect(code2).toBeDefined();
-    });
-
-    it('should include code in link', () => {
-      const code = 'test-code-123';
-      const link = `https://app.com/approve/${code}`;
-      expect(link).toContain(code);
-    });
-
-    it('should handle code generation errors', () => {
-      const code = mockApprovalLinks.generateCode();
-      expect(code).toBeDefined();
+  describe('Admin push notifications', () => {
+    it('should call sendPushToAdmins when sendAdminNotification has admins', async () => {
+      mockSupabase.client.from = vi.fn().mockReturnValue({
+        select: () => ({
+          eq: () => ({
+            eq: async () => ({ data: [{ email: 'admin@test.com' }], error: null })
+          })
+        })
+      });
+      vi.spyOn(service as any, 'sendAdminNotificationToEmail').mockResolvedValue(undefined);
+      await service.sendAdminNotification({ type: 'prayer', title: 'Test', requester: 'R' } as any);
+      expect(mockPushNotification.sendPushToAdmins).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Test', data: expect.objectContaining({ type: 'prayer' }) })
+      );
     });
   });
 
@@ -649,7 +656,7 @@ describe('EmailNotificationService - Additional Logic', () => {
   describe('EmailNotificationService - Advanced Integration Tests', () => {
     let service: EmailNotificationService;
     let mockSupabase: any;
-    let mockApprovalLinks: any;
+    let mockPushNotification: any;
 
     beforeEach(() => {
       mockSupabase = {
@@ -660,12 +667,11 @@ describe('EmailNotificationService - Additional Logic', () => {
         directQuery: vi.fn()
       };
 
-      mockApprovalLinks = {
-        generateCode: vi.fn().mockReturnValue('code-123'),
-        generateApprovalLink: vi.fn().mockResolvedValue(null)
+      mockPushNotification = {
+        sendPushToAdmins: vi.fn().mockResolvedValue(undefined)
       };
 
-      service = new EmailNotificationService(mockSupabase as any, mockApprovalLinks as any);
+      service = new EmailNotificationService(mockSupabase as any, mockPushNotification as any);
     });
 
     afterEach(() => {
@@ -1070,7 +1076,7 @@ describe('EmailNotificationService - Additional Logic', () => {
   describe('EmailNotificationService - Additional Coverage - Queuing & Notifications', () => {
     let service: EmailNotificationService;
     let mockSupabase: any;
-    let mockApprovalLinks: any;
+    let mockPushNotification: any;
 
     beforeEach(() => {
       mockSupabase = {
@@ -1081,12 +1087,11 @@ describe('EmailNotificationService - Additional Logic', () => {
         directQuery: vi.fn()
       };
 
-      mockApprovalLinks = {
-        generateCode: vi.fn().mockReturnValue('code-123'),
-        generateApprovalLink: vi.fn().mockResolvedValue('https://example.com/approve?code=123')
+      mockPushNotification = {
+        sendPushToAdmins: vi.fn().mockResolvedValue(undefined)
       };
 
-      service = new EmailNotificationService(mockSupabase as any, mockApprovalLinks as any);
+      service = new EmailNotificationService(mockSupabase as any, mockPushNotification as any);
     });
 
     afterEach(() => {
@@ -1596,14 +1601,12 @@ describe('EmailNotificationService - Additional Logic', () => {
             return {
               select: vi.fn().mockReturnValue({
                 eq: vi.fn().mockReturnValue({
-                  eq: vi.fn().mockReturnValue({
-                    eq: vi.fn().mockResolvedValue({ 
-                      data: [
-                        { email: 'admin1@test.com' },
-                        { email: 'admin2@test.com' }
-                      ], 
-                      error: null 
-                    })
+                  eq: vi.fn().mockResolvedValue({
+                    data: [
+                      { email: 'admin1@test.com' },
+                      { email: 'admin2@test.com' }
+                    ],
+                    error: null
                   })
                 })
               })
@@ -1631,9 +1634,7 @@ describe('EmailNotificationService - Additional Logic', () => {
             return {
               select: vi.fn().mockReturnValue({
                 eq: vi.fn().mockReturnValue({
-                  eq: vi.fn().mockReturnValue({
-                    eq: vi.fn().mockResolvedValue({ data: null, error: null })
-                  })
+                  eq: vi.fn().mockResolvedValue({ data: null, error: null })
                 })
               })
             };
@@ -1659,9 +1660,7 @@ describe('EmailNotificationService - Additional Logic', () => {
             return {
               select: vi.fn().mockReturnValue({
                 eq: vi.fn().mockReturnValue({
-                  eq: vi.fn().mockReturnValue({
-                    eq: vi.fn().mockResolvedValue({ data: null, error: { message: 'Fetch error' } })
-                  })
+                  eq: vi.fn().mockResolvedValue({ data: null, error: { message: 'Fetch error' } })
                 })
               })
             };
@@ -1683,9 +1682,7 @@ describe('EmailNotificationService - Additional Logic', () => {
             return {
               select: vi.fn().mockReturnValue({
                 eq: vi.fn().mockReturnValue({
-                  eq: vi.fn().mockReturnValue({
-                    eq: vi.fn().mockResolvedValue({ data: [{ email: 'admin@test.com' }], error: null })
-                  })
+                  eq: vi.fn().mockResolvedValue({ data: [{ email: 'admin@test.com' }], error: null })
                 })
               })
             };
@@ -1714,9 +1711,7 @@ describe('EmailNotificationService - Additional Logic', () => {
             return {
               select: vi.fn().mockReturnValue({
                 eq: vi.fn().mockReturnValue({
-                  eq: vi.fn().mockReturnValue({
-                    eq: vi.fn().mockResolvedValue({ data: [{ email: 'admin@test.com' }], error: null })
-                  })
+                  eq: vi.fn().mockResolvedValue({ data: [{ email: 'admin@test.com' }], error: null })
                 })
               })
             };

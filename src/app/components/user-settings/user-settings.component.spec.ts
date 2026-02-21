@@ -7,6 +7,7 @@ import { PrayerService } from '../../services/prayer.service';
 import { EmailNotificationService } from '../../services/email-notification.service';
 import { AdminAuthService } from '../../services/admin-auth.service';
 import { UserSessionService } from '../../services/user-session.service';
+import { CapacitorService } from '../../services/capacitor.service';
 import { ChangeDetectorRef, SimpleChanges } from '@angular/core';
 
 describe('UserSettingsComponent', () => {
@@ -18,6 +19,7 @@ describe('UserSettingsComponent', () => {
   let mockEmailNotificationService: any;
   let mockAdminAuthService: any;
   let mockUserSessionService: any;
+  let mockCapacitorService: any;
   let mockChangeDetectorRef: any;
 
   beforeEach(() => {
@@ -74,9 +76,15 @@ describe('UserSettingsComponent', () => {
         fullName: 'Test User',
         isActive: true,
         receiveNotifications: true,
-        receiveAdminEmails: false
+        receiveAdminEmails: false,
+        receivePush: true
       })),
       updateUserSession: vi.fn(async () => ({}))
+    };
+
+    mockCapacitorService = {
+      isNative: vi.fn(() => false),
+      showPushNotificationSetting: vi.fn(() => false)
     };
 
     mockChangeDetectorRef = {
@@ -108,6 +116,7 @@ describe('UserSettingsComponent', () => {
       mockGitHubFeedbackService as any,
       mockBadgeService as any,
       mockUserSessionService,
+      mockCapacitorService as CapacitorService,
       mockChangeDetectorRef as ChangeDetectorRef
     );
   });
@@ -709,6 +718,42 @@ describe('UserSettingsComponent', () => {
     });
   });
 
+  describe('onPushNotificationToggle', () => {
+    it('should show error if email is not found', async () => {
+      component.email = '';
+      await component.onPushNotificationToggle();
+      expect(component.error).toBe('Email not found. Please log in again.');
+    });
+
+    it('should update receive_push and call updateUserSession with receivePush', async () => {
+      mockUserSessionService.getCurrentSession.mockReturnValue({
+        email: 'test@example.com',
+        fullName: 'Test',
+        isActive: true,
+        receivePush: true
+      });
+      component.email = 'test@example.com';
+      component.receivePushNotifications = false;
+
+      const mockExisting = { id: 'sub-456' };
+      mockSupabaseService.client.from.mockReturnValue({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            maybeSingle: vi.fn(() => Promise.resolve({ data: mockExisting, error: null }))
+          }))
+        })),
+        update: vi.fn(() => ({
+          eq: vi.fn(() => Promise.resolve({ data: null, error: null }))
+        }))
+      });
+
+      await component.onPushNotificationToggle();
+
+      expect(mockUserSessionService.updateUserSession).toHaveBeenCalledWith({ receivePush: false });
+      expect(component.successPushNotification).toBeTruthy();
+    });
+  });
+
   describe('logout', () => {
     it('should call admin auth service logout', async () => {
       await component.logout();
@@ -759,7 +804,7 @@ describe('UserSettingsComponent', () => {
     });
 
     it('should load subscriber preferences', async () => {
-      const mockSubscriber = { name: 'Existing User', is_active: false };
+      const mockSubscriber = { name: 'Existing User', is_active: false, receive_push: false };
       
       mockSupabaseService.client.from.mockReturnValue({
         select: vi.fn(() => ({
@@ -773,6 +818,7 @@ describe('UserSettingsComponent', () => {
 
       expect(component.name).toBe('Existing User');
       expect(component.receiveNotifications).toBe(false);
+      expect(component.receivePushNotifications).toBe(false);
     });
 
     it('should set defaults for new users', async () => {
@@ -788,6 +834,7 @@ describe('UserSettingsComponent', () => {
       await component['loadPreferencesAutomatically']('new@example.com');
 
       expect(component.receiveNotifications).toBe(true);
+      expect(component.receivePushNotifications).toBe(false); // only set true when app installs and registers device token
     });
 
     it('should handle errors gracefully', async () => {

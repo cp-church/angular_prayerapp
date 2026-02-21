@@ -180,7 +180,7 @@ describe('ToastContainerComponent', () => {
     it('should have fixed positioning container', () => {
       const fixedContainer = fixture.nativeElement.querySelector('.fixed');
       expect(fixedContainer).toBeTruthy();
-      expect(fixedContainer.className).toContain('top-4');
+      expect(fixedContainer.className).toContain('top-0');
       expect(fixedContainer.className).toContain('z-50');
     });
 

@@ -86,7 +86,7 @@ npx cap open ios   # or npx cap open android
 - `src/app/services/push-notification.service.ts` - Backend token storage
 - `ios/App/` - Xcode project
 - `android/app/` - Android Studio project
-- `CAPACITOR_SETUP.md` - Full detailed guide
+- [CAPACITOR_SETUP.md](CAPACITOR_SETUP.md) - Full detailed guide
 
 ## Testing Push Notifications
 
@@ -97,7 +97,7 @@ Right now, push notifications require backend setup. For testing:
    - This is logged when app first runs
 
 2. **Backend setup needed:**
-   - Create `device_tokens` table in Supabase (see docs/migrations/device_tokens_schema.sql)
+   - Create `device_tokens` table in Supabase (see [../migrations/device_tokens_schema.sql](../migrations/device_tokens_schema.sql))
    - Create Supabase Edge Function to send via FCM (see supabase/functions/send-push-notification/)
    - Set up Firebase Cloud Messaging account
 
@@ -154,15 +154,15 @@ npm run build && npx cap sync
 To actually send push notifications, you need:
 
 1. **Set up Supabase edge function** (see `supabase/functions/send-push-notification/index.ts`)
-2. **Create device_tokens table** (see `docs/migrations/device_tokens_schema.sql`)
+2. **Create device_tokens table** (see [../migrations/device_tokens_schema.sql](../migrations/device_tokens_schema.sql))
 3. **Configure Firebase** (for Android) or APNs (for iOS)
 4. **Update admin interface** to send notifications to users
 
-See `CAPACITOR_SETUP.md` for complete details.
+See [CAPACITOR_SETUP.md](CAPACITOR_SETUP.md) for complete details.
 
 ## Resources
 
 - [Capacitor Docs](https://capacitorjs.com)
 - [Xcode Documentation](https://developer.apple.com/xcode/)
 - [Android Studio Guide](https://developer.android.com/studio/intro)
-- Your local guides: `CAPACITOR_SETUP.md`
+- Your local guides: [CAPACITOR_SETUP.md](CAPACITOR_SETUP.md)

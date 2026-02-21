@@ -400,11 +400,11 @@ export class AppComponent implements OnInit {
 
       capacitorService.notificationEvents$
         .pipe(
-          // Only refresh when user taps the notification (not on receive) to avoid extra egress
           filter((event) => event.source === 'tap'),
           filter((event) =>
             event.type === 'prayer_update' ||
-            event.type === 'prayer_approved'
+            event.type === 'prayer_approved' ||
+            event.type === 'update_approved'
           )
         )
         .subscribe((event) => {
@@ -412,6 +412,16 @@ export class AppComponent implements OnInit {
           prayerService.loadPrayers(false).catch((err) => {
             console.error('[AppComponent] Failed to refresh prayers after push:', err);
           });
+        });
+
+      // Navigate to admin when an admin push notification is tapped
+      capacitorService.notificationEvents$
+        .pipe(
+          filter((event) => event.source === 'tap'),
+          filter((event) => event.data?.['target'] === 'admin')
+        )
+        .subscribe(() => {
+          this.router.navigate(['/admin']);
         });
     } catch (error) {
       // Likely running on web where Capacitor/PrayerService lazy imports may not be needed

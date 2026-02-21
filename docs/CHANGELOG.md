@@ -4,6 +4,24 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Push Notifications and Email/Push Preferences ✅
+- ✅ **`receive_push` default false and set only when device token is registered**
+  - New subscribers and existing rows default to `receive_push = false`. When the native app stores a device token (`PushNotificationService.storeDeviceToken()`), it sets `receive_push = true` for that subscriber. Users can turn push off in Settings.
+  - Migration: `20260223_receive_push_default_false.sql` (default + backfill).
+
+- ✅ **Separate email vs push preferences**
+  - **`is_active`** = mass **email** only (new/approved prayers, updates). Turning off "email notifications" only stops bulk emails; direct emails (e.g. your prayer approved/denied) still go out.
+  - **`receive_push`** = app **push** (enabled when the app is installed and a device token is registered).
+  - **`receive_admin_push`** = admin-only push (independent of `is_active`). Migration: `20260221_admin_not_tied_to_is_active.sql`, `20260222_email_subscribers_receive_admin_push.sql`.
+
+- ✅ **Push when admin approves prayer or update**
+  - When an admin approves a **prayer**, the **requester** gets a push: "Prayer approved."
+  - When an admin approves an **update**, the **update author** gets a push: "Update approved."
+  - Implemented via `PushNotificationService.sendPushToEmails()` called from `AdminDataService.approvePrayer()` and `approveUpdate()`; tap handling for `prayer_approved` and `update_approved` in `app.component.ts` and `capacitor.service.ts`.
+
+- ✅ **Documentation**
+  - Capacitor docs under `docs/Capacitor/` (CAPACITOR_GETTING_STARTED, CAPACITOR_BACKEND_SETUP, CAPACITOR_SETUP, CAPACITOR_QUICKSTART) with full migration list and preference model. Main docs README links to Capacitor and describes email vs push preferences.
+
 ### Personal Prayer Sharing to Public Prayer Feature ✅
 - ✅ Users can now share personal prayers to the public prayer list for community support
   - Share button on personal prayer cards (share icon)

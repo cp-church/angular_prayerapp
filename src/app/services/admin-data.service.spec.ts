@@ -106,7 +106,8 @@ describe('AdminDataService', () => {
     } as unknown as EmailNotificationService;
 
     mockPushNotificationService = {
-      sendPushToSubscribers: vi.fn(() => Promise.resolve())
+      sendPushToSubscribers: vi.fn(() => Promise.resolve()),
+      sendPushToEmails: vi.fn(() => Promise.resolve())
     } as unknown as PushNotificationService;
 
     service = new AdminDataService(
@@ -349,6 +350,13 @@ describe('AdminDataService', () => {
 
       // approvePrayer updates the prayer and reloads the prayer list
       expect(mockPrayerService.loadPrayers).toHaveBeenCalled();
+      expect(mockPushNotificationService.sendPushToEmails).toHaveBeenCalledWith(
+        ['john@example.com'],
+        expect.objectContaining({
+          title: 'Prayer approved',
+          data: { type: 'prayer_approved', prayerId: '1' },
+        })
+      );
     });
 
     it('should handle prayer not found error', async () => {
@@ -533,6 +541,7 @@ describe('AdminDataService', () => {
         mark_as_answered: true,
         is_anonymous: false,
         author: 'John Doe',
+        author_email: 'author@example.com',
         prayers: { title: 'Prayer Title', status: 'current' }
       };
 
@@ -564,6 +573,13 @@ describe('AdminDataService', () => {
       await service.approveUpdate('1');
 
       expect(mockPrayerService.loadPrayers).toHaveBeenCalled();
+      expect(mockPushNotificationService.sendPushToEmails).toHaveBeenCalledWith(
+        ['author@example.com'],
+        expect.objectContaining({
+          title: 'Update approved',
+          data: { type: 'update_approved', updateId: '1', prayerId: 'prayer-1' },
+        })
+      );
     });
 
     it('should set prayer to current if currently answered and not marking as answered', async () => {

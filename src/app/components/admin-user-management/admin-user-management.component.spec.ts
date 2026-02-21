@@ -70,7 +70,7 @@ describe('AdminUserManagementComponent', () => {
   });
 
   it('loads admins successfully', async () => {
-    const admins = [{ email: 'a@b.com', name: 'A', created_at: '2020-01-01', receive_admin_emails: true }];
+    const admins = [{ email: 'a@b.com', name: 'A', created_at: '2020-01-01', receive_admin_emails: true, receive_admin_push: false }];
     mockClient.setResponses([{ data: admins, error: null }]);
 
     await component.loadAdmins();
@@ -146,7 +146,7 @@ describe('AdminUserManagementComponent', () => {
     mockClient.setResponses([
       { data: null },
       { error: null },
-      { data: [{ email: 'ok@x.com', name: 'Ok', created_at: '2020-01-01', receive_admin_emails: false }], error: null }
+      { data: [{ email: 'ok@x.com', name: 'Ok', created_at: '2020-01-01', receive_admin_emails: false, receive_admin_push: false }], error: null }
     ]);
 
     // spy on sendInvitationEmail and onSave.emit
@@ -172,7 +172,7 @@ describe('AdminUserManagementComponent', () => {
     mockClient.setResponses([
       { data: null },
       { error: null },
-      { data: [{ email: 'f@x.com', name: 'FailEmail', created_at: '2020-01-01', receive_admin_emails: false }], error: null }
+      { data: [{ email: 'f@x.com', name: 'FailEmail', created_at: '2020-01-01', receive_admin_emails: false, receive_admin_push: false }], error: null }
     ]);
 
     // let sendInvitationEmail reject so the component's internal .catch runs
@@ -217,7 +217,7 @@ describe('AdminUserManagementComponent', () => {
   });
 
   it('deleteAdmin prevents deleting last admin', async () => {
-    component.admins = [{ email: 'only@x.com', name: 'Only', created_at: '2020-01-01', receive_admin_emails: false }];
+    component.admins = [{ email: 'only@x.com', name: 'Only', created_at: '2020-01-01', receive_admin_emails: false, receive_admin_push: false }];
 
     await component.deleteAdmin('only@x.com');
 
@@ -226,8 +226,8 @@ describe('AdminUserManagementComponent', () => {
 
   it('deleteAdmin success', async () => {
     component.admins = [
-      { email: 'a@x.com', name: 'A', created_at: '2020-01-01', receive_admin_emails: false },
-      { email: 'b@x.com', name: 'B', created_at: '2020-01-02', receive_admin_emails: false }
+      { email: 'a@x.com', name: 'A', created_at: '2020-01-01', receive_admin_emails: false, receive_admin_push: false },
+      { email: 'b@x.com', name: 'B', created_at: '2020-01-02', receive_admin_emails: false, receive_admin_push: false }
     ];
 
     mockClient.setResponses([
@@ -240,14 +240,14 @@ describe('AdminUserManagementComponent', () => {
     await component.deleteAdmin('a@x.com');
 
     expect(mockToast.success).toHaveBeenCalledWith('Admin access removed for a@x.com');
-    expect(component.deletingEmail).toBeNull();
+    expect(component.deletingEmail).toBeFalsy(); // cleared after success (null or undefined)
     expect(emitSpy).toHaveBeenCalled();
   });
 
   it('deleteAdmin handles error', async () => {
     component.admins = [
-      { email: 'a@x.com', name: 'A', created_at: '2020-01-01', receive_admin_emails: false },
-      { email: 'b@x.com', name: 'B', created_at: '2020-01-02', receive_admin_emails: false }
+      { email: 'a@x.com', name: 'A', created_at: '2020-01-01', receive_admin_emails: false, receive_admin_push: false },
+      { email: 'b@x.com', name: 'B', created_at: '2020-01-02', receive_admin_emails: false, receive_admin_push: false }
     ];
 
     mockClient.setResponses([{ error: { message: 'boom' } }]);
@@ -259,8 +259,8 @@ describe('AdminUserManagementComponent', () => {
 
   it('deleteAdmin handles non-object error (primitive)', async () => {
     component.admins = [
-      { email: 'a@x.com', name: 'A', created_at: '2020-01-01', receive_admin_emails: false },
-      { email: 'b@x.com', name: 'B', created_at: '2020-01-02', receive_admin_emails: false }
+      { email: 'a@x.com', name: 'A', created_at: '2020-01-01', receive_admin_emails: false, receive_admin_push: false },
+      { email: 'b@x.com', name: 'B', created_at: '2020-01-02', receive_admin_emails: false, receive_admin_push: false }
     ];
 
     // Simulate client that rejects with a primitive (string) to cover non-object error branch
@@ -287,8 +287,8 @@ describe('AdminUserManagementComponent', () => {
 
   it('toggleReceiveEmails success and error', async () => {
     component.admins = [
-      { email: 'a@x.com', name: 'A', created_at: '2020-01-01', receive_admin_emails: false },
-      { email: 'b@x.com', name: 'B', created_at: '2020-01-02', receive_admin_emails: true }
+      { email: 'a@x.com', name: 'A', created_at: '2020-01-01', receive_admin_emails: false, receive_admin_push: false },
+      { email: 'b@x.com', name: 'B', created_at: '2020-01-02', receive_admin_emails: true, receive_admin_push: false }
     ];
 
     // success: update -> no error, then loadAdmins
@@ -304,7 +304,7 @@ describe('AdminUserManagementComponent', () => {
 
   it('toggleReceiveEmails handles non-object error (primitive)', async () => {
     component.admins = [
-      { email: 'a@x.com', name: 'A', created_at: '2020-01-01', receive_admin_emails: false }
+      { email: 'a@x.com', name: 'A', created_at: '2020-01-01', receive_admin_emails: false, receive_admin_push: false }
     ];
 
     mockSupabase.client = {
@@ -318,7 +318,7 @@ describe('AdminUserManagementComponent', () => {
 
   it('toggleReceiveEmails shows disabled message when currentStatus is true', async () => {
     component.admins = [
-      { email: 'x@x.com', name: 'X', created_at: '2020-01-01', receive_admin_emails: true }
+      { email: 'x@x.com', name: 'X', created_at: '2020-01-01', receive_admin_emails: true, receive_admin_push: false }
     ];
 
     // update -> no error
@@ -448,15 +448,16 @@ describe('AdminUserManagementComponent', () => {
     expect(component.error).toBeNull();
   });
 
-  it('formatDate and getReceivingEmailsCount', () => {
+  it('formatDate and getReceivingEmailsCount and getReceivingPushCount', () => {
     const fmt = component.formatDate('2020-01-01T00:00:00Z');
     expect(typeof fmt).toBe('string');
 
     component.admins = [
-      { email: 'a', name: 'A', created_at: '2020-01-01', receive_admin_emails: true },
-      { email: 'b', name: 'B', created_at: '2020-01-02', receive_admin_emails: false }
+      { email: 'a', name: 'A', created_at: '2020-01-01', receive_admin_emails: true, receive_admin_push: true },
+      { email: 'b', name: 'B', created_at: '2020-01-02', receive_admin_emails: false, receive_admin_push: false }
     ];
     expect(component.getReceivingEmailsCount()).toBe(1);
+    expect(component.getReceivingPushCount()).toBe(1);
   });
 
   it('ngOnInit calls loadAdmins', async () => {
@@ -493,9 +494,27 @@ describe('AdminUserManagementComponent', () => {
     expect(component.adding).toBe(false);
   });
 
+  it('toggleReceivePush updates receive_admin_push and reloads admins', async () => {
+    component.admins = [
+      { email: 'a@x.com', name: 'A', created_at: '2020-01-01', receive_admin_emails: false, receive_admin_push: false }
+    ];
+
+    mockClient.setResponses([
+      { error: null },
+      { data: component.admins, error: null }
+    ]);
+
+    const loadSpy = vi.spyOn(component as any, 'loadAdmins').mockResolvedValue(undefined);
+
+    await component.toggleReceivePush('a@x.com', false);
+
+    expect(mockToast.success).toHaveBeenCalled();
+    expect(loadSpy).toHaveBeenCalled();
+  });
+
   it('toggleReceiveEmails triggers toast.success and reloads admins', async () => {
     component.admins = [
-      { email: 'a@x.com', name: 'A', created_at: '2020-01-01', receive_admin_emails: false }
+      { email: 'a@x.com', name: 'A', created_at: '2020-01-01', receive_admin_emails: false, receive_admin_push: false }
     ];
 
     // update -> no error, then loadAdmins -> return list

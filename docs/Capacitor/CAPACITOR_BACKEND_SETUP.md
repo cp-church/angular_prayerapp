@@ -4,11 +4,17 @@ This checklist guides you through setting up the backend to support push notific
 
 ## Phase 1: Database Setup
 
-- [ ] **Run the Capacitor database migration**
-  - One migration creates tables, grants, and RLS: `supabase/migrations/20260218_capacitor_device_tokens_and_push_log.sql`
-  - In Supabase Dashboard → **SQL Editor**, paste and run that file’s contents, or run `supabase db push` if you use Supabase CLI.
-  - This creates `device_tokens` and `push_notification_log`, grants access to anon/authenticated/service_role, enables RLS, and adds policies so authenticated users only see their own rows. The Edge Function uses `service_role` and bypasses RLS.
-  - Without this, you get **500 "Failed to retrieve device tokens"** when sending push.
+- [ ] **Run the Capacitor database migrations** (in order)
+  - **Device tokens and push log:** `supabase/migrations/20260218_capacitor_device_tokens_and_push_log.sql` — creates `device_tokens` and `push_notification_log`, grants, RLS, and policies. The Edge Function uses `service_role` and bypasses RLS. Without this, you get **500 "Failed to retrieve device tokens"** when sending push.
+  - **Subscriber push preference:** `supabase/migrations/20260220_email_subscribers_receive_push.sql` — adds `receive_push` to `email_subscribers` (whether the subscriber wants app push notifications).
+  - **Admin push preference:** `supabase/migrations/20260221_admin_not_tied_to_is_active.sql` — decouples admin access from `is_active`; `supabase/migrations/20260222_email_subscribers_receive_admin_push.sql` — adds `receive_admin_push` for admin-only push.
+  - **receive_push default false:** `supabase/migrations/20260223_receive_push_default_false.sql` — sets default `receive_push = false` and backfills so only subscribers with a device token keep push on. **Push is turned on only when the user installs the app and a device token is registered** (see Phase 5).
+  - In Supabase Dashboard → **SQL Editor**, run each file's contents in order, or run `supabase db push` if you use Supabase CLI.
+
+- [ ] **Email vs push preferences (reference)**
+  - **`is_active`** — Email only: whether the subscriber receives **mass email** notifications (new/approved prayers, approved updates). Independent of push.
+  - **`receive_push`** — App push only: set to `true` automatically when a device token is stored for that user (native app install). Users can turn it off in Settings. Default is `false` for new subscribers.
+  - **`receive_admin_push`** — Admin-only: whether admins receive push notifications for admin alerts (e.g. new prayer to review). Not tied to `is_active`.
 
 ## Phase 2: Firebase/FCM Setup (for Android)
 
@@ -49,8 +55,8 @@ Firebase uses the **FCM HTTP v1 API** only. The legacy "Server Key" is disabled 
   - Enable "Push Notifications" capability
 
 - [ ] **Create APNs key or certificates (so FCM can send to iOS)**
-  - **Option A – APNs Key (.p8), recommended:** In Apple Developer → **Keys** → click **+** → name it (e.g. "Prayer App APNs") → enable **Apple Push Notifications service (APNs)** → Continue → Register. Download the **.p8** file **once** (Apple does not let you download it again). Note your **Key ID** and **Team ID**; you’ll need them in Firebase.
-  - **Option B – Certificates:** In Apple Developer → **Certificates** → create "Apple Push Notification service SSL (Sandbox)" and "Apple Push Notification service SSL (Production)" for your App ID. Download each .cer, add to Keychain, then export as **.p12** (you’ll use the .p12 in Firebase, not .cer).
+  - **Option A – APNs Key (.p8), recommended:** In Apple Developer → **Keys** → click **+** → name it (e.g. "Prayer App APNs") → enable **Apple Push Notifications service (APNs)** → Continue → Register. Download the **.p8** file **once** (Apple does not let you download it again). Note your **Key ID** and **Team ID**; you'll need them in Firebase.
+  - **Option B – Certificates:** In Apple Developer → **Certificates** → create "Apple Push Notification service SSL (Sandbox)" and "Apple Push Notification service SSL (Production)" for your App ID. Download each .cer, add to Keychain, then export as **.p12** (you'll use the .p12 in Firebase, not .cer).
 
 - [ ] **Create Provisioning Profiles**
   - In Apple Developer → Profiles
@@ -60,14 +66,14 @@ Firebase uses the **FCM HTTP v1 API** only. The legacy "Server Key" is disabled 
 
 - [ ] **Upload APNs credentials to Firebase**
   - Firebase is your delivery backend for both Android and iOS. FCM needs your Apple credentials to send to iPhones.
-  - Firebase Console → **Project Settings** (gear) → **Cloud Messaging** tab. You’ll see "Firebase Cloud Messaging API (V1)" and possibly "Web configuration" (Web Push certificates). **Ignore Web configuration**—that’s for PWA/web push only. **Scroll down** on this same tab until you see **Apple app configuration** (or "iOS app configuration" / "APNs authentication key"). That’s where you add iOS credentials. If that section doesn’t appear, add an iOS app first: **Project Overview** → **Add app** → **iOS** → enter bundle ID `com.prayerapp.mobile` (you can skip downloading the config file), then go back to **Project Settings** → **Cloud Messaging** and scroll down again.
-  - **If you used Option A (.p8):** In Apple app configuration, click **Upload** under "APNs Authentication Key". Upload your **.p8** file and enter your **Key ID** and **Team ID** (from Apple Developer → Keys, and Membership details). Set **Bundle ID** to your app’s bundle ID (e.g. `com.prayerapp.mobile`).
+  - Firebase Console → **Project Settings** (gear) → **Cloud Messaging** tab. You'll see "Firebase Cloud Messaging API (V1)" and possibly "Web configuration" (Web Push certificates). **Ignore Web configuration**—that's for PWA/web push only. **Scroll down** on this same tab until you see **Apple app configuration** (or "iOS app configuration" / "APNs authentication key"). That's where you add iOS credentials. If that section doesn't appear, add an iOS app first: **Project Overview** → **Add app** → **iOS** → enter bundle ID `com.prayerapp.mobile` (you can skip downloading the config file), then go back to **Project Settings** → **Cloud Messaging** and scroll down again.
+  - **If you used Option A (.p8):** In Apple app configuration, click **Upload** under "APNs Authentication Key". Upload your **.p8** file and enter your **Key ID** and **Team ID** (from Apple Developer → Keys, and Membership details). Set **Bundle ID** to your app's bundle ID (e.g. `com.prayerapp.mobile`).
   - **If you used Option B (.p12):** Under "APNs Certificates", upload your **Sandbox** and **Production** .p12 files and enter the password you set when exporting.
   - Do not commit .p8 or .p12 files to git; store them only in Firebase and/or a secure secret store.
 
 ## Phase 4: Supabase Edge Function
 
-The function sends **Android** via **FCM HTTP v1** (service account) and **iOS** via **APNs** (Apple .p8 key). Capacitor on iOS gives an APNs device token, not an FCM token, so iOS must be sent through Apple’s API.
+The function sends **Android** via **FCM HTTP v1** (service account) and **iOS** via **APNs** (Apple .p8 key). Capacitor on iOS gives an APNs device token, not an FCM token, so iOS must be sent through Apple's API.
 
 - [ ] **Create send-push-notification function**
   - The function is in `supabase/functions/send-push-notification/index.ts`
@@ -83,7 +89,7 @@ The function sends **Android** via **FCM HTTP v1** (service account) and **iOS**
   - No separate Project ID or Server Key is needed; both come from this JSON.
 
 - [ ] **Set APNs secrets (for iOS)**
-  - The Edge Function sends iOS notifications via Apple’s APNs API using your .p8 key. Set these Supabase secrets (from Phase 3):
+  - The Edge Function sends iOS notifications via Apple's APNs API using your .p8 key. Set these Supabase secrets (from Phase 3):
   ```bash
   # .p8 key: paste the *contents* of the file, or the base64 key only (no -----BEGIN/END----- lines)
   supabase secrets set APNS_KEY_P8 'MIGHAgEAMBMGByqGSM49...'
@@ -119,14 +125,17 @@ The function sends **Android** via **FCM HTTP v1** (service account) and **iOS**
 
 ## Phase 5: Backend Token Storage
 
+- [x] **Device token registration sets receive_push (implemented)**
+  - When the app stores a device token (`PushNotificationService.storeDeviceToken()`), it also sets `receive_push = true` for that subscriber in `email_subscribers`. Thus push is enabled only when the user has installed the app and registered a device. Users can turn push off later in Settings.
+
 - [ ] **Update user profile/admin to show device tokens** (optional)
   - **Where:** Admin → Email settings → Email Subscribers list (`src/app/components/email-subscribers/email-subscribers.component.ts`).
   - **What to add:** For each subscriber row you can:
-    - **Option A – Device count only:** Add a column that shows how many devices (e.g. "2 devices" or "—") by querying `device_tokens` for that subscriber’s email. Keeps the table simple.
+    - **Option A – Device count only:** Add a column that shows how many devices (e.g. "2 devices" or "—") by querying `device_tokens` for that subscriber's email. Keeps the table simple.
     - **Option B – Expandable devices:** Add a "Devices" cell with a button (e.g. "0 devices" / "2 devices"); on click, fetch and show a small list: platform (iOS/Android) and optionally last_seen_at. No need to show the raw token.
-  - **Query:** For one subscriber: `SELECT id, platform, last_seen_at FROM device_tokens WHERE user_email = $1`. Use the subscriber’s `email` as `$1`. For a count only: `SELECT count(*) FROM device_tokens WHERE user_email = $1`.
+  - **Query:** For one subscriber: `SELECT id, platform, last_seen_at FROM device_tokens WHERE user_email = $1`. Use the subscriber's `email` as `$1`. For a count only: `SELECT count(*) FROM device_tokens WHERE user_email = $1`.
   - **Implementation:** In the email-subscribers component, either (1) when loading the subscriber list, run a separate query or RPC that returns per-email device counts and merge into the list, or (2) when the user expands/clicks "Devices" for a row, call `supabase.from('device_tokens').select('platform, last_seen_at').eq('user_email', subscriber.email)` and show the result in a small popover or inline section.
-  - **Why it’s optional:** You can send push notifications without this; it’s mainly for admins to see who has the app installed and how many devices.
+  - **Why it's optional:** You can send push notifications without this; it's mainly for admins to see who has the app installed and how many devices.
 
 - [ ] **Automatic token cleanup**
   - Consider periodic cleanup of old tokens (30+ days unused)
@@ -138,33 +147,17 @@ The function sends **Android** via **FCM HTTP v1** (service account) and **iOS**
 
 ## Phase 6: Send Notifications from Admin
 
-- [ ] **Update admin send email flow**
-  - When sending email to subscribers, also send push notification
-  - Check if device tokens exist for user
-  - Call `send-push-notification` edge function
-  - Example:
-  ```typescript
-  // After sending email
-  if (deviceTokens.length > 0) {
-    await supabase.functions.invoke('send-push-notification', {
-      body: {
-        emails: [userEmail],
-        title: 'New Prayer Update',
-        body: 'A prayer you follow has been updated',
-        data: {
-          type: 'prayer_update',
-          prayerId: prayer.id
-        }
-      }
-    });
-  }
-  ```
+- [x] **Automatic push when admin approves (implemented)**
+  - When an admin **approves a prayer**, the requester receives a push notification ("Prayer approved" + prayer title) if they have `receive_push` enabled and a device token. Sent via `PushNotificationService.sendPushToEmails()` in `AdminDataService.approvePrayer()`.
+  - When an admin **approves an update**, the update author receives a push ("Update approved" + prayer title and snippet) if they have `receive_push` and a device token. Sent in `AdminDataService.approveUpdate()`.
+  - Tap handling: `prayer_approved` and `update_approved` notification taps refresh the prayer list (see `app.component.ts` and `capacitor.service.ts`).
 
-- [ ] **Add notification type dropdown**
-  - Email only
-  - Email + Push notification
-  - Push notification only
-  - Let admins choose per message
+- [ ] **Update admin send email flow** (for broadcast emails)
+  - When sending email to subscribers, also send push notification using `PushNotificationService.sendPushToSubscribers()` (only to subscribers with `receive_push` true and a device token).
+  - Example: see `sendBroadcastNotificationForNewPrayer` and `sendApprovedUpdateEmails` in `AdminDataService`; they call `pushNotification.sendPushToSubscribers({ title, body, data })`.
+
+- [ ] **Add notification type dropdown** (optional)
+  - Email only / Email + Push / Push only — let admins choose per message
 
 ## Phase 7: Testing
 
@@ -260,7 +253,7 @@ The function sends **Android** via **FCM HTTP v1** (service account) and **iOS**
   ```
   Without these, the `registration` / `registrationError` events never fire in JS.
 - [ ] **iOS real device:** Push entitlement is added via `ios/App/App/App.entitlements` (includes `aps-environment`). If **Push Notifications** does not appear under + Capability (e.g. with some Apple IDs or Xcode versions), the project already has the entitlement file; ensure **Signing & Capabilities** uses it (build setting `CODE_SIGN_ENTITLEMENTS = App/App.entitlements`). For production/Archive builds you may need to switch `aps-environment` in that file from `development` to `production`.
-- [ ] **iOS provisioning:** The app’s provisioning profile must include push. Use a Development profile that’s tied to your App ID with Push Notifications enabled (Apple Developer → Identifiers → your App ID → Push Notifications on).
+- [ ] **iOS provisioning:** The app's provisioning profile must include push. Use a Development profile that's tied to your App ID with Push Notifications enabled (Apple Developer → Identifiers → your App ID → Push Notifications on).
 - [ ] **If Xcode says "Provisioning profile doesn't include the aps-environment entitlement":** Enable Push on the App ID: go to developer.apple.com → Certificates, Identifiers & Profiles → Identifiers → select **com.prayerapp.mobile** (or create it). Under Capabilities, enable **Push Notifications** and Save. Back in Xcode: Product → Clean Build Folder, then build again. If the error remains, in the Developer portal open **Profiles**, find and delete "iOS Team Provisioning Profile: com.prayerapp.mobile" so Xcode can create a new profile that includes push. (Requires a paid Apple Developer Program membership.)
 - [ ] Check that notification permission was granted (logs show "receive":"granted").
 - [ ] Check for "[Capacitor] Push registration error" in Xcode console—this indicates why native registration failed.

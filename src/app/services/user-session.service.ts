@@ -10,6 +10,7 @@ export interface UserSessionData {
   isActive: boolean;
   receiveNotifications?: boolean;
   receiveAdminEmails?: boolean;
+  receivePush?: boolean;
   badgeFunctionalityEnabled?: boolean;
   defaultPrayerView?: 'current' | 'personal';
 }
@@ -107,7 +108,7 @@ export class UserSessionService {
       const { data, error } = await Promise.race([
         this.supabase.client
           .from('email_subscribers')
-          .select('email, name, is_active, badge_functionality_enabled, default_prayer_view')
+          .select('email, name, is_active, receive_push, badge_functionality_enabled, default_prayer_view')
           .eq('email', email.toLowerCase().trim())
           .maybeSingle(),
         new Promise((_, reject) => 
@@ -127,6 +128,7 @@ export class UserSessionService {
           isActive: data.is_active ?? true,
           receiveNotifications: true,
           receiveAdminEmails: false,
+          receivePush: data.receive_push ?? false,
           badgeFunctionalityEnabled: data.badge_functionality_enabled ?? false,
           defaultPrayerView: data.default_prayer_view || 'current'
         };
@@ -140,6 +142,7 @@ export class UserSessionService {
           isActive: true,
           receiveNotifications: true,
           receiveAdminEmails: false,
+          receivePush: false,
           badgeFunctionalityEnabled: false,
           defaultPrayerView: 'current'
         };
@@ -155,6 +158,7 @@ export class UserSessionService {
         isActive: true,
         receiveNotifications: true,
         receiveAdminEmails: false,
+        receivePush: false,
         badgeFunctionalityEnabled: false,
         defaultPrayerView: 'current'
       };

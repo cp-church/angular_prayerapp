@@ -80,6 +80,7 @@ export class PushNotificationService {
           console.error('Error updating device token:', updateError);
         } else {
           console.log('Device token updated successfully');
+          await this.setReceivePushForEmail(userEmail, true);
         }
       } else {
         // Insert new token
@@ -97,10 +98,25 @@ export class PushNotificationService {
           console.error('Error storing device token:', insertError);
         } else {
           console.log('Device token stored successfully');
+          await this.setReceivePushForEmail(userEmail, true);
         }
       }
     } catch (error) {
       console.error('Error in storeDeviceToken:', error);
+    }
+  }
+
+  /**
+   * Set receive_push for a subscriber when they register a device (or turn push off).
+   * Called with true when we successfully store a device token.
+   */
+  private async setReceivePushForEmail(email: string, value: boolean): Promise<void> {
+    const { error } = await this.supabase.client
+      .from('email_subscribers')
+      .update({ receive_push: value })
+      .eq('email', email.trim().toLowerCase());
+    if (error) {
+      console.warn('Could not update receive_push for subscriber:', error.message);
     }
   }
 
@@ -156,8 +172,8 @@ export class PushNotificationService {
   }
 
   /**
-   * Send a push notification to all active email subscribers who have the app installed.
-   * Use when sending prayer/update notifications (same audience as email).
+   * Send a push notification to all subscribers who have receive_push enabled and the app installed.
+   * Independent of is_active (email preference): a user can get push only, email only, both, or neither.
    * Failures are logged but do not throw.
    */
   async sendPushToSubscribers(params: {
@@ -169,8 +185,8 @@ export class PushNotificationService {
       const { data: subscribers, error: fetchError } = await this.supabase.client
         .from('email_subscribers')
         .select('email')
-        .eq('is_active', true)
-        .eq('is_blocked', false);
+        .eq('is_blocked', false)
+        .eq('receive_push', true);
 
       if (fetchError) {
         console.error('Failed to fetch subscribers for push:', fetchError);
@@ -196,6 +212,94 @@ export class PushNotificationService {
       }
     } catch (err) {
       console.error('Error sending push to subscribers:', err);
+    }
+  }
+
+  /**
+   * Send a push notification to specific emails (e.g. requester when their prayer/update is approved).
+   * Only sends to addresses that have receive_push enabled and are not blocked.
+   * Failures are logged but do not throw.
+   */
+  async sendPushToEmails(
+    emails: string[],
+    params: { title: string; body: string; data?: Record<string, string> }
+  ): Promise<void> {
+    const normalized = emails.map((e) => e?.trim().toLowerCase()).filter(Boolean);
+    if (!normalized.length) return;
+    try {
+      const { data: rows, error: fetchError } = await this.supabase.client
+        .from('email_subscribers')
+        .select('email')
+        .in('email', normalized)
+        .eq('is_blocked', false)
+        .eq('receive_push', true);
+
+      if (fetchError) {
+        console.error('Failed to fetch emails for push:', fetchError);
+        return;
+      }
+      if (!rows?.length) return;
+
+      const allowed = rows.map((r: { email: string }) => r.email);
+      const { error: invokeError } = await this.supabase.client.functions.invoke(
+        'send-push-notification',
+        {
+          body: {
+            emails: allowed,
+            title: params.title,
+            body: params.body,
+            data: params.data ?? undefined,
+          },
+        }
+      );
+      if (invokeError) {
+        console.error('Push to requester/author failed:', invokeError);
+      }
+    } catch (err) {
+      console.error('Error sending push to emails:', err);
+    }
+  }
+
+  /**
+   * Send a push notification to all admins who have receive_admin_push enabled.
+   * Failures are logged but do not throw.
+   */
+  async sendPushToAdmins(params: {
+    title: string;
+    body: string;
+    data?: Record<string, string>;
+  }): Promise<void> {
+    try {
+      const { data: admins, error: fetchError } = await this.supabase.client
+        .from('email_subscribers')
+        .select('email')
+        .eq('is_admin', true)
+        .eq('receive_admin_push', true);
+
+      if (fetchError) {
+        console.error('Failed to fetch admins for push:', fetchError);
+        return;
+      }
+      if (!admins?.length) return;
+
+      const emails = admins.map((a: { email: string }) => a.email);
+      const { error: invokeError } = await this.supabase.client.functions.invoke(
+        'send-push-notification',
+        {
+          body: {
+            emails,
+            title: params.title,
+            body: params.body,
+            data: { ...params.data, target: 'admin' },
+          },
+        }
+      );
+
+      if (invokeError) {
+        console.error('Admin push notification send failed:', invokeError);
+      }
+    } catch (err) {
+      console.error('Error sending push to admins:', err);
     }
   }
 

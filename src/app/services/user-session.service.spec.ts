@@ -26,6 +26,7 @@ describe('UserSessionService', () => {
                   email: 'test@example.com',
                   name: 'John Doe',
                   is_active: true,
+                  receive_push: true,
                 },
                 error: null
               })
@@ -78,6 +79,28 @@ describe('UserSessionService', () => {
       const session = service.getCurrentSession();
       expect(session?.receiveNotifications).toBe(true);
       expect(session?.receiveAdminEmails).toBe(false);
+      expect(session?.receivePush).toBe(true);
+    });
+
+    it('should set receivePush from receive_push', async () => {
+      mockSupabaseService.client.from.mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: {
+                email: 'test@example.com',
+                name: 'User',
+                is_active: true,
+                receive_push: false,
+              },
+              error: null
+            })
+          })
+        })
+      });
+      await service.loadUserSession('test@example.com');
+      const session = service.getCurrentSession();
+      expect(session?.receivePush).toBe(false);
     });
 
     it('should handle database errors gracefully', async () => {

@@ -27,9 +27,9 @@ Your Angular Prayer App is now ready to run on iOS and Android as native apps.
 - `capacitor.config.ts` - Capacitor configuration pointing to your built Angular app
 
 ### Documentation
-- `CAPACITOR_SETUP.md` - Complete detailed setup guide
-- `CAPACITOR_QUICKSTART.md` - Quick start reference  
-- `CAPACITOR_BACKEND_SETUP.md` - Backend setup checklist
+- [CAPACITOR_SETUP.md](CAPACITOR_SETUP.md) - Complete detailed setup guide
+- [CAPACITOR_QUICKSTART.md](CAPACITOR_QUICKSTART.md) - Quick start reference  
+- [CAPACITOR_BACKEND_SETUP.md](CAPACITOR_BACKEND_SETUP.md) - Backend setup checklist
 
 ## What's Ready Now
 
@@ -74,13 +74,13 @@ Look for `"Initializing Capacitor on..."` in device logs to confirm it loaded.
 
 To actually send push notifications, you need to:
 
-1. Create `device_tokens` table (SQL in `docs/migrations/`)
+1. Run the database migrations (device_tokens, push_notification_log, receive_push, receive_push default false, etc.) — see Phase 1 in the backend setup
 2. Set up Firebase for Android (FCM)
 3. Set up Apple Push Notifications (APNs) for iOS
-4. Deploy Supabase Edge Function for sending notifications
-5. Update admin interface to send push notifications
+4. Deploy the `send-push-notification` Edge Function and set secrets
+5. (Optional) Show device count in admin; the app already sends push to requesters when prayers/updates are approved
 
-See `CAPACITOR_BACKEND_SETUP.md` for step-by-step instructions.
+See [CAPACITOR_BACKEND_SETUP.md](CAPACITOR_BACKEND_SETUP.md) for step-by-step instructions.
 
 ## Development Workflow
 
@@ -99,7 +99,7 @@ npx cap open android
 
 ### Dev vs production backend
 
-The app talks to Supabase using the URL in Angular’s **environment** files. Which one is used depends on the **build configuration**, not Capacitor itself.
+The app talks to Supabase using the URL in Angular's **environment** files. Which one is used depends on the **build configuration**, not Capacitor itself.
 
 | Goal | Command | Supabase used |
 |------|---------|----------------|
@@ -115,6 +115,7 @@ So to point the native app at your **dev** site: run **`npm run cap:dev`**, then
 - **Supabase works** - All queries and real-time subscriptions work
 - **Same domain/CORS** - Running locally, no CORS issues
 - **Native features** - Can add camera, contacts, etc. via Capacitor plugins later
+- **Push vs email preferences** - `is_active` controls **email** (mass notifications). **Push** is controlled by `receive_push`, which is set to `true` only when the user installs the app and a device token is registered; they can turn it off in Settings. When an admin approves a prayer or update, the requester/author gets a push notification if they have push enabled.
 
 ## File Structure
 
@@ -128,11 +129,13 @@ angular_prayerapp/
 │   └── push-notification.service.ts # Backend integration
 ├── supabase/functions/
 │   └── send-push-notification/   # Edge function for sending
-├── docs/migrations/
-│   └── device_tokens_schema.sql  # Database schema
-├── CAPACITOR_SETUP.md            # Full guide
-├── CAPACITOR_QUICKSTART.md       # Quick reference
-└── CAPACITOR_BACKEND_SETUP.md    # Checklist
+├── docs/
+│   ├── Capacitor/
+│   │   ├── CAPACITOR_SETUP.md            # Full guide
+│   │   ├── CAPACITOR_QUICKSTART.md       # Quick reference
+│   │   └── CAPACITOR_BACKEND_SETUP.md    # Checklist
+│   └── migrations/
+│       └── device_tokens_schema.sql  # Database schema
 ```
 
 ## Testing Checklist
@@ -153,7 +156,7 @@ angular_prayerapp/
 The app icon is defined in **one place** and synced to iOS and Android.
 
 **Source image (use either):**
-- `public/apple-touch-icon.png` — cross + “PRAYER” on dark blue (used by default)
+- `public/apple-touch-icon.png` — cross + "PRAYER" on dark blue (used by default)
 - `public/icon-source.jpg` — alternative; copy to `resources/logo.png` (or save as `resources/logo.jpg`) if you prefer it
 
 **To update the icon and sync to both platforms:**
@@ -199,7 +202,7 @@ npm run build && npx cap sync
 
 **To scroll in the emulator:** use **click-and-drag** — click in the content area, hold, and drag up or down. That simulates a touch swipe and will scroll the app. On a **real Android device**, normal one-finger swipe scrolling works as expected.
 
-See `CAPACITOR_QUICKSTART.md` for other troubleshooting.
+See [CAPACITOR_QUICKSTART.md](CAPACITOR_QUICKSTART.md) for other troubleshooting.
 
 ## Next Steps
 
@@ -214,7 +217,7 @@ See `CAPACITOR_QUICKSTART.md` for other troubleshooting.
    - Run on emulator or device
 
 3. **Then set up backend** (optional but recommended)
-   - Follow `CAPACITOR_BACKEND_SETUP.md`
+   - Follow [CAPACITOR_BACKEND_SETUP.md](CAPACITOR_BACKEND_SETUP.md)
    - Set up Firebase + APNs
    - Deploy Edge Function
    - Start sending push notifications
@@ -224,7 +227,7 @@ See `CAPACITOR_QUICKSTART.md` for other troubleshooting.
 - Capacitor Docs: https://capacitorjs.com
 - Xcode Help: Built into Xcode or https://developer.apple.com
 - Android Studio Help: Built into Android Studio
-- Your local guides: `CAPACITOR_SETUP.md`
+- Your local guides: [CAPACITOR_SETUP.md](CAPACITOR_SETUP.md)
 
 ## What's Different from a Web App?
 
@@ -240,4 +243,4 @@ But all your code, data, and features are identical.
 
 ---
 
-Ready to build for iOS/Android? Start with `CAPACITOR_QUICKSTART.md`! 🚀
+Ready to build for iOS/Android? Start with [CAPACITOR_QUICKSTART.md](CAPACITOR_QUICKSTART.md)! 🚀

@@ -8,6 +8,7 @@ Complete documentation for the Cross Pointe Church Prayer Management System.
 - **[SETUP.md](SETUP.md)** - Installation, configuration, and deployment
 - **[DEVELOPMENT.md](DEVELOPMENT.md)** - Architecture, testing, development, timezone handling, and component documentation
 - **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Solutions to common issues
+- **[Capacitor (iOS/Android)](Capacitor/)** - Native app build, push notifications, and backend setup ([CAPACITOR_GETTING_STARTED.md](Capacitor/CAPACITOR_GETTING_STARTED.md), [CAPACITOR_BACKEND_SETUP.md](Capacitor/CAPACITOR_BACKEND_SETUP.md))
 
 ---
 
@@ -87,11 +88,9 @@ src/
 - **Authenticated**: Can submit, update, manage prayers
 - **Admin**: Can approve/deny, manage settings
 
-### Email System
-- Built on Microsoft 365 Graph API
-- Queue-based processing (prevent rate limits)
-- HTML templates with variable substitution
-- Subscriber management (opt-in/out)
+### Email and Push Notifications
+- **Email:** Built on Microsoft 365 Graph API; queue-based processing; HTML templates; subscriber management. **`is_active`** on `email_subscribers` controls whether a user receives **mass email** (new/approved prayers, updates). Turning off "email notifications" only stops those bulk emails; direct emails (e.g. your prayer approved/denied) still go out.
+- **Push (native app):** Controlled by **`receive_push`** on `email_subscribers`. Push is set to `true` only when the user installs the app and a device token is registered; default is `false`. Admins have a separate **`receive_admin_push`** for admin alerts. See [Capacitor docs](Capacitor/CAPACITOR_BACKEND_SETUP.md) for setup. When an admin approves a prayer or update, the requester/author receives a push notification if they have push enabled.
 
 ---
 
@@ -103,6 +102,7 @@ src/
 | **DEVELOPMENT.md** | Architecture, testing, performance optimization |
 | **TROUBLESHOOTING.md** | Common errors and solutions |
 | **CHANGELOG.md** | Project milestones and completed features |
+| **Capacitor/** | iOS/Android native app, push notifications, backend checklist |
 
 ---
 

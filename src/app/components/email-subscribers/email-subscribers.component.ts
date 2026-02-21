@@ -15,6 +15,7 @@ interface EmailSubscriber {
   email: string;
   is_active: boolean;
   is_blocked: boolean;
+  receive_push?: boolean;
   is_admin?: boolean;
   created_at: string;
   last_activity_date?: string | null;
@@ -447,37 +448,39 @@ interface CSVRow {
 
       @if (!searching && hasSearched && subscribers.length > 0) {
       <div>
-        <div class="hidden mb-3 gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-300 sm:grid sm:grid-cols-12">
-          <button (click)="toggleSort('name')" class="col-span-3 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by name">Name{{ getSortIndicator('name') }}</button>
-          <button (click)="toggleSort('email')" class="col-span-3 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by email">Email{{ getSortIndicator('email') }}</button>
-          <button (click)="toggleSort('created_at')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by join date">Added{{ getSortIndicator('created_at') }}</button>
-          <button (click)="toggleSort('last_activity_date')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by last activity">Activity{{ getSortIndicator('last_activity_date') }}</button>
-          <button (click)="toggleSort('is_active')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by status">Status{{ getSortIndicator('is_active') }}</button>
-          <button (click)="toggleSort('is_blocked')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by blocked status">Blocked{{ getSortIndicator('is_blocked') }}</button>
-          <button (click)="toggleSort('in_planning_center')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by Planning Center status">Planning Center{{ getSortIndicator('in_planning_center') }}</button>
+        <div class="hidden mb-3 gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-300 sm:grid sm:grid-cols-[repeat(16,minmax(0,1fr))]">
+          <button (click)="toggleSort('name')" class="col-span-4 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by name">Name{{ getSortIndicator('name') }}</button>
+          <button (click)="toggleSort('email')" class="col-span-2 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by email">Email{{ getSortIndicator('email') }}</button>
+          <button (click)="toggleSort('created_at')" class="col-span-2 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by join date">Added{{ getSortIndicator('created_at') }}</button>
+          <button (click)="toggleSort('last_activity_date')" class="col-span-2 text-left whitespace-nowrap hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by last activity">Activity{{ getSortIndicator('last_activity_date') }}</button>
+          <button (click)="toggleSort('is_active')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by email">Email{{ getSortIndicator('is_active') }}</button>
+          <button (click)="toggleSort('receive_push')" class="col-span-1 text-left hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by push">Push{{ getSortIndicator('receive_push') }}</button>
+          <button (click)="toggleSort('in_planning_center')" class="col-span-1 text-center hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by PC status">PC{{ getSortIndicator('in_planning_center') }}</button>
+          <button (click)="toggleSort('is_blocked')" class="col-span-1 text-center hover:text-gray-900 dark:hover:text-gray-100 transition-colors cursor-pointer" title="Click to sort by block status">Block{{ getSortIndicator('is_blocked') }}</button>
+          <span class="col-span-2 text-left text-gray-700 dark:text-gray-300">Actions</span>
         </div>
         <div class="space-y-2">
-          @for (subscriber of subscribers; track subscriber.id) { <div class="grid gap-2 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 grid-cols-2 sm:grid-cols-12 sm:items-start">
+          @for (subscriber of subscribers; track subscriber.id) { <div class="grid gap-2 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 grid-cols-2 sm:grid-cols-[repeat(16,minmax(0,1fr))] sm:items-center">
             <!-- Name column -->
-            <div class="text-left col-span-1 sm:col-span-3">
+            <div class="text-left col-span-1 sm:col-span-4">
               <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Name</p>
               <h4 class="font-medium text-gray-900 dark:text-gray-100 truncate" [title]="subscriber.name">{{ subscriber.name }}</h4>
             </div>
             
-            <!-- Email column -->
-            <div class="text-left col-span-1 sm:col-span-3">
+            <!-- Email column: full width on mobile so full email can wrap; on desktop truncate -->
+            <div class="text-left col-span-2 sm:col-span-2 min-w-0">
               <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Email</p>
-              <p class="text-sm text-gray-600 dark:text-gray-400 truncate" [title]="subscriber.email">{{ subscriber.email }}</p>
+              <p class="text-sm text-gray-600 dark:text-gray-400 break-all sm:truncate" [title]="subscriber.email">{{ subscriber.email }}</p>
             </div>
             
             <!-- Added column -->
-            <div class="col-span-1 sm:col-span-1">
+            <div class="col-span-1 sm:col-span-2 flex items-center">
               <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Added</p>
               <p class="text-xs text-gray-500 dark:text-gray-500" [title]="'Joined: ' + (subscriber.created_at | date:'medium')">{{ subscriber.created_at | date:'short' }}</p>
             </div>
             
             <!-- Activity column -->
-            <div class="col-span-1 sm:col-span-1">
+            <div class="col-span-1 sm:col-span-2 flex items-center">
               <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Activity</p>
               @if (subscriber.last_activity_date) {
               <p class="text-xs text-gray-500 dark:text-gray-500" [title]="'Last active: ' + (subscriber.last_activity_date | date:'medium')">{{ subscriber.last_activity_date | date:'short' }}</p>
@@ -486,9 +489,9 @@ interface CSVRow {
               }
             </div>
             
-            <!-- Status column -->
+            <!-- Email (is_active) column -->
             <div class="col-span-1 sm:col-span-1 flex items-center gap-1">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Status</p>
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Email</p>
               <button
                 (click)="handleToggleActive(subscriber.id, subscriber.is_active)"
                 [class]="subscriber.is_active ? 
@@ -511,8 +514,45 @@ interface CSVRow {
               </button>
             </div>
 
-            <!-- Blocked column -->
+            <!-- Push (receive_push) column -->
             <div class="col-span-1 sm:col-span-1 flex items-center gap-1">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Push</p>
+              <button
+                (click)="handleToggleReceivePush(subscriber.id, (subscriber.receive_push ?? false))"
+                [class]="(subscriber.receive_push ?? false) ? 
+                  'p-2 rounded-lg transition-colors cursor-pointer text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30' : 
+                  'p-2 rounded-lg transition-colors cursor-pointer text-gray-400 dark:text-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700'"
+                [title]="(subscriber.receive_push ?? false) ? 'Stop sending push notifications to this user' : 'Start sending push notifications to this user'"
+              >
+                @if (subscriber.receive_push ?? false) {
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                } @else {
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="15" y1="9" x2="9" y2="15"></line>
+                  <line x1="9" y1="9" x2="15" y2="15"></line>
+                </svg>
+                }
+              </button>
+            </div>
+
+            <!-- PC column -->
+            <div class="col-span-1 sm:col-span-1 flex items-center justify-start sm:justify-center gap-1">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">PC</p>
+              @if (subscriber.in_planning_center === true) {
+              <span class="text-lg text-green-600 dark:text-green-400" title="This person is verified in Planning Center">✓</span>
+              } @else if (subscriber.in_planning_center === false) {
+              <span class="text-lg text-gray-400 dark:text-gray-600" title="This person is not verified in Planning Center">✓</span>
+              } @else {
+              <span class="text-lg text-gray-400 dark:text-gray-600" title="Planning Center status unknown">✓</span>
+              }
+            </div>
+
+            <!-- Blocked column -->
+            <div class="col-span-1 sm:col-span-1 flex items-center justify-start sm:justify-center gap-1">
               <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Blocked</p>
               <button
                 (click)="handleToggleBlocked(subscriber.id, subscriber.is_blocked)"
@@ -528,53 +568,34 @@ interface CSVRow {
               </button>
             </div>
 
-            <!-- Planning Center column -->
-            <div class="col-span-1 sm:col-span-1 flex items-center gap-1">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Planning Center</p>
-              @if (subscriber.in_planning_center === true) {
-              <span class="text-lg text-green-600 dark:text-green-400" title="This person is verified in Planning Center">✓</span>
-              } @else if (subscriber.in_planning_center === false) {
-              <span class="text-lg text-gray-400 dark:text-gray-600" title="This person is not verified in Planning Center">✓</span>
-              } @else {
-              <span class="text-lg text-gray-400 dark:text-gray-600" title="Planning Center status unknown">✓</span>
-              }
+            <!-- Edit column -->
+            <div class="col-span-1 sm:col-span-1 flex items-center justify-start sm:justify-center">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Edit</p>
+              <button
+                (click)="openEditSubscriberModal(subscriber)"
+                class="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+                title="Edit subscriber name"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              </button>
             </div>
 
-            <!-- Actions (Edit + Delete) column -->
-            <div class="col-span-1 sm:col-span-1">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Actions</p>
-              <!-- Keep actions comfortably inside the row container on all screen sizes -->
-              <div class="flex items-center pr-1 justify-start gap-3 sm:justify-center sm:gap-1">
-                <!-- Edit subscriber -->
-                <div class="flex items-center gap-1">
-                  <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Edit</span>
-                  <button
-                    (click)="openEditSubscriberModal(subscriber)"
-                    class="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
-                    title="Edit subscriber name"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                    </svg>
-                  </button>
-                </div>
-
-                <!-- Delete subscriber -->
-                <div class="flex items-center gap-1">
-                  <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Delete</span>
-                  <button
-                    (click)="handleDelete(subscriber.id, subscriber.email)"
-                    class="p-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors cursor-pointer"
-                    [title]="subscriber.is_admin ? 'Remove this admin from email list (they keep their admin login access)' : 'Permanently delete this subscriber from the list'"
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="3 6 5 6 21 6"></polyline>
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    </svg>
-                  </button>
-                </div>
-              </div>
+            <!-- Delete column -->
+            <div class="col-span-1 sm:col-span-1 flex items-center justify-start sm:justify-center">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Delete</p>
+              <button
+                (click)="handleDelete(subscriber.id, subscriber.email)"
+                class="p-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors cursor-pointer"
+                [title]="subscriber.is_admin ? 'Remove this admin from email list (they keep their admin login access)' : 'Permanently delete this subscriber from the list'"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+              </button>
             </div>
           </div>
           }
@@ -768,8 +789,8 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
   allSubscribers: EmailSubscriber[] = [];
 
   // Sorting properties
-  sortBy: 'name' | 'email' | 'created_at' | 'last_activity_date' | 'is_active' | 'is_blocked' | 'in_planning_center' = 'name';
-  sortDirection: 'asc' | 'desc' = 'asc';
+  sortBy: 'name' | 'email' | 'created_at' | 'last_activity_date' | 'is_active' | 'receive_push' | 'is_blocked' | 'in_planning_center' = 'last_activity_date';
+  sortDirection: 'asc' | 'desc' = 'desc';
 
   // Planning Center search properties
   pcSearchTab = false;
@@ -987,7 +1008,7 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
     }
   }
 
-  toggleSort(column: 'name' | 'email' | 'created_at' | 'last_activity_date' | 'is_active' | 'is_blocked' | 'in_planning_center') {
+  toggleSort(column: 'name' | 'email' | 'created_at' | 'last_activity_date' | 'is_active' | 'receive_push' | 'is_blocked' | 'in_planning_center') {
     // If clicking the same column, toggle direction; otherwise set new column
     if (this.sortBy === column) {
       this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
@@ -1027,6 +1048,10 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
         case 'is_active':
           aVal = a.is_active ? 1 : 0;
           bVal = b.is_active ? 1 : 0;
+          break;
+        case 'receive_push':
+          aVal = (a.receive_push ?? false) ? 1 : 0;
+          bVal = (b.receive_push ?? false) ? 1 : 0;
           break;
         case 'is_blocked':
           aVal = a.is_blocked ? 1 : 0;
@@ -1263,6 +1288,57 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
     } catch (err: any) {
       console.error('Error preparing status toggle action:', err);
       this.toast.error('Failed to prepare status toggle action');
+    }
+  }
+
+  async handleToggleReceivePush(id: string, currentReceivePush: boolean) {
+    try {
+      const { data: subscriber, error: fetchError } = await this.supabase.client
+        .from('email_subscribers')
+        .select('email')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
+      if (!subscriber) throw new Error('Subscriber not found');
+
+      this.confirmationTitle = currentReceivePush ? 'Disable push notifications' : 'Enable push notifications';
+      this.confirmationMessage = currentReceivePush
+        ? `Stop sending push notifications to ${subscriber.email}?`
+        : `Start sending push notifications to ${subscriber.email}?`;
+      this.confirmationDetails = currentReceivePush
+        ? 'This user will no longer receive push notifications on their devices.'
+        : 'This user will receive push notifications on their devices.';
+      this.confirmationConfirmText = currentReceivePush ? 'Disable' : 'Enable';
+      this.isDeleteConfirmation = false;
+
+      this.confirmationAction = async () => {
+        try {
+          const { error } = await this.supabase.client
+            .from('email_subscribers')
+            .update({ receive_push: !currentReceivePush })
+            .eq('id', id);
+
+          if (error) throw error;
+
+          this.toast.success(currentReceivePush ? 'Push notifications disabled' : 'Push notifications enabled');
+
+          const sub = this.allSubscribers.find(s => s.id === id);
+          if (sub) {
+            sub.receive_push = !currentReceivePush;
+            this.cdr.markForCheck();
+          }
+        } catch (err: any) {
+          console.error('Error toggling receive_push:', err);
+          this.toast.error('Failed to update push notification preference');
+        }
+      };
+
+      this.showConfirmationDialog = true;
+      this.cdr.markForCheck();
+    } catch (err: any) {
+      console.error('Error preparing push toggle action:', err);
+      this.toast.error('Failed to prepare push toggle action');
     }
   }
 

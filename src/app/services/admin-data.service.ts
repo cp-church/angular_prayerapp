@@ -404,6 +404,19 @@ export class AdminDataService {
       requesterEmail: prayer.email,
       prayerFor: prayer.prayer_for
     }).catch(err => console.error('Failed to send requester approval notification:', err));
+
+    // Push to requester when their prayer is approved (only if they have receive_push and app installed)
+    if (prayer.email) {
+      const pushTitle = 'Prayer approved';
+      const pushBody = (prayer.title || 'Your prayer request').length > 80
+        ? (prayer.title || 'Your prayer request').slice(0, 77) + '...'
+        : (prayer.title || 'Your prayer request');
+      this.pushNotification.sendPushToEmails([prayer.email], {
+        title: pushTitle,
+        body: pushBody,
+        data: { type: 'prayer_approved', prayerId: id }
+      }).catch(() => {});
+    }
     
     // Refresh admin data and main prayer list (force to bypass concurrent fetch guard)
     await this.fetchAdminData(true, true);
@@ -686,6 +699,17 @@ export class AdminDataService {
         author: update.is_anonymous ? 'Anonymous' : (update.author || 'Anonymous'),
         authorEmail: update.author_email || ''
       }).catch(err => console.error('Failed to send update author approval notification:', err));
+
+      // Push to update author when their update is approved (only if they have receive_push and app installed)
+      if (update.author_email) {
+        const pushTitle = 'Update approved';
+        const pushBody = `${prayerTitle}: ${(update.content || '').trim().slice(0, 60)}${(update.content || '').length > 60 ? '...' : ''}`;
+        this.pushNotification.sendPushToEmails([update.author_email], {
+          title: pushTitle,
+          body: pushBody || prayerTitle,
+          data: { type: 'update_approved', updateId: id, prayerId: update.prayer_id }
+        }).catch(() => {});
+      }
     }
 
     // Refresh admin data and main prayer list (force to bypass concurrent fetch guard)

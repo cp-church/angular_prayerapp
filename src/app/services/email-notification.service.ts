@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { SupabaseService } from './supabase.service';
+import { PushNotificationService } from './push-notification.service';
 
 export interface SendEmailOptions {
   to: string | string[];
@@ -85,7 +86,8 @@ export interface AdminNotificationPayload {
 })
 export class EmailNotificationService {
   constructor(
-    private supabase: SupabaseService
+    private supabase: SupabaseService,
+    private pushNotification: PushNotificationService
   ) {}
 
   /**
@@ -526,12 +528,11 @@ export class EmailNotificationService {
    */
   async sendAdminNotification(payload: AdminNotificationPayload): Promise<void> {
     try {
-      // Get admin emails from email_subscribers table
+      // Get admin emails from email_subscribers table (receive_admin_emails only; not tied to is_active)
       const { data: admins, error: adminsError } = await this.supabase.client
         .from('email_subscribers')
         .select('email')
         .eq('is_admin', true)
-        .eq('is_active', true)
         .eq('receive_admin_emails', true);
 
       if (adminsError) {
@@ -550,6 +551,25 @@ export class EmailNotificationService {
       for (const adminEmail of adminEmails) {
         await this.sendAdminNotificationToEmail(payload, adminEmail);
       }
+
+      // Send push to admins who have receive_admin_push enabled (best-effort)
+      try {
+        const body =
+          payload.type === 'prayer'
+            ? `New prayer request${payload.requester ? ` from ${payload.requester}` : ''}.`
+            : payload.type === 'update'
+              ? `New update${payload.author ? ` from ${payload.author}` : ''}.`
+              : payload.type === 'deletion'
+                ? `Deletion request for ${payload.title}.`
+                : 'Action required in admin.';
+        await this.pushNotification.sendPushToAdmins({
+          title: payload.title,
+          body,
+          data: { type: payload.type, ...(payload.requestId && { requestId: payload.requestId }) },
+        });
+      } catch (pushErr) {
+        console.error('Error sending admin push notification:', pushErr);
+      }
     } catch (error) {
       console.error('Error in sendAdminNotification:', error);
       // Don't throw - we don't want email failures to break the app
@@ -561,12 +581,12 @@ export class EmailNotificationService {
    */
   async sendAccountApprovalNotification(email: string, firstName: string, lastName: string, affiliationReason?: string): Promise<void> {
     try {
-      // Get all admin emails
+      // Get all admin emails (receive_admin_emails only; not tied to is_active)
       const { data: admins, error: adminsError } = await this.supabase.directQuery<{ email: string }>(
         'email_subscribers',
         {
           select: 'email',
-          eq: { is_admin: true, is_active: true }
+          eq: { is_admin: true, receive_admin_emails: true }
         }
       );
 
@@ -578,6 +598,17 @@ export class EmailNotificationService {
       // Send notification to each admin
       for (const admin of admins) {
         await this.sendAccountApprovalNotificationToEmail(email, firstName, lastName, affiliationReason || '', admin.email);
+      }
+
+      // Send push to admins who have receive_admin_push enabled (best-effort)
+      try {
+        await this.pushNotification.sendPushToAdmins({
+          title: 'Account approval request',
+          body: `${firstName} ${lastName} (${email})`,
+          data: { type: 'account_approval_request' },
+        });
+      } catch (pushErr) {
+        console.error('Error sending admin push for account approval:', pushErr);
       }
     } catch (error) {
       console.error('Error in sendAccountApprovalNotification:', error);

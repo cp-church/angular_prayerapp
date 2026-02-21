@@ -17,6 +17,7 @@ export interface PushNotificationPayload {
 
 export type PushNotificationEventType =
   | 'prayer_approved'
+  | 'update_approved'
   | 'prayer_update'
   | 'reminder'
   | 'generic';
@@ -97,12 +98,16 @@ export class CapacitorService {
           }
         );
 
-        // On Android, register() requires Firebase (google-services.json). Without it the app crashes.
-        if (this.currentPlatform === 'android') {
-          console.warn('Push on Android requires google-services.json in android/app/. Skipping registration.');
-        } else {
+        // On Android, register() requires google-services.json in android/app/. Emulators often don't return a token; use a physical device for reliable push.
+        try {
           await PushNotifications.register();
-          console.log('[Capacitor] Push register() called; token will arrive via registration listener if APNs succeeds.');
+          console.log('[Capacitor] Push register() called; token will arrive via registration listener.');
+        } catch (err) {
+          if (this.currentPlatform === 'android') {
+            console.warn('Android push registration failed (add google-services.json to android/app/ for FCM).', err);
+          } else {
+            console.error('[Capacitor] Push registration error:', err);
+          }
         }
 
         // Listen for push notifications when the app is in the foreground
@@ -251,6 +256,27 @@ export class CapacitorService {
    */
   isNative(): boolean {
     return this.isNativeApp;
+  }
+
+  /**
+   * Check if running on web as an installed PWA (standalone display mode).
+   * Used to show push notification settings when the app is "installed" even on web.
+   */
+  isPwaStandalone(): boolean {
+    if (typeof window === 'undefined') return false;
+    const nav = window.navigator as Navigator & { standalone?: boolean };
+    return (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (nav.standalone === true)
+    );
+  }
+
+  /**
+   * Whether to show the push notification setting in UI.
+   * True in native app always; true on web only when app is installed (PWA standalone).
+   */
+  showPushNotificationSetting(): boolean {
+    return this.isNativeApp || this.isPwaStandalone();
   }
 
   /**

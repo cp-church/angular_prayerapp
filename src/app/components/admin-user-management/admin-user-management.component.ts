@@ -1,41 +1,44 @@
 import { Component, OnInit, Output, EventEmitter, ChangeDetectorRef } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../services/supabase.service';
 import { ToastService } from '../../services/toast.service';
 import { EmailNotificationService } from '../../services/email-notification.service';
+import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog.component';
 
 interface AdminUser {
   email: string;
   name: string;
   created_at: string;
   receive_admin_emails: boolean;
+  receive_admin_push: boolean;
 }
 
 @Component({
   selector: 'app-admin-user-management',
   standalone: true,
-  imports: [FormsModule],
+  imports: [CommonModule, FormsModule, ConfirmationDialogComponent],
   template: `
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
-      <div class="flex items-center justify-between mb-6">
-        <div class="flex items-center gap-3">
-          <svg class="text-red-600 dark:text-red-400" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <div class="flex items-center justify-between mb-6 min-h-[3.5rem]">
+        <div class="flex items-center gap-3 min-h-0">
+          <svg class="flex-shrink-0 text-red-600 dark:text-red-400" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
           </svg>
-          <div>
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          <div class="min-w-0">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 leading-tight">
               Admin User Management
             </h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400">
+            <p class="text-sm text-gray-600 dark:text-gray-400 leading-tight mt-0.5">
               Manage admin users and send invitations
             </p>
           </div>
         </div>
-        
+
         @if (!showAddForm) {
         <button
           (click)="showAddForm = true"
-          class="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors cursor-pointer"
+          class="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors cursor-pointer flex-shrink-0 self-center"
           title="Click to add a new administrator. You will be able to enter their email address and send them an invitation to join as an admin."
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -186,7 +189,18 @@ interface AdminUser {
       }
 
       @if (!loading && admins.length > 0) {
-      <div class="space-y-3">
+      <!-- Table header -->
+      <div class="flex items-center justify-between p-4 pb-2 text-xs font-medium text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600">
+        <div class="flex-1">
+          <div class="font-medium text-gray-700 dark:text-gray-300">Admin</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-10 text-center" title="Email notifications">Email</span>
+          <span class="w-10 text-center" title="Push notifications">Push</span>
+          <span class="w-10 text-center">Actions</span>
+        </div>
+      </div>
+      <div class="space-y-3 mt-2">
         @for (admin of admins; track admin.email) {
         <div
           class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
@@ -210,33 +224,10 @@ interface AdminUser {
             </div>
           </div>
 
-          @if (deletingEmail === admin.email) {
-          <div class="flex items-center gap-2">
-            <span class="text-sm text-gray-600 dark:text-gray-400">Remove admin access?</span>
-            <button
-              (click)="deleteAdmin(admin.email)"
-              class="px-3 py-1 bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 text-white text-sm rounded transition-colors"
-              aria-label="Confirm deletion of admin access"
-              title="Confirm removing admin access for this user. This action cannot be undone. They will lose all administrative privileges."
-            >
-              Confirm
-            </button>
-            <button
-              (click)="deletingEmail = null"
-              class="px-3 py-1 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
-              aria-label="Cancel deletion"
-              title="Cancel removing admin access. No changes will be made."
-            >
-              Cancel
-            </button>
-          </div>
-          }
-
-          @if (deletingEmail !== admin.email) {
           <div class="flex items-center gap-2">
             <!-- Receive Admin Emails Toggle -->
             <button
-              (click)="toggleReceiveEmails(admin.email, admin.receive_admin_emails)"
+              (click)="handleToggleReceiveEmails(admin.email, admin.name, admin.receive_admin_emails)"
               [class]="'p-2 rounded-lg transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ' + (admin.receive_admin_emails ? 'text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 focus:ring-green-500' : 'text-gray-400 dark:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 focus:ring-gray-500')"
               [attr.aria-label]="'Email notifications for ' + admin.name + ' are ' + (admin.receive_admin_emails ? 'enabled' : 'disabled')"
               [attr.aria-pressed]="admin.receive_admin_emails"
@@ -256,10 +247,31 @@ interface AdminUser {
               </svg>
               }
             </button>
-            
+            <!-- Receive Admin Push Toggle -->
+            <button
+              (click)="handleToggleReceivePush(admin.email, admin.name, admin.receive_admin_push)"
+              [class]="'p-2 rounded-lg transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ' + (admin.receive_admin_push ? 'text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 focus:ring-green-500' : 'text-gray-400 dark:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 focus:ring-gray-500')"
+              [attr.aria-label]="'Push notifications for ' + admin.name + ' are ' + (admin.receive_admin_push ? 'enabled' : 'disabled')"
+              [attr.aria-pressed]="admin.receive_admin_push"
+              [title]="admin.receive_admin_push ? 'Click to disable push notifications for ' + admin.name + '.' : 'Click to enable push notifications for ' + admin.name + '. They will receive admin alerts on their device.'"
+            >
+              @if (admin.receive_admin_push) {
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              }
+              @if (!admin.receive_admin_push) {
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+              </svg>
+              }
+            </button>
             <!-- Delete Admin Button -->
             <button
-              (click)="deletingEmail = admin.email"
+              (click)="handleDeleteAdmin(admin.email, admin.name)"
               [disabled]="admins.length === 1"
               class="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer"
               [attr.aria-label]="admins.length === 1 ? 'Cannot delete, this is the last admin' : 'Remove admin access for ' + admin.name"
@@ -271,7 +283,6 @@ interface AdminUser {
               </svg>
             </button>
           </div>
-          }
         </div>
         }
       </div>
@@ -281,7 +292,8 @@ interface AdminUser {
       @if (admins.length > 0) {
       <div class="mt-4 p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-md">
         <p class="text-sm text-gray-700 dark:text-gray-300">
-          <strong>{{ getReceivingEmailsCount() }}</strong> of <strong>{{ admins.length }}</strong> admin{{ admins.length !== 1 ? 's' : '' }} receiving email notifications
+          <strong>{{ getReceivingEmailsCount() }}</strong> of <strong>{{ admins.length }}</strong> admin{{ admins.length !== 1 ? 's' : '' }} receiving email notifications;
+          <strong>{{ getReceivingPushCount() }}</strong> of <strong>{{ admins.length }}</strong> receiving push notifications.
         </p>
       </div>
       }
@@ -290,9 +302,21 @@ interface AdminUser {
         <p class="text-xs text-blue-800 dark:text-blue-200">
           <strong>Note:</strong> Admin users can sign in using magic links sent to their email. 
           When you add a new admin, they'll receive an invitation email with instructions. 
-          Click the green checkmark to enable/disable admin email notifications.
+          Click the green checkmarks to enable/disable admin email and push notifications.
         </p>
       </div>
+
+      @if (showConfirmationDialog) {
+      <app-confirmation-dialog
+        [title]="confirmationTitle"
+        [message]="confirmationMessage"
+        [details]="confirmationDetails"
+        [isDangerous]="confirmationIsDangerous"
+        [confirmText]="confirmationConfirmText"
+        (confirm)="onConfirmDialog()"
+        (cancel)="onCancelDialog()">
+      </app-confirmation-dialog>
+      }
     </div>
   `,
   styles: []
@@ -310,7 +334,13 @@ export class AdminUserManagementComponent implements OnInit {
   newAdminName = '';
   adding = false;
 
-  deletingEmail: string | null = null;
+  showConfirmationDialog = false;
+  confirmationTitle = '';
+  confirmationMessage = '';
+  confirmationDetails: string | null = null;
+  confirmationConfirmText = 'Confirm';
+  confirmationIsDangerous = false;
+  confirmationAction: (() => Promise<void>) | null = null;
 
   constructor(
     private supabase: SupabaseService,
@@ -331,7 +361,7 @@ export class AdminUserManagementComponent implements OnInit {
     try {
       const { data, error } = await this.supabase.client
         .from('email_subscribers')
-        .select('email,name,created_at,receive_admin_emails')
+        .select('email,name,created_at,receive_admin_emails,receive_admin_push')
         .eq('is_admin', true)
         .order('created_at', { ascending: true });
 
@@ -393,7 +423,8 @@ export class AdminUserManagementComponent implements OnInit {
           email,
           name,
           is_admin: true,
-          is_active: true
+          is_active: true,
+          receive_admin_push: true
         }, {
           onConflict: 'email'
         });
@@ -556,7 +587,6 @@ Prayer App Admin Portal
 
       this.success = `Admin access removed for ${email}`;
       this.toast.success(`Admin access removed for ${email}`);
-      this.deletingEmail = null;
       await this.loadAdmins();
       this.onSave.emit();
     } catch (err: unknown) {
@@ -566,6 +596,62 @@ Prayer App Admin Portal
       console.error('Error deleting admin:', err);
       this.error = 'Failed to remove admin access';
     }
+  }
+
+  handleToggleReceiveEmails(email: string, name: string, currentStatus: boolean) {
+    if (!currentStatus) {
+      this.toggleReceiveEmails(email, currentStatus);
+      return;
+    }
+    this.confirmationTitle = 'Disable email notifications?';
+    this.confirmationMessage = `Stop sending admin email notifications to ${name}?`;
+    this.confirmationDetails = 'They will no longer receive admin alerts and updates by email. You can turn this back on anytime.';
+    this.confirmationConfirmText = 'Disable';
+    this.confirmationAction = () => this.toggleReceiveEmails(email, currentStatus);
+    this.showConfirmationDialog = true;
+    this.cdr.markForCheck();
+  }
+
+  handleToggleReceivePush(email: string, name: string, currentStatus: boolean) {
+    if (!currentStatus) {
+      this.toggleReceivePush(email, currentStatus);
+      return;
+    }
+    this.confirmationTitle = 'Disable push notifications?';
+    this.confirmationMessage = `Stop sending admin push notifications to ${name}?`;
+    this.confirmationDetails = 'They will no longer receive admin alerts on their device. You can turn this back on anytime.';
+    this.confirmationConfirmText = 'Disable';
+    this.confirmationAction = () => this.toggleReceivePush(email, currentStatus);
+    this.showConfirmationDialog = true;
+    this.cdr.markForCheck();
+  }
+
+  async onConfirmDialog() {
+    const action = this.confirmationAction;
+    this.showConfirmationDialog = false;
+    this.confirmationAction = null;
+    this.confirmationIsDangerous = false;
+    this.cdr.markForCheck();
+    if (action) await action();
+  }
+
+  onCancelDialog() {
+    this.showConfirmationDialog = false;
+    this.confirmationAction = null;
+    this.confirmationIsDangerous = false;
+    this.cdr.markForCheck();
+  }
+
+  handleDeleteAdmin(email: string, name: string) {
+    if (this.admins.length === 1) return;
+    this.confirmationTitle = 'Remove admin access?';
+    this.confirmationMessage = `Remove admin access for ${name}?`;
+    this.confirmationDetails = 'They will lose all administrative privileges and will no longer be able to sign in to the admin portal. They can be added as an admin again later.';
+    this.confirmationConfirmText = 'Remove access';
+    this.confirmationIsDangerous = true;
+    this.confirmationAction = () => this.deleteAdmin(email);
+    this.showConfirmationDialog = true;
+    this.cdr.markForCheck();
   }
 
   async toggleReceiveEmails(email: string, currentStatus: boolean) {
@@ -589,6 +675,28 @@ Prayer App Admin Portal
       console.error('Error toggling email preference:', err);
       this.error = 'Failed to update email preference';
     }
+    this.cdr.markForCheck();
+  }
+
+  async toggleReceivePush(email: string, currentStatus: boolean) {
+    this.error = null;
+    this.success = null;
+
+    try {
+      const { error: updateError } = await this.supabase.client
+        .from('email_subscribers')
+        .update({ receive_admin_push: !currentStatus })
+        .eq('email', email);
+
+      if (updateError) throw updateError;
+
+      this.toast.success(`Push notifications ${!currentStatus ? 'enabled' : 'disabled'} for ${email}`);
+      this.loadAdmins();
+    } catch (err: unknown) {
+      console.error('Error toggling push preference:', err);
+      this.error = 'Failed to update push preference';
+    }
+    this.cdr.markForCheck();
   }
 
   cancelAddForm() {
@@ -604,5 +712,9 @@ Prayer App Admin Portal
 
   getReceivingEmailsCount(): number {
     return this.admins.filter(a => a.receive_admin_emails).length;
+  }
+
+  getReceivingPushCount(): number {
+    return this.admins.filter(a => a.receive_admin_push).length;
   }
 }
