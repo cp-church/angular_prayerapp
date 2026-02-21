@@ -790,7 +790,7 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
 
   // Sorting properties
   sortBy: 'name' | 'email' | 'created_at' | 'last_activity_date' | 'is_active' | 'receive_push' | 'is_blocked' | 'in_planning_center' = 'last_activity_date';
-  sortDirection: 'asc' | 'desc' = 'asc';
+  sortDirection: 'asc' | 'desc' = 'desc';
 
   // Planning Center search properties
   pcSearchTab = false;
@@ -993,6 +993,7 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
       this.totalItems = count || 0;
       this.totalActiveCount = this.allSubscribers.filter(s => s.is_active).length;
       this.hasSearched = true;
+      this.sortSubscribers();
       this.loadPageData();
       console.log('Loaded subscribers:', this.allSubscribers.length);
       this.cdr.markForCheck();
@@ -1023,10 +1024,17 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
+  /** Parse date/time for sorting; returns numeric timestamp (invalid/empty → 0). */
+  private sortDateMs(value: string | null | undefined): number {
+    if (value == null || value === '') return 0;
+    const ms = new Date(value).getTime();
+    return Number.isNaN(ms) ? 0 : ms;
+  }
+
   sortSubscribers() {
     this.allSubscribers.sort((a, b) => {
-      let aVal: any;
-      let bVal: any;
+      let aVal: string | number;
+      let bVal: string | number;
 
       switch (this.sortBy) {
         case 'name':
@@ -1038,12 +1046,12 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
           bVal = (b.email || '').toLowerCase();
           break;
         case 'created_at':
-          aVal = new Date(a.created_at).getTime();
-          bVal = new Date(b.created_at).getTime();
+          aVal = this.sortDateMs(a.created_at);
+          bVal = this.sortDateMs(b.created_at);
           break;
         case 'last_activity_date':
-          aVal = a.last_activity_date ? new Date(a.last_activity_date).getTime() : 0;
-          bVal = b.last_activity_date ? new Date(b.last_activity_date).getTime() : 0;
+          aVal = this.sortDateMs(a.last_activity_date);
+          bVal = this.sortDateMs(b.last_activity_date);
           break;
         case 'is_active':
           aVal = a.is_active ? 1 : 0;
