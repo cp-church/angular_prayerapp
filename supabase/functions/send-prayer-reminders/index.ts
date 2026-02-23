@@ -298,7 +298,7 @@ serve(async (req) => {
       // 2. Have a last_reminder_sent timestamp
       const { data: prayersToArchive, error: archiveQueryError } = await supabaseClient
         .from('prayers')
-        .select('id, title, created_at, last_reminder_sent, email')
+        .select('id, title, created_at, last_reminder_sent')
         .eq('status', 'current')
         .eq('approval_status', 'approved')
         .not('last_reminder_sent', 'is', null)
@@ -310,31 +310,22 @@ serve(async (req) => {
         
         // For each prayer with a reminder, check if it should be archived
         for (const prayer of prayersToArchive) {
-          // Normalize email for comparison
-          const requesterEmail = prayer.email?.toLowerCase().trim()
-          
-          // Get updates from community (not the requester) after the reminder was sent
-          const { data: updates, error: updateError } = await supabaseClient
+          // Get any updates after the reminder was sent (requester or community)
+          const { data: updatesAfterReminder, error: updateError } = await supabaseClient
             .from('prayer_updates')
-            .select('created_at, author_email')
+            .select('created_at')
             .eq('prayer_id', prayer.id)
             .gt('created_at', prayer.last_reminder_sent!)
-            .order('created_at', { ascending: false })
-            .limit(10)
+            .limit(1)
 
           if (updateError) {
             console.error(`Error checking updates for prayer ${prayer.id}:`, updateError)
             continue
           }
 
-          // Filter out updates from the requester (case-insensitive)
-          const communityUpdates = updates?.filter(u => 
-            requesterEmail && u.author_email?.toLowerCase().trim() !== requesterEmail
-          ) || []
-
-          // If there's a community update after the reminder, skip archiving (counter reset)
-          if (communityUpdates.length > 0) {
-            console.log(`Prayer ${prayer.id} has ${communityUpdates.length} community update(s) after reminder, skipping archive`)
+          // If anyone (requester or community) posted an update after the reminder, do not archive
+          if (updatesAfterReminder && updatesAfterReminder.length > 0) {
+            console.log(`Prayer ${prayer.id} has update(s) after reminder, skipping archive`)
             continue
           }
 
