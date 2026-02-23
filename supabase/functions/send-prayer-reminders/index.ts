@@ -197,19 +197,8 @@ serve(async (req) => {
     }
     } // End of reminder processing loop
 
-    if (prayersNeedingReminders.length === 0 && enableReminders) {
-      return new Response(
-        JSON.stringify({ 
-          message: 'No prayers need reminders at this time - all have recent updates',
-          sent: 0,
-          archived: 0,
-          total: potentialPrayers.length
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
-    }
+    // Do not return early when no reminders needed - we still need to run the archive phase
+    // so prayers that were reminded earlier can be auto-archived when their archive date has passed.
 
     // Send reminder emails
     let emailsSent = 0
@@ -309,7 +298,7 @@ serve(async (req) => {
       // 2. Have a last_reminder_sent timestamp
       const { data: prayersToArchive, error: archiveQueryError } = await supabaseClient
         .from('prayers')
-        .select('id, title, created_at, last_reminder_sent')
+        .select('id, title, created_at, last_reminder_sent, email')
         .eq('status', 'current')
         .eq('approval_status', 'approved')
         .not('last_reminder_sent', 'is', null)
@@ -375,12 +364,16 @@ serve(async (req) => {
       }
     }
 
+    const message = emailsSent > 0 || prayersArchived > 0
+      ? `Successfully sent ${emailsSent} reminder emails${prayersArchived > 0 ? ` and archived ${prayersArchived} prayers` : ''}`
+      : 'No prayers need reminders at this time - all have recent updates'
+
     return new Response(
       JSON.stringify({ 
-        message: `Successfully sent ${emailsSent} reminder emails${prayersArchived > 0 ? ` and archived ${prayersArchived} prayers` : ''}`,
+        message,
         sent: emailsSent,
         archived: prayersArchived,
-        total: prayersNeedingReminders.length,
+        total: potentialPrayers.length,
         errors: errors.length > 0 ? errors : undefined
       }),
       { 
