@@ -112,6 +112,15 @@ this.supabase.client.from('table').select()
 // UI: Admin → Prayer Encouragement (toggle + cooldown); prayer-card shows Pray For button and count
 ```
 
+#### PullToRefreshDirective
+```typescript
+// Gesture-based pull-to-refresh for scrollable containers (optimized for native apps)
+- @Input() refreshing         // Bound to component loading state to avoid duplicate refreshes
+- @Input() appPullToRefreshDisabled // Optional flag to disable on specific screens
+- @Output() refresh          // Emits when user pulls down beyond threshold at top of list
+// Usage: Wrap main scrollable content and handle (refresh) in the page component
+```
+
 #### BrandingService
 ```typescript
 // App branding (logos, titles) with optimized caching

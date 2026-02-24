@@ -25,6 +25,7 @@ import { BadgeService } from '../../services/badge.service';
 import { Observable, take, Subject, takeUntil, filter } from 'rxjs';
 import { ToastService } from '../../services/toast.service';
 import { AnalyticsService } from '../../services/analytics.service';
+import { PullToRefreshDirective } from '../../directives/pull-to-refresh.directive';
 import type { User } from '@supabase/supabase-js';
 import { fetchListMembers } from '../../../lib/planning-center';
 import { environment } from '../../../environments/environment';
@@ -32,7 +33,7 @@ import { environment } from '../../../environments/environment';
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterModule, DragDropModule, PrayerFormComponent, PrayerFiltersComponent, SkeletonLoaderComponent, AppLogoComponent, PrayerCardComponent, PromptCardComponent, UserSettingsComponent, HelpModalComponent, PersonalPrayerEditModalComponent, PersonalPrayerUpdateEditModalComponent, ConfirmationDialogComponent],
+  imports: [CommonModule, RouterModule, DragDropModule, PrayerFormComponent, PrayerFiltersComponent, SkeletonLoaderComponent, AppLogoComponent, PrayerCardComponent, PromptCardComponent, UserSettingsComponent, HelpModalComponent, PersonalPrayerEditModalComponent, PersonalPrayerUpdateEditModalComponent, ConfirmationDialogComponent, PullToRefreshDirective],
   template: `
     <div class="w-full min-h-screen bg-gray-50 dark:bg-gray-900">
       <!-- Header -->
@@ -192,7 +193,40 @@ import { environment } from '../../../environments/environment';
       </header>
 
       <!-- Main Content -->
-      <main class="w-full flex-1 max-w-6xl mx-auto px-4 py-6">
+      <main
+        class="w-full flex-1 max-w-6xl mx-auto px-4 py-6"
+        appPullToRefresh
+        [refreshing]="isRefreshing"
+        (refresh)="onPullToRefresh()"
+      >
+        <!-- Top refresh indicator -->
+        <div
+          *ngIf="isRefreshing"
+          class="flex items-center justify-center mb-3 text-xs text-gray-500 dark:text-gray-400"
+          aria-live="polite"
+        >
+          <svg
+            class="animate-spin mr-2 h-4 w-4 text-gray-500 dark:text-gray-300"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            ></circle>
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+            ></path>
+          </svg>
+          <span>Refreshing prayers…</span>
+        </div>
         <!-- Prayer Form Modal -->
         <app-prayer-form
           [isOpen]="showPrayerForm"
@@ -257,7 +291,6 @@ import { environment } from '../../../environments/environment';
           [filters]="filters"
           (filtersChange)="onFiltersChange($event)"
         ></app-prayer-filters>
-
         <!-- Stats Cards -->
         <div [class]="'grid gap-4 mb-6 ' + (planningCenterListMembers.length > 0 ? 'grid-cols-3 sm:grid-cols-6' : 'grid-cols-3 sm:grid-cols-5')">
           <button
@@ -705,6 +738,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   loadingPlanningCenterList = false;
   filteredPlanningCenterPrayers: PrayerRequest[] = [];
   loadingMemberPrayers = false;
+  isRefreshing = false;
+  private lastExplicitRefreshAt = 0;
   
   isAdmin = false;
   // Admin settings for access control policies
@@ -840,7 +875,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     // No need for manual invalidation or reload
   }
 
-  private async loadPlanningCenterListData(): Promise<void> {
+  private async loadPlanningCenterListData(forceReload = false): Promise<void> {
     try {
       // Get current user from session
       const userSession = this.userSessionService.getCurrentSession();
@@ -866,23 +901,26 @@ export class HomeComponent implements OnInit, OnDestroy {
       // Check consolidated cache for members and list name
       // Key format: planningCenterListData_cache (handled by cache service)
       const cacheKey = `planningCenterListData`;
-      const cached = this.cacheService.get<{
-        members: Array<{id: string, name: string}>;
-        listName?: string;
-      }>(cacheKey);
-      
-      if (cached) {
-        console.log(`[Planning Center] Using cached list data`);
-        this.planningCenterListMembers = cached.members || [];
-        if (cached.listName) {
-          this.planningCenterListName = cached.listName;
+
+      if (!forceReload) {
+        const cached = this.cacheService.get<{
+          members: Array<{id: string, name: string}>;
+          listName?: string;
+        }>(cacheKey);
+        
+        if (cached) {
+          console.log(`[Planning Center] Using cached list data`);
+          this.planningCenterListMembers = cached.members || [];
+          if (cached.listName) {
+            this.planningCenterListName = cached.listName;
+          }
+          this.cdr.markForCheck();
+          // Load member prayers with their updates (updates loaded separately via memberPrayerUpdates_cache)
+          await this.loadPlanningCenterMemberPrayers();
+          this.loadingPlanningCenterList = false;
+          this.cdr.markForCheck();
+          return;
         }
-        this.cdr.markForCheck();
-        // Load member prayers with their updates (updates loaded separately via memberPrayerUpdates_cache)
-        await this.loadPlanningCenterMemberPrayers();
-        this.loadingPlanningCenterList = false;
-        this.cdr.markForCheck();
-        return;
       }
 
       // Cache miss - fetch members from API
@@ -969,6 +1007,44 @@ export class HomeComponent implements OnInit, OnDestroy {
     // Complete the subject to unsubscribe from all observables
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  async onPullToRefresh(): Promise<void> {
+    const now = Date.now();
+    // Avoid hammering Supabase if user pulls repeatedly
+    const minIntervalMs = 30_000; // 30 seconds
+    if (now - this.lastExplicitRefreshAt < minIntervalMs) {
+      return;
+    }
+
+    this.lastExplicitRefreshAt = now;
+    this.isRefreshing = true;
+    this.cdr.markForCheck();
+
+    try {
+      const tasks: Promise<unknown>[] = [];
+      // Always refresh public prayers from DB (cache-first still shows existing data immediately)
+      tasks.push(this.prayerService.loadPrayers(false));
+
+      // If user is logged in, refresh personal prayers as well
+      const session = this.userSessionService.getCurrentSession();
+      if (session && session.email) {
+        tasks.push(this.prayerService.loadPersonalPrayers(false));
+      }
+
+      // If Planning Center list tab is active, reload member prayers (uses its own caching)
+      if (this.activeFilter === 'planning_center_list' && this.planningCenterListId) {
+        tasks.push(this.loadPlanningCenterListData(true));
+      }
+
+      await Promise.all(tasks);
+    } catch (error) {
+      console.error('[HomeComponent] Error during pull-to-refresh:', error);
+      this.toastService.error('Failed to refresh. Showing last saved data.');
+    } finally {
+      this.isRefreshing = false;
+      this.cdr.markForCheck();
+    }
   }
 
   async toggleMemberUpdateAnswered(event: {updateId: string; prayerId: string; isAnswered: boolean}): Promise<void> {
