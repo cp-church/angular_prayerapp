@@ -22,6 +22,24 @@ Major features and milestones for the Prayer App.
 - ✅ **Documentation**
   - Capacitor docs under `docs/Capacitor/` (CAPACITOR_GETTING_STARTED, CAPACITOR_BACKEND_SETUP, CAPACITOR_SETUP, CAPACITOR_QUICKSTART) with full migration list and preference model. Main docs README links to Capacitor and describes email vs push preferences.
 
+### Prayer Encouragement (Pray For) ✅
+- ✅ **Community “Pray For” support**
+  - Prayer cards show a “Pray For” button when the feature is enabled; users can record that they prayed for a request.
+  - Requesters and admins see an anonymous count (e.g. “3 Praying”); who clicked is not shown.
+  - Cooldown (1–168 hours, configurable in Admin) limits how often the same user can click Pray For on the same prayer.
+
+- ✅ **Admin settings**
+  - Admin → Prayer Encouragement: toggle “Enable Prayer Encouragement” and set “Cooldown (hours)” (1–168). Cooldown control only visible when the feature is on.
+  - Stored in `admin_settings`: `prayer_encouragement_enabled`, `prayer_encouragement_cooldown_hours` (default 4).
+
+- ✅ **Implementation**
+  - `PrayerEncouragementService`: reads/caches enabled and cooldown from DB; `recordPrayedFor()`, count lookups.
+  - `prayer-encouragement-settings` component for admin UI; `prayer-card` shows button, count, and optional explanation modal (“Do not show again” in localStorage, cleared on logout).
+  - Database: `prayers.prayed_for_count`; migrations: `20260224_prayer_encouragement.sql`, `20260225_prayer_encouragement_cooldown_hours.sql`.
+
+- ✅ **Documentation**
+  - docs/README.md (Core Capabilities, Key Concepts); README.md (Prayer Management, Admin Portal); DEVELOPMENT.md (PrayerEncouragementService, Prayer Encouragement section). In-app Help includes “Prayer Encouragement (Pray For)” section.
+
 ### Personal Prayer Sharing to Public Prayer Feature ✅
 - ✅ Users can now share personal prayers to the public prayer list for community support
   - Share button on personal prayer cards (share icon)

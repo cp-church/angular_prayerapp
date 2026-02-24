@@ -56,8 +56,51 @@ describe('PrayerService', () => {
       single: () => Promise.resolve({ data: null, error: null }),
       maybeSingle: () => Promise.resolve({ data: null, error: null })
     }));
+    supabase.client.rpc = vi.fn().mockResolvedValue({ data: null, error: null });
 
     service = new PrayerService(supabase, toast, emailNotification, verificationService as any, cache, badgeService, userSessionService);
+  });
+
+  describe('incrementPrayedFor', () => {
+    it('calls rpc and updates in-memory lists with returned count', async () => {
+      const p1 = makePrayer({ id: 'pid-1', prayed_for_count: 2 });
+      const p2 = makePrayer({ id: 'pid-2' });
+      (service as any).allPrayersSubject.next([p1, p2]);
+      (service as any).prayersSubject.next([p1, p2]);
+
+      supabase.client.rpc.mockResolvedValue({ data: 3, error: null });
+
+      const result = await service.incrementPrayedFor('pid-1');
+
+      expect(result).toBe(3);
+      expect(supabase.client.rpc).toHaveBeenCalledWith('increment_prayed_for_count', { prayer_id: 'pid-1' });
+      expect((service as any).allPrayersSubject.value[0].prayed_for_count).toBe(3);
+      expect((service as any).prayersSubject.value[0].prayed_for_count).toBe(3);
+      expect((service as any).allPrayersSubject.value[1].prayed_for_count).toBeUndefined();
+    });
+
+    it('returns null and does not update lists when rpc errors', async () => {
+      const p1 = makePrayer({ id: 'pid-1', prayed_for_count: 1 });
+      (service as any).allPrayersSubject.next([p1]);
+      (service as any).prayersSubject.next([p1]);
+      supabase.client.rpc.mockResolvedValue({ data: null, error: new Error('db error') });
+
+      const result = await service.incrementPrayedFor('pid-1');
+
+      expect(result).toBeNull();
+      expect((service as any).allPrayersSubject.value[0].prayed_for_count).toBe(1);
+    });
+
+    it('returns null when rpc returns non-number', async () => {
+      const p1 = makePrayer({ id: 'pid-1' });
+      (service as any).allPrayersSubject.next([p1]);
+      (service as any).prayersSubject.next([p1]);
+      supabase.client.rpc.mockResolvedValue({ data: 'invalid', error: null });
+
+      const result = await service.incrementPrayedFor('pid-1');
+
+      expect(result).toBeNull();
+    });
   });
 
   it('applyFilters filters by status, type, and search', () => {

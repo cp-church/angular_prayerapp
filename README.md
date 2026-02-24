@@ -31,6 +31,7 @@ Quick links:
 - **Add Prayer Requests**: Create new prayer requests with titles, descriptions, categories, and requester information
 - **Status Tracking**: Track prayers through various status stages (pending, approved, active, answered, closed)
 - **Updates**: Add prayer updates to track progress and answered prayers
+- **Pray For (Prayer Encouragement)**: Click “Pray For” on community prayers to encourage requesters; they see how many people have prayed (anonymous count). Admins can enable/disable the feature and set the cooldown (1–168 hours) in Admin settings.
 - **Categories**: Organize prayers by custom prayer types
 - **Admin Approval**: Moderation system with approval workflow
 
@@ -50,6 +51,7 @@ Quick links:
 
 ### ⚙️ Admin Portal
 - **Prayer Moderation**: Review, approve, or deny prayer requests and updates
+- **Prayer Encouragement**: Enable/disable “Pray For” and set cooldown (1–168 hours)
 - **User Management**: Manage admin access and user permissions
 - **Email Settings**: Configure email notifications and subscriber lists
 - **Analytics Dashboard**: View site statistics and prayer metrics

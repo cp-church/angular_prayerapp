@@ -72,6 +72,7 @@ describe('HelpContentService', () => {
       const requiredSections = [
         'help_prayers',
         'help_prompts',
+        'help_prayer_encouragement',
         'help_search',
         'help_personal_prayers',
         'help_filtering',

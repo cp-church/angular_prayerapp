@@ -47,6 +47,7 @@ export interface PrayerRequest {
   updates: PrayerUpdate[];
   in_planning_center?: boolean | null;
   is_shared_personal_prayer?: boolean;
+  prayed_for_count?: number;
 }
 
 export interface PrayerFilters {
@@ -192,6 +193,7 @@ export class PrayerService {
           created_at: prayer.created_at,
           updated_at: prayer.updated_at,
           last_reminder_sent: prayer.last_reminder_sent,
+          prayed_for_count: prayer.prayed_for_count ?? 0,
           updates: updates.map((u: any) => ({
             id: u.id,
             prayer_id: u.prayer_id,
@@ -661,6 +663,32 @@ export class PrayerService {
       console.error('Error updating prayer status:', error);
       this.toast.error('Failed to update prayer status');
       return false;
+    }
+  }
+
+  /**
+   * Increment prayed_for_count for a prayer via RPC. Updates in-memory list only (no refetch).
+   * @returns The new count, or null on error.
+   */
+  async incrementPrayedFor(prayerId: string): Promise<number | null> {
+    try {
+      const { data: newCount, error } = await this.supabase.client
+        .rpc('increment_prayed_for_count', { prayer_id: prayerId });
+
+      if (error) throw error;
+      const count = typeof newCount === 'number' ? newCount : null;
+      if (count === null) return null;
+
+      const updateOne = (p: PrayerRequest) =>
+        p.id === prayerId ? { ...p, prayed_for_count: count } : p;
+
+      this.allPrayersSubject.next(this.allPrayersSubject.value.map(updateOne));
+      this.prayersSubject.next(this.prayersSubject.value.map(updateOne));
+
+      return count;
+    } catch (err) {
+      console.error('[PrayerService] incrementPrayedFor failed', err);
+      return null;
     }
   }
 

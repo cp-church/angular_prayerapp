@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { Router } from '@angular/router';
+import { Injector } from '@angular/core';
 import { SupabaseService } from './supabase.service';
+import { PrayerEncouragementService } from './prayer-encouragement.service';
+import { PushNotificationService } from './push-notification.service';
 import { firstValueFrom } from 'rxjs';
 import type { User } from '@supabase/supabase-js';
 
@@ -37,16 +40,20 @@ vi.mock('@supabase/supabase-js', () => ({
 // Mock Angular's inject function
 let mockRouter: any;
 let mockSupabaseService: any;
+let mockInjector: any;
 vi.mock('@angular/core', async () => {
   const actual = await vi.importActual('@angular/core');
   return {
     ...actual,
     inject: vi.fn((token: any) => {
-      if (token === Router || token.name === 'Router') {
+      if (token === Router || token?.name === 'Router') {
         return mockRouter;
       }
-      if (token === SupabaseService || token.name === 'SupabaseService') {
+      if (token === SupabaseService || token?.name === 'SupabaseService') {
         return mockSupabaseService;
+      }
+      if (token === Injector || token?.name === 'Injector') {
+        return mockInjector;
       }
       return null;
     })
@@ -107,6 +114,11 @@ describe('AdminAuthService', () => {
       invalidateAll: vi.fn(),
       get: vi.fn(),
       set: vi.fn()
+    };
+
+    // Mock Injector used in logout for PushNotificationService and PrayerEncouragementService
+    mockInjector = {
+      get: vi.fn().mockReturnValue(null)
     };
 
     // Dynamically import the service after mocks are set up
@@ -180,6 +192,41 @@ describe('AdminAuthService', () => {
       // When signOut fails, navigation won't happen because we're in catch block
       // This is the current behavior - it just logs the error
       expect(mockRouter.navigate).not.toHaveBeenCalled();
+    });
+
+    it('should call PrayerEncouragementService.clearCooldownKeys on logout', async () => {
+      await vi.advanceTimersByTimeAsync(100);
+      const clearCooldownKeys = vi.fn();
+      mockInjector.get.mockImplementation((token: any) => {
+        if (token === PrayerEncouragementService) {
+          return { clearCooldownKeys };
+        }
+        // PushNotificationService or other tokens get a safe mock so logout does not throw
+        return { removeDeviceToken: vi.fn().mockResolvedValue(undefined) };
+      });
+
+      await service.logout();
+
+      expect(mockInjector.get).toHaveBeenCalledWith(PrayerEncouragementService);
+      expect(clearCooldownKeys).toHaveBeenCalled();
+    });
+
+    it('should remove prayer_encouragement_modal_do_not_show from localStorage on logout', async () => {
+      await vi.advanceTimersByTimeAsync(100);
+      localStorage.setItem('prayer_encouragement_modal_do_not_show', 'true');
+      mockInjector.get.mockImplementation((token: any) => {
+        if (token === PushNotificationService) {
+          return { removeDeviceToken: vi.fn().mockResolvedValue(undefined) };
+        }
+        if (token === PrayerEncouragementService) {
+          return { clearCooldownKeys: vi.fn() };
+        }
+        return {};
+      });
+
+      await service.logout();
+
+      expect(localStorage.getItem('prayer_encouragement_modal_do_not_show')).toBeNull();
     });
   });
 

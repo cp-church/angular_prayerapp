@@ -572,6 +572,56 @@ describe('EmailSubscribersComponent', () => {
         expect(mockToastService.error).toHaveBeenCalled();
       }
     });
+
+    it('shows unblock messaging when currentStatus is true', async () => {
+      mockSupabaseService.client.from().select().eq().maybeSingle.mockResolvedValue({
+        data: { email: 'u@example.com' },
+        error: null
+      });
+      await component.handleToggleBlocked('123', true);
+      expect(component.confirmationTitle).toBe('Unblock User');
+      expect(component.confirmationMessage).toContain('Unblock');
+      expect(component.confirmationDetails).toContain('able to log in');
+    });
+  });
+
+  describe('handleToggleReceivePush', () => {
+    it('shows enable push dialog and toggles on confirm', async () => {
+      mockSupabaseService.client.from.mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: { email: 'u@example.com' }, error: null })
+          })
+        }),
+        update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) })
+      });
+      component.allSubscribers = [
+        { ...mockSubscriber, id: '123', receive_push: false }
+      ];
+      await component.handleToggleReceivePush('123', false);
+      expect(component.confirmationTitle).toBe('Enable push notifications');
+      if (component.confirmationAction) {
+        await component.confirmationAction();
+        expect(mockToastService.success).toHaveBeenCalledWith('Push notifications enabled');
+        expect(component.allSubscribers[0].receive_push).toBe(true);
+      }
+    });
+
+    it('shows error when toggle receive_push update fails', async () => {
+      mockSupabaseService.client.from.mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: { email: 'u@example.com' }, error: null })
+          })
+        }),
+        update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: new Error('DB error') }) })
+      });
+      await component.handleToggleReceivePush('123', true);
+      if (component.confirmationAction) {
+        await component.confirmationAction();
+        expect(mockToastService.error).toHaveBeenCalledWith('Failed to update push notification preference');
+      }
+    });
   });
 
   describe('handleDelete', () => {
@@ -1168,6 +1218,16 @@ describe('EmailSubscribersComponent', () => {
       expect(range.length).toBeLessThanOrEqual(5);
       expect(range[range.length - 1]).toBe(10);
     });
+
+    it('adjusts start when near end so range has maxPagesToShow items', () => {
+      component.totalItems = 100;
+      component.pageSize = 10;
+      component.currentPage = 10;
+      component.maxPaginationButtons = 5;
+      const range = component.getPaginationRange();
+      expect(range.length).toBeLessThanOrEqual(5);
+      expect(range[range.length - 1]).toBe(10);
+    });
   });
 
   describe('toggleAddForm and toggleCSVUpload integration', () => {
@@ -1220,6 +1280,90 @@ describe('EmailSubscribersComponent', () => {
       
       expect(component.subscribers).toHaveLength(5);
       expect(component.subscribers[0].id).toBe('sub-20');
+    });
+  });
+
+  describe('saveEditSubscriber branches', () => {
+    it('returns early when editSubscriberId is null', async () => {
+      component.editSubscriberId = null;
+      await component.saveEditSubscriber();
+      expect(mockSupabaseService.client.from).not.toHaveBeenCalled();
+    });
+
+    it('sets editError when editName is empty', async () => {
+      component.editSubscriberId = 'id-1';
+      component.editName = '   ';
+      await component.saveEditSubscriber();
+      expect(component.editError).toBe('Name is required');
+    });
+
+    it('sets editError when update fails', async () => {
+      component.editSubscriberId = 'id-1';
+      component.editName = 'New Name';
+      component.allSubscribers = [{ ...mockSubscriber, id: 'id-1', name: 'Old' }];
+      mockSupabaseService.client.from.mockReturnValue({
+        select: vi.fn(),
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: { message: 'DB error' } })
+        })
+      });
+      await component.saveEditSubscriber();
+      expect(component.editError).toBeTruthy();
+    });
+  });
+
+  describe('goToPage branches', () => {
+    beforeEach(() => {
+      component.totalItems = 30;
+      component.pageSize = 10;
+    });
+
+    it('does nothing when page is out of range', () => {
+      component.currentPage = 1;
+      component.goToPage(0);
+      expect(component.currentPage).toBe(1);
+      component.goToPage(5);
+      expect(component.currentPage).toBe(1);
+    });
+  });
+
+  describe('onConfirmDialog when confirmationAction is null', () => {
+    it('closes dialog without calling action', async () => {
+      component.showConfirmationDialog = true;
+      component.confirmationAction = null;
+      await component.onConfirmDialog();
+      expect(component.showConfirmationDialog).toBe(false);
+      expect(component.confirmationAction).toBeNull();
+    });
+  });
+
+  describe('handleDelete non-admin pagination adjustment', () => {
+    it('goes to previous page when current page becomes empty after delete', async () => {
+      component.allSubscribers = Array.from({ length: 11 }, (_, i) => ({
+        ...mockSubscriber,
+        id: String(i + 1),
+        email: `u${i + 1}@example.com`
+      }));
+      component.totalItems = 11;
+      component.pageSize = 10;
+      component.currentPage = 2;
+      let resolveConfirm: () => void;
+      const confirmPromise = new Promise<void>((r) => { resolveConfirm = r; });
+      mockSupabaseService.client.from.mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: { is_admin: false }, error: null })
+          })
+        }),
+        delete: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null })
+        })
+      });
+      component.handleDelete('11', 'u11@example.com');
+      await Promise.resolve();
+      await component.onConfirmDialog();
+      await Promise.resolve();
+      expect(component.currentPage).toBe(1);
     });
   });
 
@@ -2224,6 +2368,44 @@ describe('EmailSubscribersComponent', () => {
 
       expect(component.error).toContain('Network');
       expect(component.pcSearchResults).toEqual([]);
+      expect(component.pcSearching).toBe(false);
+    });
+
+    it('returns early when pcSearchQuery is empty', async () => {
+      component.pcSearchQuery = '   ';
+      component.error = null;
+      await component.handleSearchPlanningCenter();
+      expect(component.error).toBe('Please enter a name to search');
+      expect(planningCenter.searchPlanningCenterByName).not.toHaveBeenCalled();
+    });
+
+    it('sets error and empty results when result.error is returned', async () => {
+      component.pcSearchQuery = 'Jane';
+      vi.mocked(planningCenter.searchPlanningCenterByName).mockResolvedValue({
+        error: 'Planning Center API unavailable',
+        people: [],
+        count: 0
+      } as any);
+
+      await component.handleSearchPlanningCenter();
+
+      expect(component.error).toBe('Planning Center API unavailable');
+      expect(component.pcSearchResults).toEqual([]);
+      expect(component.pcSearching).toBe(false);
+    });
+
+    it('clears error when result.count is 0', async () => {
+      component.pcSearchQuery = 'Nobody';
+      component.error = 'previous error';
+      vi.mocked(planningCenter.searchPlanningCenterByName).mockResolvedValue({
+        people: [],
+        count: 0
+      } as any);
+
+      await component.handleSearchPlanningCenter();
+
+      expect(component.pcSearchResults).toEqual([]);
+      expect(component.error).toBeNull();
       expect(component.pcSearching).toBe(false);
     });
   });

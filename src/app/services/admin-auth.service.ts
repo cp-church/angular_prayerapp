@@ -4,6 +4,7 @@ import { BehaviorSubject, Observable, Subscription, interval, timer } from 'rxjs
 import { SupabaseService } from './supabase.service';
 import { CacheService } from './cache.service';
 import { PushNotificationService } from './push-notification.service';
+import { PrayerEncouragementService } from './prayer-encouragement.service';
 import type { User } from '@supabase/supabase-js';
 
 @Injectable({
@@ -524,6 +525,17 @@ export class AdminAuthService {
       // Clear badge read tracking (which prayers/prompts user has read)
       localStorage.removeItem('read_prayers_data');
       localStorage.removeItem('read_prompts_data');
+
+      // Clear Pray For modal "do not show again" preference so next user sees the modal if desired
+      localStorage.removeItem('prayer_encouragement_modal_do_not_show');
+
+      // Clear Pray For cooldown keys so next user doesn't see previous user's cooldowns
+      try {
+        const prayerEncouragement = this.injector.get(PrayerEncouragementService);
+        prayerEncouragement.clearCooldownKeys();
+      } catch {
+        // Ignore if service not available
+      }
       
       // Clear analytics activity tracking for this user
       if (userEmail) {

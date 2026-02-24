@@ -31,6 +31,7 @@ A comprehensive prayer request management system for Cross Pointe Church built w
 - ✅ Real-time updates via Supabase
 - ✅ Prayer timer & printable lists
 - ✅ Personal prayers (private user prayers)
+- ✅ **Prayer Encouragement (Pray For)**: Users can click “Pray For” on community prayers; requesters and admins see how many people have prayed (configurable cooldown; admin toggle and cooldown hours in Admin settings)
 - ✅ Theme system (light/dark)
 - ✅ Planning Center contact lookup
 - ✅ Planning Center members list mapping (filter prayers by list members)
@@ -91,6 +92,9 @@ src/
 ### Email and Push Notifications
 - **Email:** Built on Microsoft 365 Graph API; queue-based processing; HTML templates; subscriber management. **`is_active`** on `email_subscribers` controls whether a user receives **mass email** (new/approved prayers, updates). Turning off "email notifications" only stops those bulk emails; direct emails (e.g. your prayer approved/denied) still go out.
 - **Push (native app):** Controlled by **`receive_push`** on `email_subscribers`. Push is set to `true` only when the user installs the app and a device token is registered; default is `false`. Admins have a separate **`receive_admin_push`** for admin alerts. See [Capacitor docs](Capacitor/CAPACITOR_BACKEND_SETUP.md) for setup. When an admin approves a prayer or update, the requester/author receives a push notification if they have push enabled.
+
+### Prayer Encouragement (Pray For)
+When enabled by an admin, community prayer cards show a **“Pray For”** button. Users can tap it to record that they prayed for that request; the count is shown to the person who submitted the prayer and to admins (who clicked is anonymous). A **cooldown** (configurable in Admin → Prayer Encouragement, 1–168 hours) limits how often the same user can click Pray For on the same prayer. Settings are stored in **`admin_settings`** (`prayer_encouragement_enabled`, `prayer_encouragement_cooldown_hours`) and cached in the app. The in-app **Help & Guidance** modal includes a “Prayer Encouragement (Pray For)” section for users.
 
 ---
 

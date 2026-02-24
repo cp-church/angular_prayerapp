@@ -9,8 +9,9 @@ For developers working on the Prayer App codebase.
 3. [Code Quality](#code-quality)
 4. [Performance](#performance)
 5. [Timezone Implementation](#timezone-implementation)
-6. [Prayer Archiving System](#prayer-archiving-system)
-7. [Contributing](#contributing)
+6. [Prayer Encouragement (Pray For)](#prayer-encouragement-pray-for)
+7. [Prayer Archiving System](#prayer-archiving-system)
+8. [Contributing](#contributing)
 
 ---
 
@@ -98,6 +99,17 @@ this.supabase.client.from('table').select()
 - logout()                   // Clear session
 - isAdmin()                  // Check role
 - getUserProfile()           // Get user data
+```
+
+#### PrayerEncouragementService
+```typescript
+// Prayer Encouragement (Pray For) feature
+- isEnabled$                 // Observable: feature on/off from admin_settings
+- getCooldownHours()         // Cooldown hours (1–168) from admin_settings, cached
+- recordPrayedFor(prayerId)  // Record that current user prayed for a prayer (respects cooldown)
+- getPrayedForCount(prayerId) // Fetches prayed_for_count for a prayer
+// Settings: admin_settings.prayer_encouragement_enabled, prayer_encouragement_cooldown_hours
+// UI: Admin → Prayer Encouragement (toggle + cooldown); prayer-card shows Pray For button and count
 ```
 
 #### BrandingService
@@ -879,6 +891,18 @@ To verify timezone is working:
 2. Check "Timezone:" field in settings box shows correct timezone
 3. Verify prayer events appear on correct calendar dates
 4. Confirm "Today" and "Tomorrow" labels match local date
+
+---
+
+## Prayer Encouragement (Pray For)
+
+The **Pray For** feature lets community members indicate they have prayed for a request. When enabled by an admin, approved community prayer cards show a “Pray For” button; the requester and admins see an anonymous count (e.g. “3 Praying”). The same user cannot click again on the same prayer until the **cooldown** (1–168 hours, set in Admin → Prayer Encouragement) has passed.
+
+- **Service:** `PrayerEncouragementService` (`src/app/services/prayer-encouragement.service.ts`) — reads `prayer_encouragement_enabled` and `prayer_encouragement_cooldown_hours` from `admin_settings`, caches them, and provides `recordPrayedFor()` and count lookups.
+- **Admin UI:** `prayer-encouragement-settings` — toggle “Enable Prayer Encouragement” and cooldown (hours); cooldown control is shown only when the feature is enabled.
+- **Prayer card:** `prayer-card` — shows Pray For button and count when enabled; optional explanation modal with “Do not show again” (localStorage, cleared on logout).
+- **Database:** `admin_settings`: `prayer_encouragement_enabled` (boolean), `prayer_encouragement_cooldown_hours` (integer, default 4). `prayers`: `prayed_for_count`. Migrations: `20260224_prayer_encouragement.sql`, `20260225_prayer_encouragement_cooldown_hours.sql`.
+- **Help:** In-app Help & Guidance includes a “Prayer Encouragement (Pray For)” section (`help-content.service.ts`).
 
 ---
 

@@ -420,6 +420,85 @@ describe('PrayerCardComponent', () => {
     });
   });
 
+  describe('Pray For / Prayer Encouragement', () => {
+    let prayForComponent: PrayerCardComponent;
+    let mockPrayerService: any;
+    let mockPrayerEncouragementService: any;
+    let mockCdr: any;
+
+    beforeEach(() => {
+      mockPrayerService = {
+        incrementPrayedFor: vi.fn().mockResolvedValue(5)
+      };
+      mockPrayerEncouragementService = {
+        getPrayerEncouragementEnabled$: vi.fn().mockReturnValue(of(true)),
+        canPrayFor: vi.fn().mockReturnValue(true),
+        recordPrayedFor: vi.fn()
+      };
+      mockCdr = { markForCheck: vi.fn() };
+
+      prayForComponent = new PrayerCardComponent(
+        mockSupabaseService as any,
+        mockUserSessionService as any,
+        { getBadgeFunctionalityEnabled$: () => of(false) } as any,
+        mockPrayerService,
+        mockPrayerEncouragementService,
+        mockCdr as any
+      );
+      prayForComponent.prayer = {
+        id: 'prayer-1',
+        prayer_for: 'Community',
+        description: 'Please pray',
+        requester: 'Jane Doe',
+        email: 'test@example.com',
+        is_anonymous: false,
+        status: 'current',
+        created_at: new Date().toISOString(),
+        updates: [],
+        prayed_for_count: 0
+      } as any;
+    });
+
+    it('showPrayedForBadge returns false when count is 0', () => {
+      expect(prayForComponent.showPrayedForBadge()).toBe(false);
+    });
+
+    it('showPrayedForBadge returns true when count > 0 and current user is requester', () => {
+      prayForComponent.prayer.prayed_for_count = 3;
+      mockUserSessionService.getCurrentSession.mockReturnValue({ email: 'test@example.com' });
+      expect(prayForComponent.showPrayedForBadge()).toBe(true);
+    });
+
+    it('showPrayedForBadge returns true when count > 0 and isAdmin', () => {
+      prayForComponent.prayer.prayed_for_count = 2;
+      prayForComponent.isAdmin = true;
+      mockUserSessionService.getCurrentSession.mockReturnValue({ email: 'other@example.com' });
+      expect(prayForComponent.showPrayedForBadge()).toBe(true);
+    });
+
+    it('confirmPrayFor calls recordPrayedFor, incrementPrayedFor, and updates local prayer', async () => {
+      mockPrayerEncouragementService.canPrayFor.mockReturnValue(true);
+      prayForComponent.showPrayForModal = true;
+      await prayForComponent.confirmPrayFor();
+      expect(prayForComponent.showPrayForModal).toBe(false);
+      expect(mockPrayerEncouragementService.recordPrayedFor).toHaveBeenCalledWith('prayer-1');
+      expect(mockPrayerService.incrementPrayedFor).toHaveBeenCalledWith('prayer-1');
+      expect(prayForComponent.prayer.prayed_for_count).toBe(5);
+      expect(mockCdr.markForCheck).toHaveBeenCalled();
+    });
+
+    it('confirmPrayFor does nothing when canPrayFor is false', async () => {
+      mockPrayerEncouragementService.canPrayFor.mockReturnValue(false);
+      await prayForComponent.confirmPrayFor();
+      expect(mockPrayerEncouragementService.recordPrayedFor).not.toHaveBeenCalled();
+      expect(mockPrayerService.incrementPrayedFor).not.toHaveBeenCalled();
+    });
+
+    it('showPrayForModal defaults to false', () => {
+      expect(prayForComponent.showPrayForModal).toBe(false);
+    });
+  });
+
   describe('PrayerCardComponent - Rendering and Display', () => {
     let component: PrayerCardComponent;
     let mockSupabaseService: any;

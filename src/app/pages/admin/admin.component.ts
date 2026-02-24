@@ -24,6 +24,7 @@ import { BackupStatusComponent } from '../../components/backup-status/backup-sta
 import { SecurityPolicySettingsComponent } from '../../components/security-policy-settings/security-policy-settings.component';
 import { EmailVerificationSettingsComponent } from '../../components/email-verification-settings/email-verification-settings.component';
 import { GitHubSettingsComponent } from '../../components/github-settings/github-settings.component';
+import { PrayerEncouragementSettingsComponent } from '../../components/prayer-encouragement-settings/prayer-encouragement-settings.component';
 import { PlanningCenterListMapperComponent } from '../../components/planning-center-list-mapper/planning-center-list-mapper.component';
 import { ConfirmationDialogComponent } from '../../components/confirmation-dialog/confirmation-dialog.component';
 
@@ -52,6 +53,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
     SecurityPolicySettingsComponent,
     EmailVerificationSettingsComponent,
     GitHubSettingsComponent,
+    PrayerEncouragementSettingsComponent,
     PlanningCenterListMapperComponent,
     ConfirmationDialogComponent
   ],
@@ -574,6 +576,9 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
             <!-- Other Settings Tabs Placeholder -->
             @if (activeSettingsTab === 'content') {
               <div class="space-y-6">
+                <div class="mb-4">
+                  <app-prayer-encouragement-settings></app-prayer-encouragement-settings>
+                </div>
                 <div class="mb-4">
                   <app-github-settings></app-github-settings>
                 </div>

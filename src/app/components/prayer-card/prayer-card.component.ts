@@ -1,11 +1,14 @@
-import { Component, Input, Output, EventEmitter, OnInit, ChangeDetectionStrategy, OnDestroy, OnChanges, SimpleChanges, TemplateRef } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, OnDestroy, OnChanges, SimpleChanges, TemplateRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Observable, BehaviorSubject, Subject } from 'rxjs';import { takeUntil } from 'rxjs/operators';import { PrayerRequest, PrayerService } from '../../services/prayer.service';
 import { SupabaseService } from '../../services/supabase.service';
 import { UserSessionService } from '../../services/user-session.service';
 import { BadgeService } from '../../services/badge.service';
+import { PrayerEncouragementService } from '../../services/prayer-encouragement.service';
 import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog.component';
+
+const PRAY_FOR_MODAL_DO_NOT_SHOW_KEY = 'prayer_encouragement_modal_do_not_show';
 
 @Component({
   selector: 'app-prayer-card',
@@ -122,7 +125,7 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
 
       <!-- Action buttons -->
       @if (showAddUpdateButton()) {
-      <div class="flex flex-wrap gap-1 mb-4">
+      <div class="flex flex-wrap gap-1 mb-4 items-center">
         <button
           (click)="toggleAddUpdate()"
           title="Add an update to this prayer"
@@ -130,6 +133,33 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
         >
           Add Update
         </button>
+        @if ((prayerEncouragementService.getPrayerEncouragementEnabled$() | async) && !isPersonal && !prayer.id.startsWith('pc-member-')) {
+          @if (prayerEncouragementService.canPrayFor(prayer.id)) {
+            <button
+              (click)="onPrayForClick()"
+              title="Record that you prayed for this request"
+              class="px-3 py-1 text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-md border border-blue-600 dark:border-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer"
+            >
+              Pray For
+            </button>
+          } @else {
+            <button
+              disabled
+              [title]="'You can pray for this again in ' + ((prayerEncouragementService.getCooldownHours$() | async) ?? 4) + ' hours'"
+              class="px-3 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-md border border-gray-300 dark:border-gray-600 cursor-not-allowed"
+            >
+              Prayed For
+            </button>
+          }
+        }
+        @if ((prayerEncouragementService.getPrayerEncouragementEnabled$() | async) && showPrayedForBadge()) {
+          <span
+            class="px-2 py-1 text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-md border border-blue-600 dark:border-blue-500"
+            title="Number praying for this request"
+          >
+            {{ (prayer.prayed_for_count ?? 0) }} Praying
+          </span>
+        }
       </div>
       }
 
@@ -416,6 +446,50 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
         (cancel)="onCancelUpdateDelete()">
       </app-confirmation-dialog>
       }
+
+      <!-- Pray For explanation modal -->
+      @if (showPrayForModal) {
+      <div class="fixed inset-0 bg-gray-900/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full">
+          <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Pray For This Request</h2>
+          </div>
+          <div class="px-6 py-4">
+            <p class="text-gray-600 dark:text-gray-300 mb-4">
+              When you click Pray For, the person who submitted this prayer request will see that others have prayed for them. Only the total count is shown—your click is anonymous.
+            </p>
+            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+              <p class="text-sm text-blue-700 dark:text-blue-300">
+                This encourages the requester by showing how many times their prayer has been lifted up. You can pray for the same request again in {{ (prayerEncouragementService.getCooldownHours$() | async) ?? 4 }} hours.
+              </p>
+            </div>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                [(ngModel)]="prayForDoNotShowAgain"
+                name="prayForDoNotShowAgain"
+                class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+              />
+              <span class="text-sm text-gray-700 dark:text-gray-300">Do not show this again</span>
+            </label>
+          </div>
+          <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex gap-3 justify-end">
+            <button
+              (click)="showPrayForModal = false; prayForDoNotShowAgain = false"
+              class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              (click)="onConfirmPrayForFromModal()"
+              class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium cursor-pointer"
+            >
+              Pray For
+            </button>
+          </div>
+        </div>
+      </div>
+      }
     </div>
   `,
   styles: []
@@ -457,6 +531,8 @@ export class PrayerCardComponent implements OnInit, OnChanges, OnDestroy {
   updateConfirmationTitle = '';
   updateConfirmationMessage = '';
   updateConfirmationId: string | null = null;
+  showPrayForModal = false;
+  prayForDoNotShowAgain = false;
 
   // Update form fields
   updateContent = '';
@@ -473,7 +549,9 @@ export class PrayerCardComponent implements OnInit, OnChanges, OnDestroy {
     private supabase: SupabaseService,
     private userSessionService: UserSessionService,
     public badgeService: BadgeService,
-    private prayerService: PrayerService
+    private prayerService: PrayerService,
+    public prayerEncouragementService: PrayerEncouragementService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -669,6 +747,47 @@ export class PrayerCardComponent implements OnInit, OnChanges, OnDestroy {
       return this.isCurrentUserTheRequester();
     }
     return true; // 'everyone'
+  }
+
+  showPrayedForBadge(): boolean {
+    const count = this.prayer.prayed_for_count ?? 0;
+    if (count <= 0) return false;
+    if (this.isAdmin) return true;
+    return this.isCurrentUserTheRequester();
+  }
+
+  onPrayForClick(): void {
+    if (localStorage.getItem(PRAY_FOR_MODAL_DO_NOT_SHOW_KEY) === 'true') {
+      this.confirmPrayFor();
+      return;
+    }
+    this.showPrayForModal = true;
+    this.cdr.markForCheck();
+  }
+
+  onConfirmPrayForFromModal(): void {
+    if (this.prayForDoNotShowAgain) {
+      try {
+        localStorage.setItem(PRAY_FOR_MODAL_DO_NOT_SHOW_KEY, 'true');
+      } catch {
+        // Ignore quota or disabled localStorage
+      }
+    }
+    this.showPrayForModal = false;
+    this.prayForDoNotShowAgain = false;
+    this.confirmPrayFor();
+    this.cdr.markForCheck();
+  }
+
+  async confirmPrayFor(): Promise<void> {
+    this.showPrayForModal = false;
+    if (!this.prayerEncouragementService.canPrayFor(this.prayer.id)) return;
+    this.prayerEncouragementService.recordPrayedFor(this.prayer.id);
+    const newCount = await this.prayerService.incrementPrayedFor(this.prayer.id);
+    if (newCount !== null) {
+      this.prayer = { ...this.prayer, prayed_for_count: newCount };
+    }
+    this.cdr.markForCheck();
   }
 
   // Check if update delete button should be shown based on deletion policy
