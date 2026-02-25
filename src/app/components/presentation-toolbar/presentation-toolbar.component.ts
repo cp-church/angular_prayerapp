@@ -6,7 +6,7 @@ import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy, Change
   imports: [],
   changeDetection: ChangeDetectionStrategy.Default,
   template: `
-    <div [class]="'fixed bottom-0 left-0 right-0 z-40 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md p-4 md:p-5 lg:p-6 border-t border-gray-200 dark:border-gray-700 transition-transform duration-300 ' + (visible ? 'translate-y-0' : 'translate-y-full')">
+    <div class="presentation-toolbar-bar" [class]="'fixed bottom-0 left-0 right-0 z-40 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md p-4 md:p-5 lg:p-6 border-t border-gray-200 dark:border-gray-700 transition-transform duration-300 ' + (visible ? 'translate-y-0' : 'translate-y-full')">
       <div class="container mx-auto flex items-center justify-between">
         <!-- Navigation -->
         <div class="flex items-center gap-2 md:gap-3 lg:gap-4">
@@ -83,6 +83,9 @@ import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy, Change
   styles: [`
     :host {
       display: contents;
+    }
+    .presentation-toolbar-bar {
+      padding-bottom: env(safe-area-inset-bottom, 0px);
     }
   `]
 })
