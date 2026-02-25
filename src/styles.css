@@ -403,7 +403,7 @@ html, body {
     touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
   }
-  /* Web/Safari: separate translucent safe-area strip above header */
+  /* Web/Safari: separate safe-area strip above header (matches legacy look) */
   body::before {
     content: '';
     position: fixed;
@@ -411,15 +411,12 @@ html, body {
     left: 0;
     right: 0;
     height: env(safe-area-inset-top);
-    background-color: var(--header-bg-light);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    /* Match previous behavior: solid strip matching header base colors */
+    background-color: #ffffff;
     z-index: 9999;
   }
   html.dark body::before {
-    background-color: var(--header-bg-dark);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background-color: #1f2937;
   }
   /* Web/Safari: keep sticky header below safe area strip */
   header.sticky {
