@@ -452,6 +452,7 @@ html, body {
   /* Native app override: let header own the safe area instead of body/overlay */
   .native-app body {
     padding-top: 0;
+    padding-bottom: 0;
   }
   .native-app body::before {
     display: none;
@@ -474,6 +475,11 @@ html, body {
   }
   .safe-area-viewport header.sticky {
     top: 0;
+  }
+
+  /* Native app: scroll viewport should fill full visible height above bottom safe area (body already has no padding) */
+  .native-app .safe-area-viewport {
+    height: calc(100vh - env(safe-area-inset-bottom));
   }
 }
 
