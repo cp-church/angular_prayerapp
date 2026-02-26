@@ -45,6 +45,15 @@ import { environment } from '../../../environments/environment';
           </p>
         </div>
 
+        <div class="mt-2 text-center">
+          <a
+            routerLink="/info"
+            class="inline-flex items-center justify-center gap-1 text-xs text-blue-700 dark:text-blue-400 hover:underline cursor-pointer"
+          >
+            <span>Learn more about this app</span>
+          </a>
+        </div>
+
         <!-- Success State -->
         @if (success) {
         <div class="space-y-4">

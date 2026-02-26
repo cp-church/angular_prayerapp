@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, Output, EventEmitter, ChangeDetectionStrategy, Inject, Optional, InjectionToken } from '@angular/core';
+import { Component, OnInit, OnDestroy, Output, EventEmitter, ChangeDetectionStrategy, ChangeDetectorRef, Inject, Optional, InjectionToken } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BrandingService } from '../../services/branding.service';
 import { Subject, takeUntil } from 'rxjs';
@@ -46,7 +46,10 @@ export class AppLogoComponent implements OnInit, OnDestroy {
   
   private destroy$ = new Subject<void>();
 
-  constructor(@Inject(BRANDING_SERVICE_TOKEN) private brandingService: BrandingService) {}
+  constructor(
+    @Inject(BRANDING_SERVICE_TOKEN) private brandingService: BrandingService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit() {
     this.initializeBranding();
@@ -67,6 +70,7 @@ export class AppLogoComponent implements OnInit, OnDestroy {
         this.appTitle = branding.appTitle;
         this.appSubtitle = branding.appSubtitle;
         this.updateImageUrl(branding);
+        this.cdr.markForCheck();
       });
   }
 
@@ -74,11 +78,13 @@ export class AppLogoComponent implements OnInit, OnDestroy {
     if (!this.useLogo) {
       this.imageUrl = '';
       this.logoStatusChange.emit(false);
+      this.cdr.markForCheck();
       return;
     }
 
     this.imageUrl = this.brandingService.getImageUrl(branding);
     const hasLogo = this.useLogo && !!this.imageUrl;
     this.logoStatusChange.emit(hasLogo);
+    this.cdr.markForCheck();
   }
 }

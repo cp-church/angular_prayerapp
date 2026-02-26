@@ -53,6 +53,9 @@ import { RouterModule } from '@angular/router';
           <a routerLink="/privacy" class="text-blue-600 dark:text-blue-400 hover:underline text-sm font-medium">
             Privacy Policy
           </a>
+          <a routerLink="/info" class="text-blue-600 dark:text-blue-400 hover:underline text-sm font-medium">
+            About the app
+          </a>
           <a routerLink="/" class="text-blue-600 dark:text-blue-400 hover:underline text-sm font-medium">
             Back to app
           </a>

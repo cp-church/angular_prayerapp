@@ -9,6 +9,10 @@ export const routes: Routes = [
     canActivate: [siteAuthGuard]
   },
   {
+    path: 'info',
+    loadComponent: () => import('./pages/info/info.component').then(m => m.InfoComponent)
+  },
+  {
     path: 'login',
     loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent)
   },
