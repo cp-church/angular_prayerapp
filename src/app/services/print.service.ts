@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { PrayerService } from './prayer.service';
+import { Share } from '@capacitor/share';
+import { Printer } from '@capgo/capacitor-printer';
 
 export interface Prayer {
   id: string;
@@ -27,6 +29,68 @@ export type TimeRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
 })
 export class PrintService {
   constructor(private supabase: SupabaseService, private prayerService: PrayerService) {}
+
+  /**
+   * Detect if running in native app (Capacitor)
+   */
+  private isNativeApp(): boolean {
+    try {
+      const isNative = typeof (window as any).Capacitor !== 'undefined';
+      console.log('[PrintService] Native app check:', isNative, {
+        hasCapacitor: typeof (window as any).Capacitor,
+        platform: (window as any).Capacitor?.getPlatform?.()
+      });
+      return isNative;
+    } catch (e) {
+      console.error('[PrintService] Error checking native app:', e);
+      return false;
+    }
+  }
+
+  /**
+   * Share or save file content on native app
+   * Uses native print functionality for both iOS and Android
+   */
+  private async shareOnNativeApp(html: string, filename: string, title: string): Promise<void> {
+    try {
+      console.log('[PrintService] Starting shareOnNativeApp for:', title);
+      console.log('[PrintService] HTML content length:', html.length);
+      console.log('[PrintService] Platform:', (window as any).Capacitor?.getPlatform?.());
+      
+      console.log('[PrintService] Calling Printer.printHtml() with HTML content');
+      
+      // Use the Printer plugin to print the HTML directly
+      // This opens the native print dialog on both iOS and Android
+      await Printer.printHtml({
+        name: title,
+        html: html
+      });
+      
+      console.log('[PrintService] Print completed successfully');
+      
+    } catch (error) {
+      console.error('[PrintService] Error in shareOnNativeApp:', error);
+      
+      // User cancelled or error occurred - this is normal, not an error condition
+      const message = (error as any)?.message || 'Unknown error';
+      const errorStr = String(error);
+      
+      console.error('[PrintService] Error details:', {
+        message,
+        fullError: errorStr,
+        errorType: (error as any)?.name
+      });
+      
+      if (message.toLowerCase().includes('cancelled') || message.toLowerCase().includes('user') || errorStr.includes('cancelled')) {
+        // User cancelled the print dialog - this is expected
+        console.log('[PrintService] User cancelled print');
+      } else {
+        // Actual error
+        console.error('[PrintService] Print failed with error:', message);
+        alert(`Failed to open print dialog:\n\n${message}\n\nMake sure the Printer plugin is properly installed.`);
+      }
+    }
+  }
 
   /**
    * Generate and download a printable prayer list for the specified time range
@@ -131,6 +195,16 @@ export class PrintService {
       }
 
       const html = this.generatePrintableHTML(prayers, timeRange);
+
+      // On native apps, use the native share/print dialog
+      if (this.isNativeApp()) {
+        const today = new Date().toISOString().split('T')[0];
+        const rangeLabel = timeRange === 'week' ? 'week' : timeRange === 'twoweeks' ? '2weeks' : timeRange === 'month' ? 'month' : timeRange === 'year' ? 'year' : 'all';
+        const filename = `prayer-list-${rangeLabel}-${today}.html`;
+        
+        await this.shareOnNativeApp(html, filename, 'Prayer List');
+        return;
+      }
 
       // Use the pre-opened window if provided (Safari compatible)
       const targetWindow = newWindow || window.open('', '_blank');
@@ -639,6 +713,15 @@ export class PrintService {
 
       const html = this.generatePromptsPrintableHTML(sortedPrompts);
 
+      // On native apps, use the native share/print dialog
+      if (this.isNativeApp()) {
+        const today = new Date().toISOString().split('T')[0];
+        const filename = `prayer-prompts-${today}.html`;
+        
+        await this.shareOnNativeApp(html, filename, 'Prayer Prompts');
+        return;
+      }
+
       // Use the pre-opened window if provided (Safari compatible)
       const targetWindow = newWindow || window.open('', '_blank');
       
@@ -702,6 +785,16 @@ export class PrintService {
       }
 
       const html = this.generatePersonalPrayersPrintableHTML(personalPrayers, categories);
+
+      // On native apps, use the native share/print dialog
+      if (this.isNativeApp()) {
+        const today = new Date().toISOString().split('T')[0];
+        const categoryLabel = categories && categories.length > 0 ? categories.slice(0, 2).join('-').toLowerCase() : 'all';
+        const filename = `personal-prayers-${categoryLabel}-${today}.html`;
+        
+        await this.shareOnNativeApp(html, filename, 'Personal Prayers');
+        return;
+      }
 
       // Use the pre-opened window if provided (Safari compatible)
       const targetWindow = newWindow || window.open('', '_blank');
