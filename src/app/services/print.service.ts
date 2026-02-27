@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { PrayerService } from './prayer.service';
-import { Share } from '@capacitor/share';
 import { Printer } from '@capgo/capacitor-printer';
 
 export interface Prayer {
