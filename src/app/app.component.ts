@@ -1,17 +1,24 @@
 import { Component, OnInit, Injector, ErrorHandler, NgZone, ChangeDetectorRef, HostListener } from '@angular/core';
 import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
+import { CommonModule } from '@angular/common';
 import { ToastContainerComponent } from './components/toast-container/toast-container.component';
+import { PrintInstructionsModalComponent } from './components/print-instructions-modal/print-instructions-modal.component';
 import { AdminDataService } from './services/admin-data.service';
+import { ModalService } from './services/modal.service';
 import { filter } from 'rxjs';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, ToastContainerComponent],
+  imports: [CommonModule, RouterOutlet, ToastContainerComponent, PrintInstructionsModalComponent],
   template: `
     <div class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <router-outlet></router-outlet>
       <app-toast-container></app-toast-container>
+      <app-print-instructions-modal 
+        [isOpen]="(printInstructionsModalOpen$ | async) || false" 
+        (closeModal)="closePrintInstructionsModal()">
+      </app-print-instructions-modal>
     </div>
   `,
   styles: []
@@ -19,13 +26,16 @@ import { filter } from 'rxjs';
 export class AppComponent implements OnInit {
   title = 'prayerapp';
   private lastVisibilityState = !document.hidden;
+  printInstructionsModalOpen$;
 
   constructor(
     private router: Router,
     private injector: Injector,
     private ngZone: NgZone,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private modalService: ModalService
   ) {
+    this.printInstructionsModalOpen$ = this.modalService.printInstructionsModalOpen$;
     // Set up global error handler for unhandled errors
     this.setupGlobalErrorHandler();
     // Listen for navigation events and scroll to top on mobile
@@ -159,6 +169,10 @@ export class AppComponent implements OnInit {
   ngOnInit() {
     this.handleApprovalCode();
     this.setupPushRefreshListener();
+  }
+
+  closePrintInstructionsModal(): void {
+    this.modalService.closePrintInstructionsModal();
   }
 
   /**

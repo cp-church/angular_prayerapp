@@ -57,11 +57,35 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
     PlanningCenterListMapperComponent,
     ConfirmationDialogComponent
   ],
+  styles: `
+    /* Safe area support for notched/dynamic island devices */
+    :host {
+      --safe-area-inset-top: env(safe-area-inset-top, 0px);
+      --safe-area-inset-right: env(safe-area-inset-right, 0px);
+      --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-area-inset-left: env(safe-area-inset-left, 0px);
+    }
+
+    .safe-area-container {
+      padding-top: var(--safe-area-inset-top);
+      padding-bottom: max(1.5rem, var(--safe-area-inset-bottom));
+    }
+
+    .safe-area-horizontal {
+      padding-left: max(1rem, var(--safe-area-inset-left));
+      padding-right: max(1rem, var(--safe-area-inset-right));
+    }
+
+    .safe-area-header {
+      padding-left: max(1rem, var(--safe-area-inset-left));
+      padding-right: max(1rem, var(--safe-area-inset-right));
+    }
+  `,
   template: `
-    <div class="w-full min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors flex flex-col">
+    <div class="w-full min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors flex flex-col safe-area-container">
       <!-- Header -->
       <header class="w-full bg-white dark:bg-gray-800 shadow-md border-b border-gray-200 dark:border-gray-700">
-        <div class="max-w-6xl mx-auto w-full px-4 py-6">
+        <div class="max-w-6xl mx-auto w-full safe-area-header py-6">
           <div class="flex items-start justify-between gap-4">
             <!-- Left side: Logo and title -->
             <div class="flex items-center gap-3">
@@ -112,7 +136,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
       </header>
 
       <!-- Content -->
-      <main class="w-full max-w-6xl mx-auto px-4 py-6">
+      <main class="w-full max-w-6xl mx-auto safe-area-horizontal py-6">
         <!-- Stats Grid -->
         <div class="grid grid-cols-4 gap-2 sm:gap-4 mb-8">
           <button
@@ -673,8 +697,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
         ></app-confirmation-dialog>
       }
     </div>
-  `,
-  styles: []
+  `
 })
 export class AdminComponent implements OnInit, OnDestroy {
   activeTab: AdminTab = 'prayers';

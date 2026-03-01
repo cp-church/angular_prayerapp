@@ -949,11 +949,35 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
   setPrintRange(range: PrintRange): void {
     this.printRange = range;
   }
+
+  private isNativeApp(): boolean {
+    try {
+      const hasCapacitor = typeof (window as any).Capacitor !== 'undefined';
+      let platform = null;
+      
+      if (hasCapacitor) {
+        try {
+          platform = (window as any).Capacitor.getPlatform();
+        } catch (e) {
+          console.debug('[UserSettings] Error getting platform:', e);
+        }
+      }
+      
+      const isNative = hasCapacitor && (platform === 'ios' || platform === 'android');
+      return isNative;
+    } catch (e) {
+      console.error('[UserSettings] Error checking native app:', e);
+      return false;
+    }
+  }
+
   async handlePrint(): Promise<void> {
     this.isPrinting = true;
     
     // Open window immediately (Safari requires this to be synchronous with user click)
-    const newWindow = window.open('', '_blank');
+    // BUT: Don't open on native apps - they handle printing differently
+    const isNativeApp = this.isNativeApp();
+    const newWindow = !isNativeApp ? window.open('', '_blank') : null;
     
     try {
       await this.printService.downloadPrintablePrayerList(this.printRange, newWindow);
@@ -971,7 +995,9 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
     this.isPrintingPrompts = true;
     
     // Open window immediately for Safari compatibility
-    const newWindow = window.open('', '_blank');
+    // BUT: Don't open on native apps - they handle printing differently
+    const isNativeApp = this.isNativeApp();
+    const newWindow = !isNativeApp ? window.open('', '_blank') : null;
     
     try {
       await this.printService.downloadPrintablePromptList(this.selectedPromptTypes, newWindow);
@@ -989,7 +1015,9 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
     this.isPrintingPersonal = true;
     
     // Open window immediately for Safari compatibility
-    const newWindow = window.open('', '_blank');
+    // BUT: Don't open on native apps - they handle printing differently
+    const isNativeApp = this.isNativeApp();
+    const newWindow = !isNativeApp ? window.open('', '_blank') : null;
     
     try {
       // Pass selected categories to the print service (pass undefined to print all if none selected)

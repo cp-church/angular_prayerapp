@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { PrayerService } from './prayer.service';
+import { ModalService } from './modal.service';
 import { Printer } from '@capgo/capacitor-printer';
 
 export interface Prayer {
@@ -27,17 +28,34 @@ export type TimeRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
   providedIn: 'root'
 })
 export class PrintService {
-  constructor(private supabase: SupabaseService, private prayerService: PrayerService) {}
+  constructor(
+    private supabase: SupabaseService,
+    private prayerService: PrayerService,
+    private modalService: ModalService
+  ) {}
 
   /**
    * Detect if running in native app (Capacitor)
    */
   private isNativeApp(): boolean {
     try {
-      const isNative = typeof (window as any).Capacitor !== 'undefined';
+      // Check for Capacitor presence and platform
+      const hasCapacitor = typeof (window as any).Capacitor !== 'undefined';
+      let platform = null;
+      
+      if (hasCapacitor) {
+        try {
+          platform = (window as any).Capacitor.getPlatform();
+        } catch (e) {
+          console.debug('[PrintService] Error getting platform:', e);
+        }
+      }
+      
+      const isNative = hasCapacitor && (platform === 'ios' || platform === 'android');
       console.log('[PrintService] Native app check:', isNative, {
-        hasCapacitor: typeof (window as any).Capacitor,
-        platform: (window as any).Capacitor?.getPlatform?.()
+        hasCapacitor,
+        platform,
+        userAgent: navigator.userAgent
       });
       return isNative;
     } catch (e) {
@@ -48,47 +66,74 @@ export class PrintService {
 
   /**
    * Share or save file content on native app
-   * Uses native print functionality for both iOS and Android
+   * iOS: Uses @capgo/capacitor-printer plugin
+   * Android: Shows instructions for using web version
    */
   private async shareOnNativeApp(html: string, filename: string, title: string): Promise<void> {
+    console.log('[PrintService] *** ENTERING shareOnNativeApp ***');
     try {
+      let platform = null;
+      try {
+        platform = (window as any).Capacitor?.getPlatform?.();
+      } catch (e) {
+        console.debug('[PrintService] Error getting platform in shareOnNativeApp:', e);
+      }
+      
       console.log('[PrintService] Starting shareOnNativeApp for:', title);
       console.log('[PrintService] HTML content length:', html.length);
-      console.log('[PrintService] Platform:', (window as any).Capacitor?.getPlatform?.());
+      console.log('[PrintService] Platform in shareOnNativeApp:', platform);
       
-      console.log('[PrintService] Calling Printer.printHtml() with HTML content');
+      // For iOS: Use the Printer plugin to bring up native print dialog
+      if (platform === 'ios') {
+        console.log('[PrintService] *** iOS detected - using Printer plugin ***');
+        try {
+          await Printer.printHtml({
+            name: title,
+            html: html
+          });
+          console.log('[PrintService] Print completed successfully');
+        } catch (error) {
+          console.error('[PrintService] Printer plugin error:', error);
+          const message = (error as any)?.message || 'Unknown error';
+          if (!message.toLowerCase().includes('cancelled') && !message.toLowerCase().includes('user')) {
+            alert(`Failed to open print dialog: ${message}`);
+          }
+        }
+        console.log('[PrintService] *** RETURNING from iOS print ***');
+        return;
+      }
       
-      // Use the Printer plugin to print the HTML directly
-      // This opens the native print dialog on both iOS and Android
-      await Printer.printHtml({
-        name: title,
-        html: html
-      });
+      // For Android: Use the web version or provide instructions via modal
+      if (platform === 'android') {
+        console.log('[PrintService] *** Android detected - showing print instructions modal ***');
+        this.modalService.openPrintInstructionsModal();
+        console.log('[PrintService] *** RETURNING from Android modal ***');
+        return;
+      }
       
-      console.log('[PrintService] Print completed successfully');
-      
+      // Fallback for other platforms
+      console.log('[PrintService] Unknown platform:', platform);
+      try {
+        await Printer.printHtml({
+          name: title,
+          html: html
+        });
+      } catch (error) {
+        console.error('[PrintService] Printer plugin error:', error);
+        const message = (error as any)?.message || 'Unknown error';
+        if (!message.toLowerCase().includes('cancelled') && !message.toLowerCase().includes('user')) {
+          alert(`Failed to open print dialog: ${message}`);
+        }
+      }
     } catch (error) {
       console.error('[PrintService] Error in shareOnNativeApp:', error);
-      
-      // User cancelled or error occurred - this is normal, not an error condition
       const message = (error as any)?.message || 'Unknown error';
-      const errorStr = String(error);
-      
-      console.error('[PrintService] Error details:', {
-        message,
-        fullError: errorStr,
-        errorType: (error as any)?.name
-      });
-      
-      if (message.toLowerCase().includes('cancelled') || message.toLowerCase().includes('user') || errorStr.includes('cancelled')) {
-        // User cancelled the print dialog - this is expected
-        console.log('[PrintService] User cancelled print');
-      } else {
-        // Actual error
-        console.error('[PrintService] Print failed with error:', message);
-        alert(`Failed to open print dialog:\n\n${message}\n\nMake sure the Printer plugin is properly installed.`);
+      console.error('[PrintService] Error details:', message);
+      if (!message.toLowerCase().includes('cancelled') && !message.toLowerCase().includes('user')) {
+        alert(`Error: ${message}`);
       }
     }
+    console.log('[PrintService] *** EXITING shareOnNativeApp ***');
   }
 
   /**
@@ -197,11 +242,19 @@ export class PrintService {
 
       // On native apps, use the native share/print dialog
       if (this.isNativeApp()) {
+        console.log('[PrintService] Native app detected in downloadPrintablePrayerList, using shareOnNativeApp');
         const today = new Date().toISOString().split('T')[0];
         const rangeLabel = timeRange === 'week' ? 'week' : timeRange === 'twoweeks' ? '2weeks' : timeRange === 'month' ? 'month' : timeRange === 'year' ? 'year' : 'all';
         const filename = `prayer-list-${rangeLabel}-${today}.html`;
         
         await this.shareOnNativeApp(html, filename, 'Prayer List');
+        console.log('[PrintService] shareOnNativeApp completed, returning from downloadPrintablePrayerList');
+        return;
+      }
+
+      // SAFETY CHECK: Never open a new window on native apps
+      if (this.isNativeApp()) {
+        console.error('[PrintService] ERROR: Reached web printing code on native app in downloadPrintablePrayerList! This should never happen.');
         return;
       }
 
@@ -714,10 +767,18 @@ export class PrintService {
 
       // On native apps, use the native share/print dialog
       if (this.isNativeApp()) {
+        console.log('[PrintService] Native app detected in downloadPrintablePromptList, using shareOnNativeApp');
         const today = new Date().toISOString().split('T')[0];
         const filename = `prayer-prompts-${today}.html`;
         
         await this.shareOnNativeApp(html, filename, 'Prayer Prompts');
+        console.log('[PrintService] shareOnNativeApp completed, returning from downloadPrintablePromptList');
+        return;
+      }
+
+      // SAFETY CHECK: Never open a new window on native apps
+      if (this.isNativeApp()) {
+        console.error('[PrintService] ERROR: Reached web printing code on native app in downloadPrintablePromptList! This should never happen.');
         return;
       }
 
@@ -787,11 +848,19 @@ export class PrintService {
 
       // On native apps, use the native share/print dialog
       if (this.isNativeApp()) {
+        console.log('[PrintService] Native app detected in downloadPrintablePersonalPrayerList, using shareOnNativeApp');
         const today = new Date().toISOString().split('T')[0];
         const categoryLabel = categories && categories.length > 0 ? categories.slice(0, 2).join('-').toLowerCase() : 'all';
         const filename = `personal-prayers-${categoryLabel}-${today}.html`;
         
         await this.shareOnNativeApp(html, filename, 'Personal Prayers');
+        console.log('[PrintService] shareOnNativeApp completed, returning from downloadPrintablePersonalPrayerList');
+        return;
+      }
+
+      // SAFETY CHECK: Never open a new window on native apps
+      if (this.isNativeApp()) {
+        console.error('[PrintService] ERROR: Reached web printing code on native app in downloadPrintablePersonalPrayerList! This should never happen.');
         return;
       }
 
