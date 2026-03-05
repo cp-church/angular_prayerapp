@@ -108,6 +108,18 @@ Major features and milestones for the Prayer App.
   - Minimal bandwidth for unchanged logos (metadata check only)
   - Better perceived performance on slower connections
 
+### Delete Account (Settings) ✅
+- ✅ **Users can delete their account from the main site settings modal**
+  - "Delete your account" option at the bottom of the settings panel (below the feedback section).
+  - Opens a verification dialog with a warning that the action cannot be undone.
+  - Two choices: **"Delete account but keep my prayers"** (removes only the account from `email_subscribers`; prayers remain so they can still be lifted up) or **"Delete my account and all my prayers"** (removes the user’s prayer_updates, prayers, personal_prayers, and email_subscribers row).
+  - After either choice the user is signed out via existing logout flow and would need to be re-approved to use the app again.
+
+- ✅ **Implementation**
+  - `user-settings.component.ts`: custom verification modal (z-[60]), `deleteAccountKeepPrayers()`, `deleteAccountAndPrayers()` with correct delete order; error handling and loading state.
+  - Help: App Settings section in `help-content.service.ts` includes "Delete your account" with description of the two options.
+  - Unit tests in `user-settings.component.spec.ts` (dialog, keep-prayers path, delete-prayers path, cancel, errors, empty email) and `help-content.service.spec.ts` (settings section includes delete-account help).
+
 ## [Previous] - January 2026
 
 ### Email Badge Logout with Confirmation Modal ✅

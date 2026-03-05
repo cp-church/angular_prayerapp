@@ -616,6 +616,10 @@ export class HelpContentService {
             subtitle: 'Logout',
             text: 'Click the logout button in the settings panel to sign out of your account. Alternatively, you can click on your email badge in the top-right corner of the header, which will prompt you with a confirmation dialog before logging out. Both methods will end your session and return you to the login screen.',
           },
+          {
+            subtitle: 'Delete your account',
+            text: 'At the bottom of the settings panel you can delete your account. A verification dialog will ask you to choose: "Delete account but keep my prayers" so your prayers continue to be lifted up by others, or "Delete my account and all my prayers" to remove your account and all prayers you submitted. After either choice you will be signed out and would need to be re-approved to use the app again.',
+          },
         ],
         order: 11,
         isActive: true,

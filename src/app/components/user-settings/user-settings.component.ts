@@ -686,6 +686,20 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           </div>
           }
 
+          <!-- Delete account -->
+          <div class="border border-red-200 dark:border-red-800 rounded-lg p-3 sm:p-4">
+            <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">Remove your account and sign out. You can choose to keep your prayers so they continue to be lifted up.</p>
+            <button
+              type="button"
+              (click)="showDeleteAccountVerification = true"
+              title="Delete your account"
+              class="text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 underline cursor-pointer"
+              aria-label="Delete your account"
+            >
+              Delete your account
+            </button>
+          </div>
+
         <!-- Footer -->
           <div class="flex flex-row gap-2 sm:gap-3 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 -mx-4 sm:-mx-6 px-4 sm:px-6">
             <button
@@ -712,6 +726,53 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           </div>
         </div>
       </div>
+
+      <!-- Delete account verification dialog -->
+      @if (showDeleteAccountVerification) {
+      <div class="fixed inset-0 bg-gray-900/50 flex items-center justify-center z-[60] p-4" (click)="deletingAccount ? null : closeDeleteAccountVerification()">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full" (click)="$event.stopPropagation()">
+          <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Delete your account?</h2>
+          </div>
+          <div class="px-6 py-4">
+            <p class="text-gray-600 dark:text-gray-300 mb-4">
+              You will be signed out and will need to be re-approved to use the app again.
+            </p>
+            <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-4">
+              <p class="text-sm text-red-700 dark:text-red-300">
+                Choose whether to keep your prayers so they can still be lifted up by others, or remove them. This cannot be undone.
+              </p>
+            </div>
+          </div>
+          <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row gap-3 justify-end">
+            <button
+              type="button"
+              (click)="closeDeleteAccountVerification()"
+              [disabled]="deletingAccount"
+              class="order-2 sm:order-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              (click)="deleteAccountKeepPrayers()"
+              [disabled]="deletingAccount"
+              class="order-1 sm:order-2 px-4 py-2 rounded-lg bg-gray-600 text-white hover:bg-gray-700 transition-colors font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              @if (deletingAccount) { Deleting… } @else { Delete account but keep my prayers }
+            </button>
+            <button
+              type="button"
+              (click)="deleteAccountAndPrayers()"
+              [disabled]="deletingAccount"
+              class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              @if (deletingAccount) { Deleting… } @else { Delete my account and all my prayers }
+            </button>
+          </div>
+        </div>
+      </div>
+      }
     </div>
     }
   `,
@@ -759,6 +820,8 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
   personalCategories: string[] = [];
   selectedPersonalCategories: string[] = [];
   githubFeedbackEnabled = false;
+  showDeleteAccountVerification = false;
+  deletingAccount = false;
 
   private destroy$ = new Subject<void>();
   private emailChange$ = new Subject<string>();
@@ -1473,5 +1536,73 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
 
   async logout(): Promise<void> {
     await this.adminAuthService.logout();
+  }
+
+  closeDeleteAccountVerification(): void {
+    if (!this.deletingAccount) {
+      this.showDeleteAccountVerification = false;
+      this.error = null;
+      this.cdr.markForCheck();
+    }
+  }
+
+  async deleteAccountKeepPrayers(): Promise<void> {
+    const email = this.email?.toLowerCase?.()?.trim?.() || this.email?.trim?.() || '';
+    if (!email) {
+      this.error = 'Could not determine your email. Please try again.';
+      this.cdr.markForCheck();
+      return;
+    }
+    this.deletingAccount = true;
+    this.error = null;
+    this.cdr.markForCheck();
+    try {
+      const { error } = await this.supabase.client
+        .from('email_subscribers')
+        .delete()
+        .eq('email', email);
+      if (error) throw error;
+      this.showDeleteAccountVerification = false;
+      this.deletingAccount = false;
+      this.cdr.markForCheck();
+      await this.logout();
+    } catch (err) {
+      this.deletingAccount = false;
+      this.error = 'Could not delete account. Please try again.';
+      this.showDeleteAccountVerification = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  async deleteAccountAndPrayers(): Promise<void> {
+    const email = this.email?.toLowerCase?.()?.trim?.() || this.email?.trim?.() || '';
+    if (!email) {
+      this.error = 'Could not determine your email. Please try again.';
+      this.cdr.markForCheck();
+      return;
+    }
+    this.deletingAccount = true;
+    this.error = null;
+    this.cdr.markForCheck();
+    try {
+      const client = this.supabase.client;
+      const { error: err1 } = await client.from('prayer_updates').delete().eq('author_email', email);
+      if (err1) throw err1;
+      const { error: err2 } = await client.from('prayers').delete().eq('email', email);
+      if (err2) throw err2;
+      const { error: err3 } = await client.from('personal_prayers').delete().eq('user_email', email);
+      if (err3) throw err3;
+      const { error: err4 } = await client.from('email_subscribers').delete().eq('email', email);
+      if (err4) throw err4;
+      this.showDeleteAccountVerification = false;
+      this.deletingAccount = false;
+      this.cdr.markForCheck();
+      await this.logout();
+    } catch (err) {
+      this.deletingAccount = false;
+      this.error = 'Could not delete account. Please try again.';
+      this.showDeleteAccountVerification = false;
+      this.cdr.markForCheck();
+    }
   }
 }

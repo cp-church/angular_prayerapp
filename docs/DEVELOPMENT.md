@@ -785,7 +785,18 @@ The application provides two ways for users to log out:
    - Logs out immediately without confirmation
    - Implemented in: `user-settings.component.ts`
 
-Both methods call `adminAuthService.logout()` which:
+#### Delete Account (Settings)
+
+Users can delete their account from the main site settings modal:
+
+- **Location**: Bottom of the settings panel (below the feedback section), "Delete your account" link.
+- **Verification dialog**: Opens with a warning that the action cannot be undone. Two options:
+  - **Delete account but keep my prayers** — Deletes only the user’s row in `email_subscribers`; their prayers and updates remain so they can still be lifted up. Then calls `adminAuthService.logout()`.
+  - **Delete my account and all my prayers** — Deletes in order: `prayer_updates` (author_email), `prayers` (email), `personal_prayers` (user_email; DB cascades to `personal_prayer_updates`), then `email_subscribers`. Then calls `adminAuthService.logout()`.
+- **Implementation**: `user-settings.component.ts` — `showDeleteAccountVerification`, `deletingAccount`, `closeDeleteAccountVerification()`, `deleteAccountKeepPrayers()`, `deleteAccountAndPrayers()`. On any delete failure, error is set and logout is not called.
+- **Help**: App Settings section in `help-content.service.ts` includes a "Delete your account" content item describing the two choices.
+
+Both logout methods call `adminAuthService.logout()` which:
 - Signs out from Supabase Auth
 - Clears all session data and localStorage
 - Invalidates all caches (prayers, prompts, personal prayers, etc.)

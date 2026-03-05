@@ -110,6 +110,21 @@ describe('HelpContentService', () => {
       expect(loadedSections.some(s => s.id === 'help_prayers')).toBe(true);
     });
 
+    it('should include delete your account help in App Settings section', () => {
+      let sections: HelpSection[] = [];
+      service.getSections().subscribe((data) => {
+        sections = data;
+      });
+
+      const settingsSection = sections.find((s) => s.id === 'help_settings');
+      expect(settingsSection).toBeDefined();
+      expect(settingsSection!.content).toBeDefined();
+      const deleteAccountItem = settingsSection!.content?.some(
+        (item) => item.subtitle === 'Delete your account'
+      );
+      expect(deleteAccountItem).toBe(true);
+    });
+
     it('should handle empty data from database', async () => {
       // Create new service with empty database response
       supabaseService.getClient().from().order.mockResolvedValueOnce({

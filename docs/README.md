@@ -33,6 +33,7 @@ A comprehensive prayer request management system for Cross Pointe Church built w
 - ✅ Personal prayers (private user prayers)
 - ✅ **Prayer Encouragement (Pray For)**: Users can click “Pray For” on community prayers; requesters and admins see how many people have prayed (configurable cooldown; admin toggle and cooldown hours in Admin settings)
 - ✅ Theme system (light/dark)
+- ✅ **Delete account** (Settings): Users can remove their account; verification dialog offers to keep prayers (so they stay lifted up) or delete account and all their prayers, then sign out
 - ✅ Planning Center contact lookup
 - ✅ Planning Center members list mapping (filter prayers by list members)
 - ✅ Badge indicators (unread prayers/prompts)
