@@ -103,15 +103,33 @@ serve(async (req) => {
     
     const { data: settings } = await supabase
       .from('admin_settings')
-      .select('verification_code_length')
+      .select('verification_code_length, test_account_email, test_account_code_4, test_account_code_6, test_account_code_8')
       .eq('id', 1)
       .maybeSingle();
 
     const codeLength = settings?.verification_code_length || 6;
+    const emailNormalized = email.toLowerCase().trim();
+    const testAccountEmail = (settings?.test_account_email || '').trim().toLowerCase();
+    const isTestAccount = testAccountEmail !== '' && emailNormalized === testAccountEmail;
 
-    // Generate verification code
-    const code = generateCode(codeLength);
-    console.log(`✅ Generated ${codeLength}-digit code`);
+    // Generate verification code (from DB for test account, random otherwise)
+    let code: string;
+    if (isTestAccount) {
+      const code4 = (settings?.test_account_code_4 || '').trim();
+      const code6 = (settings?.test_account_code_6 || '').trim();
+      const code8 = (settings?.test_account_code_8 || '').trim();
+      if (codeLength === 4 && code4) code = code4;
+      else if (codeLength === 6 && code6) code = code6;
+      else if (codeLength === 8 && code8) code = code8;
+      else code = code4 || code6 || code8 || '1777';
+    } else {
+      code = generateCode(codeLength);
+    }
+    if (isTestAccount) {
+      console.log(`✅ Using hardcoded test account code (no email sent)`);
+    } else {
+      console.log(`✅ Generated ${codeLength}-digit code`);
+    }
 
     // Calculate expiry time (15 minutes from now)
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
@@ -120,7 +138,7 @@ serve(async (req) => {
     const { data: codeRecord, error: insertError } = await supabase
       .from('verification_codes')
       .insert({
-        email: email.toLowerCase().trim(),
+        email: emailNormalized,
         code,
         action_type: actionType,
         action_data: actionData,
@@ -145,53 +163,58 @@ serve(async (req) => {
 
     console.log(`✅ Verification code stored: ${codeRecord.id}`);
 
-    // Fetch verification template from database
-    const { data: template, error: templateError } = await supabase
-      .from('email_templates')
-      .select('*')
-      .eq('template_key', 'verification_code')
-      .single();
+    // Send verification email only for non-test accounts
+    if (!isTestAccount) {
+      // Fetch verification template from database
+      const { data: template, error: templateError } = await supabase
+        .from('email_templates')
+        .select('*')
+        .eq('template_key', 'verification_code')
+        .single();
 
-    if (templateError || !template) {
-      console.error('Template not found:', templateError?.message);
-      // Continue anyway - code is still stored, send fallback email
-    }
-
-    // Prepare template variables
-    const actionDescription = getActionDescription(actionType);
-    const variables = {
-      code: code,
-      actionDescription: actionDescription
-    };
-
-    // Apply variables to template (or use fallback)
-    let subject = `Your verification code: ${code}`;
-    let htmlBody = generateVerificationHTML(code, actionType);
-    let textBody = generateVerificationText(code, actionType);
-
-    if (template) {
-      subject = applyTemplateVariables(template.subject, variables);
-      htmlBody = applyTemplateVariables(template.html_body, variables);
-      textBody = applyTemplateVariables(template.text_body, variables);
-    }
-
-    // Send verification email via new unified email service
-    const { error: emailError } = await supabase.functions.invoke('send-email', {
-      body: {
-        to: email,
-        subject,
-        htmlBody,
-        textBody
+      if (templateError || !template) {
+        console.error('Template not found:', templateError?.message);
+        // Continue anyway - code is still stored, send fallback email
       }
-    });
 
-    if (emailError) {
-      console.error('❌ Email send error:', emailError);
-      // Don't fail the whole request - code is already stored
-      // User can still use it even if email fails
-      console.warn('⚠️ Verification code created but email failed to send');
+      // Prepare template variables
+      const actionDescription = getActionDescription(actionType);
+      const variables = {
+        code: code,
+        actionDescription: actionDescription
+      };
+
+      // Apply variables to template (or use fallback)
+      let subject = `Your verification code: ${code}`;
+      let htmlBody = generateVerificationHTML(code, actionType);
+      let textBody = generateVerificationText(code, actionType);
+
+      if (template) {
+        subject = applyTemplateVariables(template.subject, variables);
+        htmlBody = applyTemplateVariables(template.html_body, variables);
+        textBody = applyTemplateVariables(template.text_body, variables);
+      }
+
+      // Send verification email via new unified email service
+      const { error: emailError } = await supabase.functions.invoke('send-email', {
+        body: {
+          to: email,
+          subject,
+          htmlBody,
+          textBody
+        }
+      });
+
+      if (emailError) {
+        console.error('❌ Email send error:', emailError);
+        // Don't fail the whole request - code is already stored
+        // User can still use it even if email fails
+        console.warn('⚠️ Verification code created but email failed to send');
+      } else {
+        console.log('✅ Verification email sent');
+      }
     } else {
-      console.log('✅ Verification email sent');
+      console.log('Test account: skipping email');
     }
 
     return new Response(JSON.stringify({

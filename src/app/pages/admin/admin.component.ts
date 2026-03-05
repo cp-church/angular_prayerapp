@@ -22,6 +22,7 @@ import { PrayerSearchComponent } from '../../components/prayer-search/prayer-sea
 import { PrayerArchiveTimelineComponent } from '../../components/prayer-archive-timeline/prayer-archive-timeline.component';
 import { BackupStatusComponent } from '../../components/backup-status/backup-status.component';
 import { SecurityPolicySettingsComponent } from '../../components/security-policy-settings/security-policy-settings.component';
+import { TestAccountSettingsComponent } from '../../components/test-account-settings/test-account-settings.component';
 import { EmailVerificationSettingsComponent } from '../../components/email-verification-settings/email-verification-settings.component';
 import { GitHubSettingsComponent } from '../../components/github-settings/github-settings.component';
 import { PrayerEncouragementSettingsComponent } from '../../components/prayer-encouragement-settings/prayer-encouragement-settings.component';
@@ -51,6 +52,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
     PrayerArchiveTimelineComponent,
     BackupStatusComponent,
     SecurityPolicySettingsComponent,
+    TestAccountSettingsComponent,
     EmailVerificationSettingsComponent,
     GitHubSettingsComponent,
     PrayerEncouragementSettingsComponent,
@@ -655,6 +657,9 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
                 </div>
                 <div class="mb-4">
                   <app-security-policy-settings></app-security-policy-settings>
+                </div>
+                <div class="mb-4">
+                  <app-test-account-settings></app-test-account-settings>
                 </div>
               </div>
             }

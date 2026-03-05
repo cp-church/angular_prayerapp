@@ -186,6 +186,66 @@ serve(async (req) => {
       console.log('✅ Cleaned up expired verification codes');
     }
 
+    // If test account completed admin login, notify admins (fire-and-forget)
+    const emailNormalized = (verificationRecord.email || '').toLowerCase().trim();
+    let testAccountEmail = '';
+    try {
+      const settingsRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/admin_settings?id=eq.1&select=test_account_email`,
+        {
+          headers: {
+            'apikey': SUPABASE_SERVICE_ROLE_KEY,
+            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+            'Accept': 'application/json'
+          }
+        }
+      );
+      if (settingsRes.ok) {
+        const settingsRows = await settingsRes.json();
+        testAccountEmail = (settingsRows?.[0]?.test_account_email || '').trim().toLowerCase();
+      }
+    } catch (_) {
+      // non-critical
+    }
+    if (testAccountEmail !== '' && verificationRecord.action_type === 'admin_login' && emailNormalized === testAccountEmail) {
+      try {
+        const adminsRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/email_subscribers?is_admin=eq.true&receive_admin_emails=eq.true&select=email`,
+          {
+            headers: {
+              'apikey': SUPABASE_SERVICE_ROLE_KEY,
+              'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+              'Accept': 'application/json'
+            }
+          }
+        );
+        if (adminsRes.ok) {
+          const admins = await adminsRes.json();
+          const adminEmails = Array.isArray(admins) ? admins.map((a: { email: string }) => a.email).filter(Boolean) : [];
+          if (adminEmails.length > 0) {
+            const subject = 'Test account logged into the prayer app';
+            const htmlBody = `<p>The test account <strong>${testAccountEmail}</strong> was used to sign in to the prayer app.</p><p>Time: ${new Date().toISOString()}</p>`;
+            const textBody = `The test account ${testAccountEmail} was used to sign in to the prayer app. Time: ${new Date().toISOString()}`;
+            const invokeRes = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ to: adminEmails, subject, htmlBody, textBody })
+            });
+            if (!invokeRes.ok) {
+              console.warn('⚠️ Test account admin notification: send-email failed', await invokeRes.text());
+            } else {
+              console.log('✅ Test account admin notification sent to', adminEmails.length, 'admin(s)');
+            }
+          }
+        }
+      } catch (notifyErr) {
+        console.warn('⚠️ Test account admin notification failed (non-critical):', notifyErr);
+      }
+    }
+
     // Return the action data
     return new Response(JSON.stringify({
       success: true,
