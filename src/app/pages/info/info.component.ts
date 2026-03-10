@@ -55,7 +55,7 @@ import { Subject, takeUntil } from 'rxjs';
               </h1>
             </div>
             <p class="text-base sm:text-lg text-gray-600 dark:text-gray-300 max-w-xl">
-              Rejoice always, pray without ceasing, give thanks in all circumstances; for this is the will of God in Christ Jesus for you. 1 Thes. 5:16–18
+              Rejoice always, pray without ceasing, give thanks in all circumstances; for this is the will of God in Christ Jesus for you. <span class="whitespace-nowrap">1 Thes. 5:16–18</span>
             </p>
           </div>
 
