@@ -239,16 +239,16 @@ describe('InfoComponent', () => {
       const el = fixture.nativeElement as HTMLElement;
       expect(el.textContent).toContain('Cross Pointe');
       expect(el.textContent).toContain('Prayer Community');
-      expect(el.textContent).toContain('A focused place for our church');
+      expect(el.textContent).toContain('Rejoice always');
     });
     it('should show theme toggle and CTA buttons', async () => {
       await component.ngOnInit();
       fixture.detectChanges();
       const el = fixture.nativeElement as HTMLElement;
       expect(el.querySelector('app-theme-toggle')).toBeTruthy();
-      expect(el.textContent).toContain('Web App');
+      expect(el.textContent).toContain('Web Site');
       expect(el.textContent).toContain('App Store');
-      expect(el.textContent).toContain('Android');
+      expect(el.textContent).toContain('Google Play');
     });
     it('should show filter tabs with Current, Answered, Total, Prompts, Personal', async () => {
       await component.ngOnInit();
