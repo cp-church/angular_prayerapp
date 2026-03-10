@@ -55,7 +55,7 @@ import { Subject, takeUntil } from 'rxjs';
               </h1>
             </div>
             <p class="text-base sm:text-lg text-gray-600 dark:text-gray-300 max-w-xl">
-              A focused place for our church to share, update, and pray over needs together.
+              Rejoice always, pray without ceasing, give thanks in all circumstances; for this is the will of God in Christ Jesus for you. 1 Thes. 5:16–18
             </p>
           </div>
 
@@ -74,7 +74,7 @@ import { Subject, takeUntil } from 'rxjs';
                     </span>
                     <span class="text-left leading-tight">
                       <span class="block text-[10px] uppercase tracking-wider text-gray-600 group-hover:text-gray-800 dark:text-gray-400 whitespace-nowrap">Open in browser</span>
-                      <span class="block text-sm font-semibold">Web App</span>
+                      <span class="block text-sm font-semibold whitespace-nowrap">Web Site</span>
                     </span>
                   </span>
                   <div
@@ -110,7 +110,7 @@ import { Subject, takeUntil } from 'rxjs';
                     </span>
                     <span class="text-left leading-tight">
                       <span class="block text-[10px] uppercase tracking-wider text-gray-600 group-hover:text-gray-800 dark:text-gray-400 whitespace-nowrap">Download on the</span>
-                      <span class="block text-sm font-semibold">App Store</span>
+                      <span class="block text-sm font-semibold whitespace-nowrap">Apple App Store</span>
                     </span>
                   </span>
                   <div
@@ -123,22 +123,27 @@ import { Subject, takeUntil } from 'rxjs';
                 </button>
               </div>
 
-              <!-- Android: coming soon (same height as Web/iOS cards) -->
+              <!-- Android: coming soon (same layout as Web/iOS, deselected look) -->
               <div class="w-full flex flex-col items-center gap-2">
                 <div
-                  class="w-full inline-flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-gray-400 dark:border-gray-600 px-5 py-3 text-sm sm:text-base text-gray-500 dark:text-gray-400 bg-gray-100/80 dark:bg-gray-800/40 font-medium"
+                  class="w-full inline-flex flex-col items-center justify-center gap-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-200/80 dark:bg-gray-800/70 px-5 py-3 text-sm sm:text-base font-medium opacity-75"
                   title="Android app coming soon"
                 >
                   <span class="flex w-full items-center justify-center">
-                    <div class="mr-3 h-9 w-9 rounded-lg bg-gray-400 dark:bg-gray-700 flex items-center justify-center p-0.5">
+                    <span class="mr-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg overflow-hidden bg-gray-400 dark:bg-gray-700 p-0.5">
                       <img src="/android-icon.svg" alt="" class="h-full w-full object-contain opacity-90" aria-hidden="true" />
-                    </div>
-                    <div class="text-left leading-tight">
-                      <span class="block font-semibold">Android</span>
-                      <span class="block text-[11px] uppercase tracking-wide text-amber-600 dark:text-amber-300">Coming soon</span>
-                    </div>
+                    </span>
+                    <span class="text-left leading-tight">
+                      <span class="block text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-500 whitespace-nowrap">Download on the</span>
+                      <span class="block text-sm font-semibold text-gray-500 dark:text-gray-500 whitespace-nowrap">Google Play Store</span>
+                    </span>
                   </span>
-                  <div class="h-20 w-20 shrink-0" aria-hidden="true"></div>
+                  <div
+                    class="h-20 w-20 rounded-xl border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-100 flex items-center justify-center p-1 shrink-0"
+                    aria-hidden="true"
+                  >
+                    <span class="text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-300 text-center leading-tight">Coming soon</span>
+                  </div>
                   <span class="text-[11px] font-medium invisible select-none">Tap or Scan</span>
                 </div>
               </div>
