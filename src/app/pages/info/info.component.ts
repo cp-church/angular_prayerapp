@@ -123,29 +123,40 @@ import { Subject, takeUntil } from 'rxjs';
                 </button>
               </div>
 
-              <!-- Android: coming soon (same layout as Web/iOS, deselected look) -->
+              <!-- Android CTA + QR -->
               <div class="w-full flex flex-col items-center gap-2">
-                <div
-                  class="w-full inline-flex flex-row sm:flex-col items-center justify-center gap-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-200/80 dark:bg-gray-800/70 px-5 py-3 text-sm sm:text-base font-medium opacity-75"
-                  title="Android app coming soon"
+                <button
+                  type="button"
+                  (click)="openAndroidStore()"
+                  class="group w-full inline-flex flex-row sm:flex-col items-center justify-center gap-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-200/80 dark:bg-gray-800/70 px-5 py-3 hover:bg-gray-300 dark:hover:bg-gray-700 text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100 shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-300 transition-colors cursor-pointer"
                 >
                   <span class="flex w-full items-center justify-center">
-                    <span class="mr-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg overflow-hidden bg-gray-400 dark:bg-gray-700 p-0.5">
-                      <img src="/android-icon.svg" alt="" class="h-full w-full object-contain opacity-90" aria-hidden="true" />
+                    <span class="mr-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg overflow-hidden bg-gray-300 dark:bg-gray-800 p-0.5">
+                      <img src="/android-icon.svg" alt="" class="h-full w-full object-contain" aria-hidden="true" />
                     </span>
                     <span class="text-left leading-tight">
-                      <span class="block text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-500 whitespace-nowrap">Download on the</span>
-                      <span class="block text-sm font-semibold text-gray-500 dark:text-gray-500 whitespace-nowrap">Google Play Store</span>
+                      <span class="block text-[10px] uppercase tracking-wider text-gray-600 group-hover:text-gray-800 dark:text-gray-400 whitespace-nowrap">Download on the</span>
+                      <span class="block text-sm font-semibold whitespace-nowrap">Google Play Store</span>
                     </span>
                   </span>
                   <div
-                    class="h-20 w-20 min-h-20 min-w-20 shrink-0 rounded-xl border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-100 flex items-center justify-center p-1"
+                    class="h-20 w-20 min-h-20 min-w-20 shrink-0 rounded-xl border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-100 flex items-center justify-center p-1 ring-2 ring-emerald-400/50"
                     aria-hidden="true"
                   >
-                    <span class="text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-300 text-center leading-tight">Coming soon</span>
+                    @if (androidStoreQrUrl) {
+                      <img [src]="androidStoreQrUrl" alt="QR code for Google Play" class="h-14 w-14 shrink-0 rounded object-contain" width="56" height="56" />
+                    } @else {
+                      <div class="h-14 w-14 grid grid-cols-5 grid-rows-5 gap-0 shrink-0">
+                        <div class="bg-black"></div><div class="bg-black"></div><div class="bg-black"></div><div class="bg-black"></div><div class="bg-black"></div>
+                        <div class="bg-black"></div><div class="bg-white"></div><div class="bg-white"></div><div class="bg-white"></div><div class="bg-black"></div>
+                        <div class="bg-black"></div><div class="bg-white"></div><div class="bg-black"></div><div class="bg-white"></div><div class="bg-black"></div>
+                        <div class="bg-black"></div><div class="bg-white"></div><div class="bg-white"></div><div class="bg-white"></div><div class="bg-black"></div>
+                        <div class="bg-black"></div><div class="bg-black"></div><div class="bg-black"></div><div class="bg-black"></div><div class="bg-black"></div>
+                      </div>
+                    }
                   </div>
-                  <span class="text-[11px] font-medium text-gray-400 dark:text-gray-500 select-none">Tap or Scan</span>
-                </div>
+                  <span class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">Tap or Scan</span>
+                </button>
               </div>
           </div>
 
@@ -787,6 +798,7 @@ import { Subject, takeUntil } from 'rxjs';
 })
 export class InfoComponent implements OnInit, OnDestroy {
   private readonly iosStoreUrl = 'https://apps.apple.com/us/app/cross-pointe-prayer/id6759469929';
+  private readonly androidStoreUrl = 'https://play.google.com/store/apps/details?id=com.prayerapp.mobile&hl=en-US&ah=Ghbr4bYQ1m2dzQHiDSMTuk1p39Y&pli=1';
   previewFilter: 'current' | 'answered' | 'total' | 'prompts' | 'personal' = 'current';
   headerPreview: 'help' | 'settings' | 'pray' | 'request' | 'search' | 'card-update' | 'card-pray-for' | null = null;
   showPromptCategoriesModal = false;
@@ -799,6 +811,7 @@ export class InfoComponent implements OnInit, OnDestroy {
   brandingUseLogo = false;
   webAppQrUrl = '';
   iosStoreQrUrl = '';
+  androidStoreQrUrl = '';
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -809,6 +822,7 @@ export class InfoComponent implements OnInit, OnDestroy {
   async ngOnInit(): Promise<void> {
     this.webAppQrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' + encodeURIComponent('https://cpprayer.cp-church.org/');
     this.iosStoreQrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' + encodeURIComponent(this.iosStoreUrl);
+    this.androidStoreQrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' + encodeURIComponent(this.androidStoreUrl);
     await this.brandingService.initialize();
     this.brandingService.branding$
       .pipe(takeUntil(this.destroy$))
@@ -828,6 +842,10 @@ export class InfoComponent implements OnInit, OnDestroy {
 
   openIosStore(): void {
     window.open(this.iosStoreUrl, '_blank', 'noopener');
+  }
+
+  openAndroidStore(): void {
+    window.open(this.androidStoreUrl, '_blank', 'noopener');
   }
 
   openHeaderModal(which: 'help' | 'settings' | 'pray' | 'request' | 'search' | 'card-update' | 'card-pray-for'): void {
