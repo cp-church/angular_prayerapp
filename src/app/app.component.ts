@@ -3,24 +3,18 @@ import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { Capacitor } from '@capacitor/core';
 import { ToastContainerComponent } from './components/toast-container/toast-container.component';
-import { PrintInstructionsModalComponent } from './components/print-instructions-modal/print-instructions-modal.component';
 import { AdminDataService } from './services/admin-data.service';
-import { ModalService } from './services/modal.service';
 import { filter } from 'rxjs';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, ToastContainerComponent, PrintInstructionsModalComponent],
+  imports: [CommonModule, RouterOutlet, ToastContainerComponent],
   template: `
     <ng-container>
       <div class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
         <router-outlet></router-outlet>
         <app-toast-container></app-toast-container>
-        <app-print-instructions-modal 
-          [isOpen]="(printInstructionsModalOpen$ | async) || false" 
-          (closeModal)="closePrintInstructionsModal()">
-        </app-print-instructions-modal>
       </div>
     </ng-container>
   `,
@@ -29,20 +23,17 @@ import { filter } from 'rxjs';
 export class AppComponent implements OnInit {
   title = 'prayerapp';
   private lastVisibilityState = !document.hidden;
-  printInstructionsModalOpen$;
 
   constructor(
     private router: Router,
     private injector: Injector,
     private ngZone: NgZone,
-    private cdr: ChangeDetectorRef,
-    private modalService: ModalService
+    private cdr: ChangeDetectorRef
   ) {
     // Add native-app class immediately so bottom blur strip shows before first paint
     if (Capacitor.isNativePlatform()) {
       document.documentElement.classList.add('native-app');
     }
-    this.printInstructionsModalOpen$ = this.modalService.printInstructionsModalOpen$;
     // Set up global error handler for unhandled errors
     this.setupGlobalErrorHandler();
     // Listen for navigation events and scroll to top on mobile
@@ -180,10 +171,6 @@ export class AppComponent implements OnInit {
   ngOnInit() {
     this.handleApprovalCode();
     this.setupPushRefreshListener();
-  }
-
-  closePrintInstructionsModal(): void {
-    this.modalService.closePrintInstructionsModal();
   }
 
   /**

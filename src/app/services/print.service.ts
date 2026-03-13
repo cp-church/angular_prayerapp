@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { PrayerService } from './prayer.service';
-import { ModalService } from './modal.service';
 import { Printer } from '@capgo/capacitor-printer';
 
 export interface Prayer {
@@ -30,8 +29,7 @@ export type TimeRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
 export class PrintService {
   constructor(
     private supabase: SupabaseService,
-    private prayerService: PrayerService,
-    private modalService: ModalService
+    private prayerService: PrayerService
   ) {}
 
   /**
@@ -65,33 +63,18 @@ export class PrintService {
   }
 
   /**
-   * Share or save file content on native app
-   * iOS: Uses @capgo/capacitor-printer plugin
-   * Android: Shows instructions for using web version
+   * Share or save file content on native app (iOS and Android)
+   * Uses @capgo/capacitor-printer plugin; Android uses a patched native implementation that runs print on the UI thread.
    */
   private async shareOnNativeApp(html: string, filename: string, title: string): Promise<void> {
-    console.log('[PrintService] *** ENTERING shareOnNativeApp ***');
     try {
-      let platform = null;
-      try {
-        platform = (window as any).Capacitor?.getPlatform?.();
-      } catch (e) {
-        console.debug('[PrintService] Error getting platform in shareOnNativeApp:', e);
-      }
-      
-      console.log('[PrintService] Starting shareOnNativeApp for:', title);
-      console.log('[PrintService] HTML content length:', html.length);
-      console.log('[PrintService] Platform in shareOnNativeApp:', platform);
-      
-      // For iOS: Use the Printer plugin to bring up native print dialog
-      if (platform === 'ios') {
-        console.log('[PrintService] *** iOS detected - using Printer plugin ***');
+      const platform = (window as any).Capacitor?.getPlatform?.();
+      if (platform === 'ios' || platform === 'android') {
         try {
           await Printer.printHtml({
             name: title,
-            html: html
+            html
           });
-          console.log('[PrintService] Print completed successfully');
         } catch (error) {
           console.error('[PrintService] Printer plugin error:', error);
           const message = (error as any)?.message || 'Unknown error';
@@ -99,41 +82,15 @@ export class PrintService {
             alert(`Failed to open print dialog: ${message}`);
           }
         }
-        console.log('[PrintService] *** RETURNING from iOS print ***');
         return;
-      }
-      
-      // For Android: Use the web version or provide instructions via modal
-      if (platform === 'android') {
-        console.log('[PrintService] *** Android detected - showing print instructions modal ***');
-        this.modalService.openPrintInstructionsModal();
-        console.log('[PrintService] *** RETURNING from Android modal ***');
-        return;
-      }
-      
-      // Fallback for other platforms
-      console.log('[PrintService] Unknown platform:', platform);
-      try {
-        await Printer.printHtml({
-          name: title,
-          html: html
-        });
-      } catch (error) {
-        console.error('[PrintService] Printer plugin error:', error);
-        const message = (error as any)?.message || 'Unknown error';
-        if (!message.toLowerCase().includes('cancelled') && !message.toLowerCase().includes('user')) {
-          alert(`Failed to open print dialog: ${message}`);
-        }
       }
     } catch (error) {
       console.error('[PrintService] Error in shareOnNativeApp:', error);
       const message = (error as any)?.message || 'Unknown error';
-      console.error('[PrintService] Error details:', message);
       if (!message.toLowerCase().includes('cancelled') && !message.toLowerCase().includes('user')) {
         alert(`Error: ${message}`);
       }
     }
-    console.log('[PrintService] *** EXITING shareOnNativeApp ***');
   }
 
   /**
