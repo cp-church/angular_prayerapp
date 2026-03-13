@@ -82,9 +82,9 @@ import { Subject, takeUntil } from 'rxjs';
                     aria-hidden="true"
                   >
                     @if (webAppQrUrl) {
-                      <img [src]="webAppQrUrl" alt="QR code for web app" class="h-14 w-14 shrink-0 rounded object-contain" width="56" height="56" />
+                      <img [src]="webAppQrUrl" alt="QR code for web app" class="h-16 w-16 shrink-0 rounded object-contain" width="64" height="64" loading="lazy" />
                     } @else {
-                      <div class="h-14 w-14 grid grid-cols-5 grid-rows-5 gap-0 shrink-0">
+                      <div class="h-16 w-16 grid grid-cols-5 grid-rows-5 gap-0 shrink-0">
                         <div class="bg-black"></div><div class="bg-black"></div><div class="bg-black"></div><div class="bg-black"></div><div class="bg-black"></div>
                         <div class="bg-black"></div><div class="bg-white"></div><div class="bg-white"></div><div class="bg-white"></div><div class="bg-black"></div>
                         <div class="bg-black"></div><div class="bg-white"></div><div class="bg-black"></div><div class="bg-white"></div><div class="bg-black"></div>
@@ -117,7 +117,7 @@ import { Subject, takeUntil } from 'rxjs';
                     class="h-20 w-20 min-h-20 min-w-20 shrink-0 rounded-xl border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-100 flex items-center justify-center p-1 ring-2 ring-emerald-400/50"
                     aria-hidden="true"
                   >
-                    <img [src]="iosStoreQrUrl" alt="QR code for App Store" class="h-14 w-14 shrink-0 rounded object-contain" width="56" height="56" />
+                    <img [src]="iosStoreQrUrl" alt="QR code for App Store" class="h-16 w-16 shrink-0 rounded object-contain" width="64" height="64" loading="lazy" />
                   </div>
                   <span class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">Tap or Scan</span>
                 </button>
@@ -144,9 +144,9 @@ import { Subject, takeUntil } from 'rxjs';
                     aria-hidden="true"
                   >
                     @if (androidStoreQrUrl) {
-                      <img [src]="androidStoreQrUrl" alt="QR code for Google Play" class="h-14 w-14 shrink-0 rounded object-contain" width="56" height="56" />
+                      <img [src]="androidStoreQrUrl" alt="QR code for Google Play" class="h-16 w-16 shrink-0 rounded object-contain" width="64" height="64" loading="lazy" />
                     } @else {
-                      <div class="h-14 w-14 grid grid-cols-5 grid-rows-5 gap-0 shrink-0">
+                      <div class="h-16 w-16 grid grid-cols-5 grid-rows-5 gap-0 shrink-0">
                         <div class="bg-black"></div><div class="bg-black"></div><div class="bg-black"></div><div class="bg-black"></div><div class="bg-black"></div>
                         <div class="bg-black"></div><div class="bg-white"></div><div class="bg-white"></div><div class="bg-white"></div><div class="bg-black"></div>
                         <div class="bg-black"></div><div class="bg-white"></div><div class="bg-black"></div><div class="bg-white"></div><div class="bg-black"></div>
@@ -820,9 +820,9 @@ export class InfoComponent implements OnInit, OnDestroy {
   ) {}
 
   async ngOnInit(): Promise<void> {
-    this.webAppQrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' + encodeURIComponent('https://cpprayer.cp-church.org/');
-    this.iosStoreQrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' + encodeURIComponent(this.iosStoreUrl);
-    this.androidStoreQrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' + encodeURIComponent(this.androidStoreUrl);
+    this.webAppQrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=384x384&data=' + encodeURIComponent('https://cpprayer.cp-church.org/');
+    this.iosStoreQrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=384x384&data=' + encodeURIComponent(this.iosStoreUrl);
+    this.androidStoreQrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=384x384&data=' + encodeURIComponent(this.androidStoreUrl);
     await this.brandingService.initialize();
     this.brandingService.branding$
       .pipe(takeUntil(this.destroy$))
