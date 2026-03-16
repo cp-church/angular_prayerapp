@@ -116,20 +116,20 @@ const PRAY_FOR_MODAL_DO_NOT_SHOW_KEY = 'prayer_encouragement_modal_do_not_show';
 
       <!-- Centered timestamp (hidden for Planning Center member cards) -->
       @if (!prayer.id.startsWith('pc-member-')) {
-      <span class="absolute left-1/2 top-4 transform -translate-x-1/2 -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400">
+      <span class="absolute left-1/2 top-4 transform -translate-x-1/2 -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
         {{ formatDate(prayer.created_at) }}
       </span>
       }
       <!-- Prayer Description -->
       <p class="text-gray-600 dark:text-gray-300 mb-4">{{ prayer.description }}</p>
 
-      <!-- Action buttons -->
+      <!-- Action buttons - flex-nowrap, reduced padding so row fits without wrap or scroll -->
       @if (showAddUpdateButton()) {
-      <div class="flex flex-wrap gap-1 mb-4 items-center">
+      <div class="flex flex-nowrap gap-1 mb-4 items-center min-w-0">
         <button
           (click)="toggleAddUpdate()"
           title="Add an update to this prayer"
-          class="px-3 py-1 text-xs font-medium bg-green-50 dark:bg-green-900/20 text-[#39704D] dark:text-[#5FB876] rounded-md border border-[#39704D] dark:border-[#39704D] hover:bg-green-100 dark:hover:bg-green-900/30 focus:outline-none focus:ring-2 focus:ring-[#39704D] focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer"
+          class="flex-shrink-0 px-2 py-1 text-xs font-medium bg-green-50 dark:bg-green-900/20 text-[#39704D] dark:text-[#5FB876] rounded-md border border-[#39704D] dark:border-[#39704D] hover:bg-green-100 dark:hover:bg-green-900/30 focus:outline-none focus:ring-2 focus:ring-[#39704D] focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer whitespace-nowrap"
         >
           Add Update
         </button>
@@ -138,7 +138,7 @@ const PRAY_FOR_MODAL_DO_NOT_SHOW_KEY = 'prayer_encouragement_modal_do_not_show';
             <button
               (click)="onPrayForClick()"
               title="Record that you prayed for this request"
-              class="px-3 py-1 text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-md border border-blue-600 dark:border-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer"
+              class="flex-shrink-0 px-2 py-1 text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-md border border-blue-600 dark:border-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer whitespace-nowrap"
             >
               Pray For
             </button>
@@ -146,7 +146,7 @@ const PRAY_FOR_MODAL_DO_NOT_SHOW_KEY = 'prayer_encouragement_modal_do_not_show';
             <button
               disabled
               [title]="'You can pray for this again in ' + ((prayerEncouragementService.getCooldownHours$() | async) ?? 4) + ' hours'"
-              class="px-3 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-md border border-gray-300 dark:border-gray-600 cursor-not-allowed"
+              class="flex-shrink-0 px-2 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-md border border-gray-300 dark:border-gray-600 cursor-not-allowed whitespace-nowrap"
             >
               Prayed For
             </button>
@@ -154,7 +154,7 @@ const PRAY_FOR_MODAL_DO_NOT_SHOW_KEY = 'prayer_encouragement_modal_do_not_show';
         }
         @if ((prayerEncouragementService.getPrayerEncouragementEnabled$() | async) && showPrayedForBadge()) {
           <span
-            class="px-2 py-1 text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-md border border-blue-600 dark:border-blue-500"
+            class="flex-shrink-0 px-1.5 py-1 text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-md border border-blue-600 dark:border-blue-500 whitespace-nowrap"
             title="Number praying for this request"
           >
             {{ (prayer.prayed_for_count ?? 0) }} Praying

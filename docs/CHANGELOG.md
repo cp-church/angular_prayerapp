@@ -120,6 +120,18 @@ Major features and milestones for the Prayer App.
   - Help: App Settings section in `help-content.service.ts` includes "Delete your account" with description of the two options.
   - Unit tests in `user-settings.component.spec.ts` (dialog, keep-prayers path, delete-prayers path, cancel, errors, empty email) and `help-content.service.spec.ts` (settings section includes delete-account help).
 
+### Text Size (Settings) ✅
+- ✅ **Users can adjust on-screen text size from Settings**
+  - Settings modal includes a "Text size" section with three options: **Default**, **Larger**, and **Largest**.
+  - Choice is stored in localStorage and applied app-wide via a CSS custom property (`--text-scale`) on the document root; base font size scales with the selection for easier reading.
+  - In-app Help includes a "Text size" entry under App Settings describing the options and that the preference is saved automatically.
+
+- ✅ **Implementation**
+  - `TextSizeService`: `getTextSize()`, `setTextSize(size)`; persists `textSize` in localStorage and updates `document.documentElement.style.setProperty('--text-scale', …)`.
+  - `src/styles.css`: `:root { --text-scale: 1 }`; `html { font-size: calc(16px * var(--text-scale, 1)) }`.
+  - `user-settings.component.ts`: Text size UI (three buttons), `handleTextSizeChange()`, sync from service in `ngOnInit` and `ngOnChanges` when modal opens; unit tests for loading, syncing, and handling each size.
+  - `help-content.service.ts`: "Text size" help block under `help_settings` (after Theme Options).
+
 ## [Previous] - January 2026
 
 ### Email Badge Logout with Confirmation Modal ✅

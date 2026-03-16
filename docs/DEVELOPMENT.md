@@ -796,6 +796,15 @@ Users can delete their account from the main site settings modal:
 - **Implementation**: `user-settings.component.ts` — `showDeleteAccountVerification`, `deletingAccount`, `closeDeleteAccountVerification()`, `deleteAccountKeepPrayers()`, `deleteAccountAndPrayers()`. On any delete failure, error is set and logout is not called.
 - **Help**: App Settings section in `help-content.service.ts` includes a "Delete your account" content item describing the two choices.
 
+#### Text Size (Settings)
+
+Users can change on-screen text size from the Settings modal:
+
+- **Location**: Settings modal → "Text size" section (after Theme), with three options: Default, Larger, Largest.
+- **Behavior**: Selection is stored in localStorage and applied globally via `--text-scale` on `document.documentElement`; `html { font-size: calc(16px * var(--text-scale, 1)) }` in `src/styles.css` scales base font size.
+- **Implementation**: `TextSizeService` (`src/app/services/text-size.service.ts`) — `getTextSize()`, `setTextSize(size)`; persists and applies scale on init and when changed. `user-settings.component.ts` — text size UI, `handleTextSizeChange()`, sync from service in `ngOnInit` and when modal opens via `ngOnChanges`.
+- **Help**: App Settings in `help-content.service.ts` includes a "Text size" entry (after Theme Options) describing the options and that the preference is saved automatically.
+
 Both logout methods call `adminAuthService.logout()` which:
 - Signs out from Supabase Auth
 - Clears all session data and localStorage

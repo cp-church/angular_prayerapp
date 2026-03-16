@@ -47,6 +47,7 @@ Quick links:
 - **Responsive Design**: Works seamlessly on desktop, tablet, and mobile devices
 - **Real-time Updates**: Live prayer updates using Supabase real-time subscriptions
 - **Theme Support**: Light and dark mode with persistent user preferences
+- **Text Size**: Default, Larger, or Largest text in Settings; preference saved and applied app-wide
 - **Advanced Filtering**: Search and filter prayers by category, status, or keywords
 - **Printable Lists**: Generate printable prayer request and prayer prompt lists
 

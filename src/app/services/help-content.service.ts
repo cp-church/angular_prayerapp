@@ -593,6 +593,10 @@ export class HelpContentService {
             text: 'Choose from different theme options to customize the app appearance. Light mode is best for bright environments, dark mode reduces eye strain in low light, and system mode automatically follows your device\'s theme preference. Your selected theme preference is saved automatically.',
           },
           {
+            subtitle: 'Text size',
+            text: 'Use the text size setting to make on-screen text larger for easier reading. Choose Default for standard sizing, Larger for a moderate increase, or Largest for the biggest text. Your choice applies across the app and is saved automatically.',
+          },
+          {
             subtitle: 'Email Subscription',
             text: 'Enable email subscription to receive notifications about prayer updates and community activities. When enabled, you\'ll get email notifications for new prayers, prayer updates, and other important app notifications. You can toggle this setting at any time to start or stop receiving emails.',
           },

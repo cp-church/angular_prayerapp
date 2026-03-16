@@ -75,14 +75,14 @@ import { environment } from '../../../environments/environment';
             }
           </div>
           
-          <!-- Mobile buttons row -->
-          <div class="sm:hidden flex items-center gap-2 flex-wrap">
+          <!-- Mobile buttons row - flex-nowrap so title/buttons stay on one line on smallest screens -->
+          <div class="sm:hidden flex items-center gap-2 flex-nowrap">
             <button
               (click)="showHelp = true"
               class="flex items-center gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors cursor-pointer"
               title="Help"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <svg class="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"></circle>
                 <text x="12" y="16" text-anchor="middle" fill="currentColor" font-size="14" font-weight="bold">?</text>
               </svg>
@@ -92,7 +92,7 @@ import { environment } from '../../../environments/environment';
               class="flex items-center gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors cursor-pointer"
               title="Settings"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg class="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
                 <circle cx="12" cy="12" r="3"></circle>
               </svg>
@@ -162,38 +162,38 @@ import { environment } from '../../../environments/environment';
                 }
               </div>
               
-              <!-- Controls: Desktop only -->
+              <!-- Controls: Desktop only - h-12 for uniform button height -->
               <div class="flex items-center gap-2">
                 <button
                   (click)="showHelp = true"
-                  class="flex items-center gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-2.5 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors cursor-pointer"
+                  class="flex items-center justify-center h-12 gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors cursor-pointer"
                   title="Help & Guidance"
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <svg class="w-6 h-6 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"></circle>
                     <text x="12" y="16" text-anchor="middle" fill="currentColor" font-size="14" font-weight="bold">?</text>
                   </svg>
                 </button>
                 <button
                   (click)="showSettings = true"
-                  class="flex items-center gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-2.5 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors cursor-pointer"
+                  class="flex items-center justify-center h-12 gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors cursor-pointer"
                   title="Settings"
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg class="w-6 h-6 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
                     <circle cx="12" cy="12" r="3"></circle>
                   </svg>
                 </button>
                 <button
                   routerLink="/presentation"
-                  class="flex items-center gap-1 bg-[#2F5F54] dark:bg-[#2F5F54] text-white px-3 py-2.5 rounded-lg hover:bg-[#1a3a2e] dark:hover:bg-[#1a3a2e] focus:outline-none focus:ring-2 focus:ring-[#2F5F54] transition-colors text-sm cursor-pointer"
+                  class="flex items-center justify-center h-12 gap-1 bg-[#2F5F54] dark:bg-[#2F5F54] text-white px-3 rounded-lg hover:bg-[#1a3a2e] dark:hover:bg-[#1a3a2e] focus:outline-none focus:ring-2 focus:ring-[#2F5F54] transition-colors text-sm cursor-pointer"
                   title="Prayer Mode"
                 >
                   <span>Pray</span>
                 </button>
                 <button
                   (click)="showPrayerForm = true"
-                  class="flex items-center gap-1 bg-blue-600 dark:bg-blue-600 text-white px-3 py-2.5 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm cursor-pointer"
+                  class="flex items-center justify-center h-12 gap-1 bg-blue-600 dark:bg-blue-600 text-white px-3 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm cursor-pointer"
                 >
                   <span>Request</span>
                 </button>
@@ -302,7 +302,7 @@ import { environment } from '../../../environments/environment';
           <button
             (click)="setFilter('current')"
             title="Show current prayers"
-            [class]="'rounded-lg shadow-md p-2 sm:p-4 text-center transition-all duration-200 cursor-pointer relative ' + (activeFilter === 'current' ? 'border !border-[#0047AB] dark:!border-[#0047AB] bg-blue-100 dark:bg-blue-950 ring ring-[#0047AB] dark:ring-[#0047AB] ring-offset-0' : 'bg-white dark:bg-gray-800 border-[2px] !border-gray-200 dark:!border-gray-700 hover:!border-[#0047AB] dark:hover:!border-[#0047AB] hover:shadow-lg')"
+            [class]="'rounded-lg shadow-md p-2 sm:p-4 text-center transition-all duration-200 cursor-pointer relative flex flex-col items-center justify-center ' + (activeFilter === 'current' ? 'border !border-[#0047AB] dark:!border-[#0047AB] bg-blue-100 dark:bg-blue-950 ring ring-[#0047AB] dark:ring-[#0047AB] ring-offset-0' : 'bg-white dark:bg-gray-800 border-[2px] !border-gray-200 dark:!border-gray-700 hover:!border-[#0047AB] dark:hover:!border-[#0047AB] hover:shadow-lg')"
           >
             @let currentCount = (currentPrayerBadge$ | async) || 0;
             @if ((currentCount > 0) && (badgeService.getBadgeFunctionalityEnabled$() | async)) {
@@ -323,7 +323,7 @@ import { environment } from '../../../environments/environment';
           <button
             (click)="setFilter('answered')"
             title="Show answered prayers"
-            [class]="'rounded-lg shadow-md p-2 sm:p-4 text-center transition-all duration-200 cursor-pointer relative ' + (activeFilter === 'answered' ? 'border !border-[#39704D] dark:!border-[#39704D] bg-green-100 dark:bg-green-950 ring ring-[#39704D] dark:ring-[#39704D] ring-offset-0' : 'bg-white dark:bg-gray-800 border-[2px] !border-gray-200 dark:!border-gray-700 hover:!border-[#39704D] dark:hover:!border-[#39704D] hover:shadow-lg')"
+            [class]="'rounded-lg shadow-md p-2 sm:p-4 text-center transition-all duration-200 cursor-pointer relative flex flex-col items-center justify-center ' + (activeFilter === 'answered' ? 'border !border-[#39704D] dark:!border-[#39704D] bg-green-100 dark:bg-green-950 ring ring-[#39704D] dark:ring-[#39704D] ring-offset-0' : 'bg-white dark:bg-gray-800 border-[2px] !border-gray-200 dark:!border-gray-700 hover:!border-[#39704D] dark:hover:!border-[#39704D] hover:shadow-lg')"
           >
             @let answeredCount = (answeredPrayerBadge$ | async) || 0;
             @if ((answeredCount > 0) && (badgeService.getBadgeFunctionalityEnabled$() | async)) {
@@ -344,7 +344,7 @@ import { environment } from '../../../environments/environment';
           <button
             (click)="setFilter('total')"
             title="Show all prayers"
-            [class]="'rounded-lg shadow-md p-2 sm:p-4 text-center transition-all duration-200 cursor-pointer relative ' + (activeFilter === 'total' ? 'border !border-[#C9A961] dark:!border-[#C9A961] bg-amber-100 dark:bg-amber-900/40 ring ring-[#C9A961] dark:ring-[#C9A961] ring-offset-0' : 'bg-white dark:bg-gray-800 border-[2px] !border-gray-200 dark:!border-gray-700 hover:!border-[#C9A961] dark:hover:!border-[#C9A961] hover:shadow-lg')"
+            [class]="'rounded-lg shadow-md p-2 sm:p-4 text-center transition-all duration-200 cursor-pointer relative flex flex-col items-center justify-center ' + (activeFilter === 'total' ? 'border !border-[#C9A961] dark:!border-[#C9A961] bg-amber-100 dark:bg-amber-900/40 ring ring-[#C9A961] dark:ring-[#C9A961] ring-offset-0' : 'bg-white dark:bg-gray-800 border-[2px] !border-gray-200 dark:!border-gray-700 hover:!border-[#C9A961] dark:hover:!border-[#C9A961] hover:shadow-lg')"
           >
             <div class="text-sm sm:text-xl sm:sm:text-2xl font-bold text-gray-700 dark:text-gray-300 tabular-nums">
               {{ totalPrayersCount }}
@@ -354,7 +354,7 @@ import { environment } from '../../../environments/environment';
           <button
             (click)="setFilter('prompts')"
             title="Show prayer prompts"
-            [class]="'rounded-lg shadow-md p-2 sm:p-4 text-center transition-all duration-200 cursor-pointer relative ' + (activeFilter === 'prompts' ? 'border !border-[#988F83] dark:!border-[#988F83] bg-stone-100 dark:bg-stone-900/40 ring ring-[#988F83] dark:ring-[#988F83] ring-offset-0' : 'bg-white dark:bg-gray-800 border-[2px] !border-gray-200 dark:!border-gray-700 hover:!border-[#988F83] dark:hover:!border-[#988F83] hover:shadow-lg')"
+            [class]="'rounded-lg shadow-md p-2 sm:p-4 text-center transition-all duration-200 cursor-pointer relative flex flex-col items-center justify-center ' + (activeFilter === 'prompts' ? 'border !border-[#988F83] dark:!border-[#988F83] bg-stone-100 dark:bg-stone-900/40 ring ring-[#988F83] dark:ring-[#988F83] ring-offset-0' : 'bg-white dark:bg-gray-800 border-[2px] !border-gray-200 dark:!border-gray-700 hover:!border-[#988F83] dark:hover:!border-[#988F83] hover:shadow-lg')"
           >
             @let promptCount = (promptBadge$ | async) || 0;
             @if ((promptCount > 0) && (badgeService.getBadgeFunctionalityEnabled$() | async)) {
@@ -377,7 +377,7 @@ import { environment } from '../../../environments/environment';
           <button
             (click)="setFilter('personal')"
             title="Show your personal prayers"
-            [class]="'rounded-lg shadow-md p-2 sm:p-4 text-center transition-all duration-200 cursor-pointer relative ' + (activeFilter === 'personal' ? 'border !border-[#2F5F54] dark:!border-[#2F5F54] bg-slate-100 dark:bg-green-900/40 ring ring-[#2F5F54] dark:ring-[#2F5F54] ring-offset-0' : 'bg-white dark:bg-gray-800 border-[2px] !border-gray-200 dark:!border-gray-700 hover:!border-[#2F5F54] dark:hover:!border-[#2F5F54] hover:shadow-lg')"
+            [class]="'rounded-lg shadow-md p-2 sm:p-4 text-center transition-all duration-200 cursor-pointer relative flex flex-col items-center justify-center ' + (activeFilter === 'personal' ? 'border !border-[#2F5F54] dark:!border-[#2F5F54] bg-slate-100 dark:bg-green-900/40 ring ring-[#2F5F54] dark:ring-[#2F5F54] ring-offset-0' : 'bg-white dark:bg-gray-800 border-[2px] !border-gray-200 dark:!border-gray-700 hover:!border-[#2F5F54] dark:hover:!border-[#2F5F54] hover:shadow-lg')"
           >
             <div class="text-sm sm:text-xl sm:sm:text-2xl font-bold text-gray-700 dark:text-gray-300 tabular-nums">
               {{ personalPrayersCount }}
@@ -390,7 +390,7 @@ import { environment } from '../../../environments/environment';
             <button
               (click)="setFilter('planning_center_list')"
               title="Show prayers for Planning Center list members"
-              [class]="'rounded-lg shadow-md p-2 sm:p-4 text-center transition-all duration-200 cursor-pointer relative ' + (activeFilter === 'planning_center_list' ? 'border !border-blue-600 dark:!border-blue-400 bg-slate-100 dark:bg-blue-900/40 ring ring-blue-600 dark:ring-blue-400 ring-offset-0' : 'bg-white dark:bg-gray-800 border-[2px] !border-gray-200 dark:!border-gray-700 hover:!border-blue-600 dark:hover:!border-blue-400 hover:shadow-lg')"
+              [class]="'rounded-lg shadow-md p-2 sm:p-4 text-center transition-all duration-200 cursor-pointer relative flex flex-col items-center justify-center ' + (activeFilter === 'planning_center_list' ? 'border !border-blue-600 dark:!border-blue-400 bg-slate-100 dark:bg-blue-900/40 ring ring-blue-600 dark:ring-blue-400 ring-offset-0' : 'bg-white dark:bg-gray-800 border-[2px] !border-gray-200 dark:!border-gray-700 hover:!border-blue-600 dark:hover:!border-blue-400 hover:shadow-lg')"
             >
               <div class="text-sm sm:text-xl sm:sm:text-2xl font-bold text-gray-700 dark:text-gray-300 tabular-nums">
                 {{ planningCenterListMembers.length }}

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { UserSettingsComponent } from './user-settings.component';
 import { ThemeService } from '../../services/theme.service';
+import { TextSizeService } from '../../services/text-size.service';
 import { SupabaseService } from '../../services/supabase.service';
 import { PrintService } from '../../services/print.service';
 import { PrayerService } from '../../services/prayer.service';
@@ -13,6 +14,7 @@ import { ChangeDetectorRef, SimpleChanges } from '@angular/core';
 describe('UserSettingsComponent', () => {
   let component: UserSettingsComponent;
   let mockThemeService: any;
+  let mockTextSizeService: any;
   let mockSupabaseService: any;
   let mockPrintService: any;
   let mockPrayerService: any;
@@ -35,6 +37,11 @@ describe('UserSettingsComponent', () => {
     mockThemeService = {
       getTheme: vi.fn(() => 'system'),
       setTheme: vi.fn()
+    };
+
+    mockTextSizeService = {
+      getTextSize: vi.fn(() => 'normal'),
+      setTextSize: vi.fn()
     };
 
     mockSupabaseService = {
@@ -111,6 +118,7 @@ describe('UserSettingsComponent', () => {
 
     component = new UserSettingsComponent(
       mockThemeService,
+      mockTextSizeService,
       mockPrintService,
       mockSupabaseService,
       mockPrayerService,
@@ -140,6 +148,13 @@ describe('UserSettingsComponent', () => {
       component.ngOnInit();
       expect(component.theme).toBe('dark');
       expect(mockThemeService.getTheme).toHaveBeenCalled();
+    });
+
+    it('should load current text size from text size service', () => {
+      mockTextSizeService.getTextSize.mockReturnValue('large');
+      component.ngOnInit();
+      expect(component.textSize).toBe('large');
+      expect(mockTextSizeService.getTextSize).toHaveBeenCalled();
     });
 
     it('should load user info from localStorage', () => {
@@ -254,6 +269,31 @@ describe('UserSettingsComponent', () => {
       expect(component.email).toBe('jane@example.com');
     });
 
+    it('should sync theme and text size from services when modal opens', () => {
+      mockThemeService.getTheme.mockReturnValue('dark');
+      mockTextSizeService.getTextSize.mockReturnValue('large');
+      component.theme = 'system';
+      component.textSize = 'normal';
+      component.isOpen = false;
+
+      const changes: SimpleChanges = {
+        isOpen: {
+          currentValue: true,
+          previousValue: false,
+          firstChange: false,
+          isFirstChange: () => false
+        }
+      };
+
+      component.isOpen = true;
+      component.ngOnChanges(changes);
+
+      expect(component.theme).toBe('dark');
+      expect(component.textSize).toBe('large');
+      expect(mockThemeService.getTheme).toHaveBeenCalled();
+      expect(mockTextSizeService.getTextSize).toHaveBeenCalled();
+    });
+
     it('should reset error and success messages when modal opens', () => {
       component.error = 'Some error';
       component.success = 'Some success';
@@ -267,7 +307,7 @@ describe('UserSettingsComponent', () => {
           isFirstChange: () => false
         }
       };
-      
+
       component.isOpen = true; // Now set to true
       component.ngOnChanges(changes);
 
@@ -400,6 +440,29 @@ describe('UserSettingsComponent', () => {
 
       expect(component.theme).toBe('system');
       expect(mockThemeService.setTheme).toHaveBeenCalledWith('system');
+    });
+  });
+
+  describe('handleTextSizeChange', () => {
+    it('should update textSize and call text size service', () => {
+      component.handleTextSizeChange('large');
+
+      expect(component.textSize).toBe('large');
+      expect(mockTextSizeService.setTextSize).toHaveBeenCalledWith('large');
+    });
+
+    it('should handle normal', () => {
+      component.handleTextSizeChange('normal');
+
+      expect(component.textSize).toBe('normal');
+      expect(mockTextSizeService.setTextSize).toHaveBeenCalledWith('normal');
+    });
+
+    it('should handle largest', () => {
+      component.handleTextSizeChange('largest');
+
+      expect(component.textSize).toBe('largest');
+      expect(mockTextSizeService.setTextSize).toHaveBeenCalledWith('largest');
     });
   });
 

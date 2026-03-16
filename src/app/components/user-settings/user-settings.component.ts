@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output, OnInit, OnDestroy, OnChanges, S
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ThemeService } from '../../services/theme.service';
+import { TextSizeService, TextSize } from '../../services/text-size.service';
 import { SupabaseService } from '../../services/supabase.service';
 import { PrintService } from '../../services/print.service';
 import { PrayerService } from '../../services/prayer.service';
@@ -423,6 +424,55 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
             </div>
           </div>
 
+          <!-- Text size -->
+          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
+            <div class="flex items-start gap-2 sm:gap-3">
+              <div class="flex-1">
+                <div class="font-medium text-gray-800 dark:text-gray-100 mb-3 text-sm sm:text-base">
+                  Text size
+                </div>
+                <div class="grid grid-cols-3 gap-1.5 sm:gap-2">
+                  <button
+                    (click)="handleTextSizeChange('normal')"
+                    [ngClass]="{
+                      'border-blue-500 bg-blue-50 dark:bg-blue-900/20': textSize === 'normal',
+                      'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600': textSize !== 'normal'
+                    }"
+                    title="Default text size"
+                    class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all cursor-pointer"
+                  >
+                    <span class="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100">Default</span>
+                  </button>
+                  <button
+                    (click)="handleTextSizeChange('large')"
+                    [ngClass]="{
+                      'border-blue-500 bg-blue-50 dark:bg-blue-900/20': textSize === 'large',
+                      'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600': textSize !== 'large'
+                    }"
+                    title="Larger text"
+                    class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all cursor-pointer"
+                  >
+                    <span class="text-sm sm:text-base font-medium text-gray-800 dark:text-gray-100">Larger</span>
+                  </button>
+                  <button
+                    (click)="handleTextSizeChange('largest')"
+                    [ngClass]="{
+                      'border-blue-500 bg-blue-50 dark:bg-blue-900/20': textSize === 'largest',
+                      'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600': textSize !== 'largest'
+                    }"
+                    title="Largest text"
+                    class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all cursor-pointer"
+                  >
+                    <span class="text-base font-medium text-gray-800 dark:text-gray-100">Largest</span>
+                  </button>
+                </div>
+                <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-2">
+                  Make on-screen text larger for easier reading
+                </p>
+              </div>
+            </div>
+          </div>
+
           <!-- Email Subscription Toggle -->
           <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 space-y-2">
             <div class="flex items-start gap-3">
@@ -792,6 +842,7 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
   receivePushNotifications: boolean | null = null;
   badgeFunctionalityEnabled: boolean | null = null;
   theme: ThemeOption = 'system';
+  textSize: TextSize = 'normal';
   saving = false;
   savingNotification = false;
   savingPushNotification = false;
@@ -855,6 +906,7 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
 
   constructor(
     private themeService: ThemeService,
+    private textSizeService: TextSizeService,
     private printService: PrintService,
     private supabase: SupabaseService,
     private prayerService: PrayerService,
@@ -868,8 +920,9 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    // Load current theme from service
+    // Load current theme and text size from services
     this.theme = this.themeService.getTheme() as ThemeOption;
+    this.textSize = this.textSizeService.getTextSize();
 
     // Load user info from localStorage if available
     const userInfo = this.getUserInfo();
@@ -897,6 +950,8 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['isOpen'] && this.isOpen) {
+      this.theme = this.themeService.getTheme() as ThemeOption;
+      this.textSize = this.textSizeService.getTextSize();
       this.loadPromptTypes();
       this.loadPersonalCategories();
       
@@ -1007,6 +1062,11 @@ export class UserSettingsComponent implements OnInit, OnDestroy {
   handleThemeChange(newTheme: ThemeOption): void {
     this.theme = newTheme;
     this.themeService.setTheme(newTheme);
+  }
+
+  handleTextSizeChange(size: TextSize): void {
+    this.textSize = size;
+    this.textSizeService.setTextSize(size);
   }
 
   setPrintRange(range: PrintRange): void {
