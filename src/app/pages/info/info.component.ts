@@ -123,19 +123,21 @@ import { Subject, takeUntil } from 'rxjs';
                 </button>
               </div>
 
-              <!-- Android CTA + QR -->
-              <div class="w-full flex flex-col items-center gap-2">
+              <!-- Android CTA + QR (disabled, coming soon) -->
+              <div class="w-full flex flex-col items-center gap-2 relative">
                 <button
                   type="button"
-                  (click)="openAndroidStore()"
-                  class="group w-full inline-flex flex-row sm:flex-col items-center justify-center gap-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-200/80 dark:bg-gray-800/70 px-5 py-3 hover:bg-gray-300 dark:hover:bg-gray-700 text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100 shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-300 transition-colors cursor-pointer"
+                  disabled
+                  aria-disabled="true"
+                  aria-label="Android app coming soon"
+                  class="group w-full inline-flex flex-row sm:flex-col items-center justify-center gap-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-200/80 dark:bg-gray-800/70 px-5 py-3 text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100 shadow-md opacity-60 cursor-not-allowed"
                 >
                   <span class="flex w-full items-center justify-center">
                     <span class="mr-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg overflow-hidden bg-gray-300 dark:bg-gray-800 p-0.5">
                       <img src="/android-icon.svg" alt="" class="h-full w-full object-contain" aria-hidden="true" />
                     </span>
                     <span class="text-left leading-tight">
-                      <span class="block text-[10px] uppercase tracking-wider text-gray-600 group-hover:text-gray-800 dark:text-gray-400 whitespace-nowrap">Download on the</span>
+                      <span class="block text-[10px] uppercase tracking-wider text-gray-600 dark:text-gray-400 whitespace-nowrap">Download on the</span>
                       <span class="block text-sm font-semibold whitespace-nowrap">Google Play Store</span>
                     </span>
                   </span>
@@ -155,8 +157,21 @@ import { Subject, takeUntil } from 'rxjs';
                       </div>
                     }
                   </div>
-                  <span class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 group-hover:text-emerald-800 group-hover:dark:text-emerald-200 transition-colors">Tap or Scan</span>
+                  <span class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 transition-colors">Tap or Scan</span>
                 </button>
+                <div
+                  class="absolute inset-0 rounded-xl flex flex-col items-center justify-center gap-1 bg-gray-900/40 dark:bg-gray-900/50 pointer-events-none"
+                  aria-hidden="true"
+                >
+                  <span class="text-sm sm:text-base font-semibold text-white drop-shadow-md">Coming soon</span>
+                  <button
+                    type="button"
+                    (click)="openAndroidHelpModal()"
+                    class="pointer-events-auto text-xs font-medium text-white/95 hover:text-white underline underline-offset-2 drop-shadow-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50 rounded"
+                  >
+                    Want to help?
+                  </button>
+                </div>
               </div>
           </div>
 
@@ -717,6 +732,36 @@ import { Subject, takeUntil } from 'rxjs';
         </div>
       }
 
+      @if (showAndroidHelpModal) {
+        <div
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/60"
+          (click)="closeAndroidHelpModal()"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Help bring the app to Google Play"
+        >
+          <div
+            class="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-2xl max-w-md w-full p-5 sm:p-6 space-y-3 text-gray-800 dark:text-gray-200"
+            (click)="$event.stopPropagation()"
+          >
+            <button
+              type="button"
+              (click)="closeAndroidHelpModal()"
+              class="absolute top-3 right-3 p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 cursor-pointer"
+              aria-label="Close"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+            <p class="font-medium text-gray-900 dark:text-gray-100 text-base">Help bring the app to Google Play</p>
+            <p class="text-sm text-gray-600 dark:text-gray-300">
+              If you would like to help bring the Prayer app to the Google Play Store, please contact <strong class="text-gray-800 dark:text-gray-200">Mark Larson</strong> at <a href="mailto:larsonm@cp-church.org" class="text-emerald-600 dark:text-emerald-400 hover:underline">larsonm@cp-church.org</a>.
+            </p>
+          </div>
+        </div>
+      }
+
       @if (personalActionModal !== null) {
         <div
           class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-black/60"
@@ -804,6 +849,7 @@ export class InfoComponent implements OnInit, OnDestroy {
   showPromptCategoriesModal = false;
   showBadgesModal = false;
   showAndroidTesterModal = false;
+  showAndroidHelpModal = false;
   showPersonalCategoriesModal = false;
   personalActionModal: 'share' | 'edit' | 'delete' | null = null;
 
@@ -878,6 +924,14 @@ export class InfoComponent implements OnInit, OnDestroy {
 
   closeAndroidTesterModal(): void {
     this.showAndroidTesterModal = false;
+  }
+
+  openAndroidHelpModal(): void {
+    this.showAndroidHelpModal = true;
+  }
+
+  closeAndroidHelpModal(): void {
+    this.showAndroidHelpModal = false;
   }
 
   openPersonalActionModal(which: 'share' | 'edit' | 'delete'): void {
