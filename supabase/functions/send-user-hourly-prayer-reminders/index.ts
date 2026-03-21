@@ -1,7 +1,7 @@
 /**
  * Hourly job: send self prayer reminders (push if native + receive_push, else email).
- * Invoked by GitHub Actions: Bearer must match service_role JWT, or X-Hourly-Prayer-Reminders-Secret must match
- * HOURLY_PRAYER_REMINDERS_SECRET (see docs). Uses RPC for SQL-side hour match (minimal egress).
+ * Auth matches send-prayer-reminders: Supabase Edge JWT verification only (no in-function Bearer check).
+ * Invoked from GitHub Actions with secrets.SUPABASE_URL + secrets.SUPABASE_SERVICE_KEY.
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -10,7 +10,7 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-hourly-prayer-reminders-secret',
+    'authorization, x-client-info, apikey, content-type, x-supabase-client-platform',
   'Access-Control-Max-Age': '86400',
 };
 
@@ -38,24 +38,6 @@ serve(async (req) => {
   if (!supabaseUrl || !serviceKey) {
     return new Response(JSON.stringify({ error: 'Server misconfigured' }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-
-  const authHeader = req.headers.get('Authorization') ?? '';
-  const bearer = (authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '').trim();
-  const serviceKeyTrimmed = serviceKey.trim();
-
-  // Optional: set secret with `supabase secrets set HOURLY_PRAYER_REMINDERS_SECRET=...` and the same
-  // value in GitHub Actions (avoids 401 when GitHub's key ≠ legacy JWT in SUPABASE_SERVICE_ROLE_KEY).
-  const cronSecret = (Deno.env.get('HOURLY_PRAYER_REMINDERS_SECRET') ?? '').trim();
-  const cronHeader = (req.headers.get('X-Hourly-Prayer-Reminders-Secret') ?? '').trim();
-  const secretOk = cronSecret.length > 0 && cronHeader === cronSecret;
-  const bearerOk = bearer.length > 0 && bearer === serviceKeyTrimmed;
-
-  if (!secretOk && !bearerOk) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
