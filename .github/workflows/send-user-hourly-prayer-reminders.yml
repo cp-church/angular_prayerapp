@@ -9,14 +9,18 @@ jobs:
   send-user-hourly-reminders:
     runs-on: ubuntu-latest
     steps:
-      # Use the same service_role JWT as in Supabase → Project Settings → API ("service_role" secret).
-      # Anon/public key will get 401: the function compares Authorization to SUPABASE_SERVICE_ROLE_KEY.
+      # Auth (either works after redeploying the function):
+      # 1) Bearer + apikey = legacy service_role JWT (Dashboard → API → service_role), trimmed — must match
+      #    the function's SUPABASE_SERVICE_ROLE_KEY (not the newer sb_secret_… key unless the project uses it everywhere).
+      # 2) Set HOURLY_PRAYER_REMINDERS_SECRET via `supabase secrets set` and the same value in GitHub repo secrets,
+      #    then X-Hourly-Prayer-Reminders-Secret below — you can use SUPABASE_ANON_KEY for Bearer/apikey in that case.
       - name: Invoke send-user-hourly-prayer-reminders Edge Function
         run: |
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
             '${{ secrets.SUPABASE_URL }}/functions/v1/send-user-hourly-prayer-reminders' \
             -H 'Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_KEY }}' \
             -H 'apikey: ${{ secrets.SUPABASE_SERVICE_KEY }}' \
+            -H 'X-Hourly-Prayer-Reminders-Secret: ${{ secrets.HOURLY_PRAYER_REMINDERS_SECRET }}' \
             -H 'Content-Type: application/json')
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
