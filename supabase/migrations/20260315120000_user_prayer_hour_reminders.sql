@@ -43,17 +43,24 @@ CREATE POLICY "user_prayer_hour_reminders_delete_own"
 GRANT SELECT, INSERT, DELETE ON TABLE public.user_prayer_hour_reminders TO authenticated;
 GRANT ALL ON TABLE public.user_prayer_hour_reminders TO service_role;
 
--- MFA / localStorage auth: browser uses anon key without Supabase JWT, same as personal_prayers.
+-- MFA / localStorage auth: browser uses anon key without Supabase JWT (same pattern as device_tokens).
+-- Do not use TO public — that applies to every role and ORs with JWT policies, bypassing ownership for
+-- authenticated sessions. Scope open access to role anon only. Anon has no auth.jwt() email for row checks.
 GRANT SELECT, INSERT, DELETE ON TABLE public.user_prayer_hour_reminders TO anon;
 
 DROP POLICY IF EXISTS "Allow all user_prayer_hour_reminders access" ON public.user_prayer_hour_reminders;
-CREATE POLICY "Allow all user_prayer_hour_reminders access"
+DROP POLICY IF EXISTS "anon_user_prayer_hour_reminders_mfa_access" ON public.user_prayer_hour_reminders;
+
+CREATE POLICY "anon_user_prayer_hour_reminders_mfa_access"
   ON public.user_prayer_hour_reminders
   AS PERMISSIVE
   FOR ALL
-  TO public
+  TO anon
   USING (true)
   WITH CHECK (true);
+
+COMMENT ON POLICY "anon_user_prayer_hour_reminders_mfa_access" ON public.user_prayer_hour_reminders IS
+  'MFA/localStorage clients use the anon API key (no user JWT). Scoped to role anon so authenticated users use JWT policies above.';
 
 -- Returns only rows whose local wall hour in iana_timezone equals local_hour right now (server UTC "now").
 CREATE OR REPLACE FUNCTION public.get_user_prayer_hour_reminders_due_now()

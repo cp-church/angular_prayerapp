@@ -70,7 +70,11 @@ export class UserPrayerReminderService {
   }
 
   async removeSlot(email: string, id: string): Promise<UserPrayerHourReminderSlot[]> {
-    const { error } = await this.supabase.client.from('user_prayer_hour_reminders').delete().eq('id', id);
+    const { error } = await this.supabase.client
+      .from('user_prayer_hour_reminders')
+      .delete()
+      .eq('id', id)
+      .eq('user_email', email.trim());
     if (error) {
       throw error;
     }
