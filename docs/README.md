@@ -34,6 +34,7 @@ A comprehensive prayer request management system for Cross Pointe Church built w
 - ✅ **Prayer Encouragement (Pray For)**: Users can click “Pray For” on community prayers; requesters and admins see how many people have prayed (configurable cooldown; admin toggle and cooldown hours in Admin settings)
 - ✅ Theme system (light/dark)
 - ✅ **Text size** (Settings): Users can choose Default, Larger, or Largest text; preference is saved and applied app-wide for easier reading.
+- ✅ **Prayer reminders** (Settings): Optional hourly nudges at the top of chosen clock hours (device time zone); email and/or push depending on **Email subscription** and push registration. Separate from community prayer-update reminders. In-app Help: **Prayer reminders** topic + **App Settings** subsection.
 - ✅ **Delete account** (Settings): Users can remove their account; verification dialog offers to keep prayers (so they stay lifted up) or delete account and all their prayers, then sign out
 - ✅ Planning Center contact lookup
 - ✅ Planning Center members list mapping (filter prayers by list members)
@@ -95,6 +96,7 @@ src/
 ### Email and Push Notifications
 - **Email:** Built on Microsoft 365 Graph API; queue-based processing; HTML templates; subscriber management. **`is_active`** on `email_subscribers` controls whether a user receives **mass email** (new/approved prayers, updates). Turning off "email notifications" only stops those bulk emails; direct emails (e.g. your prayer approved/denied) still go out.
 - **Push (native app):** Controlled by **`receive_push`** on `email_subscribers`. Push is set to `true` only when the user installs the app and a device token is registered; default is `false`. Admins have a separate **`receive_admin_push`** for admin alerts. See [Capacitor docs](Capacitor/CAPACITOR_BACKEND_SETUP.md) for setup. When an admin approves a prayer or update, the requester/author receives a push notification if they have push enabled.
+- **Personal hourly prayer reminders (Settings):** Users can schedule **personal** “nudge” times (top of chosen hours, device time zone). Delivery uses **email** when mass email is on and/or **push** when the device is registered—see [CHANGELOG](CHANGELOG.md) (*Prayer reminders (hourly nudges)*) and [DEVELOPMENT.md](DEVELOPMENT.md) (§ *User hourly prayer reminders (self nudges)* and § *Prayer reminders (hourly nudges) (Settings)*). These are not the same as automated **community** prayer-update reminders configured by admins.
 
 ### Prayer Encouragement (Pray For)
 When enabled by an admin, community prayer cards show a **“Pray For”** button. Users can tap it to record that they prayed for that request; the count is shown to the person who submitted the prayer and to admins (who clicked is anonymous). A **cooldown** (configurable in Admin → Prayer Encouragement, 1–168 hours) limits how often the same user can click Pray For on the same prayer. Settings are stored in **`admin_settings`** (`prayer_encouragement_enabled`, `prayer_encouragement_cooldown_hours`) and cached in the app. The in-app **Help & Guidance** modal includes a “Prayer Encouragement (Pray For)” section for users.

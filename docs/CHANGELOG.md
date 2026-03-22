@@ -132,6 +132,19 @@ Major features and milestones for the Prayer App.
   - `user-settings.component.ts`: Text size UI (three buttons), `handleTextSizeChange()`, sync from service in `ngOnInit` and `ngOnChanges` when modal opens; unit tests for loading, syncing, and handling each size.
   - `help-content.service.ts`: "Text size" help block under `help_settings` (after Theme Options).
 
+### Prayer reminders (hourly nudges) ✅
+- ✅ **Optional personal reminders at the top of chosen clock hours**
+  - In **Settings**, users can add one or more hours (0–23) in their **device time zone** to receive a short nudge to pray. Add/remove slots with the dropdown and **Add reminder** / **Remove**.
+  - **Email**: Sent when **Email subscription** is on (`email_subscribers.is_active`), using template key **`user_hourly_prayer_reminder`** (`{{appLink}}` in Edge; align **`APP_URL`** with `environment.appUrl` in production).
+  - **Push**: Sent when **push** is enabled and the device has a registered token (`receive_push` + `device_tokens`), same pattern as other user pushes.
+  - If **both** email and push apply, the user may receive **both** at that hour. These reminders are **personal** and separate from **community** prayer-update reminders configured by admins for requesters.
+
+- ✅ **Implementation**
+  - **DB**: `user_prayer_hour_reminders` (IANA timezone + local wall hour per row); RPC `get_user_prayer_hour_reminders_due_now()` for hourly matching. Migration: `20260315120000_user_prayer_hour_reminders.sql`.
+  - **Edge**: `supabase/functions/send-user-hourly-prayer-reminders/` — invoked hourly via `.github/workflows/send-user-hourly-prayer-reminders.yml` (`cron: 0 * * * *`), secrets `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` (same pattern as `send-prayer-reminders`).
+  - **App**: `UserPrayerReminderService` (stale-while-revalidate cache on session), `UserSessionService` fields `prayerHourReminders` / `prayerHourRemindersFetchedAt`; UI in `user-settings.component.ts`. Unit tests: `user-prayer-reminder.service.spec.ts`.
+  - **Help**: Standalone section **`help_prayer_reminders`** (“Prayer reminders”) in `help-content.service.ts`, plus **“Prayer reminders (hourly nudges)”** under **App Settings** (above Feedback Form). See **DEVELOPMENT.md** (Settings + “User hourly prayer reminders”).
+
 ## [Previous] - January 2026
 
 ### Email Badge Logout with Confirmation Modal ✅

@@ -550,6 +550,35 @@ export class HelpContentService {
         createdBy: 'system',
       },
       {
+        id: 'help_prayer_reminders',
+        title: 'Prayer reminders',
+        description: 'Optional hourly nudges to pause and pray',
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+        content: [
+          {
+            subtitle: 'What they are',
+            text: 'Prayer reminders are optional, personal prompts at the top of clock hours you choose—a short nudge to pause and pray. They are only for you and are separate from community prayer update emails (those are set up by admins for people who submitted requests).',
+          },
+          {
+            subtitle: 'How to set them up',
+            text: 'Open Settings (gear icon). In the Prayer reminders section, pick an hour from the dropdown and tap Add reminder. You can add more than one hour. Remove any slot you no longer need. Reminder times use your device time zone.',
+          },
+          {
+            subtitle: 'Email and push',
+            text: 'If Email subscription is on in Settings, you can receive a reminder email at each chosen hour. If push notifications are enabled and this device is registered for push, you can also get a push at those times. If both are on, you may receive both.',
+          },
+          {
+            subtitle: 'Tips',
+            text: 'Start with one or two hours that fit your routine. You can change or clear reminders anytime in Settings without affecting the rest of your account.',
+          },
+        ],
+        order: 10,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'system',
+      },
+      {
         id: 'help_feedback',
         title: 'Send Feedback',
         description: 'Share suggestions, report bugs, and request features',
@@ -572,7 +601,7 @@ export class HelpContentService {
             text: 'Your feedback is valuable! Whether you find a bug, want a new feature, or have a suggestion to make the app better, please share it with us. We read and consider all feedback from our users.',
           },
         ],
-        order: 10,
+        order: 11,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -613,6 +642,10 @@ export class HelpContentService {
             text: 'Set your preferred default view when you log in. Choose between "Current Prayers View" to see public prayers waiting for prayer, or "Personal Prayers View" to see your personal prayer list. Your selection is saved and will be remembered each time you log in.',
           },
           {
+            subtitle: 'Prayer reminders (hourly nudges)',
+            text: 'In Settings you can choose one or more clock hours (at the top of each hour) when you would like a short reminder to pray. Times follow your device time zone. If email subscription is on, you will get an email at those hours; if push notifications are on and this device is registered for push, you will also get a push reminder—if both are on, you may receive both. Pick an hour with the dropdown, tap Add reminder, or Remove a slot you no longer want. These are your personal reminders to pause and pray; they are separate from community prayer update reminders (which admins configure for requesters).',
+          },
+          {
             subtitle: 'Feedback Form',
             text: 'Have suggestions or found a bug? Use the feedback form in settings to share your thoughts with us. Your feedback helps us improve the app and make it work better for you. Simply describe your feedback, and we\'ll review it to enhance your experience.',
           },
@@ -625,7 +658,7 @@ export class HelpContentService {
             text: 'At the bottom of the settings panel you can delete your account. A verification dialog will ask you to choose: "Delete account but keep my prayers" so your prayers continue to be lifted up by others, or "Delete my account and all my prayers" to remove your account and all prayers you submitted. After either choice you will be signed out and would need to be re-approved to use the app again.',
           },
         ],
-        order: 11,
+        order: 12,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),

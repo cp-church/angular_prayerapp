@@ -805,6 +805,15 @@ Users can change on-screen text size from the Settings modal:
 - **Implementation**: `TextSizeService` (`src/app/services/text-size.service.ts`) — `getTextSize()`, `setTextSize(size)`; persists and applies scale on init and when changed. `user-settings.component.ts` — text size UI, `handleTextSizeChange()`, sync from service in `ngOnInit` and when modal opens via `ngOnChanges`.
 - **Help**: App Settings in `help-content.service.ts` includes a "Text size" entry (after Theme Options) describing the options and that the preference is saved automatically.
 
+#### Prayer reminders (hourly nudges) (Settings)
+
+Users can opt in to **personal** reminders at the top of selected clock hours (not tied to community prayer-update cadence):
+
+- **Location**: Settings modal → **Prayer reminders** section (above the feedback form when GitHub feedback is enabled). Pick an hour, **Add reminder**, or **Remove** on a slot. Times use the device IANA time zone when saving.
+- **Delivery**: **Email** when the user’s **Email subscription** is on (`is_active`). **Push** when `receive_push` is true and a device token exists. Both may fire in the same hour if both are enabled.
+- **Implementation**: `UserPrayerReminderService` (`src/app/services/user-prayer-reminder.service.ts`) — loads/caches slots on `UserSessionData`; `user-settings.component.ts` — `loadPrayerReminders()`, add/remove handlers. Backend: table `user_prayer_hour_reminders`, Edge Function `send-user-hourly-prayer-reminders`, hourly GitHub Action (see § *User hourly prayer reminders* below).
+- **Help**: `help-content.service.ts` — standalone section `help_prayer_reminders` (“Prayer reminders”) and **App Settings** item **“Prayer reminders (hourly nudges)”** (after Default Prayer View, before Feedback Form).
+
 Both logout methods call `adminAuthService.logout()` which:
 - Signs out from Supabase Auth
 - Clears all session data and localStorage
@@ -1069,6 +1078,8 @@ Users can save one or more **local clock hours** (with an IANA time zone) in **S
 - **Edge function**: `supabase/functions/send-user-hourly-prayer-reminders/` — same auth model as **`send-prayer-reminders`**. Sends **email** when `email_subscribers.is_active` is not false (same idea as session `isActive`). Sends **push** when `receive_push` is true and a `device_tokens` row exists (session `receivePush` + native). **Both** when both apply. **Email** uses `email_templates` key **`user_hourly_prayer_reminder`** with **`{{appLink}}`** from Edge secret **`APP_URL`** (match **`environment.appUrl`** in prod). The function prefixes **`https://`** when **`APP_URL`** is host-only so links are not rewritten to **`x-webdoc://`** in Apple Mail. Invokes `send-email` and/or `send-push-notification`.
 - **GitHub Actions**: `.github/workflows/send-user-hourly-prayer-reminders.yml` (`cron: 0 * * * *`), same secrets as **`send-prayer-reminders.yml`**: **`SUPABASE_URL`** and **`SUPABASE_SERVICE_KEY`** (service_role JWT).
 - **App**: `UserPrayerReminderService` + cache on `UserSessionData`; settings UI is hour-only and saves `Intl.DateTimeFormat().resolvedOptions().timeZone`. Rows created before a device time-zone change keep their stored IANA until removed.
+
+- **Documentation**: [CHANGELOG.md](CHANGELOG.md) (*Prayer reminders (hourly nudges)*), [docs/README.md](README.md) (Core Capabilities + Email/Push), in-app Help (`help_prayer_reminders` + App Settings). User-facing subsection: **Prayer reminders (hourly nudges) (Settings)** above.
 
 ---
 

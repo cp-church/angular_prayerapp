@@ -79,6 +79,8 @@ describe('HelpContentService', () => {
         'help_presentation',
         'help_printing',
         'help_email_subscription',
+        'help_prayer_reminders',
+        'help_feedback',
         'help_settings',
       ];
 
