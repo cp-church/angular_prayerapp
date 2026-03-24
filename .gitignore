@@ -79,3 +79,6 @@ app-store-screenshots/output/*.png
 # Android signing keystores - never commit (contains private key)
 *.jks
 *.keystore
+
+# Android bug reports (adb / emulator dumps; large, may contain sensitive data)
+bugreport-*.zip
