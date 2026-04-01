@@ -17,6 +17,10 @@ import { Subject, takeUntil } from 'rxjs';
       --safe-area-inset-right: env(safe-area-inset-right, 0px);
       --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
       --safe-area-inset-left: env(safe-area-inset-left, 0px);
+      /* Uniform scale for 5.5×8.5in book view only (sm+; reset on TV & mobile) */
+      --info-book-content-scale: 0.78;
+      /* 16:9 TV / kiosk: 1 = fill frame; layout uses flex + fluid type below */
+      --info-tv-content-scale: 1;
     }
 
     .safe-area-container {
@@ -35,32 +39,241 @@ import { Subject, takeUntil } from 'rxjs';
       top: max(1rem, var(--safe-area-inset-top));
       right: max(1rem, var(--safe-area-inset-right));
     }
+
+    /* Info page layout: book size (5.5×8.5 in), full-bleed on smallest screens, 16:9 on large TVs */
+    .info-page-shell {
+      width: 100%;
+    }
+
+    .info-page-body {
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* Smallest screens: no fixed page height or narrow book width */
+    @media (max-width: 639px) {
+      .info-page-body {
+        max-width: none;
+        max-height: none;
+        overflow: visible;
+      }
+    }
+
+    /* sm+ : portrait “page” 5.5in × 8.5in (11∶17); frame keeps book proportions (overridden on large TVs) */
+    @media (min-width: 640px) {
+      .info-page-body {
+        box-sizing: border-box;
+        /* Exact book aspect; shrink uniformly if viewport is short or narrow */
+        width: min(5.5in, calc(100vw - 2rem));
+        aspect-ratio: 11 / 17;
+        max-height: min(8.5in, calc(100dvh - 4rem));
+        max-width: min(5.5in, calc(100vw - 2rem));
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        margin-left: auto;
+        margin-right: auto;
+        border-radius: 0.75rem;
+        box-shadow:
+          0 1px 3px rgba(0, 0, 0, 0.08),
+          0 4px 12px rgba(0, 0, 0, 0.06);
+      }
+
+      /* Scale all content proportionally (layout unchanged; fits the page better) */
+      .info-page-body-scaled {
+        zoom: var(--info-book-content-scale);
+      }
+
+      /* Padding balanced to the scaled page */
+      .info-page-body .info-page-body-scaled.safe-area-horizontal {
+        padding-top: 1.5rem;
+        padding-bottom: 2rem;
+      }
+    }
+
+    /*
+     * Wide “TV / kiosk” view: hide the long Feature overview block (hero + CTAs only).
+     * Uses min-width only so short viewports (browser chrome, taskbar) still qualify.
+     */
+    @media (min-width: 1920px) {
+      :host .info-page-feature-overview {
+        display: none !important;
+      }
+    }
+
+    /* Large TV only: 16:9 content frame (replaces book dimensions) */
+    @media (min-width: 1920px) and (min-height: 720px) {
+      .info-page-body {
+        max-width: min(100vw - 2.5rem, calc((100vh - 2.5rem) * 16 / 9));
+        width: min(100vw - 2.5rem, calc((100vh - 2.5rem) * 16 / 9));
+        max-height: min(100vh - 2.5rem, calc((100vw - 2.5rem) * 9 / 16));
+        aspect-ratio: 16 / 9;
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        margin-left: auto;
+        margin-right: auto;
+        border-radius: 0.75rem;
+        box-shadow:
+          0 4px 24px rgba(0, 0, 0, 0.12),
+          0 0 0 1px rgba(0, 0, 0, 0.04);
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .info-page-body-scaled {
+        zoom: var(--info-tv-content-scale);
+        flex: 1 1 auto;
+        min-height: 0;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .info-page-body .info-page-body-scaled.safe-area-horizontal {
+        padding: clamp(0.75rem, 2vmin, 1.5rem) clamp(1rem, 3vw, 2.5rem);
+        min-height: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+      }
+
+      .info-page-info-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        width: 100%;
+      }
+
+      .info-page-tv-hero {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-evenly;
+        align-items: stretch;
+        width: 100%;
+        min-height: 0;
+        gap: clamp(0.75rem, 2.5vmin, 2rem);
+      }
+
+      .info-page-tv-hero .info-page-hero-row {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        justify-content: flex-start;
+        flex-wrap: nowrap;
+        gap: clamp(1.25rem, 3vw, 3rem);
+      }
+
+      .info-page-tv-hero .info-page-hero-icon {
+        width: clamp(7rem, 18vmin, 15rem);
+        height: clamp(7rem, 18vmin, 15rem);
+        flex-shrink: 0;
+      }
+
+      .info-page-tv-hero .info-page-title {
+        font-size: clamp(2.5rem, 7vmin, 6rem);
+        line-height: 1.08;
+        text-align: left;
+      }
+
+      .info-page-tv-hero .info-page-verse {
+        max-width: none;
+        width: 100%;
+        font-size: clamp(1.2rem, 3.2vmin, 2.35rem);
+        line-height: 1.45;
+        text-align: left;
+      }
+
+      .info-page-tv-hero .info-page-cta-grid {
+        width: 100%;
+        align-items: stretch;
+        gap: clamp(1.25rem, 3vmin, 3rem);
+      }
+
+      .info-page-tv-hero .info-page-cta-grid > div {
+        flex: 1 1 0;
+        min-width: 0;
+      }
+
+      .info-page-tv-hero .info-page-cta-grid button {
+        min-height: clamp(15rem, 40vmin, 32rem);
+        padding: clamp(1.75rem, 4.2vmin, 3.25rem) clamp(1.5rem, 3.5vw, 2.75rem);
+        font-size: clamp(1.35rem, 3.4vmin, 2.35rem);
+        border-radius: 1.25rem;
+      }
+
+      .info-page-tv-hero .info-page-cta-grid button .text-sm {
+        font-size: clamp(1.25rem, 3.2vmin, 2.15rem) !important;
+      }
+
+      .info-page-tv-hero .info-page-cta-grid button .h-9.w-9 {
+        width: clamp(3.75rem, 10vmin, 7rem) !important;
+        height: clamp(3.75rem, 10vmin, 7rem) !important;
+        min-width: clamp(3.75rem, 10vmin, 7rem) !important;
+        min-height: clamp(3.75rem, 10vmin, 7rem) !important;
+      }
+
+      .info-page-tv-hero .info-page-cta-grid button svg {
+        width: clamp(2.25rem, 5.5vmin, 4rem) !important;
+        height: clamp(2.25rem, 5.5vmin, 4rem) !important;
+      }
+
+      .info-page-tv-hero .info-page-cta-grid button .text-xl {
+        font-size: clamp(2.25rem, 5.5vmin, 4rem) !important;
+      }
+
+      .info-page-tv-hero .info-page-cta-grid .info-page-qr-tile {
+        width: clamp(12rem, 28vmin, 20rem) !important;
+        height: clamp(12rem, 28vmin, 20rem) !important;
+        min-width: clamp(12rem, 28vmin, 20rem) !important;
+        min-height: clamp(12rem, 28vmin, 20rem) !important;
+        border-radius: 1.25rem;
+      }
+
+      .info-page-tv-hero .info-page-cta-grid .info-page-qr-tile img {
+        width: clamp(10rem, 24vmin, 17rem) !important;
+        height: clamp(10rem, 24vmin, 17rem) !important;
+      }
+
+      .info-page-tv-hero .info-page-cta-grid .info-page-qr-tile > .grid {
+        width: clamp(10rem, 24vmin, 17rem) !important;
+        height: clamp(10rem, 24vmin, 17rem) !important;
+      }
+    }
   `,
   template: `
-    <div class="w-full min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors safe-area-container">
+    <div
+      class="info-page-shell w-full min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors safe-area-container flex flex-col sm:items-center"
+    >
       <div class="absolute z-10 safe-area-top-right">
         <app-theme-toggle></app-theme-toggle>
       </div>
-      <div class="max-w-6xl mx-auto safe-area-horizontal space-y-16">
+      <div class="info-page-body">
+        <div class="info-page-body-scaled safe-area-horizontal space-y-16">
         <!-- Hero: image + title + description -->
-        <section class="space-y-10">
+        <section class="info-page-info-section flex flex-col gap-5">
+          <div class="info-page-tv-hero flex flex-col gap-5">
           <div class="space-y-6">
-            <div class="inline-flex items-center gap-4 mb-2">
-              <div class="h-20 w-20 shrink-0 rounded-2xl bg-gray-200 dark:bg-gray-800 flex items-center justify-center shadow-xl overflow-hidden">
+            <div class="info-page-hero-row inline-flex items-center gap-4 mb-2">
+              <div class="info-page-hero-icon h-20 w-20 shrink-0 rounded-2xl bg-gray-200 dark:bg-gray-800 flex items-center justify-center shadow-xl overflow-hidden">
                 <img src="/CrossPointPrayer.jpg" alt="Prayer App Icon" class="h-full w-full rounded-2xl object-contain shadow-xl" />
               </div>
-              <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight">
+              <h1 class="info-page-title text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight">
                 Cross Pointe<br />
                 <span class="text-emerald-600 dark:text-emerald-300">Prayer Community</span>
               </h1>
             </div>
-            <p class="text-base sm:text-lg text-gray-600 dark:text-gray-300 max-w-xl">
+            <p class="info-page-verse text-base sm:text-lg text-gray-600 dark:text-gray-300 max-w-xl">
               Rejoice always, pray without ceasing, give thanks in all circumstances; for this is the will of God in Christ Jesus for you. <span class="whitespace-nowrap">1 Thes. 5:16–18</span>
             </p>
           </div>
 
           <!-- CTA buttons: second row under hero -->
-          <div class="w-full grid gap-3 sm:gap-4 sm:grid-cols-3">
+          <div class="info-page-cta-grid w-full grid gap-3 sm:gap-4 sm:grid-cols-3">
               <!-- Web app CTA + QR -->
               <div class="w-full flex flex-col items-center gap-2">
                 <button
@@ -73,18 +286,17 @@ import { Subject, takeUntil } from 'rxjs';
                       <img src="/CrossPointPrayer.jpg" alt="" class="h-full w-full object-contain" />
                     </span>
                     <span class="text-left leading-tight">
-                      <span class="block text-[10px] uppercase tracking-wider text-gray-600 group-hover:text-gray-800 dark:text-gray-400 whitespace-nowrap">Open in browser</span>
                       <span class="block text-sm font-semibold whitespace-nowrap">Web Site</span>
                     </span>
                   </span>
                   <div
-                    class="h-20 w-20 min-h-20 min-w-20 shrink-0 rounded-xl border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-100 flex items-center justify-center p-1 ring-2 ring-emerald-400/50"
+                    class="info-page-qr-tile hidden sm:flex sm:h-28 sm:w-28 sm:min-h-28 sm:min-w-28 shrink-0 rounded-xl border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-100 items-center justify-center p-1 ring-2 ring-emerald-400/50"
                     aria-hidden="true"
                   >
                     @if (webAppQrUrl) {
-                      <img [src]="webAppQrUrl" alt="QR code for web app" class="h-16 w-16 shrink-0 rounded object-contain" width="64" height="64" loading="lazy" />
+                      <img [src]="webAppQrUrl" alt="QR code for web app" class="h-24 w-24 shrink-0 rounded object-contain" width="96" height="96" loading="lazy" />
                     } @else {
-                      <div class="h-16 w-16 grid grid-cols-5 grid-rows-5 gap-0 shrink-0">
+                      <div class="h-24 w-24 grid grid-cols-5 grid-rows-5 gap-0 shrink-0">
                         <div class="bg-black"></div><div class="bg-black"></div><div class="bg-black"></div><div class="bg-black"></div><div class="bg-black"></div>
                         <div class="bg-black"></div><div class="bg-white"></div><div class="bg-white"></div><div class="bg-white"></div><div class="bg-black"></div>
                         <div class="bg-black"></div><div class="bg-white"></div><div class="bg-black"></div><div class="bg-white"></div><div class="bg-black"></div>
@@ -93,7 +305,6 @@ import { Subject, takeUntil } from 'rxjs';
                       </div>
                     }
                   </div>
-                  <span class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 group-hover:text-emerald-800 group-hover:dark:text-emerald-200 transition-colors">Tap or Scan</span>
                 </button>
               </div>
 
@@ -109,17 +320,15 @@ import { Subject, takeUntil } from 'rxjs';
                       <span class="text-xl sm:text-2xl font-semibold text-white">&#63743;</span>
                     </span>
                     <span class="text-left leading-tight">
-                      <span class="block text-[10px] uppercase tracking-wider text-gray-600 group-hover:text-gray-800 dark:text-gray-400 whitespace-nowrap">Download on the</span>
-                      <span class="block text-sm font-semibold whitespace-nowrap">Apple App Store</span>
+                      <span class="block text-sm font-semibold whitespace-nowrap">App Store</span>
                     </span>
                   </span>
                   <div
-                    class="h-20 w-20 min-h-20 min-w-20 shrink-0 rounded-xl border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-100 flex items-center justify-center p-1 ring-2 ring-emerald-400/50"
+                    class="info-page-qr-tile hidden sm:flex sm:h-28 sm:w-28 sm:min-h-28 sm:min-w-28 shrink-0 rounded-xl border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-100 items-center justify-center p-1 ring-2 ring-emerald-400/50"
                     aria-hidden="true"
                   >
-                    <img [src]="iosStoreQrUrl" alt="QR code for App Store" class="h-16 w-16 shrink-0 rounded object-contain" width="64" height="64" loading="lazy" />
+                    <img [src]="iosStoreQrUrl" alt="QR code for App Store" class="h-24 w-24 shrink-0 rounded object-contain" width="96" height="96" loading="lazy" />
                   </div>
-                  <span class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 group-hover:text-emerald-800 group-hover:dark:text-emerald-200 transition-colors">Tap or Scan</span>
                 </button>
               </div>
 
@@ -128,26 +337,32 @@ import { Subject, takeUntil } from 'rxjs';
                 <button
                   type="button"
                   (click)="openAndroidStore()"
-                  aria-label="Download on Google Play"
+                  aria-label="Download on Play Store"
                   class="group w-full inline-flex flex-row sm:flex-col items-center justify-center gap-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-200/80 dark:bg-gray-800/70 px-5 py-3 hover:bg-gray-300 dark:hover:bg-gray-700 text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100 shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-300 transition-colors cursor-pointer"
                 >
                   <span class="flex w-full items-center justify-center">
-                    <span class="mr-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg overflow-hidden bg-gray-900 p-0.5">
-                      <img src="/android-icon.svg" alt="" class="h-full w-full object-contain" aria-hidden="true" />
+                    <span
+                      class="mr-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-black text-white"
+                      aria-hidden="true"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" class="h-5 w-5 shrink-0 sm:h-6 sm:w-6" fill="currentColor" aria-hidden="true">
+                        <path
+                          d="M40-240q9-107 65.5-197T256-580l-74-128q-6-9-3-19t13-15q8-5 18-2t16 12l74 128q86-36 180-36t180 36l74-128q6-9 16-12t18 2q10 5 13 15t-3 19l-74 128q94 53 150.5 143T920-240H40Zm275.5-124.5Q330-379 330-400t-14.5-35.5Q301-450 280-450t-35.5 14.5Q230-421 230-400t14.5 35.5Q259-350 280-350t35.5-14.5Zm400 0Q730-379 730-400t-14.5-35.5Q701-450 680-450t-35.5 14.5Q630-421 630-400t14.5 35.5Q659-350 680-350t35.5-14.5Z"
+                        />
+                      </svg>
                     </span>
                     <span class="text-left leading-tight">
-                      <span class="block text-[10px] uppercase tracking-wider text-gray-600 group-hover:text-gray-800 dark:text-gray-400 group-hover:dark:text-gray-200 whitespace-nowrap">Download on the</span>
-                      <span class="block text-sm font-semibold whitespace-nowrap">Google Play Store</span>
+                      <span class="block text-sm font-semibold whitespace-nowrap">Play Store</span>
                     </span>
                   </span>
                   <div
-                    class="h-20 w-20 min-h-20 min-w-20 shrink-0 rounded-xl border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-100 flex items-center justify-center p-1 ring-2 ring-emerald-400/50"
+                    class="info-page-qr-tile hidden sm:flex sm:h-28 sm:w-28 sm:min-h-28 sm:min-w-28 shrink-0 rounded-xl border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-100 items-center justify-center p-1 ring-2 ring-emerald-400/50"
                     aria-hidden="true"
                   >
                     @if (androidStoreQrUrl) {
-                      <img [src]="androidStoreQrUrl" alt="QR code for Google Play" class="h-16 w-16 shrink-0 rounded object-contain" width="64" height="64" loading="lazy" />
+                      <img [src]="androidStoreQrUrl" alt="QR code for Play Store" class="h-24 w-24 shrink-0 rounded object-contain" width="96" height="96" loading="lazy" />
                     } @else {
-                      <div class="h-16 w-16 grid grid-cols-5 grid-rows-5 gap-0 shrink-0">
+                      <div class="h-24 w-24 grid grid-cols-5 grid-rows-5 gap-0 shrink-0">
                         <div class="bg-black"></div><div class="bg-black"></div><div class="bg-black"></div><div class="bg-black"></div><div class="bg-black"></div>
                         <div class="bg-black"></div><div class="bg-white"></div><div class="bg-white"></div><div class="bg-white"></div><div class="bg-black"></div>
                         <div class="bg-black"></div><div class="bg-white"></div><div class="bg-black"></div><div class="bg-white"></div><div class="bg-black"></div>
@@ -156,19 +371,19 @@ import { Subject, takeUntil } from 'rxjs';
                       </div>
                     }
                   </div>
-                  <span class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 group-hover:text-emerald-800 group-hover:dark:text-emerald-200 transition-colors">Tap or Scan</span>
                 </button>
               </div>
           </div>
+          </div>
 
-          <!-- Feature overview + preview -->
-          <div class="relative">
+          <!-- Feature overview + preview (hidden on large TV — hero + CTAs only) -->
+          <div class="info-page-feature-overview relative">
             <div
               class="absolute -inset-4 bg-gradient-to-br from-emerald-500/20 via-blue-500/10 to-amber-400/10 rounded-3xl blur-3xl opacity-70"
               aria-hidden="true"
             ></div>
             <p class="text-xs uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-300 mb-1">Feature overview</p>
-            <p class="text-sm text-gray-600 dark:text-gray-200 mb-4">Tap the elements below to see how it works inside the app.</p>
+            <p class="text-sm text-gray-600 dark:text-gray-200 mb-4">Explore the elements below to see how it works inside the app.</p>
             <div class="relative bg-gray-200/90 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700 rounded-3xl p-4 sm:p-6 shadow-2xl shadow-[0_0_0_1px_rgba(57,112,77,0.2),0_0_20px_rgba(57,112,77,0.25)] dark:shadow-[0_0_0_1px_rgba(57,112,77,0.35),0_0_20px_rgba(57,112,77,0.35)] space-y-4">
               <!-- Mock header: logo on first row, icons in second row on mobile (like prod) -->
               <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
@@ -541,17 +756,7 @@ import { Subject, takeUntil } from 'rxjs';
           </div>
         </section>
 
-        <!-- Footer -->
-        <footer class="border-t border-gray-200 dark:border-gray-800 pt-6 flex flex-wrap items-center justify-between gap-4 text-sm text-gray-500 dark:text-gray-400">
-          <div class="flex flex-wrap gap-4">
-            <a routerLink="/privacy" class="hover:text-gray-700 dark:hover:text-gray-200 hover:underline">Privacy</a>
-            <a routerLink="/support" class="hover:text-gray-700 dark:hover:text-gray-200 hover:underline">Support</a>
-          </div>
-          <p class="text-xs sm:text-sm">
-            Already part of the community?
-            <a routerLink="/login" class="text-emerald-600 dark:text-emerald-300 hover:text-emerald-700 dark:hover:text-emerald-200 hover:underline">Sign in</a>
-          </p>
-        </footer>
+        </div>
       </div>
 
       @if (headerPreview !== null) {
@@ -643,7 +848,7 @@ import { Subject, takeUntil } from 'rxjs';
               <li><strong class="text-gray-800 dark:text-gray-200">Cities</strong> — Prompts for local outreach, missions, or city-wide needs.</li>
             </ul>
             <p class="text-xs text-gray-500 dark:text-gray-400">
-              Tap a category on the app to filter the list. Categories are set by your church’s leaders.
+              Explore a category on the app to filter the list. Categories are set by your church’s leaders.
             </p>
           </div>
         </div>
@@ -676,7 +881,7 @@ import { Subject, takeUntil } from 'rxjs';
               The green circle with a number is a <strong class="text-gray-800 dark:text-gray-200">badge</strong>. It shows how many items are unread—for example, new current prayers, new updates on a request, or new prompts.
             </p>
             <p class="text-sm text-gray-600 dark:text-gray-300">
-              Tap the badge (or use “Mark all as read” in the app) to clear the count. Badges help you see what’s new at a glance without opening every list or card.
+              Explore the badge (or use “Mark all as read” in the app) to clear the count. Badges help you see what’s new at a glance without opening every list or card.
             </p>
             <p class="text-sm text-gray-600 dark:text-gray-300">
               Badges are optional. You can turn them on or off in <strong class="text-gray-800 dark:text-gray-200">Settings</strong>.
@@ -756,7 +961,7 @@ import { Subject, takeUntil } from 'rxjs';
               When you create or edit a personal prayer, you can assign a category—like Health, Family, or Work—to keep your list organized. Categories are yours alone; you choose the names.
             </p>
             <p class="text-sm text-gray-600 dark:text-gray-300">
-              Use the filter buttons to show <strong class="text-gray-800 dark:text-gray-200">All Categories</strong> or tap a category to see only prayers in that group. The number in parentheses is how many prayers are in that category. On the main app you can also reorder category buttons by dragging.
+              Use the filter buttons to show <strong class="text-gray-800 dark:text-gray-200">All Categories</strong> or explore a category to see only prayers in that group. The number in parentheses is how many prayers are in that category. On the main app you can also reorder category buttons by dragging.
             </p>
           </div>
         </div>

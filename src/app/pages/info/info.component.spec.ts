@@ -248,13 +248,13 @@ describe('InfoComponent', () => {
       expect(el.querySelector('app-theme-toggle')).toBeTruthy();
       expect(el.textContent).toContain('Web Site');
       expect(el.textContent).toContain('App Store');
-      expect(el.textContent).toContain('Google Play');
+      expect(el.textContent).toContain('Play Store');
     });
-    it('should have enabled Google Play CTA with store link handler', async () => {
+    it('should have enabled Play Store CTA with store link handler', async () => {
       await component.ngOnInit();
       fixture.detectChanges();
       const el = fixture.nativeElement as HTMLElement;
-      const playBtn = el.querySelector('[aria-label="Download on Google Play"]') as HTMLButtonElement | null;
+      const playBtn = el.querySelector('[aria-label="Download on Play Store"]') as HTMLButtonElement | null;
       expect(playBtn).toBeTruthy();
       expect(playBtn?.disabled).toBe(false);
     });
@@ -277,11 +277,11 @@ describe('InfoComponent', () => {
       fixture.detectChanges();
       expect(component.showBadgesModal).toBe(true);
     });
-    it('should open Google Play when Android CTA is clicked', async () => {
+    it('should open Play Store when Android CTA is clicked', async () => {
       const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
       await component.ngOnInit();
       fixture.detectChanges();
-      const playBtn = fixture.nativeElement.querySelector('[aria-label="Download on Google Play"]') as HTMLButtonElement;
+      const playBtn = fixture.nativeElement.querySelector('[aria-label="Download on Play Store"]') as HTMLButtonElement;
       expect(playBtn).toBeTruthy();
       playBtn.click();
       expect(openSpy).toHaveBeenCalledWith(
