@@ -19,12 +19,13 @@ export const BRANDING_SERVICE_TOKEN = new InjectionToken<BrandingService>('Brand
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Visit church website"
-            class="inline-block"
+            class="inline-block cursor-pointer select-none"
           >
             <img
               [src]="imageUrl"
               alt="Church Logo"
-              class="h-16 w-auto max-w-xs object-contain"
+              draggable="false"
+              class="h-16 w-auto max-w-xs object-contain cursor-pointer select-none"
               width="256"
               height="64"
             />
@@ -48,7 +49,7 @@ export const BRANDING_SERVICE_TOKEN = new InjectionToken<BrandingService>('Brand
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Visit church website"
-            class="block text-left min-w-0"
+            class="block min-w-0 cursor-pointer text-left"
           >
             <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
               {{ appTitle }}
