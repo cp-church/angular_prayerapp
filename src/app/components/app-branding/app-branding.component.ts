@@ -75,6 +75,25 @@ import { SupabaseService } from '../../services/supabase.service';
           </p>
         </div>
 
+        <!-- Church website URL (header logo / title link) -->
+        <div>
+          <label for="churchWebsiteUrl" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Church website URL
+          </label>
+          <input
+            type="url"
+            id="churchWebsiteUrl"
+            [(ngModel)]="churchWebsiteUrl"
+            name="churchWebsiteUrl"
+            aria-label="Church website URL for header logo link"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            placeholder="https://www.example.org"
+          />
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Optional. When set, the home header logo and title become a link that opens in a new tab.
+          </p>
+        </div>
+
         <!-- Logo Settings -->
         <div class="space-y-4">
           <div class="flex items-center gap-3">
@@ -241,6 +260,7 @@ export class AppBrandingComponent implements OnInit {
 
   appTitle = 'Church Prayer Manager';
   appSubtitle = 'Keeping our community connected in prayer';
+  churchWebsiteUrl = '';
   useLogo = false;
   lightModeLogoUrl = '';
   darkModeLogoUrl = '';
@@ -267,7 +287,7 @@ export class AppBrandingComponent implements OnInit {
     try {
       const { data, error } = await this.supabase.client
         .from('admin_settings')
-        .select('app_title, app_subtitle, use_logo, light_mode_logo_blob, dark_mode_logo_blob')
+        .select('app_title, app_subtitle, church_website_url, use_logo, light_mode_logo_blob, dark_mode_logo_blob')
         .eq('id', 1)
         .single();
 
@@ -279,6 +299,7 @@ export class AppBrandingComponent implements OnInit {
         if (data.use_logo !== null) this.useLogo = data.use_logo;
         if (data.light_mode_logo_blob) this.lightModeLogoUrl = data.light_mode_logo_blob;
         if (data.dark_mode_logo_blob) this.darkModeLogoUrl = data.dark_mode_logo_blob;
+        this.churchWebsiteUrl = data.church_website_url?.trim() ? data.church_website_url.trim() : '';
       }
     } catch (err: any) {
       console.error('Error loading branding settings:', err);
@@ -330,6 +351,7 @@ export class AppBrandingComponent implements OnInit {
           id: 1,
           app_title: this.appTitle,
           app_subtitle: this.appSubtitle,
+          church_website_url: this.churchWebsiteUrl.trim() || null,
           use_logo: this.useLogo,
           light_mode_logo_blob: this.lightModeLogoUrl || null,
           dark_mode_logo_blob: this.darkModeLogoUrl || null,

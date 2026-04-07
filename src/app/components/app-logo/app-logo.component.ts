@@ -13,24 +13,61 @@ export const BRANDING_SERVICE_TOKEN = new InjectionToken<BrandingService>('Brand
   template: `
     @if (useLogo && imageUrl) {
       <div class="min-w-0 flex-1">
-        <img 
-          [src]="imageUrl" 
-          alt="Church Logo" 
-          class="h-16 w-auto max-w-xs object-contain"
-          width="256"
-          height="64"
-        />
+        @if (churchWebsiteHref) {
+          <a
+            [href]="churchWebsiteHref"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Visit church website"
+            class="inline-block"
+          >
+            <img
+              [src]="imageUrl"
+              alt="Church Logo"
+              class="h-16 w-auto max-w-xs object-contain"
+              width="256"
+              height="64"
+            />
+          </a>
+        } @else {
+          <img
+            [src]="imageUrl"
+            alt="Church Logo"
+            class="h-16 w-auto max-w-xs object-contain"
+            width="256"
+            height="64"
+          />
+        }
       </div>
     }
     @if (!useLogo && appTitle) {
       <div class="min-w-0 flex-1">
-        <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
-          {{ appTitle }}
-        </h1>
-        @if (appSubtitle) {
-          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            {{ appSubtitle }}
-          </p>
+        @if (churchWebsiteHref) {
+          <a
+            [href]="churchWebsiteHref"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Visit church website"
+            class="block text-left min-w-0"
+          >
+            <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {{ appTitle }}
+            </h1>
+            @if (appSubtitle) {
+              <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                {{ appSubtitle }}
+              </p>
+            }
+          </a>
+        } @else {
+          <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
+            {{ appTitle }}
+          </h1>
+          @if (appSubtitle) {
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              {{ appSubtitle }}
+            </p>
+          }
         }
       </div>
     }
@@ -42,6 +79,7 @@ export class AppLogoComponent implements OnInit, OnDestroy {
   useLogo = false;
   appTitle: string = 'Church Prayer Manager';
   appSubtitle: string = 'Keeping our community connected in prayer';
+  churchWebsiteHref: string | null = null;
   @Output() logoStatusChange = new EventEmitter<boolean>();
   
   private destroy$ = new Subject<void>();
@@ -69,6 +107,7 @@ export class AppLogoComponent implements OnInit, OnDestroy {
         this.useLogo = branding.useLogo;
         this.appTitle = branding.appTitle;
         this.appSubtitle = branding.appSubtitle;
+        this.churchWebsiteHref = this.brandingService.getChurchWebsiteHref(branding);
         this.updateImageUrl(branding);
         this.cdr?.markForCheck();
       });

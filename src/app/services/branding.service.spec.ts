@@ -126,6 +126,7 @@ describe('BrandingService', () => {
             dark_mode_logo_blob: 'dark-data',
             app_title: 'New Title',
             app_subtitle: 'New Subtitle',
+            church_website_url: null,
             branding_last_modified: newTimestamp
           }],
           error: null
@@ -153,6 +154,7 @@ describe('BrandingService', () => {
             dark_mode_logo_blob: 'dark-data',
             app_title: 'Church',
             app_subtitle: 'Prayer',
+            church_website_url: null,
             branding_last_modified: timestamp
           }],
           error: null
@@ -256,6 +258,51 @@ describe('BrandingService', () => {
     });
   });
 
+  describe('getChurchWebsiteHref', () => {
+    const base: BrandingData = {
+      useLogo: false,
+      lightLogo: null,
+      darkLogo: null,
+      appTitle: 'T',
+      appSubtitle: 'S',
+      churchWebsiteUrl: null,
+      lastModified: null
+    };
+
+    it('returns https href for valid URL', () => {
+      expect(
+        service.getChurchWebsiteHref({
+          ...base,
+          churchWebsiteUrl: 'https://example.org/about'
+        })
+      ).toBe('https://example.org/about');
+    });
+
+    it('returns http href for valid URL', () => {
+      const href = service.getChurchWebsiteHref({
+        ...base,
+        churchWebsiteUrl: 'http://example.org'
+      });
+      expect(href).toMatch(/^http:\/\/example\.org\/?$/);
+    });
+
+    it('returns null for empty, null, or whitespace', () => {
+      expect(service.getChurchWebsiteHref({ ...base, churchWebsiteUrl: null })).toBe(null);
+      expect(service.getChurchWebsiteHref({ ...base, churchWebsiteUrl: '' })).toBe(null);
+      expect(service.getChurchWebsiteHref({ ...base, churchWebsiteUrl: '   ' })).toBe(null);
+    });
+
+    it('returns null for non-http(s) schemes', () => {
+      expect(
+        service.getChurchWebsiteHref({ ...base, churchWebsiteUrl: 'javascript:alert(1)' })
+      ).toBe(null);
+    });
+
+    it('returns null for invalid URL string', () => {
+      expect(service.getChurchWebsiteHref({ ...base, churchWebsiteUrl: 'not a url' })).toBe(null);
+    });
+  });
+
   describe('dark mode', () => {
     it('should return correct image URL based on dark mode', async () => {
       const branding: BrandingData = {
@@ -264,6 +311,7 @@ describe('BrandingService', () => {
         darkLogo: 'dark-url',
         appTitle: 'Title',
         appSubtitle: 'Subtitle',
+        churchWebsiteUrl: null,
         lastModified: null
       };
 
@@ -290,6 +338,7 @@ describe('BrandingService', () => {
         darkLogo: 'dark-url',
         appTitle: 'Title',
         appSubtitle: 'Subtitle',
+        churchWebsiteUrl: null,
         lastModified: null
       };
 
@@ -312,6 +361,7 @@ describe('BrandingService', () => {
             dark_mode_logo_blob: 'new-dark',
             app_title: 'New Title',
             app_subtitle: 'New Subtitle',
+            church_website_url: null,
             branding_last_modified: new Date().toISOString()
           }],
           error: null
@@ -339,6 +389,7 @@ describe('BrandingService', () => {
             dark_mode_logo_blob: 'dark',
             app_title: 'Title',
             app_subtitle: 'Subtitle',
+            church_website_url: null,
             branding_last_modified: timestamp
           }],
           error: null
@@ -348,6 +399,30 @@ describe('BrandingService', () => {
 
       const cached = localStorage.getItem('branding_last_modified');
       expect(cached).toBe(timestamp);
+    });
+
+    it('should persist church_website_url to localStorage when fetching from Supabase', async () => {
+      mockSupabaseService.directQuery
+        .mockResolvedValueOnce({
+          data: [{ branding_last_modified: new Date().toISOString() }],
+          error: null
+        })
+        .mockResolvedValueOnce({
+          data: [{
+            use_logo: false,
+            light_mode_logo_blob: null,
+            dark_mode_logo_blob: null,
+            app_title: 'T',
+            app_subtitle: 'S',
+            church_website_url: 'https://church.example.org',
+            branding_last_modified: new Date().toISOString()
+          }],
+          error: null
+        });
+
+      await service.initialize();
+
+      expect(localStorage.getItem('branding_church_website_url')).toBe('https://church.example.org');
     });
   });
 });

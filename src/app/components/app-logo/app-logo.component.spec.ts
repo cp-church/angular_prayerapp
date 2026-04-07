@@ -19,6 +19,7 @@ describe('AppLogoComponent', () => {
       darkLogo: null,
       appTitle: 'Church Prayer Manager',
       appSubtitle: 'Keeping our community connected in prayer',
+      churchWebsiteUrl: null,
       lastModified: null
     });
 
@@ -31,6 +32,17 @@ describe('AppLogoComponent', () => {
         return document.documentElement.classList.contains('dark')
           ? (branding.darkLogo || '')
           : (branding.lightLogo || '');
+      }),
+      getChurchWebsiteHref: vi.fn((branding?: BrandingData) => {
+        const b = branding ?? brandingSubject.value;
+        const raw = b.churchWebsiteUrl?.trim();
+        if (!raw) return null;
+        try {
+          const u = new URL(raw);
+          return u.protocol === 'http:' || u.protocol === 'https:' ? u.href : null;
+        } catch {
+          return null;
+        }
       })
     };
 
@@ -116,6 +128,7 @@ describe('AppLogoComponent', () => {
         darkLogo: 'data:image/png;base64,dark',
         appTitle: 'New Title',
         appSubtitle: 'New Subtitle',
+        churchWebsiteUrl: null,
         lastModified: new Date()
       });
 
@@ -145,6 +158,7 @@ describe('AppLogoComponent', () => {
         darkLogo: 'dark-url',
         appTitle: 'Title',
         appSubtitle: 'Subtitle',
+        churchWebsiteUrl: null,
         lastModified: null
       };
 
@@ -169,6 +183,7 @@ describe('AppLogoComponent', () => {
         darkLogo: null,
         appTitle: 'Title',
         appSubtitle: 'Subtitle',
+        churchWebsiteUrl: null,
         lastModified: null
       };
 
@@ -196,6 +211,7 @@ describe('AppLogoComponent', () => {
         darkLogo: null,
         appTitle: 'Title',
         appSubtitle: 'Subtitle',
+        churchWebsiteUrl: null,
         lastModified: null
       };
 
@@ -214,6 +230,7 @@ describe('AppLogoComponent', () => {
         darkLogo: null,
         appTitle: 'Title',
         appSubtitle: 'Subtitle',
+        churchWebsiteUrl: null,
         lastModified: null
       };
 
@@ -223,6 +240,62 @@ describe('AppLogoComponent', () => {
       (component as any).updateImageUrl(branding);
 
       expect(logoStatusSpy).toHaveBeenCalledWith(false);
+    });
+  });
+
+  describe('church website link', () => {
+    it('wraps logo image in anchor when church URL is https', async () => {
+      await component.ngOnInit();
+      mockBrandingService.getImageUrl.mockReturnValue('data:image/png;base64,xx');
+      brandingSubject.next({
+        useLogo: true,
+        lightLogo: 'data:image/png;base64,xx',
+        darkLogo: null,
+        appTitle: 'T',
+        appSubtitle: 'S',
+        churchWebsiteUrl: 'https://example.org/',
+        lastModified: null
+      });
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const a = fixture.nativeElement.querySelector('a');
+      expect(a).toBeTruthy();
+      expect(a?.getAttribute('href')).toBe('https://example.org/');
+      expect(fixture.nativeElement.querySelector('img')).toBeTruthy();
+    });
+
+    it('does not render anchor in logo mode when no church URL', async () => {
+      await component.ngOnInit();
+      mockBrandingService.getImageUrl.mockReturnValue('data:image/png;base64,xx');
+      brandingSubject.next({
+        useLogo: true,
+        lightLogo: 'data:image/png;base64,xx',
+        darkLogo: null,
+        appTitle: 'T',
+        appSubtitle: 'S',
+        churchWebsiteUrl: null,
+        lastModified: null
+      });
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('a')).toBeNull();
+      expect(fixture.nativeElement.querySelector('img')).toBeTruthy();
+    });
+
+    it('wraps text title block in anchor when church URL is set', async () => {
+      await component.ngOnInit();
+      brandingSubject.next({
+        useLogo: false,
+        lightLogo: null,
+        darkLogo: null,
+        appTitle: 'My Church',
+        appSubtitle: 'Tagline',
+        churchWebsiteUrl: 'https://example.org',
+        lastModified: null
+      });
+      fixture.detectChanges();
+      const a = fixture.nativeElement.querySelector('a');
+      expect(a?.textContent).toContain('My Church');
+      expect(a?.textContent).toContain('Tagline');
     });
   });
 
@@ -236,6 +309,7 @@ describe('AppLogoComponent', () => {
         darkLogo: null,
         appTitle: 'Title',
         appSubtitle: 'Subtitle',
+        churchWebsiteUrl: null,
         lastModified: null
       };
 

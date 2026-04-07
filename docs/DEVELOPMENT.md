@@ -151,6 +151,7 @@ this.supabase.client.from('table').select()
 - initialize()               // Load from cache + check for DB updates
 - getBranding()              // Get current branding data
 - getImageUrl()              // Get correct logo URL (light/dark mode)
+- getChurchWebsiteHref()     // Safe http(s) href for optional church site link (header logo/title)
 
 // Architecture:
 // 1. Synchronous cache load (localStorage) on app bootstrap
@@ -169,6 +170,7 @@ interface BrandingData {
   darkLogo: string | null;       // Base64 data URL
   appTitle: string;
   appSubtitle: string;
+  churchWebsiteUrl: string | null; // From admin_settings.church_website_url; home header link when valid http(s)
   lastModified: Date | null;     // Cache validation timestamp
 }
 

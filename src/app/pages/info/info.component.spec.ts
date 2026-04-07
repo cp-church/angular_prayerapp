@@ -33,6 +33,7 @@ describe('InfoComponent', () => {
       darkLogo: null,
       appTitle: 'Church Prayer Manager',
       appSubtitle: 'Keeping our community connected in prayer',
+      churchWebsiteUrl: null,
       lastModified: null
     });
 
@@ -114,6 +115,7 @@ describe('InfoComponent', () => {
         darkLogo: null,
         appTitle: 'Test',
         appSubtitle: 'Sub',
+        churchWebsiteUrl: null,
         lastModified: null
       });
       expect(component.brandingUseLogo).toBe(true);

@@ -54,6 +54,7 @@ const makeMocks = () => {
       appSubtitle: 'Test Subtitle',
       lightModeLogoBlobUrl: 'LIGHT_URL',
       darkModeLogoBlobUrl: 'DARK_URL',
+      churchWebsiteUrl: null,
       lastModified: new Date()
     }),
     getImageUrl: vi.fn((branding) => branding.useLogo ? 'LIGHT_URL' : '')

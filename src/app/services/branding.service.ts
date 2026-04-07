@@ -9,6 +9,8 @@ export interface BrandingData {
   darkLogo: string | null;
   appTitle: string;
   appSubtitle: string;
+  /** Raw value from admin; use getChurchWebsiteHref() for a safe template href */
+  churchWebsiteUrl: string | null;
   lastModified: Date | null;
 }
 
@@ -19,6 +21,7 @@ export class BrandingService {
   private readonly USE_LOGO_KEY = 'branding_use_logo';
   private readonly APP_TITLE_KEY = 'branding_app_title';
   private readonly APP_SUBTITLE_KEY = 'branding_app_subtitle';
+  private readonly CHURCH_WEBSITE_URL_KEY = 'branding_church_website_url';
   private readonly LAST_MODIFIED_KEY = 'branding_last_modified';
 
   private brandingSubject = new BehaviorSubject<BrandingData>(this.getDefaultBranding());
@@ -69,6 +72,29 @@ export class BrandingService {
   }
 
   /**
+   * Safe http(s) URL for linking the header logo/title, or null if unset or invalid.
+   */
+  getChurchWebsiteHref(branding?: BrandingData): string | null {
+    const b = branding ?? this.brandingSubject.value;
+    return this.sanitizeExternalHttpUrl(b.churchWebsiteUrl);
+  }
+
+  private sanitizeExternalHttpUrl(raw: string | null | undefined): string | null {
+    if (raw == null || typeof raw !== 'string') return null;
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    try {
+      const u = new URL(trimmed);
+      if (u.protocol === 'http:' || u.protocol === 'https:') {
+        return u.href;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }
+
+  /**
    * Load cached branding from window, localStorage, then query Supabase for updates
    */
   private async loadBranding(): Promise<void> {
@@ -112,6 +138,8 @@ export class BrandingService {
     const useLogo = localStorage.getItem(this.USE_LOGO_KEY);
     const appTitle = localStorage.getItem(this.APP_TITLE_KEY) ?? 'Church Prayer Manager';
     const appSubtitle = localStorage.getItem(this.APP_SUBTITLE_KEY) ?? 'Keeping our community connected in prayer';
+    const churchWebsiteStored = localStorage.getItem(this.CHURCH_WEBSITE_URL_KEY);
+    const churchWebsiteUrl = churchWebsiteStored === null || churchWebsiteStored === '' ? null : churchWebsiteStored;
     const lastModifiedStr = localStorage.getItem(this.LAST_MODIFIED_KEY);
 
     return {
@@ -120,6 +148,7 @@ export class BrandingService {
       darkLogo,
       appTitle,
       appSubtitle,
+      churchWebsiteUrl,
       lastModified: lastModifiedStr ? new Date(lastModifiedStr) : null
     };
   }
@@ -183,11 +212,13 @@ export class BrandingService {
         dark_mode_logo_blob: string | null;
         app_title: string;
         app_subtitle: string;
+        church_website_url: string | null;
         branding_last_modified: string | null;
       }>(
         'admin_settings',
         {
-          select: 'use_logo, light_mode_logo_blob, dark_mode_logo_blob, app_title, app_subtitle, branding_last_modified',
+          select:
+            'use_logo, light_mode_logo_blob, dark_mode_logo_blob, app_title, app_subtitle, church_website_url, branding_last_modified',
           eq: { id: 1 },
           limit: 1,
           timeout: 10000
@@ -205,6 +236,7 @@ export class BrandingService {
         darkLogo: settings.dark_mode_logo_blob || null,
         appTitle: settings.app_title || 'Church Prayer Manager',
         appSubtitle: settings.app_subtitle || 'Keeping our community connected in prayer',
+        churchWebsiteUrl: settings.church_website_url?.trim() ? settings.church_website_url.trim() : null,
         lastModified: settings.branding_last_modified ? new Date(settings.branding_last_modified) : null
       };
 
@@ -223,6 +255,11 @@ export class BrandingService {
       }
       if (branding.appSubtitle) {
         localStorage.setItem(this.APP_SUBTITLE_KEY, branding.appSubtitle);
+      }
+      if (branding.churchWebsiteUrl) {
+        localStorage.setItem(this.CHURCH_WEBSITE_URL_KEY, branding.churchWebsiteUrl);
+      } else {
+        localStorage.removeItem(this.CHURCH_WEBSITE_URL_KEY);
       }
       if (branding.lastModified) {
         localStorage.setItem(this.LAST_MODIFIED_KEY, branding.lastModified.toISOString());
@@ -246,6 +283,7 @@ export class BrandingService {
       darkLogo: null,
       appTitle: 'Church Prayer Manager',
       appSubtitle: 'Keeping our community connected in prayer',
+      churchWebsiteUrl: null,
       lastModified: null
     };
   }

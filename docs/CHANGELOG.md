@@ -4,6 +4,11 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Church website URL (header logo link) ✅
+- Optional **`admin_settings.church_website_url`**: admins set it in **App Branding**; cached with other branding (`BrandingService`, `branding_last_modified` trigger includes URL changes).
+- Home header **`app-logo`**: when the URL is a valid `http:`/`https:` link, the logo image and text title/subtitle wrap in an external link (`target="_blank"`, `rel="noopener noreferrer"`).
+- Migration: `20260327130000_church_website_url.sql`.
+
 ### Info Page (`/info`) ✅
 - ✅ **Public landing/overview page at `/info`**
   - Hero with app icon, “Cross Pointe Prayer Community” title, and short description.

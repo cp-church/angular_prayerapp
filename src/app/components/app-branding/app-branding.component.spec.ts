@@ -57,6 +57,10 @@ describe('AppBrandingComponent', () => {
       expect(component.darkModeLogoUrl).toBe('');
     });
 
+    it('should have churchWebsiteUrl default to empty string', () => {
+      expect(component.churchWebsiteUrl).toBe('');
+    });
+
     it('should have loading default to false', () => {
       expect(component.loading).toBe(false);
     });
@@ -98,6 +102,7 @@ describe('AppBrandingComponent', () => {
       const mockData = {
         app_title: 'Test Church',
         app_subtitle: 'Test Subtitle',
+        church_website_url: 'https://church.example.org',
         use_logo: true,
         light_mode_logo_blob: 'data:image/png;base64,light',
         dark_mode_logo_blob: 'data:image/png;base64,dark'
@@ -117,6 +122,7 @@ describe('AppBrandingComponent', () => {
       expect(component.useLogo).toBe(true);
       expect(component.lightModeLogoUrl).toBe('data:image/png;base64,light');
       expect(component.darkModeLogoUrl).toBe('data:image/png;base64,dark');
+      expect(component.churchWebsiteUrl).toBe('https://church.example.org');
       expect(component.loading).toBe(false);
       expect(mockChangeDetectorRef.markForCheck).toHaveBeenCalled();
     });
@@ -344,6 +350,24 @@ describe('AppBrandingComponent', () => {
 
       expect(savedData.light_mode_logo_blob).toBe(null);
       expect(savedData.dark_mode_logo_blob).toBe(null);
+    });
+
+    it('should trim church website URL and pass null when empty', async () => {
+      let savedData: any;
+      mockSupabaseService.client.from = vi.fn(() => ({
+        upsert: vi.fn((data: any) => {
+          savedData = data;
+          return Promise.resolve({ data: {}, error: null });
+        })
+      }));
+
+      component.churchWebsiteUrl = '  https://example.org/path  ';
+      await component.save();
+      expect(savedData.church_website_url).toBe('https://example.org/path');
+
+      component.churchWebsiteUrl = '   ';
+      await component.save();
+      expect(savedData.church_website_url).toBe(null);
     });
 
     it('should clear success message after 3 seconds', async () => {
