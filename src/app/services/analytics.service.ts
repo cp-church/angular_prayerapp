@@ -17,6 +17,58 @@ export interface AnalyticsStats {
   loading: boolean;
 }
 
+/** Presets for Site Analytics activity chart (maps to window + RPC bucket). */
+export type PageViewTimeSeriesPreset = '12h' | '24h' | '48h' | '7d' | '30d';
+
+export interface PageViewTimeSeriesPoint {
+  bucketStart: string;
+  count: number;
+}
+
+const PAGE_VIEW_PRESET_MS: Record<PageViewTimeSeriesPreset, number> = {
+  '12h': 12 * 60 * 60 * 1000,
+  '24h': 24 * 60 * 60 * 1000,
+  '48h': 48 * 60 * 60 * 1000,
+  '7d': 7 * 24 * 60 * 60 * 1000,
+  '30d': 30 * 24 * 60 * 60 * 1000
+};
+
+const PAGE_VIEW_PRESET_BUCKET: Record<PageViewTimeSeriesPreset, 'hour' | 'day'> = {
+  '12h': 'hour',
+  '24h': 'hour',
+  '48h': 'hour',
+  '7d': 'day',
+  '30d': 'day'
+};
+
+/**
+ * UTC bucket starts matching Postgres `date_trunc('hour'|'day', created_at)` with UTC session TZ.
+ */
+function enumerateUtcBucketStarts(
+  rangeStart: Date,
+  rangeEnd: Date,
+  bucket: 'hour' | 'day'
+): string[] {
+  const keys: string[] = [];
+  if (bucket === 'hour') {
+    const cur = new Date(rangeStart);
+    cur.setUTCMinutes(0, 0, 0);
+    while (cur.getTime() < rangeEnd.getTime()) {
+      keys.push(cur.toISOString());
+      cur.setTime(cur.getTime() + 60 * 60 * 1000);
+    }
+  } else {
+    const cur = new Date(
+      Date.UTC(rangeStart.getUTCFullYear(), rangeStart.getUTCMonth(), rangeStart.getUTCDate())
+    );
+    while (cur.getTime() < rangeEnd.getTime()) {
+      keys.push(cur.toISOString());
+      cur.setUTCDate(cur.getUTCDate() + 1);
+    }
+  }
+  return keys;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -282,5 +334,37 @@ export class AnalyticsService {
     }
 
     return stats;
+  }
+
+  /**
+   * Page views per time bucket for the activity chart (RPC aggregation + zero-filled gaps).
+   */
+  async getPageViewTimeSeries(preset: PageViewTimeSeriesPreset): Promise<PageViewTimeSeriesPoint[]> {
+    const rangeEnd = new Date();
+    const rangeStart = new Date(rangeEnd.getTime() - PAGE_VIEW_PRESET_MS[preset]);
+    const bucket = PAGE_VIEW_PRESET_BUCKET[preset];
+    const bucketKeys = enumerateUtcBucketStarts(rangeStart, rangeEnd, bucket);
+
+    const { data, error } = await this.supabase.client.rpc('analytics_page_view_buckets', {
+      p_start: rangeStart.toISOString(),
+      p_end: rangeEnd.toISOString(),
+      p_bucket: bucket
+    });
+
+    if (error) {
+      console.error('[Analytics] getPageViewTimeSeries:', error);
+      return bucketKeys.map((bucketStart) => ({ bucketStart, count: 0 }));
+    }
+
+    const counts = new Map<string, number>();
+    for (const row of data ?? []) {
+      const key = new Date(row.bucket_start as string).toISOString();
+      counts.set(key, Number(row.event_count));
+    }
+
+    return bucketKeys.map((bucketStart) => ({
+      bucketStart,
+      count: counts.get(bucketStart) ?? 0
+    }));
   }
 }

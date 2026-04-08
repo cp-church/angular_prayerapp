@@ -24,6 +24,7 @@ describe('AnalyticsService', () => {
 
     // Create mock Supabase client
     mockSupabaseClient = {
+      rpc: vi.fn(() => Promise.resolve({ data: [], error: null })),
       from: vi.fn((table: string) => {
         if (table === 'analytics') {
           return createDefaultAnalyticsChain();
@@ -158,6 +159,88 @@ describe('AnalyticsService', () => {
       // Should not insert or update when not logged in
       expect(insertMock).not.toHaveBeenCalled();
       expect(updateMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getPageViewTimeSeries', () => {
+    it('should call analytics_page_view_buckets with hour bucket for 24h preset', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2024-06-15T18:30:00.000Z'));
+
+      const rpcMock = vi.fn(() => Promise.resolve({ data: [], error: null }));
+      mockSupabaseClient.rpc = rpcMock;
+
+      await service.getPageViewTimeSeries('24h');
+
+      expect(rpcMock).toHaveBeenCalledWith('analytics_page_view_buckets', {
+        p_start: '2024-06-14T18:30:00.000Z',
+        p_end: '2024-06-15T18:30:00.000Z',
+        p_bucket: 'hour'
+      });
+
+      vi.useRealTimers();
+    });
+
+    it('should call analytics_page_view_buckets with day bucket for 7d preset', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2024-06-15T12:00:00.000Z'));
+
+      const rpcMock = vi.fn(() => Promise.resolve({ data: [], error: null }));
+      mockSupabaseClient.rpc = rpcMock;
+
+      await service.getPageViewTimeSeries('7d');
+
+      expect(rpcMock).toHaveBeenCalledWith('analytics_page_view_buckets', {
+        p_start: '2024-06-08T12:00:00.000Z',
+        p_end: '2024-06-15T12:00:00.000Z',
+        p_bucket: 'day'
+      });
+
+      vi.useRealTimers();
+    });
+
+    it('should zero-fill missing buckets and merge RPC counts', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2024-06-15T03:15:00.000Z'));
+
+      mockSupabaseClient.rpc = vi.fn(() =>
+        Promise.resolve({
+          data: [
+            { bucket_start: '2024-06-15T01:00:00.000Z', event_count: 5 },
+            { bucket_start: '2024-06-15T02:00:00.000Z', event_count: 3 }
+          ],
+          error: null
+        })
+      );
+
+      const series = await service.getPageViewTimeSeries('12h');
+
+      // 12h back from 03:15 -> 15:15 prior day; hour buckets from 15:00 previous day through 02:00 same day
+      expect(series.length).toBeGreaterThan(0);
+      const byHour = Object.fromEntries(series.map((p) => [p.bucketStart, p.count]));
+      expect(byHour['2024-06-15T01:00:00.000Z']).toBe(5);
+      expect(byHour['2024-06-15T02:00:00.000Z']).toBe(3);
+      expect(byHour['2024-06-14T15:00:00.000Z']).toBe(0);
+
+      vi.useRealTimers();
+    });
+
+    it('should return zero-filled series when RPC errors', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2024-06-15T18:00:00.000Z'));
+
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockSupabaseClient.rpc = vi.fn(() =>
+        Promise.resolve({ data: null, error: { message: 'rpc failed' } })
+      );
+
+      const series = await service.getPageViewTimeSeries('24h');
+
+      expect(series.length).toBe(24);
+      expect(series.every((p) => p.count === 0)).toBe(true);
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      consoleErrorSpy.mockRestore();
+      vi.useRealTimers();
     });
   });
 

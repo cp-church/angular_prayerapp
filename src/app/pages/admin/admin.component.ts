@@ -28,6 +28,7 @@ import { GitHubSettingsComponent } from '../../components/github-settings/github
 import { PrayerEncouragementSettingsComponent } from '../../components/prayer-encouragement-settings/prayer-encouragement-settings.component';
 import { PlanningCenterListMapperComponent } from '../../components/planning-center-list-mapper/planning-center-list-mapper.component';
 import { ConfirmationDialogComponent } from '../../components/confirmation-dialog/confirmation-dialog.component';
+import { SiteAnalyticsActivityChartComponent } from '../../components/site-analytics-activity-chart/site-analytics-activity-chart.component';
 
 type AdminTab = 'prayers' | 'updates' | 'deletions' | 'accounts' | 'settings';
 type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
@@ -57,7 +58,8 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
     GitHubSettingsComponent,
     PrayerEncouragementSettingsComponent,
     PlanningCenterListMapperComponent,
-    ConfirmationDialogComponent
+    ConfirmationDialogComponent,
+    SiteAnalyticsActivityChartComponent
   ],
   styles: `
     /* Safe area support for notched/dynamic island devices */
@@ -594,6 +596,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
                     <div class="text-xs text-amber-600/70 dark:text-amber-400/70 mt-1">active email subscribers</div>
                   </div>
                 </div>
+                <app-site-analytics-activity-chart></app-site-analytics-activity-chart>
               }
                 </div>
               </div>
