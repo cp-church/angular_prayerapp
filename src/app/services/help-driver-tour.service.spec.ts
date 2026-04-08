@@ -81,6 +81,31 @@ describe('HelpDriverTourService', () => {
     document.body.innerHTML = '';
   });
 
+  it('full guided welcome: programmatic destroy() runs onDestroyed with callback still set (Begin path)', () => {
+    const onBegin = vi.fn();
+    let savedConfig: { steps?: unknown[]; onDestroyed?: (e: unknown, s: unknown, o: unknown) => void } | undefined;
+    vi.mocked(driver).mockImplementation((cfg) => {
+      savedConfig = cfg as typeof savedConfig;
+      return {
+        drive: vi.fn(),
+        destroy: vi.fn(),
+        refresh: vi.fn(),
+        moveNext: vi.fn(),
+      } as ReturnType<typeof driver>;
+    });
+    vi.useFakeTimers();
+    service.startFullGuidedTourWelcome(onBegin, { totalSteps: 3 });
+    expect(savedConfig?.steps?.length).toBe(1);
+    savedConfig?.onDestroyed?.(undefined, undefined, {
+      config: { steps: savedConfig?.steps ?? [] },
+      state: { activeIndex: 0 },
+      driver: {},
+    });
+    vi.runAllTimers();
+    expect(onBegin).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
   it('does not call driver when no Request button exists', () => {
     service.startNewPrayerRequestTour(sampleHelp, { openPrayerForm });
     expect(driver).not.toHaveBeenCalled();
@@ -99,7 +124,7 @@ describe('HelpDriverTourService', () => {
 
     expect(driver).toHaveBeenCalledTimes(1);
     const config = vi.mocked(driver).mock.calls[0][0];
-    expect(config?.steps?.length).toBe(5);
+    expect(config?.steps?.length).toBe(6);
     expect(config?.showProgress).toBe(true);
 
     const instance = vi.mocked(driver).mock.results[0]?.value as { drive: ReturnType<typeof vi.fn> };
@@ -276,7 +301,7 @@ describe('HelpDriverTourService', () => {
       expect(driver).not.toHaveBeenCalled();
     });
 
-    it('starts with 3 steps when anonymous step is excluded', () => {
+    it('starts with 4 steps when anonymous step is excluded', () => {
       const btn = document.createElement('button');
       btn.id = TOUR_ADD_UPDATE_BTN_ID;
       document.body.appendChild(btn);
@@ -285,10 +310,10 @@ describe('HelpDriverTourService', () => {
 
       expect(driver).toHaveBeenCalledTimes(1);
       const config = vi.mocked(driver).mock.calls[0][0];
-      expect(config?.steps?.length).toBe(3);
+      expect(config?.steps?.length).toBe(4);
     });
 
-    it('starts with 4 steps when anonymous step is included', () => {
+    it('starts with 5 steps when anonymous step is included', () => {
       const btn = document.createElement('button');
       btn.id = TOUR_ADD_UPDATE_BTN_ID;
       document.body.appendChild(btn);
@@ -296,7 +321,7 @@ describe('HelpDriverTourService', () => {
       service.startUpdatingPrayerTour(sampleUpdatingHelp, { includeAnonymousUpdateStep: true });
 
       const config = vi.mocked(driver).mock.calls[0][0];
-      expect(config?.steps?.length).toBe(4);
+      expect(config?.steps?.length).toBe(5);
     });
 
     it('step 0 onNext clicks Add Update then refresh and moveNext', () => {

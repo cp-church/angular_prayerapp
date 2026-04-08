@@ -48,6 +48,12 @@ export const PERSONAL_PRAYER_WALKTHROUGH_CATEGORY = 'Test Category';
 
 export const TOUR_PRAYER_CHOOSE_PERSONAL_ID = 'tour-prayer-choose-personal';
 export const TOUR_PRAYER_SUBMIT_REQUEST_ID = 'tour-prayer-submit-request';
+/** Community inline update form — green **Add Update** submit (admin review applies when you send). */
+export const TOUR_PRAYER_UPDATE_SUBMIT_ID = 'tour-prayer-update-submit';
+/** Wrapper around anonymous checkbox + label (driver.js highlights the whole row). */
+export const TOUR_PRAYER_UPDATE_ANONYMOUS_WRAP_ID = 'tour-prayer-update-anonymous-wrap';
+/** Wrapper around “mark answered” checkbox + label. */
+export const TOUR_PRAYER_UPDATE_MARK_ANSWERED_WRAP_ID = 'tour-prayer-update-mark-answered-wrap';
 export const TOUR_PERSONAL_CATEGORY_FILTERS_ID = 'tour-personal-category-filters';
 export const TOUR_WALKTHROUGH_PERSONAL_CARD_ID = 'tour-walkthrough-personal-prayer-card';
 export const TOUR_WALKTHROUGH_PERSONAL_EDIT_ID = 'tour-walkthrough-personal-edit';
@@ -278,6 +284,20 @@ function getTourAddUpdateButtonEl(): HTMLElement | null {
   return document.getElementById(TOUR_ADD_UPDATE_BTN_ID);
 }
 
+function getPrayerSubmitRequestEl(): HTMLElement | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+  return document.getElementById(TOUR_PRAYER_SUBMIT_REQUEST_ID);
+}
+
+function getTourUpdateSubmitButtonEl(): HTMLElement | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+  return document.getElementById(TOUR_PRAYER_UPDATE_SUBMIT_ID);
+}
+
 function getPrayerEncouragementPrayForButtonEl(): HTMLElement | null {
   if (typeof document === 'undefined') {
     return null;
@@ -323,6 +343,8 @@ export interface ManagingPrayerViewsTourHooks {
 export interface CreatingPrayersHelpSectionTourHooks {
   openPrayerForm: () => void;
   closePrayerForm: () => void;
+  /** Ensures **Current** (community) list before Add Update steps so the tour anchors exist. */
+  switchToCurrent: () => void;
 }
 
 /** **Filtering Prayers** (`help_filtering`): walk filter tiles + search using each block’s Help copy. */
@@ -388,6 +410,11 @@ export interface PresentationModeTourHooks {
   markForCheck: () => void;
   /** If set, runs on the exit step **before** `exitPresentation` (e.g. stash full-tour queue in `sessionStorage`). */
   persistFullGuidedTourQueue?: () => void;
+  /**
+   * When the **full guided tour** continued into presentation mode, invoked if the user dismisses the
+   * presentation tour (× / overlay / escape) before the final step — clears queue/progress so the chain stops.
+   */
+  onFullGuidedTourInterrupted?: () => void;
 }
 
 /** Step 1 on Home: highlight **Pray** → **Next** stores session + navigates to `/presentation`. */
@@ -439,6 +466,12 @@ export class HelpDriverTourService {
   private activeDriver: Driver | null = null;
   /** Fired once when the active driver is destroyed (finished, closed, or `destroy()`). */
   private tourFinishedCallback: (() => void) | null = null;
+  /** Drives how `tourFinishedCallback` runs when the **full guided tour** advances between sections. */
+  private tourChainMode: 'off' | 'sectionAdvance' | 'welcome' = 'off';
+  /** Set only when ending the driver via `killActiveDriver()` (tour code), not × / overlay / escape. */
+  private lastDriverDestroyWasProgrammatic = false;
+  /** User closed the overlay or popover close control during a chained section tour. */
+  private tourAbortedFullChainByUser = false;
 
   private readonly fullGuidedTourProgressSubject = new BehaviorSubject<FullGuidedTourProgress | null>(null);
   /** Emits while **Full guided tour** is active (`null` when hidden). */
@@ -458,8 +491,31 @@ export class HelpDriverTourService {
     this.fullGuidedTourProgressSubject.next(null);
   }
 
+  /**
+   * Drops full-tour handoff state in `sessionStorage` (queue + presentation payload when it was part of the full chain).
+   * Safe when no full tour is active (no-op on keys that are not full-chain).
+   */
+  clearFullGuidedTourNavigationState(): void {
+    if (typeof sessionStorage === 'undefined') {
+      return;
+    }
+    try {
+      sessionStorage.removeItem(FULL_GUIDED_TOUR_QUEUE_KEY);
+      const raw = sessionStorage.getItem(PRESENTATION_HELP_TOUR_SESSION_KEY);
+      if (raw) {
+        const p = JSON.parse(raw) as { fullGuidedTourFromFullChain?: boolean };
+        if (p?.fullGuidedTourFromFullChain === true) {
+          sessionStorage.removeItem(PRESENTATION_HELP_TOUR_SESSION_KEY);
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
   /** Stops driver.js and clears full-tour progress (Help modal close / starting a single-section tour). */
   interruptGuidedTours(): void {
+    this.clearFullGuidedTourNavigationState();
     this.clearFullGuidedTourProgress();
     this.destroy();
   }
@@ -470,26 +526,118 @@ export class HelpDriverTourService {
    */
   queueTourFinishedCallback(fn: (() => void) | null): void {
     this.tourFinishedCallback = fn;
+    this.tourChainMode = fn ? 'sectionAdvance' : 'off';
   }
 
   /** Tear down the active driver only (keeps `queueTourFinishedCallback` for full-tour chaining). */
   private killActiveDriver(): void {
     if (this.activeDriver) {
+      this.lastDriverDestroyWasProgrammatic = true;
       this.activeDriver.destroy();
       this.activeDriver = null;
     }
   }
 
+  /**
+   * Runs `fn`, then after the UI settles either `moveNext` or programmatic `killActiveDriver` when already on the
+   * last step. Fixes **Full guided tour** `sectionAdvance` when the final step used `moveNext()` instead of a clean
+   * last-index destroy (driver.js `onDestroyed` + `onLastIndex`).
+   */
+  private advanceAfterOrKill(fn: () => void, delayMs = 200): DriverHook {
+    return (_element, _step, { driver: drv }) => {
+      fn();
+      window.setTimeout(() => {
+        drv.refresh();
+        const cfg = typeof drv.getConfig === 'function' ? drv.getConfig() : undefined;
+        const len = cfg?.steps?.length ?? 0;
+        const i =
+          typeof drv.getActiveIndex === 'function' ? (drv.getActiveIndex() ?? 0) : 0;
+        if (len > 0 && i >= len - 1) {
+          this.killActiveDriver();
+        } else {
+          drv.moveNext();
+        }
+      }, delayMs);
+    };
+  }
+
+  /** Last step **Next**: programmatic destroy so `queueTourFinishedCallback` runs in `sectionAdvance` mode. */
+  private popoverNextKillsTour(): DriverHook {
+    return () => {
+      this.killActiveDriver();
+    };
+  }
+
   private startTourDriver(config: Config): Driver {
     const userOnDestroyed = config.onDestroyed;
+    const userOnCloseClick = config.onCloseClick;
+    const userOverlay = config.overlayClickBehavior;
+    const chainSection = this.tourChainMode === 'sectionAdvance';
+    const overlayClickBehavior: Config['overlayClickBehavior'] =
+      chainSection && userOverlay !== 'nextStep'
+        ? typeof userOverlay === 'function'
+          ? (element, step, opts) => {
+              this.tourAbortedFullChainByUser = true;
+              userOverlay(element, step, opts);
+            }
+          : (_element, _step, opts) => {
+              this.tourAbortedFullChainByUser = true;
+              opts.driver.destroy();
+            }
+        : userOverlay;
+
     const d = driver({
       ...config,
+      overlayClickBehavior,
+      onCloseClick: (element, step, opts) => {
+        if (chainSection) {
+          this.tourAbortedFullChainByUser = true;
+        }
+        if (userOnCloseClick) {
+          userOnCloseClick(element, step, opts);
+        } else {
+          opts.driver.destroy();
+        }
+      },
       onDestroyed: (element, step, opts) => {
         userOnDestroyed?.(element, step, opts);
+        const mode = this.tourChainMode;
         const cb = this.tourFinishedCallback;
-        this.tourFinishedCallback = null;
-        this.activeDriver = null;
+        const steps = opts.config.steps ?? [];
+        const idx = opts.state.activeIndex;
+        const onLastIndex =
+          steps.length > 0 && typeof idx === 'number' && idx === steps.length - 1;
+        const programmatic = this.lastDriverDestroyWasProgrammatic;
+        this.lastDriverDestroyWasProgrammatic = false;
+
+        let runCallback = false;
         if (cb) {
+          if (mode === 'sectionAdvance') {
+            const userAbort = this.tourAbortedFullChainByUser;
+            this.tourAbortedFullChainByUser = false;
+            if (programmatic) {
+              runCallback = true;
+            } else if (userAbort) {
+              runCallback = false;
+            } else {
+              runCallback = onLastIndex;
+            }
+            if (!runCallback) {
+              this.clearFullGuidedTourNavigationState();
+              this.clearFullGuidedTourProgress();
+            }
+          } else if (mode === 'welcome') {
+            runCallback = true;
+          } else {
+            runCallback = true;
+          }
+        }
+
+        this.tourFinishedCallback = null;
+        this.tourChainMode = 'off';
+        this.activeDriver = null;
+
+        if (runCallback && cb) {
           window.setTimeout(() => {
             try {
               cb();
@@ -505,7 +653,7 @@ export class HelpDriverTourService {
   }
 
   /**
-   * Full guided tour intro (popover only). **`onBegin`** runs when the user finishes this step (or closes—still chains).
+   * Full guided tour intro (popover only). **`onBegin`** runs when the user taps **Begin**; × / overlay / **Escape** end the whole full tour.
    */
   startFullGuidedTourWelcome(onBegin: () => void, opts?: { totalSteps: number }): void {
     if (typeof document === 'undefined') {
@@ -518,21 +666,47 @@ export class HelpDriverTourService {
       this.clearFullGuidedTourProgress();
     }
     this.tourFinishedCallback = onBegin;
+    this.tourChainMode = 'welcome';
+
+    /** Clears handoff only when the user aborts the **whole** full tour (not when tapping **Begin**). */
+    const dismissWelcome = (): void => {
+      this.tourFinishedCallback = null;
+      this.clearFullGuidedTourNavigationState();
+      this.clearFullGuidedTourProgress();
+    };
+
     const d = this.startTourDriver({
       showProgress: true,
       showButtons: ['next', 'close'],
       smoothScroll: true,
       allowClose: true,
       popoverClass: 'help-driver-popover',
+      /**
+       * driver.js: `driver.destroy()` ends with `g(false)`, which **skips** `onDestroyStarted` and runs `onDestroyed`
+       * with `tourFinishedCallback` still set — so **Begin** → `destroy()` correctly chains into the first section.
+       * Escape / dimmed overlay use `g(true)` first; that path invokes `onDestroyStarted` only, so we clear the
+       * callback here then call `destroy()` again (`g(false)`) to finish teardown without running `onBegin`.
+       */
+      onDestroyStarted: (_element, _step, opts) => {
+        dismissWelcome();
+        opts.driver.destroy();
+      },
       steps: [
         {
           popover: {
             title: 'Welcome',
             description:
-              'This <strong>full guided tour</strong> walks through each Help topic on the real app, one after another. Take your time—you can use <strong>Previous</strong> within a section or <strong>Close</strong> to stop anytime.<br><br>Tap <strong>Begin</strong> when you’re ready to start.',
+              'This <strong>full guided tour</strong> walks through each Help topic on the real app, one after another. <strong>Close</strong>, the dimmed overlay, or <strong>Escape</strong> ends the <em>entire</em> tour at any time. Within each topic you can still use <strong>Previous</strong>.<br><br>Tap <strong>Begin</strong> when you’re ready to start.',
             side: 'over',
             align: 'center',
             nextBtnText: 'Begin',
+            onNextClick: (_element, _step, opts) => {
+              opts.driver.destroy();
+            },
+            onCloseClick: (_element, _step, opts) => {
+              dismissWelcome();
+              opts.driver.destroy();
+            },
           },
         },
       ],
@@ -659,6 +833,17 @@ export class HelpDriverTourService {
             align: 'start',
           },
         },
+        {
+          element: () => getPrayerSubmitRequestEl()!,
+          popover: {
+            title: 'Submit for review',
+            description:
+              'When you’re ready, tap <strong>Submit Prayer Request</strong>. <strong>Public</strong> prayers are <strong>reviewed by an admin</strong> before they appear for everyone; you may get an email when yours is approved or needs attention. <strong>Personal</strong> prayers stay private and skip that review.',
+            side: 'top',
+            align: 'start',
+            onNextClick: this.popoverNextKillsTour(),
+          },
+        },
       ],
     });
 
@@ -761,6 +946,7 @@ export class HelpDriverTourService {
               'Optionally tag this prayer (e.g. Health, Family). You can skip this or add a new category name.',
             side: 'top',
             align: 'start',
+            onNextClick: this.popoverNextKillsTour(),
           },
         },
       ],
@@ -821,7 +1007,7 @@ export class HelpDriverTourService {
 
     if (includeAnonymous) {
       steps.push({
-        element: '#tour-prayer-update-anonymous',
+        element: `#${TOUR_PRAYER_UPDATE_ANONYMOUS_WRAP_ID}`,
         popover: {
           title: 'Anonymous update (optional)',
           description: 'For <strong>community</strong> prayers you can post this update without showing your name.',
@@ -832,13 +1018,25 @@ export class HelpDriverTourService {
     }
 
     steps.push({
-      element: '#tour-prayer-update-mark-answered',
+      element: `#${TOUR_PRAYER_UPDATE_MARK_ANSWERED_WRAP_ID}`,
       popover: {
-        title: 'Mark as answered',
+        title: 'Mark as answered (optional)',
         description:
-          'Check this when the prayer is answered to move it to the <strong>Answered</strong> view (works for community and personal prayers).',
+          'Optional: check this when the prayer is answered to move it to the <strong>Answered</strong> view (works for community and personal prayers). Leave it unchecked if you’re only sharing an update and the request is still active.',
         side: 'top',
         align: 'start',
+      },
+    });
+
+    steps.push({
+      element: () => getTourUpdateSubmitButtonEl()!,
+      popover: {
+        title: 'Add Update',
+        description:
+          'Tap <strong>Add Update</strong> to send what you entered. For <strong>community</strong> prayers, updates are <strong>reviewed by an admin</strong> before everyone sees them—like new requests. You may get an email when yours is approved or needs attention. <strong>Personal</strong> updates don’t go through that queue.',
+        side: 'top',
+        align: 'start',
+        onNextClick: this.popoverNextKillsTour(),
       },
     });
 
@@ -876,16 +1074,6 @@ export class HelpDriverTourService {
     const title0 = escapeHtml(helpContent.subtitle);
     const body0 = escapeHtml(helpContent.text);
 
-    const advanceAfter = (fn: () => void): DriverHook => {
-      return (_element, _step, { driver: drv }) => {
-        fn();
-        window.setTimeout(() => {
-          drv.refresh();
-          drv.moveNext();
-        }, 200);
-      };
-    };
-
     const steps: DriveStep[] = [
       {
         element: () => getPersonalFilterEl()!,
@@ -895,7 +1083,7 @@ export class HelpDriverTourService {
           side: 'bottom',
           align: 'start',
           nextBtnText: 'Show Current &rarr;',
-          onNextClick: advanceAfter(hooks.switchToCurrent),
+          onNextClick: this.advanceAfterOrKill(hooks.switchToCurrent),
         },
       },
       {
@@ -907,7 +1095,7 @@ export class HelpDriverTourService {
           side: 'bottom',
           align: 'start',
           nextBtnText: 'Show Answered &rarr;',
-          onNextClick: advanceAfter(hooks.switchToAnswered),
+          onNextClick: this.advanceAfterOrKill(hooks.switchToAnswered),
         },
       },
       {
@@ -919,7 +1107,7 @@ export class HelpDriverTourService {
           side: 'bottom',
           align: 'start',
           nextBtnText: 'Show Total &rarr;',
-          onNextClick: advanceAfter(hooks.switchToTotal),
+          onNextClick: this.advanceAfterOrKill(hooks.switchToTotal),
         },
       },
       {
@@ -930,6 +1118,7 @@ export class HelpDriverTourService {
             '<strong>Total</strong> includes all community prayers—current, answered, and archived. Tap <strong>Personal</strong> anytime to return to your private list.',
           side: 'bottom',
           align: 'start',
+          onNextClick: this.popoverNextKillsTour(),
         },
       },
     ];
@@ -947,7 +1136,7 @@ export class HelpDriverTourService {
   }
 
   /**
-   * **Creating Prayers** (`help_prayers`): community **Request** + form → **Add Update** (when visible).
+   * **Creating Prayers** (`help_prayers`): community **Request** + form → **Add Update** on Current (after switching from other tabs).
    * Filter tiles: **Help → Filtering Prayers** tour. Skips private-prayer creation (**Personal Prayers** help tour).
    */
   startCreatingPrayersHelpSectionTour(
@@ -1034,82 +1223,95 @@ export class HelpDriverTourService {
           align: 'start',
         },
       },
+      {
+        element: () => getPrayerSubmitRequestEl()!,
+        popover: {
+          title: 'Submit for review',
+          description:
+            'Tap <strong>Submit Prayer Request</strong> when you’re done. <strong>Public</strong> requests go through <strong>admin review</strong> before they show on the community list; you may get an email when yours is approved or needs changes. <strong>Personal</strong> prayers save without that step.',
+          side: 'top',
+          align: 'start',
+        },
+      },
     ];
 
     steps.push({
       popover: {
         title: 'Prayer updates',
         description:
-          'Tap <strong>Next</strong> to <strong>close the form</strong>. Then we highlight <strong>Add Update</strong> on a prayer card when one is available.',
+          'Tap <strong>Next</strong> to <strong>close the form</strong> and switch to <strong>Current</strong> prayers when needed. Then we highlight <strong>Add Update</strong> on a prayer card when one is available.',
         side: 'over',
         align: 'center',
         onNextClick: (_element, _step, { driver: drv }) => {
           hooks.closePrayerForm();
+          hooks.switchToCurrent();
+          // Allow Current list + tour anchors to render after leaving Prompts / Personal / etc.
           window.setTimeout(() => {
             drv.refresh();
             drv.moveNext();
-          }, 280);
+          }, 500);
         },
       },
     });
 
-    if (getTourAddUpdateButtonEl()) {
-      steps.push(
-        {
-          element: () => getTourAddUpdateButtonEl()!,
-          popover: {
-            title: 'Add Update',
-            description:
-              'On each prayer card, use <strong>Add Update</strong> for progress or thanksgiving. Tap <strong>Open form &rarr;</strong> to expand the inline form.',
-            side: 'bottom',
-            align: 'start',
-            nextBtnText: 'Open form &rarr;',
-            onNextClick: openUpdateFormOnNext,
-          },
-        },
-        {
-          element: '#tour-prayer-update-content',
-          popover: {
-            title: 'Update details',
-            description: 'Share progress, thanksgiving, or what to keep praying for.',
-            side: 'top',
-            align: 'start',
-          },
-        }
-      );
-      if (includeAnonymous) {
-        steps.push({
-          element: '#tour-prayer-update-anonymous',
-          popover: {
-            title: 'Anonymous update (optional)',
-            description:
-              'For <strong>community</strong> prayers you can post this update without showing your name.',
-            side: 'top',
-            align: 'start',
-          },
-        });
-      }
-      steps.push({
-        element: '#tour-prayer-update-mark-answered',
+    // Always include update steps: at tour start the user may be on Prompts (no `#tour-prayer-add-update` yet).
+    // After `switchToCurrent` on the previous step, the first community card supplies the anchor.
+    steps.push(
+      {
+        element: () => getTourAddUpdateButtonEl()!,
         popover: {
-          title: 'Mark as answered',
+          title: 'Add Update',
           description:
-            'Check this when the prayer is answered to move it to the <strong>Answered</strong> view (community and personal).',
+            'On each prayer card, use <strong>Add Update</strong> for progress or thanksgiving. Tap <strong>Open form &rarr;</strong> to expand the inline form.',
+          side: 'bottom',
+          align: 'start',
+          nextBtnText: 'Open form &rarr;',
+          onNextClick: openUpdateFormOnNext,
+        },
+      },
+      {
+        element: '#tour-prayer-update-content',
+        popover: {
+          title: 'Update details',
+          description: 'Share progress, thanksgiving, or what to keep praying for.',
+          side: 'top',
+          align: 'start',
+        },
+      }
+    );
+    if (includeAnonymous) {
+      steps.push({
+        element: `#${TOUR_PRAYER_UPDATE_ANONYMOUS_WRAP_ID}`,
+        popover: {
+          title: 'Anonymous update (optional)',
+          description:
+            'For <strong>community</strong> prayers you can post this update without showing your name.',
           side: 'top',
           align: 'start',
         },
       });
-    } else {
-      steps.push({
-        popover: {
-          title: 'Add Update',
-          description:
-            '<strong>Add Update</strong> appears on prayer cards when your current list has requests. Open a view with prayers and run this tour again to see that step.',
-          side: 'over',
-          align: 'center',
-        },
-      });
     }
+    steps.push({
+      element: `#${TOUR_PRAYER_UPDATE_MARK_ANSWERED_WRAP_ID}`,
+      popover: {
+        title: 'Mark as answered (optional)',
+        description:
+          'Optional: check this when the prayer is answered to move it to the <strong>Answered</strong> view (works for community and personal prayers). Leave it unchecked if you’re only sharing an update and the request is still active.',
+        side: 'top',
+        align: 'start',
+      },
+    });
+    steps.push({
+      element: () => getTourUpdateSubmitButtonEl()!,
+      popover: {
+        title: 'Add Update',
+        description:
+          'Tap <strong>Add Update</strong> to send what you entered. For <strong>community</strong> prayers, updates are <strong>reviewed by an admin</strong> before everyone sees them—like new requests. You may get an email when yours is approved or needs attention. <strong>Personal</strong> updates don’t go through that queue.',
+        side: 'top',
+        align: 'start',
+        onNextClick: this.popoverNextKillsTour(),
+      },
+    });
 
     const d = this.startTourDriver({
       showProgress: true,
@@ -1140,16 +1342,6 @@ export class HelpDriverTourService {
 
     this.killActiveDriver();
 
-    const advanceAfter = (fn: () => void, delayMs = 200): DriverHook => {
-      return (_element, _step, { driver: drv }) => {
-        fn();
-        window.setTimeout(() => {
-          drv.refresh();
-          drv.moveNext();
-        }, delayMs);
-      };
-    };
-
     const c1 = section.content[1];
     const c2 = section.content[2];
     const c3 = section.content[3];
@@ -1176,7 +1368,7 @@ export class HelpDriverTourService {
           side: 'bottom',
           align: 'start',
           nextBtnText: 'Next',
-          onNextClick: advanceAfter(hooks.switchToCurrent),
+          onNextClick: this.advanceAfterOrKill(hooks.switchToCurrent),
         },
       },
     ];
@@ -1193,7 +1385,7 @@ export class HelpDriverTourService {
           side: 'bottom',
           align: 'start',
           nextBtnText: 'Next',
-          onNextClick: advanceAfter(hooks.switchToAnswered),
+          onNextClick: this.advanceAfterOrKill(hooks.switchToAnswered),
         },
       });
     }
@@ -1208,7 +1400,7 @@ export class HelpDriverTourService {
           side: 'bottom',
           align: 'start',
           nextBtnText: 'Next',
-          onNextClick: advanceAfter(hooks.switchToTotal),
+          onNextClick: this.advanceAfterOrKill(hooks.switchToTotal),
         },
       });
     }
@@ -1225,7 +1417,7 @@ export class HelpDriverTourService {
           side: 'bottom',
           align: 'start',
           nextBtnText: 'Next',
-          onNextClick: advanceAfter(hooks.switchToPrompts),
+          onNextClick: this.advanceAfterOrKill(hooks.switchToPrompts),
         },
       });
     }
@@ -1240,7 +1432,7 @@ export class HelpDriverTourService {
           side: 'bottom',
           align: 'start',
           nextBtnText: 'Next',
-          onNextClick: advanceAfter(hooks.switchToPersonal),
+          onNextClick: this.advanceAfterOrKill(hooks.switchToPersonal),
         },
       });
     }
@@ -1253,6 +1445,7 @@ export class HelpDriverTourService {
           description: `${escapeHtml(c3.subtitle)}<br><br>${escapeHtml(c3.text)}`,
           side: 'bottom',
           align: 'start',
+          onNextClick: this.popoverNextKillsTour(),
         },
       });
     }
@@ -1291,16 +1484,6 @@ export class HelpDriverTourService {
     const title0 = escapeHtml(section.title);
     const desc0 = escapeHtml(section.description);
 
-    const advanceAfter = (fn: () => void): DriverHook => {
-      return (_element, _step, { driver: drv }) => {
-        fn();
-        window.setTimeout(() => {
-          drv.refresh();
-          drv.moveNext();
-        }, 200);
-      };
-    };
-
     const step0: DriveStep = {
       element: () => getPromptsFilterEl()!,
       popover: {
@@ -1309,7 +1492,7 @@ export class HelpDriverTourService {
         side: 'bottom',
         align: 'start',
         nextBtnText: 'Show prompts &rarr;',
-        onNextClick: advanceAfter(hooks.switchToPrompts),
+        onNextClick: this.advanceAfterOrKill(hooks.switchToPrompts),
       },
     };
 
@@ -1326,7 +1509,7 @@ export class HelpDriverTourService {
             side: 'bottom',
             align: 'start',
             nextBtnText: 'Next &rarr;',
-            onNextClick: advanceAfter(hooks.clearPromptTypes),
+            onNextClick: this.advanceAfterOrKill(hooks.clearPromptTypes),
           },
         },
         {
@@ -1361,6 +1544,7 @@ export class HelpDriverTourService {
           'Tap <strong>Pray</strong> for a focused presentation-style view of prompts. To print prompts, open <strong>Settings</strong> and use <strong>Print Prompts</strong>.',
         side: 'bottom',
         align: 'end',
+        onNextClick: this.popoverNextKillsTour(),
       },
     });
 
@@ -1398,16 +1582,6 @@ export class HelpDriverTourService {
     const title0 = escapeHtml(section.title);
     const desc0 = escapeHtml(section.description);
 
-    const advanceAfter = (fn: () => void): DriverHook => {
-      return (_element, _step, { driver: drv }) => {
-        fn();
-        window.setTimeout(() => {
-          drv.refresh();
-          drv.moveNext();
-        }, 200);
-      };
-    };
-
     const steps: DriveStep[] = [
       {
         element: () => getCurrentFilterEl()!,
@@ -1417,7 +1591,7 @@ export class HelpDriverTourService {
           side: 'bottom',
           align: 'start',
           nextBtnText: 'Show current &rarr;',
-          onNextClick: advanceAfter(hooks.switchToCurrent),
+          onNextClick: this.advanceAfterOrKill(hooks.switchToCurrent),
         },
       },
     ];
@@ -1442,6 +1616,7 @@ export class HelpDriverTourService {
           'When Prayer Encouragement is enabled, <strong>Pray For</strong> lets you record that you prayed for a community request. The requester only sees a <strong>total count</strong>—your tap is anonymous. It does not appear on personal prayers or Planning Center member cards.<br><br>You can turn the button or the praying count off for yourself in <strong>Settings</strong> under prayer encouragement on cards. After you tap Pray For, a <strong>cooldown</strong> applies before you can tap again for the same request.',
         side: 'over',
         align: 'center',
+        onNextClick: this.popoverNextKillsTour(),
       },
     });
 
@@ -1491,6 +1666,7 @@ export class HelpDriverTourService {
             'Shorter, broader words usually return more results; narrower terms focus the list. When you have text in the field, use <strong>Clear Search</strong> to reset. Exact phrases may work with quotes depending on how your church data is stored.',
           side: 'over',
           align: 'center',
+          onNextClick: this.popoverNextKillsTour(),
         },
       },
     ];
@@ -2389,7 +2565,8 @@ export class HelpDriverTourService {
    */
   startPresentationModePrayButtonPreludeTour(
     section: { title: string; description: string },
-    hooks: PresentationModePrayButtonPreludeHooks
+    hooks: PresentationModePrayButtonPreludeHooks,
+    opts?: { fullGuidedTourPrelude?: boolean }
   ): void {
     if (typeof document === 'undefined') {
       return;
@@ -2400,6 +2577,18 @@ export class HelpDriverTourService {
     const title0 = escapeHtml(section.title);
     const desc0 = escapeHtml(section.description);
     const pray = (): HTMLElement | null => getPrayerModeButtonEl();
+
+    const abortFullTourPrelude = (): void => {
+      this.clearFullGuidedTourNavigationState();
+      this.clearFullGuidedTourProgress();
+    };
+
+    const preludeCloseClick: DriverHook | undefined = opts?.fullGuidedTourPrelude
+      ? (_element, _step, opts2) => {
+          abortFullTourPrelude();
+          opts2.driver.destroy();
+        }
+      : undefined;
 
     const step: DriveStep = pray()
       ? {
@@ -2414,6 +2603,7 @@ export class HelpDriverTourService {
               hooks.markForCheck();
               this.killActiveDriver();
             },
+            ...(preludeCloseClick ? { onCloseClick: preludeCloseClick } : {}),
           },
         }
       : {
@@ -2427,6 +2617,7 @@ export class HelpDriverTourService {
               hooks.markForCheck();
               this.killActiveDriver();
             },
+            ...(preludeCloseClick ? { onCloseClick: preludeCloseClick } : {}),
           },
         };
 
@@ -2437,6 +2628,14 @@ export class HelpDriverTourService {
       allowClose: true,
       popoverClass: 'help-driver-popover',
       steps: [step],
+      ...(opts?.fullGuidedTourPrelude
+        ? {
+            onDestroyStarted: (_element, _step, opts2) => {
+              abortFullTourPrelude();
+              opts2.driver.destroy();
+            },
+          }
+        : {}),
     });
 
     d.drive(0);
@@ -2670,6 +2869,16 @@ export class HelpDriverTourService {
       allowClose: true,
       popoverClass: 'help-driver-popover',
       steps,
+      onDestroyed: (_element, _step, opts) => {
+        const stepsArr = opts.config.steps ?? [];
+        const idx = opts.state.activeIndex;
+        const onLast =
+          stepsArr.length > 0 && typeof idx === 'number' && idx === stepsArr.length - 1;
+        const prog = this.lastDriverDestroyWasProgrammatic;
+        if (!onLast && !prog) {
+          hooks.onFullGuidedTourInterrupted?.();
+        }
+      },
     });
 
     d.drive(0);
@@ -2677,6 +2886,9 @@ export class HelpDriverTourService {
 
   destroy(): void {
     this.tourFinishedCallback = null;
+    this.tourChainMode = 'off';
+    this.lastDriverDestroyWasProgrammatic = false;
+    this.tourAbortedFullChainByUser = false;
     this.killActiveDriver();
   }
 }

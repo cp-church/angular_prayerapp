@@ -548,6 +548,17 @@ export class PresentationComponent implements OnInit, OnDestroy {
           },
           exitPresentation: () => this.exitPresentation(),
           markForCheck: () => this.cdr.markForCheck(),
+          onFullGuidedTourInterrupted: () => {
+            if (!this.fullGuidedTourFromFullChain) {
+              return;
+            }
+            this.fullGuidedTourFromFullChain = false;
+            this.fullGuidedTourRemainingSectionIds = null;
+            this.fullGuidedTourTotalSteps = null;
+            this.fullGuidedTourResumeStartGlobalSectionIndex = null;
+            this.helpDriverTourService.clearFullGuidedTourNavigationState();
+            this.helpDriverTourService.clearFullGuidedTourProgress();
+          },
           persistFullGuidedTourQueue: () => {
             if (!this.fullGuidedTourFromFullChain || typeof sessionStorage === 'undefined') {
               return;

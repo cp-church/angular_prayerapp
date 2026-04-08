@@ -977,6 +977,10 @@ export class HomeComponent implements OnInit, OnDestroy {
             this.showPrayerForm = false;
             this.cdr.markForCheck();
           },
+          switchToCurrent: () => {
+            this.setFilter('current');
+            this.cdr.markForCheck();
+          },
         },
         { includeAnonymousUpdateStep: includeAnonymous }
       );
@@ -1345,7 +1349,8 @@ export class HomeComponent implements OnInit, OnDestroy {
           void this.router.navigate(['/presentation']);
         },
         markForCheck: () => this.cdr.markForCheck(),
-      }
+      },
+      { fullGuidedTourPrelude: true }
     );
   }
 

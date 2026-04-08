@@ -203,32 +203,38 @@ const PRAY_FOR_MODAL_DO_NOT_SHOW_KEY = 'prayer_encouragement_modal_do_not_show';
             required
           ></textarea>
           @if (!isPersonal && !prayer.id.startsWith('pc-member-')) {
-          <div class="flex items-center gap-2">
+          <div
+            class="flex items-center gap-2"
+            [attr.id]="tourUpdateAnchors ? 'tour-prayer-update-anonymous-wrap' : null"
+          >
             <input
               type="checkbox"
-              [attr.id]="tourUpdateAnchors ? 'tour-prayer-update-anonymous' : ('updateIsAnonymous-' + prayer.id)"
+              [attr.id]="tourUpdateAnchors ? 'tour-prayer-update-anonymous-input' : ('updateIsAnonymous-' + prayer.id)"
               [(ngModel)]="updateIsAnonymous"
               name="updateIsAnonymous"
               class="rounded border-gray-900 dark:border-white focus:ring-2 focus:ring-[#39704D]"
             />
             <label
-              [for]="tourUpdateAnchors ? 'tour-prayer-update-anonymous' : ('updateIsAnonymous-' + prayer.id)"
+              [for]="tourUpdateAnchors ? 'tour-prayer-update-anonymous-input' : ('updateIsAnonymous-' + prayer.id)"
               class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
             >
               Post update anonymously
             </label>
           </div>
           }
-          <div class="flex items-center gap-2">
+          <div
+            class="flex items-center gap-2"
+            [attr.id]="tourUpdateAnchors ? 'tour-prayer-update-mark-answered-wrap' : null"
+          >
             <input
               type="checkbox"
-              [attr.id]="tourUpdateAnchors ? 'tour-prayer-update-mark-answered' : ('updateMarkAsAnswered-' + prayer.id)"
+              [attr.id]="tourUpdateAnchors ? 'tour-prayer-update-mark-answered-input' : ('updateMarkAsAnswered-' + prayer.id)"
               [(ngModel)]="updateMarkAsAnswered"
               name="updateMarkAsAnswered"
               class="rounded border-gray-900 dark:border-white focus:ring-2 focus:ring-[#39704D]"
             />
             <label
-              [for]="tourUpdateAnchors ? 'tour-prayer-update-mark-answered' : ('updateMarkAsAnswered-' + prayer.id)"
+              [for]="tourUpdateAnchors ? 'tour-prayer-update-mark-answered-input' : ('updateMarkAsAnswered-' + prayer.id)"
               class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
             >
               Mark this prayer as answered
@@ -237,6 +243,7 @@ const PRAY_FOR_MODAL_DO_NOT_SHOW_KEY = 'prayer_encouragement_modal_do_not_show';
           <div class="flex gap-2">
             <button
               type="submit"
+              [attr.id]="tourUpdateAnchors ? 'tour-prayer-update-submit' : null"
               [disabled]="!updateForm.valid"
               class="px-3 py-1.5 text-sm font-medium bg-[#39704D] text-white rounded-md border border-[#2d5a3f] hover:bg-[#2d5a3f] focus:outline-none focus:ring-2 focus:ring-[#39704D] focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm cursor-pointer"
               aria-label="Submit prayer update"
