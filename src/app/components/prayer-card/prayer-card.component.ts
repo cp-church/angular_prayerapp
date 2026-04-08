@@ -16,7 +16,8 @@ const PRAY_FOR_MODAL_DO_NOT_SHOW_KEY = 'prayer_encouragement_modal_do_not_show';
   imports: [CommonModule, FormsModule, ConfirmationDialogComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div 
+    <div
+      [attr.id]="tourPersonalWalkthroughAnchors ? 'tour-walkthrough-personal-prayer-card' : null"
       [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md border-[2px] p-6 mb-4 transition-colors relative ' + (dragHandle && isPersonal ? ' pl-10 ' : '') + getBorderClass()"
     >
       <!-- Drag Handle: rendered as first child so absolute left-3 top-1/2 is relative to card root (not header) -->
@@ -80,6 +81,7 @@ const PRAY_FOR_MODAL_DO_NOT_SHOW_KEY = 'prayer_encouragement_modal_do_not_show';
           @if (isPersonal) {
           <button
             (click)="editPersonalPrayer.emit(prayer)"
+            [attr.id]="tourPersonalWalkthroughAnchors ? 'tour-walkthrough-personal-edit' : null"
             aria-label="Edit personal prayer"
             title="Edit prayer"
             class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md cursor-pointer"
@@ -93,6 +95,7 @@ const PRAY_FOR_MODAL_DO_NOT_SHOW_KEY = 'prayer_encouragement_modal_do_not_show';
           @if (showDeleteButton()) {
           <button
             (click)="handleDeleteClick()"
+            [attr.id]="tourPersonalWalkthroughAnchors ? 'tour-walkthrough-personal-delete' : null"
             aria-label="Delete prayer request"
             title="Delete prayer request"
             class="inline-flex items-center justify-center text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 focus:outline-none focus:ring-2 focus:ring-red-500 rounded-md cursor-pointer"
@@ -131,8 +134,16 @@ const PRAY_FOR_MODAL_DO_NOT_SHOW_KEY = 'prayer_encouragement_modal_do_not_show';
       @if (showAddUpdateButton()) {
       <div class="flex flex-nowrap gap-1 mb-4 items-center min-w-0">
         <button
+          type="button"
           (click)="toggleAddUpdate()"
           title="Add an update to this prayer"
+          [attr.id]="
+            tourPersonalWalkthroughAnchors
+              ? 'tour-walkthrough-add-update'
+              : tourUpdateAnchors
+                ? 'tour-prayer-add-update'
+                : null
+          "
           class="flex-shrink-0 px-2 py-1 text-xs font-medium bg-green-50 dark:bg-green-900/20 text-[#39704D] dark:text-[#5FB876] rounded-md border border-[#39704D] dark:border-[#39704D] hover:bg-green-100 dark:hover:bg-green-900/30 focus:outline-none focus:ring-2 focus:ring-[#39704D] focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer whitespace-nowrap"
         >
           Add Update
@@ -140,15 +151,19 @@ const PRAY_FOR_MODAL_DO_NOT_SHOW_KEY = 'prayer_encouragement_modal_do_not_show';
         @if ((userSessionService.getShowPrayForButton$() | async) && (prayerEncouragementService.getPrayerEncouragementEnabled$() | async) && !isPersonal && !prayer.id.startsWith('pc-member-')) {
           @if (prayerEncouragementService.canPrayFor(prayer.id)) {
             <button
+              type="button"
               (click)="onPrayForClick()"
               title="Record that you prayed for this request"
+              [attr.id]="tourPrayForEncouragementAnchors ? 'tour-prayer-pray-for' : null"
               class="flex-shrink-0 px-2 py-1 text-xs font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-md border border-blue-600 dark:border-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 cursor-pointer whitespace-nowrap"
             >
               Pray For
             </button>
           } @else {
             <button
+              type="button"
               disabled
+              [attr.id]="tourPrayForEncouragementAnchors ? 'tour-prayer-pray-for' : null"
               [title]="'You can pray for this again in ' + ((prayerEncouragementService.getCooldownHours$() | async) ?? 4) + ' hours'"
               class="flex-shrink-0 px-2 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-md border border-gray-300 dark:border-gray-600 cursor-not-allowed whitespace-nowrap"
             >
@@ -173,7 +188,13 @@ const PRAY_FOR_MODAL_DO_NOT_SHOW_KEY = 'prayer_encouragement_modal_do_not_show';
         <h4 [id]="'addUpdateTitle-' + prayer.id" class="text-sm font-medium text-[#39704D] dark:text-[#5FB876] mb-3">Add Prayer Update</h4>
         <div class="space-y-2">
           <textarea
-            [id]="'updateContent-' + prayer.id"
+            [attr.id]="
+              tourPersonalWalkthroughAnchors
+                ? 'tour-walkthrough-update-content'
+                : tourUpdateAnchors
+                  ? 'tour-prayer-update-content'
+                  : 'updateContent-' + prayer.id
+            "
             placeholder="Prayer update..."
             [(ngModel)]="updateContent"
             name="updateContent"
@@ -185,12 +206,15 @@ const PRAY_FOR_MODAL_DO_NOT_SHOW_KEY = 'prayer_encouragement_modal_do_not_show';
           <div class="flex items-center gap-2">
             <input
               type="checkbox"
-              id="updateIsAnonymous-{{prayer.id}}"
+              [attr.id]="tourUpdateAnchors ? 'tour-prayer-update-anonymous' : ('updateIsAnonymous-' + prayer.id)"
               [(ngModel)]="updateIsAnonymous"
               name="updateIsAnonymous"
               class="rounded border-gray-900 dark:border-white focus:ring-2 focus:ring-[#39704D]"
             />
-            <label [for]="'updateIsAnonymous-' + prayer.id" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+            <label
+              [for]="tourUpdateAnchors ? 'tour-prayer-update-anonymous' : ('updateIsAnonymous-' + prayer.id)"
+              class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
+            >
               Post update anonymously
             </label>
           </div>
@@ -198,12 +222,15 @@ const PRAY_FOR_MODAL_DO_NOT_SHOW_KEY = 'prayer_encouragement_modal_do_not_show';
           <div class="flex items-center gap-2">
             <input
               type="checkbox"
-              id="updateMarkAsAnswered-{{prayer.id}}"
+              [attr.id]="tourUpdateAnchors ? 'tour-prayer-update-mark-answered' : ('updateMarkAsAnswered-' + prayer.id)"
               [(ngModel)]="updateMarkAsAnswered"
               name="updateMarkAsAnswered"
               class="rounded border-gray-900 dark:border-white focus:ring-2 focus:ring-[#39704D]"
             />
-            <label [for]="'updateMarkAsAnswered-' + prayer.id" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+            <label
+              [for]="tourUpdateAnchors ? 'tour-prayer-update-mark-answered' : ('updateMarkAsAnswered-' + prayer.id)"
+              class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
+            >
               Mark this prayer as answered
             </label>
           </div>
@@ -510,7 +537,13 @@ export class PrayerCardComponent implements OnInit, OnChanges, OnDestroy {
   @Input() deletionsAllowed: 'everyone' | 'original-requestor' | 'admin-only' = 'everyone';
   @Input() updatesAllowed: 'everyone' | 'original-requestor' | 'admin-only' = 'everyone';
   @Input() activeFilter: 'current' | 'answered' | 'archived' | 'total' | 'prompts' | 'personal' | 'planning_center_list' = 'total';
-  
+  /** First visible card in the list: stable ids for driver.js “Updating Prayers” tour. */
+  @Input() tourUpdateAnchors = false;
+  /** First community card on Home: stable id on **Pray For** / **Prayed For** for the Prayer Encouragement tour (step 2). */
+  @Input() tourPrayForEncouragementAnchors = false;
+  /** Personal card matching the hands-on help tour sample prayer — stable ids for driver.js. */
+  @Input() tourPersonalWalkthroughAnchors = false;
+
   @Output() delete = new EventEmitter<string>();
   @Output() addUpdate = new EventEmitter<any>();
   @Output() deleteUpdate = new EventEmitter<{updateId: string; prayerId: string}>();

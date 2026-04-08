@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { of, throwError } from 'rxjs';
 
 describe('HelpModalComponent - Core Logic', () => {
   describe('Search and Filtering', () => {
@@ -1682,37 +1683,40 @@ describe('HelpModalComponent - Angular Integration Tests', () => {
   let component: any;
   let helpContentService: any;
   let sanitizer: any;
+  let helpDriverTourService: { interruptGuidedTours: ReturnType<typeof vi.fn> };
+  let toastService: { showToast: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     // Mock HelpContentService with observables
     helpContentService = {
-      getSections: vi.fn().mockReturnValue({
-        pipe: vi.fn().mockReturnValue({
-          subscribe: vi.fn((callback: any) => {
-            callback([
-              {
-                id: '1',
-                title: 'Getting Started',
-                description: 'Learn the basics',
-                icon: '<svg></svg>',
-                content: [
-                  { subtitle: 'Overview', text: 'This is an overview', examples: ['Example 1'] }
-                ]
-              },
-              {
-                id: '2',
-                title: 'Advanced Features',
-                description: 'Power user features',
-                icon: '<svg></svg>',
-                content: [
-                  { subtitle: 'Features', text: 'Advanced functionality', examples: [] }
-                ]
-              }
-            ]);
-            return { unsubscribe: vi.fn() };
-          })
-        })
-      }),
+      getSections: vi.fn().mockReturnValue(
+        of([
+          {
+            id: '1',
+            title: 'Getting Started',
+            description: 'Learn the basics',
+            icon: '<svg></svg>',
+            content: [{ subtitle: 'Overview', text: 'This is an overview', examples: ['Example 1'] }],
+            order: 2,
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            createdBy: 'system',
+          },
+          {
+            id: '2',
+            title: 'Advanced Features',
+            description: 'Power user features',
+            icon: '<svg></svg>',
+            content: [{ subtitle: 'Features', text: 'Advanced functionality', examples: [] }],
+            order: 1,
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            createdBy: 'system',
+          },
+        ])
+      ),
       isLoading$: {
         pipe: vi.fn().mockReturnValue({
           subscribe: vi.fn((callback: any) => {
@@ -1736,9 +1740,22 @@ describe('HelpModalComponent - Angular Integration Tests', () => {
       bypassSecurityTrustHtml: vi.fn((html: string) => ({ changingThisBreaksApplicationSecurity: html }))
     };
 
+    helpDriverTourService = {
+      interruptGuidedTours: vi.fn(),
+    };
+
+    toastService = {
+      showToast: vi.fn(),
+    };
+
     // Import and create actual component instance
     const { HelpModalComponent } = await import('./help-modal.component');
-    component = new HelpModalComponent(helpContentService, sanitizer);
+    component = new HelpModalComponent(
+      helpContentService,
+      sanitizer,
+      helpDriverTourService as any,
+      toastService as any
+    );
   });
 
   describe('Component Initialization with ngOnInit', () => {
@@ -1832,6 +1849,270 @@ describe('HelpModalComponent - Angular Integration Tests', () => {
       component.onClose();
       
       expect(emitSpy).toHaveBeenCalled();
+      expect(helpDriverTourService.interruptGuidedTours).toHaveBeenCalled();
+    });
+
+    it('should emit fullGuidedTourRequested with active sections sorted by order when Full guided tour is clicked', async () => {
+      const tourSpy = vi.spyOn(component.fullGuidedTourRequested, 'emit');
+      const ev = new MouseEvent('click');
+      await component.onFullGuidedTour(ev);
+      expect(helpDriverTourService.interruptGuidedTours).toHaveBeenCalled();
+      expect(tourSpy).toHaveBeenCalledTimes(1);
+      const emitted = tourSpy.mock.calls[0][0] as Array<{ id: string; order: number }>;
+      expect(emitted.map((s) => s.id)).toEqual(['2', '1']);
+      expect(toastService.showToast).not.toHaveBeenCalled();
+    });
+
+    it('should show error toast and not emit when getSections errors', async () => {
+      helpContentService.getSections = vi.fn().mockReturnValue(throwError(() => new Error('load failed')));
+      const tourSpy = vi.spyOn(component.fullGuidedTourRequested, 'emit');
+      const ev = new MouseEvent('click');
+      await component.onFullGuidedTour(ev);
+      expect(tourSpy).not.toHaveBeenCalled();
+      expect(toastService.showToast).toHaveBeenCalledWith(
+        'Could not start the full tour. Please try again in a moment.',
+        'error'
+      );
+    });
+
+    it('should emit startCreatingPrayersHelpSectionUiTour when starting Creating Prayers section tour', () => {
+      const tourSpy = vi.spyOn(component.startCreatingPrayersHelpSectionUiTour, 'emit');
+      const section = {
+        id: 'help_prayers',
+        title: 'Creating Prayers',
+        description: 'How to create and manage',
+        icon: '<svg></svg>',
+        content: [{ subtitle: 'A', text: 'body', examples: [] }],
+        order: 1,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'system',
+      };
+      const ev = new MouseEvent('click');
+      component.onStartCreatingPrayersHelpSectionTour(ev, section as any);
+      expect(helpDriverTourService.interruptGuidedTours).toHaveBeenCalled();
+      expect(tourSpy).toHaveBeenCalledWith(section);
+    });
+
+    it('should emit startPrayerPromptsUiTour when starting prompts section tour', () => {
+      const tourSpy = vi.spyOn(component.startPrayerPromptsUiTour, 'emit');
+      const section = {
+        id: 'help_prompts',
+        title: 'Using Prayer Prompts',
+        description: 'Get inspired',
+        icon: '<svg></svg>',
+        content: [{ subtitle: 'What', text: 'body', examples: [] }],
+        order: 2,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'system',
+      };
+      const ev = new MouseEvent('click');
+      component.onStartPromptsSectionTour(ev, section as any);
+      expect(helpDriverTourService.interruptGuidedTours).toHaveBeenCalled();
+      expect(tourSpy).toHaveBeenCalledWith(section);
+    });
+
+    it('should emit startPrayerEncouragementUiTour when starting prayer encouragement section tour', () => {
+      const tourSpy = vi.spyOn(component.startPrayerEncouragementUiTour, 'emit');
+      const section = {
+        id: 'help_prayer_encouragement',
+        title: 'Prayer Encouragement (Pray For)',
+        description: 'Encourage others',
+        icon: '<svg></svg>',
+        content: [{ subtitle: 'What', text: 'body', examples: [] }],
+        order: 3,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'system',
+      };
+      const ev = new MouseEvent('click');
+      component.onStartPrayerEncouragementSectionTour(ev, section as any);
+      expect(helpDriverTourService.interruptGuidedTours).toHaveBeenCalled();
+      expect(tourSpy).toHaveBeenCalledWith(section);
+    });
+
+    it('should emit startSearchPrayersUiTour when starting search prayers section tour', () => {
+      const tourSpy = vi.spyOn(component.startSearchPrayersUiTour, 'emit');
+      const section = {
+        id: 'help_search',
+        title: 'Searching Prayers',
+        description: 'Find prayers',
+        icon: '<svg></svg>',
+        content: [{ subtitle: 'Bar', text: 'body', examples: [] }],
+        order: 4,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'system',
+      };
+      const ev = new MouseEvent('click');
+      component.onStartSearchPrayersSectionTour(ev, section as any);
+      expect(helpDriverTourService.interruptGuidedTours).toHaveBeenCalled();
+      expect(tourSpy).toHaveBeenCalledWith(section);
+    });
+
+    it('should emit startPersonalPrayersHelpSectionUiTour when starting Personal Prayers help section tour', () => {
+      const tourSpy = vi.spyOn(component.startPersonalPrayersHelpSectionUiTour, 'emit');
+      const section = {
+        id: 'help_personal_prayers',
+        title: 'Personal Prayers',
+        description: 'Private prayers',
+        icon: '<svg></svg>',
+        content: [{ subtitle: 'What', text: 'body', examples: [] }],
+        order: 5,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'system',
+      };
+      const ev = new MouseEvent('click');
+      component.onStartPersonalPrayersHelpSectionTour(ev, section as any);
+      expect(helpDriverTourService.interruptGuidedTours).toHaveBeenCalled();
+      expect(tourSpy).toHaveBeenCalledWith(section);
+    });
+
+    it('should emit startFilteringHelpSectionUiTour when starting Filtering Prayers help section tour', () => {
+      const tourSpy = vi.spyOn(component.startFilteringHelpSectionUiTour, 'emit');
+      const section = {
+        id: 'help_filtering',
+        title: 'Filtering Prayers',
+        description: 'Filter and sort',
+        icon: '<svg></svg>',
+        content: [{ subtitle: 'Filter Options', text: 'body', examples: [] }],
+        order: 6,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'system',
+      };
+      const ev = new MouseEvent('click');
+      component.onStartFilteringHelpSectionTour(ev, section as any);
+      expect(helpDriverTourService.interruptGuidedTours).toHaveBeenCalled();
+      expect(tourSpy).toHaveBeenCalledWith(section);
+    });
+
+    it('should emit startPresentationModeHelpSectionUiTour when starting Presentation Mode help section tour', () => {
+      const tourSpy = vi.spyOn(component.startPresentationModeHelpSectionUiTour, 'emit');
+      const section = {
+        id: 'help_presentation',
+        title: 'Presentation Mode',
+        description: 'Group display',
+        icon: '<svg></svg>',
+        content: [{ subtitle: 'Starting', text: 'body', examples: [] }],
+        order: 6,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'system',
+      };
+      const ev = new MouseEvent('click');
+      component.onStartPresentationModeHelpSectionTour(ev, section as any);
+      expect(helpDriverTourService.interruptGuidedTours).toHaveBeenCalled();
+      expect(tourSpy).toHaveBeenCalledWith(section);
+    });
+
+    it('should emit startPrintingHelpSectionUiTour when starting Printing help section tour', () => {
+      const tourSpy = vi.spyOn(component.startPrintingHelpSectionUiTour, 'emit');
+      const section = {
+        id: 'help_printing',
+        title: 'Printing',
+        description: 'Print prayers',
+        icon: '<svg></svg>',
+        content: [{ subtitle: 'Options', text: 'body', examples: [] }],
+        order: 7,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'system',
+      };
+      const ev = new MouseEvent('click');
+      component.onStartPrintingHelpSectionTour(ev, section as any);
+      expect(helpDriverTourService.interruptGuidedTours).toHaveBeenCalled();
+      expect(tourSpy).toHaveBeenCalledWith(section);
+    });
+
+    it('should emit startEmailSubscriptionHelpSectionUiTour when starting Email Subscription help section tour', () => {
+      const tourSpy = vi.spyOn(component.startEmailSubscriptionHelpSectionUiTour, 'emit');
+      const section = {
+        id: 'help_email_subscription',
+        title: 'Email Subscription',
+        description: 'Email prefs',
+        icon: '<svg></svg>',
+        content: [{ subtitle: 'What', text: 'body', examples: [] }],
+        order: 9,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'system',
+      };
+      const ev = new MouseEvent('click');
+      component.onStartEmailSubscriptionHelpSectionTour(ev, section as any);
+      expect(helpDriverTourService.interruptGuidedTours).toHaveBeenCalled();
+      expect(tourSpy).toHaveBeenCalledWith(section);
+    });
+
+    it('should emit startPrayerRemindersHelpSectionUiTour when starting Prayer reminders help section tour', () => {
+      const tourSpy = vi.spyOn(component.startPrayerRemindersHelpSectionUiTour, 'emit');
+      const section = {
+        id: 'help_prayer_reminders',
+        title: 'Prayer reminders',
+        description: 'Hourly nudges',
+        icon: '<svg></svg>',
+        content: [{ subtitle: 'What they are', text: 'body', examples: [] }],
+        order: 10,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'system',
+      };
+      const ev = new MouseEvent('click');
+      component.onStartPrayerRemindersHelpSectionTour(ev, section as any);
+      expect(helpDriverTourService.interruptGuidedTours).toHaveBeenCalled();
+      expect(tourSpy).toHaveBeenCalledWith(section);
+    });
+
+    it('should emit startFeedbackHelpSectionUiTour when starting Feedback help section tour', () => {
+      const tourSpy = vi.spyOn(component.startFeedbackHelpSectionUiTour, 'emit');
+      const section = {
+        id: 'help_feedback',
+        title: 'Send Feedback',
+        description: 'Share suggestions, report bugs, and request features',
+        icon: '<svg></svg>',
+        content: [{ subtitle: 'Types', text: 'body', examples: [] }],
+        order: 11,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'system',
+      };
+      const ev = new MouseEvent('click');
+      component.onStartFeedbackHelpSectionTour(ev, section as any);
+      expect(helpDriverTourService.interruptGuidedTours).toHaveBeenCalled();
+      expect(tourSpy).toHaveBeenCalledWith(section);
+    });
+
+    it('should emit startAppSettingsHelpSectionUiTour when starting App Settings help section tour', () => {
+      const tourSpy = vi.spyOn(component.startAppSettingsHelpSectionUiTour, 'emit');
+      const section = {
+        id: 'help_settings',
+        title: 'App Settings',
+        description: 'Customize the app',
+        icon: '<svg></svg>',
+        content: [{ subtitle: 'Print Buttons', text: 'body', examples: [] }],
+        order: 12,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'system',
+      };
+      const ev = new MouseEvent('click');
+      component.onStartAppSettingsHelpSectionTour(ev, section as any);
+      expect(helpDriverTourService.interruptGuidedTours).toHaveBeenCalled();
+      expect(tourSpy).toHaveBeenCalledWith(section);
     });
 
     it('should handle multiple close calls', () => {

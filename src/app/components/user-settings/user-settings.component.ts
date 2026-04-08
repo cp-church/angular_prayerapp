@@ -63,11 +63,12 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
         <!-- Content -->
         <div class="p-4 sm:p-6 space-y-4">
           <!-- Print Buttons -->
-          <div class="flex flex-col lg:flex-row flex-nowrap gap-2">
+          <div id="tour-settings-print-buttons" class="flex flex-col lg:flex-row flex-nowrap gap-2">
             <!-- Print Prayer List -->
             <div class="relative flex-1 min-w-0">
               <div class="flex w-full min-w-0">
                 <button
+                  id="tour-settings-print-prayers"
                   (click)="handlePrint()"
                   title="Print prayers for the selected time period"
                   [disabled]="isPrinting"
@@ -159,6 +160,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
             <div class="relative flex-1 min-w-0">
               <div class="flex w-full min-w-0">
                 <button
+                  id="tour-settings-print-prompts"
                   (click)="handlePrintPrompts()"
                   [disabled]="isPrintingPrompts"
                   title="Print prayer prompts for the selected time period"
@@ -260,6 +262,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
             <div class="relative flex-1 min-w-0">
               <div class="flex w-full min-w-0">
                 <button
+                  id="tour-settings-print-personal"
                   (click)="handlePrintPersonalPrayers()"
                   title="Print personal prayers for the selected categories"
                   [disabled]="isPrintingPersonal"
@@ -359,7 +362,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           </div>
 
           <!-- Theme Selector -->
-          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
+          <div id="tour-settings-theme" class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
             <div class="flex items-start gap-2 sm:gap-3">
               <div class="flex-1">
                 <div class="font-medium text-gray-800 dark:text-gray-100 mb-3 text-sm sm:text-base">
@@ -427,7 +430,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           </div>
 
           <!-- Text size -->
-          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
+          <div id="tour-settings-text-size" class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
             <div class="flex items-start gap-2 sm:gap-3">
               <div class="flex-1">
                 <div class="font-medium text-gray-800 dark:text-gray-100 mb-3 text-sm sm:text-base">
@@ -476,7 +479,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           </div>
 
           <!-- Email Subscription Toggle -->
-          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 space-y-2">
+          <div id="tour-settings-email-subscription" class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 space-y-2">
             <div class="flex items-start gap-3">
               @if (preferencesLoaded) {
               <input
@@ -533,7 +536,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
 
           <!-- Push Subscription Toggle: show in native app always; in PWA standalone show when preferences loaded (so user can see state and turn off; turn on only in native app) -->
           @if (capacitorService.showPushNotificationSetting() && (capacitorService.isNative() || preferencesLoaded)) {
-          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 space-y-2">
+          <div id="tour-settings-push-notifications" class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 space-y-2">
             <div class="flex items-start gap-3">
               @if (preferencesLoaded) {
               <input
@@ -589,7 +592,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           }
 
           <!-- Badge Functionality Toggle -->
-          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 space-y-2">
+          <div id="tour-settings-badges" class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 space-y-2">
             <div class="flex items-start gap-3">
               @if (badgePreferencesLoaded) {
               <input
@@ -645,7 +648,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           </div>
 
           <!-- Prayer encouragement on cards (viewer-only) -->
-          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 space-y-3">
+          <div id="tour-settings-prayer-encouragement" class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 space-y-3">
             <div class="font-medium text-gray-900 dark:text-gray-100 text-sm sm:text-base">
               @if (prayerEncouragementUiLoaded) {
               Prayer encouragement on cards
@@ -746,7 +749,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           </div>
 
           <!-- Default View Preference Control -->
-          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 space-y-2">
+          <div id="tour-settings-default-view" class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 space-y-2">
             <div class="flex items-start gap-3">
               <div class="flex-1">
                 <div class="font-medium text-gray-900 dark:text-gray-100 text-sm sm:text-base mb-3">
@@ -833,7 +836,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           }
 
           <!-- Prayer reminders (hourly self nudges) -->
-          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 space-y-2">
+          <div id="tour-settings-prayer-reminders" class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 space-y-2">
             <div class="font-medium text-gray-900 dark:text-gray-100 text-sm sm:text-base">
               Prayer reminders
             </div>
@@ -868,7 +871,7 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
                 }
               </ul>
             }
-            <div class="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:items-end">
+            <div id="tour-settings-prayer-reminder-controls" class="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:items-end">
               <div class="flex flex-col gap-1">
                 <label for="reminder-hour-select" class="text-xs font-medium text-gray-700 dark:text-gray-300">Hour</label>
                 <select
@@ -900,12 +903,19 @@ type PrintRange = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
             }
           </div>
 
-          <!-- GitHub Feedback Form -->
-          @if (githubFeedbackEnabled) {
-          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
-            <app-github-feedback-form></app-github-feedback-form>
+          <!-- Feedback (stable tour anchor; form when GitHub feedback is enabled) -->
+          <div
+            id="tour-settings-feedback-section"
+            class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4"
+          >
+            @if (githubFeedbackEnabled) {
+              <app-github-feedback-form></app-github-feedback-form>
+            } @else {
+              <p class="text-sm text-gray-600 dark:text-gray-400">
+                In-app feedback isn’t turned on for this app. Your church can enable it in admin configuration if they want suggestions and bug reports here.
+              </p>
+            }
           </div>
-          }
 
           <!-- Delete account -->
           <div class="border border-red-200 dark:border-red-800 rounded-lg p-3 sm:p-4">

@@ -13,7 +13,10 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
   template: `
     @if (visible) {
     <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 safe-area-overlay">
-      <div class="bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl max-w-md w-full shadow-2xl max-h-[95vh] sm:max-h-[90vh] flex flex-col">
+      <div
+        id="tour-presentation-settings-modal"
+        class="bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl max-w-md w-full shadow-2xl max-h-[95vh] sm:max-h-[90vh] flex flex-col"
+      >
         <div class="flex items-center justify-between p-4 sm:p-6 lg:p-8 pb-3 sm:pb-4 border-b border-gray-200 dark:border-gray-700">
           <h2 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100">Settings</h2>
           <button
@@ -28,7 +31,7 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
 
         <div class="space-y-4 sm:space-y-5 lg:space-y-6 px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8 overflow-y-auto">
           <!-- Theme Selection -->
-          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 mt-3 sm:mt-4">
+          <div id="tour-presentation-setting-theme" class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 mt-3 sm:mt-4">
             <div class="flex items-start gap-2 sm:gap-3">
               <div class="flex-1">
                 <div class="font-medium text-gray-800 dark:text-gray-100 mb-2 sm:mb-3 text-sm sm:text-base">
@@ -89,7 +92,7 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           </div>
 
           <!-- Smart Mode -->
-          <div>
+          <div id="tour-presentation-setting-smart">
             <label class="flex items-center gap-2 sm:gap-3 cursor-pointer mb-4 sm:mb-6">
               <input
                 type="checkbox"
@@ -104,7 +107,7 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
 
           <!-- Duration Slider and Quick Buttons (when not smart mode) -->
           @if (!localSmartMode) {
-          <div>
+          <div id="tour-presentation-setting-duration">
             <label class="block text-base sm:text-lg lg:text-xl mb-2 sm:mb-3 text-gray-900 dark:text-gray-100">Auto-advance interval (seconds)</label>
             <input
               type="range"
@@ -141,7 +144,7 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
 
           <!-- Smart Mode Info Box -->
           @if (localSmartMode) {
-          <div class="bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded-lg p-4">
+          <div id="tour-presentation-setting-smart-info" class="bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded-lg p-4">
             <p class="text-lg text-gray-800 dark:text-gray-100 mb-2">
               Smart mode automatically adjusts display time based on prayer length, giving you more time to read longer prayers and updates.
             </p>
@@ -168,7 +171,7 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           }
 
           <!-- Content Type -->
-          <div>
+          <div id="tour-presentation-setting-content-type">
             <label class="block text-base sm:text-lg lg:text-xl mb-2 sm:mb-3 text-gray-900 dark:text-gray-100">Content Type</label>
             <div class="relative">
               <select
@@ -188,7 +191,7 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           </div>
 
           <!-- Randomize Toggle -->
-          <div>
+          <div id="tour-presentation-setting-randomize">
             <label class="flex items-center justify-between cursor-pointer">
               <span class="text-base sm:text-lg lg:text-xl text-gray-900 dark:text-gray-100">Randomize Order</span>
               <div class="relative">
@@ -207,7 +210,7 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
 
           <!-- Time Filter (for prayers and personal prayers) -->
           @if (localContentType === 'prayers' || localContentType === 'personal') {
-          <div>
+          <div id="tour-presentation-setting-time-filter">
             <label class="block text-base sm:text-lg lg:text-xl mb-2 sm:mb-3 text-gray-900 dark:text-gray-100">Time Period</label>
             <div class="relative">
               <select
@@ -248,7 +251,7 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
 
           <!-- Prayer Status (for prayers and personal prayers) -->
           @if (localContentType === 'prayers' || localContentType === 'personal') {
-          <div>
+          <div id="tour-presentation-setting-status">
             <label class="block text-base sm:text-lg lg:text-xl mb-2 sm:mb-3 text-gray-900 dark:text-gray-100">Prayer Status</label>
             <div class="relative">
               <div class="flex">
@@ -294,7 +297,7 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
           }
 
           <!-- Prayer Timer -->
-          <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
+          <div id="tour-presentation-setting-timer" class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
             <div class="flex items-start gap-2 sm:gap-3 mb-3 sm:mb-4">
               <div class="flex-1">
                 <div class="font-medium text-gray-800 dark:text-gray-100 mb-1 sm:mb-2 text-sm sm:text-base">
@@ -328,6 +331,7 @@ type TimeFilter = 'week' | 'twoweeks' | 'month' | 'year' | 'all';
 
           <!-- Refresh Button -->
           <button
+            id="tour-presentation-setting-refresh"
             (click)="refresh.emit()"
             class="w-full px-4 sm:px-6 py-2.5 sm:py-3 bg-blue-600 hover:bg-blue-700 text-gray-100 rounded-lg text-base sm:text-lg font-semibold transition-colors cursor-pointer">
             Refresh Prayers

@@ -1,7 +1,6 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
-import { ChangeDetectorRef } from '@angular/core';
+import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { PrayerFormComponent } from '../../components/prayer-form/prayer-form.component';
 import { PrayerFiltersComponent, PrayerFilters } from '../../components/prayer-filters/prayer-filters.component';
@@ -22,13 +21,27 @@ import { AdminAuthService } from '../../services/admin-auth.service';
 import { UserSessionService } from '../../services/user-session.service';
 import { SupabaseService } from '../../services/supabase.service';
 import { BadgeService } from '../../services/badge.service';
-import { Observable, take, Subject, takeUntil, filter } from 'rxjs';
+import { Observable, take, Subject, takeUntil, filter, firstValueFrom } from 'rxjs';
 import { ToastService } from '../../services/toast.service';
 import { AnalyticsService } from '../../services/analytics.service';
 import { PullToRefreshDirective } from '../../directives/pull-to-refresh.directive';
+import { HelpContentService } from '../../services/help-content.service';
 import type { User } from '@supabase/supabase-js';
 import { fetchListMembers } from '../../../lib/planning-center';
 import { environment } from '../../../environments/environment';
+import {
+  FULL_GUIDED_TOUR_QUEUE_KEY,
+  HelpDriverTourService,
+  PRESENTATION_HELP_TOUR_SESSION_KEY,
+  PERSONAL_PRAYER_WALKTHROUGH_CATEGORY,
+  PERSONAL_PRAYER_WALKTHROUGH_DESCRIPTION,
+  PERSONAL_PRAYER_WALKTHROUGH_PRAYER_FOR,
+  parseFullGuidedTourQueue,
+  type PresentationHelpTourSessionPayload,
+} from '../../services/help-driver-tour.service';
+import type { HelpSection } from '../../types/help-content';
+
+const HELP_SECTION_ID_PRESENTATION = 'help_presentation';
 
 @Component({
   selector: 'app-home',
@@ -88,6 +101,7 @@ import { environment } from '../../../environments/environment';
               </svg>
             </button>
             <button
+              id="tour-btn-settings-mobile"
               (click)="showSettings = true"
               class="flex items-center gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors cursor-pointer"
               title="Settings"
@@ -98,6 +112,7 @@ import { environment } from '../../../environments/environment';
               </svg>
             </button>
             <button
+              id="tour-btn-prayer-mode-mobile"
               routerLink="/presentation"
               class="flex items-center gap-1 bg-[#2F5F54] dark:bg-[#2F5F54] text-white px-3 py-2 rounded-lg hover:bg-[#1a3a2e] dark:hover:bg-[#1a3a2e] focus:outline-none focus:ring-2 focus:ring-[#2F5F54] transition-colors text-sm cursor-pointer"
               title="Prayer Mode"
@@ -105,6 +120,7 @@ import { environment } from '../../../environments/environment';
               <span>Pray</span>
             </button>
             <button
+              id="tour-btn-new-prayer-request-mobile"
               (click)="showPrayerForm = true"
               class="flex items-center gap-1 bg-blue-600 dark:bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm cursor-pointer"
             >
@@ -175,6 +191,7 @@ import { environment } from '../../../environments/environment';
                   </svg>
                 </button>
                 <button
+                  id="tour-btn-settings-desktop"
                   (click)="showSettings = true"
                   class="flex items-center justify-center h-12 gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors cursor-pointer"
                   title="Settings"
@@ -185,6 +202,7 @@ import { environment } from '../../../environments/environment';
                   </svg>
                 </button>
                 <button
+                  id="tour-btn-prayer-mode-desktop"
                   routerLink="/presentation"
                   class="flex items-center justify-center h-12 gap-1 bg-[#2F5F54] dark:bg-[#2F5F54] text-white px-3 rounded-lg hover:bg-[#1a3a2e] dark:hover:bg-[#1a3a2e] focus:outline-none focus:ring-2 focus:ring-[#2F5F54] transition-colors text-sm cursor-pointer"
                   title="Prayer Mode"
@@ -192,6 +210,7 @@ import { environment } from '../../../environments/environment';
                   <span>Pray</span>
                 </button>
                 <button
+                  id="tour-btn-new-prayer-request-desktop"
                   (click)="showPrayerForm = true"
                   class="flex items-center justify-center h-12 gap-1 bg-blue-600 dark:bg-blue-600 text-white px-3 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm cursor-pointer"
                 >
@@ -235,7 +254,9 @@ import { environment } from '../../../environments/environment';
         </div>
         <!-- Prayer Form Modal -->
         <app-prayer-form
+          #prayerFormComp
           [isOpen]="showPrayerForm"
+          [defaultPersonalPrayer]="activeFilter === 'personal'"
           (close)="onPrayerFormClose($event)"
         ></app-prayer-form>
 
@@ -249,6 +270,19 @@ import { environment } from '../../../environments/environment';
         <app-help-modal
           [isOpen]="showHelp"
           (closeModal)="showHelp = false"
+          (startCreatingPrayersHelpSectionUiTour)="onCreatingPrayersHelpSectionUiTourFromHelp($event)"
+          (startFilteringHelpSectionUiTour)="onFilteringHelpSectionUiTourFromHelp($event)"
+          (startPrayerPromptsUiTour)="onPrayerPromptsUiTourFromHelp($event)"
+          (startPrayerEncouragementUiTour)="onPrayerEncouragementUiTourFromHelp($event)"
+          (startSearchPrayersUiTour)="onSearchPrayersUiTourFromHelp($event)"
+          (startPersonalPrayersHelpSectionUiTour)="onPersonalPrayersHelpSectionUiTourFromHelp($event)"
+          (startPresentationModeHelpSectionUiTour)="onPresentationModeHelpSectionUiTourFromHelp($event)"
+          (startPrintingHelpSectionUiTour)="onPrintingHelpSectionUiTourFromHelp($event)"
+          (startEmailSubscriptionHelpSectionUiTour)="onEmailSubscriptionHelpSectionUiTourFromHelp($event)"
+          (startPrayerRemindersHelpSectionUiTour)="onPrayerRemindersHelpSectionUiTourFromHelp($event)"
+          (startFeedbackHelpSectionUiTour)="onFeedbackHelpSectionUiTourFromHelp($event)"
+          (startAppSettingsHelpSectionUiTour)="onAppSettingsHelpSectionUiTourFromHelp($event)"
+          (fullGuidedTourRequested)="onFullGuidedTourRequested($event)"
         ></app-help-modal>
 
         <!-- Logout Confirmation Modal -->
@@ -300,6 +334,7 @@ import { environment } from '../../../environments/environment';
         <!-- Stats Cards -->
         <div [class]="'grid gap-4 mb-6 ' + (planningCenterListMembers.length > 0 ? 'grid-cols-3 sm:grid-cols-6' : 'grid-cols-3 sm:grid-cols-5')">
           <button
+            id="tour-filter-current"
             (click)="setFilter('current')"
             title="Show current prayers"
             [class]="'rounded-lg shadow-md p-2 sm:p-4 text-center transition-all duration-200 cursor-pointer relative flex flex-col items-center justify-center ' + (activeFilter === 'current' ? 'border !border-[#0047AB] dark:!border-[#0047AB] bg-blue-100 dark:bg-blue-950 ring ring-[#0047AB] dark:ring-[#0047AB] ring-offset-0' : 'bg-white dark:bg-gray-800 border-[2px] !border-gray-200 dark:!border-gray-700 hover:!border-[#0047AB] dark:hover:!border-[#0047AB] hover:shadow-lg')"
@@ -321,6 +356,7 @@ import { environment } from '../../../environments/environment';
             <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-300">Current</div>
           </button>
           <button
+            id="tour-filter-answered"
             (click)="setFilter('answered')"
             title="Show answered prayers"
             [class]="'rounded-lg shadow-md p-2 sm:p-4 text-center transition-all duration-200 cursor-pointer relative flex flex-col items-center justify-center ' + (activeFilter === 'answered' ? 'border !border-[#39704D] dark:!border-[#39704D] bg-green-100 dark:bg-green-950 ring ring-[#39704D] dark:ring-[#39704D] ring-offset-0' : 'bg-white dark:bg-gray-800 border-[2px] !border-gray-200 dark:!border-gray-700 hover:!border-[#39704D] dark:hover:!border-[#39704D] hover:shadow-lg')"
@@ -342,6 +378,7 @@ import { environment } from '../../../environments/environment';
             <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-300">Answered</div>
           </button>
           <button
+            id="tour-filter-total"
             (click)="setFilter('total')"
             title="Show all prayers"
             [class]="'rounded-lg shadow-md p-2 sm:p-4 text-center transition-all duration-200 cursor-pointer relative flex flex-col items-center justify-center ' + (activeFilter === 'total' ? 'border !border-[#C9A961] dark:!border-[#C9A961] bg-amber-100 dark:bg-amber-900/40 ring ring-[#C9A961] dark:ring-[#C9A961] ring-offset-0' : 'bg-white dark:bg-gray-800 border-[2px] !border-gray-200 dark:!border-gray-700 hover:!border-[#C9A961] dark:hover:!border-[#C9A961] hover:shadow-lg')"
@@ -352,6 +389,7 @@ import { environment } from '../../../environments/environment';
             <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-300">Total</div>
           </button>
           <button
+            id="tour-filter-prompts"
             (click)="setFilter('prompts')"
             title="Show prayer prompts"
             [class]="'rounded-lg shadow-md p-2 sm:p-4 text-center transition-all duration-200 cursor-pointer relative flex flex-col items-center justify-center ' + (activeFilter === 'prompts' ? 'border !border-[#988F83] dark:!border-[#988F83] bg-stone-100 dark:bg-stone-900/40 ring ring-[#988F83] dark:ring-[#988F83] ring-offset-0' : 'bg-white dark:bg-gray-800 border-[2px] !border-gray-200 dark:!border-gray-700 hover:!border-[#988F83] dark:hover:!border-[#988F83] hover:shadow-lg')"
@@ -375,6 +413,7 @@ import { environment } from '../../../environments/environment';
 
           <!-- Personal Prayers Filter -->
           <button
+            id="tour-filter-personal"
             (click)="setFilter('personal')"
             title="Show your personal prayers"
             [class]="'rounded-lg shadow-md p-2 sm:p-4 text-center transition-all duration-200 cursor-pointer relative flex flex-col items-center justify-center ' + (activeFilter === 'personal' ? 'border !border-[#2F5F54] dark:!border-[#2F5F54] bg-slate-100 dark:bg-green-900/40 ring ring-[#2F5F54] dark:ring-[#2F5F54] ring-offset-0' : 'bg-white dark:bg-gray-800 border-[2px] !border-gray-200 dark:!border-gray-700 hover:!border-[#2F5F54] dark:hover:!border-[#2F5F54] hover:shadow-lg')"
@@ -414,7 +453,7 @@ import { environment } from '../../../environments/environment';
 
         <!-- Prompt Type Filters -->
         @if (activeFilter === 'prompts' && promptsCount > 0) {
-          <div class="flex flex-wrap gap-2 mb-4">
+          <div id="tour-prompt-type-filters" class="flex flex-wrap gap-2 mb-4">
             <!-- All Types Button -->
             <button
               (click)="selectedPromptTypes = []"
@@ -442,7 +481,9 @@ import { environment } from '../../../environments/environment';
 
         <!-- Personal Category Filters -->
         @if (activeFilter === 'personal' && uniquePersonalCategories.length > 0) {
-          <div cdkDropList 
+          <div
+               id="tour-personal-category-filters"
+               cdkDropList 
                cdkDropListOrientation="mixed"
                [cdkDropListData]="uniquePersonalCategories"
                (cdkDropListDropped)="onCategoryDrop($event)"
@@ -580,13 +621,14 @@ import { environment } from '../../../environments/environment';
             <!-- Prayer Cards (only show when not on prompts or personal filter) -->
             @if (activeFilter !== 'prompts' && activeFilter !== 'personal') {
               @if (activeFilter === 'planning_center_list') {
-                @for (prayer of getFilteredPlanningCenterPrayers(); track prayer.id) {
+                @for (prayer of getFilteredPlanningCenterPrayers(); track prayer.id; let isFirstPrayer = $first) {
                   <app-prayer-card
                   [prayer]="prayer"
                   [isAdmin]="(isAdmin$ | async) || false"
                   [activeFilter]="activeFilter"
                   [deletionsAllowed]="deletionsAllowed"
                   [updatesAllowed]="updatesAllowed"
+                  [tourUpdateAnchors]="isFirstPrayer"
                   (delete)="deletePrayer($event)"
                   (addUpdate)="addUpdate($event)"
                   (deleteUpdate)="deleteUpdate($event)"
@@ -597,13 +639,15 @@ import { environment } from '../../../environments/environment';
                 ></app-prayer-card>
                 }
               } @else {
-                @for (prayer of prayers$ | async; track prayer.id) {
+                @for (prayer of prayers$ | async; track prayer.id; let isFirstPrayer = $first) {
                   <app-prayer-card
                   [prayer]="prayer"
                   [isAdmin]="(isAdmin$ | async) || false"
                   [activeFilter]="activeFilter"
                   [deletionsAllowed]="deletionsAllowed"
                   [updatesAllowed]="updatesAllowed"
+                  [tourUpdateAnchors]="isFirstPrayer"
+                  [tourPrayForEncouragementAnchors]="isFirstPrayer"
                   (delete)="deletePrayer($event)"
                   (addUpdate)="addUpdate($event)"
                   (deleteUpdate)="deleteUpdate($event)"
@@ -620,11 +664,12 @@ import { environment } from '../../../environments/environment';
                    (cdkDropListDropped)="onPersonalPrayerDrop($event)" 
                    [cdkDropListDisabled]="selectedPersonalCategories.length !== 1"
                    class="space-y-3">
-                @for (prayer of getFilteredPersonalPrayers(); track prayer.id) {
+                @for (prayer of getFilteredPersonalPrayers(); track prayer.id; let isFirstPrayer = $first) {
                   <div cdkDrag>
                     <ng-template #dragHandle>
                       <div
                         cdkDragHandle
+                        [attr.id]="prayer.prayer_for === personalWalkthroughPrayerFor ? 'tour-walkthrough-personal-drag-handle' : null"
                         class="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-400 flex-shrink-0 absolute left-3 top-1/2 -translate-y-1/2 pr-2"
                       >
                         <svg class="block" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -645,6 +690,8 @@ import { environment } from '../../../environments/environment';
                       [deletionsAllowed]="'everyone'"
                       [updatesAllowed]="'everyone'"
                       [isDragging]="true"
+                      [tourUpdateAnchors]="isFirstPrayer && prayer.prayer_for !== personalWalkthroughPrayerFor"
+                      [tourPersonalWalkthroughAnchors]="prayer.prayer_for === personalWalkthroughPrayerFor && prayer.description === personalWalkthroughDescription"
                       (delete)="deletePersonalPrayer($event)"
                       (addUpdate)="addPersonalUpdate($event)"
                       (deleteUpdate)="deletePersonalUpdate($event)"
@@ -659,7 +706,7 @@ import { environment } from '../../../environments/environment';
 
             <!-- Empty State for Prompts -->
             @if (activeFilter === 'prompts' && (prompts$ | async)?.length === 0) {
-              <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center border border-gray-200 dark:border-gray-700">
+              <div id="tour-prompt-empty-state" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center border border-gray-200 dark:border-gray-700">
                 <h3 class="text-lg font-medium text-gray-700 dark:text-gray-200 mb-2">
                   No prayer prompts yet
                 </h3>
@@ -676,6 +723,7 @@ import { environment } from '../../../environments/environment';
                   [prompt]="prompt"
                   [isAdmin]="(isAdmin$ | async) || false"
                   [isTypeSelected]="isPromptTypeSelected(prompt.type)"
+                  [tourPromptAnchors]="$first"
                   (delete)="deletePrompt($event)"
                   (onTypeClick)="togglePromptType($event)"
                 ></app-prompt-card>
@@ -759,6 +807,15 @@ export class HomeComponent implements OnInit, OnDestroy {
   // Subject for managing subscriptions
   private destroy$ = new Subject<void>();
 
+  /** Welcome + each help section + thank you (for global full-tour progress). */
+  private fullGuidedTourTotalSteps = 0;
+
+  @ViewChild('prayerFormComp') private prayerFormComp?: PrayerFormComponent;
+
+  /** Match hands-on Personal Prayers tour card (template + walkthrough hooks). */
+  readonly personalWalkthroughPrayerFor = PERSONAL_PRAYER_WALKTHROUGH_PRAYER_FOR;
+  readonly personalWalkthroughDescription = PERSONAL_PRAYER_WALKTHROUGH_DESCRIPTION;
+
   constructor(
     public prayerService: PrayerService,
     public promptService: PromptService,
@@ -770,7 +827,9 @@ export class HomeComponent implements OnInit, OnDestroy {
     private analyticsService: AnalyticsService,
     private cdr: ChangeDetectorRef,
     private router: Router,
-    private supabaseService: SupabaseService
+    private supabaseService: SupabaseService,
+    private helpDriverTourService: HelpDriverTourService,
+    private helpContentService: HelpContentService
   ) {
     // Load logo state from cache immediately to prevent flash
     const windowCache = (window as any).__cachedLogos;
@@ -781,6 +840,22 @@ export class HomeComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     // Track page view on home component load
     this.analyticsService.trackPageView();
+
+    this.router.events
+      .pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        takeUntil(this.destroy$)
+      )
+      .subscribe((e) => {
+        if (!this.isRouterUrlHome(e.urlAfterRedirects)) {
+          return;
+        }
+        window.setTimeout(() => this.tryResumeFullGuidedTourQueue(), 400);
+      });
+
+    // Full guided tour: `NavigationEnd` often fires before this subscription runs when Home is lazy-loaded
+    // after leaving `/presentation`, so the queue in `sessionStorage` would never be consumed.
+    window.setTimeout(() => this.tryResumeFullGuidedTourQueue(), 200);
 
     this.prayers$ = this.prayerService.prayers$;
     this.prompts$ = this.promptService.prompts$;
@@ -882,6 +957,496 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.showPrayerForm = false;
     // Personal prayers are automatically updated by the service observable
     // No need for manual invalidation or reload
+  }
+
+  /** **Creating Prayers** (`help_prayers`) — community form, updates, community filters (private prayers: Personal Prayers help tour). */
+  onCreatingPrayersHelpSectionUiTourFromHelp(section: HelpSection): void {
+    this.showHelp = false;
+    this.cdr.markForCheck();
+    window.setTimeout(() => {
+      const includeAnonymous =
+        this.activeFilter !== 'personal' && this.activeFilter !== 'planning_center_list';
+      this.helpDriverTourService.startCreatingPrayersHelpSectionTour(
+        { title: section.title, description: section.description },
+        {
+          openPrayerForm: () => {
+            this.showPrayerForm = true;
+            this.cdr.markForCheck();
+          },
+          closePrayerForm: () => {
+            this.showPrayerForm = false;
+            this.cdr.markForCheck();
+          },
+        },
+        { includeAnonymousUpdateStep: includeAnonymous }
+      );
+    }, 280);
+  }
+
+  /** **Filtering Prayers** (`help_filtering`) — filter tiles + search using Help copy. */
+  onFilteringHelpSectionUiTourFromHelp(section: HelpSection): void {
+    this.showHelp = false;
+    this.cdr.markForCheck();
+    window.setTimeout(() => {
+      this.helpDriverTourService.startFilteringHelpSectionTour(section, {
+        switchToCurrent: () => {
+          this.setFilter('current');
+          this.cdr.markForCheck();
+        },
+        switchToAnswered: () => {
+          this.setFilter('answered');
+          this.cdr.markForCheck();
+        },
+        switchToTotal: () => {
+          this.setFilter('total');
+          this.cdr.markForCheck();
+        },
+        switchToPrompts: () => {
+          this.setFilter('prompts');
+          this.cdr.markForCheck();
+        },
+        switchToPersonal: () => {
+          this.setFilter('personal');
+          this.cdr.markForCheck();
+        },
+      });
+    }, 280);
+  }
+
+  /** “Using Prayer Prompts” — one tour for the whole help section. */
+  onPrayerPromptsUiTourFromHelp(section: HelpSection): void {
+    this.showHelp = false;
+    this.cdr.markForCheck();
+    window.setTimeout(() => {
+      this.helpDriverTourService.startPrayerPromptsTour(
+        { title: section.title, description: section.description },
+        { hasPrompts: this.promptsCount > 0 },
+        {
+          switchToPrompts: () => {
+            this.setFilter('prompts');
+            this.cdr.markForCheck();
+          },
+          clearPromptTypes: () => {
+            this.selectedPromptTypes = [];
+            this.cdr.markForCheck();
+          },
+        }
+      );
+    }, 280);
+  }
+
+  /** “Searching Prayers” — home search field, then popover-only tips. */
+  onSearchPrayersUiTourFromHelp(section: HelpSection): void {
+    this.showHelp = false;
+    this.cdr.markForCheck();
+    window.setTimeout(() => {
+      this.helpDriverTourService.startSearchPrayersTour({
+        title: section.title,
+        description: section.description,
+      });
+    }, 280);
+  }
+
+  /** **Personal Prayers** help accordion — hands-on: create sample prayer, tour UI, then delete it. */
+  onPersonalPrayersHelpSectionUiTourFromHelp(section: HelpSection): void {
+    this.showHelp = false;
+    this.cdr.markForCheck();
+    window.setTimeout(() => {
+      this.helpDriverTourService.startPersonalPrayersHelpSectionTour(
+        { title: section.title, description: section.description },
+        {
+          switchToPersonalFilter: () => {
+            this.setFilter('personal');
+            this.cdr.markForCheck();
+          },
+          openPrayerForm: () => {
+            this.showPrayerForm = true;
+            this.cdr.markForCheck();
+          },
+          markForCheck: () => this.cdr.markForCheck(),
+          fillWalkthroughPrayerFor: () => this.prayerFormComp?.fillWalkthroughPrayerFor(),
+          fillWalkthroughDescription: () => this.prayerFormComp?.fillWalkthroughDescription(),
+          ensureWalkthroughPersonalSelected: () => this.prayerFormComp?.ensureWalkthroughPersonalSelected(),
+          fillWalkthroughCategory: () => this.prayerFormComp?.fillWalkthroughCategory(),
+          submitWalkthroughPrayerForm: () => this.prayerFormComp?.submitWalkthroughPrayerForm(),
+          openWalkthroughPersonalEdit: () => {
+            const p = this.getWalkthroughPersonalPrayer();
+            if (p) {
+              this.openEditModal(p);
+            }
+            this.cdr.markForCheck();
+          },
+          closeWalkthroughPersonalEdit: () => {
+            this.showEditPersonalPrayer = false;
+            this.editingPrayer = null;
+            this.cdr.markForCheck();
+          },
+          clickWalkthroughAddUpdate: () => {
+            document.getElementById('tour-walkthrough-add-update')?.click();
+          },
+          narrowToWalkthroughCategoryFilter: () => {
+            this.selectedPersonalCategories = [PERSONAL_PRAYER_WALKTHROUGH_CATEGORY];
+            this.cdr.markForCheck();
+          },
+          deleteWalkthroughTestPrayer: () => {
+            const p = this.getWalkthroughPersonalPrayer();
+            if (p) {
+              this.deletePersonalPrayer(p.id);
+            }
+          },
+        }
+      );
+    }, 280);
+  }
+
+  /** **Email Subscription** (`help_email_subscription`) — Settings gear, then email notification toggle. */
+  onEmailSubscriptionHelpSectionUiTourFromHelp(section: HelpSection): void {
+    this.showHelp = false;
+    this.cdr.markForCheck();
+    window.setTimeout(() => {
+      this.helpDriverTourService.startEmailSubscriptionHelpSectionTour(
+        { title: section.title, description: section.description },
+        {
+          openSettings: () => {
+            this.showSettings = true;
+            this.cdr.markForCheck();
+          },
+          closeSettings: () => {
+            this.showSettings = false;
+            this.cdr.markForCheck();
+          },
+          markForCheck: () => this.cdr.markForCheck(),
+        }
+      );
+    }, 280);
+  }
+
+  /** **Prayer reminders** (`help_prayer_reminders`) — Settings gear, then reminders card and hour / Add reminder. */
+  onPrayerRemindersHelpSectionUiTourFromHelp(section: HelpSection): void {
+    this.showHelp = false;
+    this.cdr.markForCheck();
+    window.setTimeout(() => {
+      this.helpDriverTourService.startPrayerRemindersHelpSectionTour(
+        { title: section.title, description: section.description },
+        {
+          openSettings: () => {
+            this.showSettings = true;
+            this.cdr.markForCheck();
+          },
+          closeSettings: () => {
+            this.showSettings = false;
+            this.cdr.markForCheck();
+          },
+          markForCheck: () => this.cdr.markForCheck(),
+        }
+      );
+    }, 280);
+  }
+
+  /** **Feedback** (`help_feedback`) — Settings gear, then Send Feedback card (form or disabled note). */
+  onFeedbackHelpSectionUiTourFromHelp(section: HelpSection): void {
+    this.showHelp = false;
+    this.cdr.markForCheck();
+    window.setTimeout(() => {
+      this.helpDriverTourService.startFeedbackHelpSectionTour(
+        { title: section.title, description: section.description },
+        {
+          openSettings: () => {
+            this.showSettings = true;
+            this.cdr.markForCheck();
+          },
+          closeSettings: () => {
+            this.showSettings = false;
+            this.cdr.markForCheck();
+          },
+          markForCheck: () => this.cdr.markForCheck(),
+        }
+      );
+    }, 280);
+  }
+
+  /** **App Settings** (`help_settings`) — Settings gear, then overview of print, theme, notifications, badges, encouragement, default view, reminders, feedback. */
+  onAppSettingsHelpSectionUiTourFromHelp(section: HelpSection): void {
+    this.showHelp = false;
+    this.cdr.markForCheck();
+    window.setTimeout(() => {
+      this.helpDriverTourService.startAppSettingsHelpSectionTour(
+        { title: section.title, description: section.description },
+        {
+          openSettings: () => {
+            this.showSettings = true;
+            this.cdr.markForCheck();
+          },
+          closeSettings: () => {
+            this.showSettings = false;
+            this.cdr.markForCheck();
+          },
+          markForCheck: () => this.cdr.markForCheck(),
+        }
+      );
+    }, 280);
+  }
+
+  /** **Printing** (`help_printing`) — Settings gear, then print actions in the settings modal. */
+  onPrintingHelpSectionUiTourFromHelp(section: HelpSection): void {
+    this.showHelp = false;
+    this.cdr.markForCheck();
+    window.setTimeout(() => {
+      this.helpDriverTourService.startPrintingHelpSectionTour(
+        { title: section.title, description: section.description },
+        {
+          openSettings: () => {
+            this.showSettings = true;
+            this.cdr.markForCheck();
+          },
+          closeSettings: () => {
+            this.showSettings = false;
+            this.cdr.markForCheck();
+          },
+          markForCheck: () => this.cdr.markForCheck(),
+        }
+      );
+    }, 280);
+  }
+
+  /** **Prayer Presentation Mode** — step 1 highlights **Pray**; **Next** stashes session and opens `/presentation` for the toolbar + settings tour. */
+  onPresentationModeHelpSectionUiTourFromHelp(section: HelpSection): void {
+    this.showHelp = false;
+    this.cdr.markForCheck();
+    window.setTimeout(() => {
+      this.helpDriverTourService.startPresentationModePrayButtonPreludeTour(
+        { title: section.title, description: section.description },
+        {
+          continueToPresentation: () => {
+            try {
+              sessionStorage.setItem(
+                PRESENTATION_HELP_TOUR_SESSION_KEY,
+                JSON.stringify({ title: section.title, description: section.description })
+              );
+            } catch {
+              /* ignore quota / private mode */
+            }
+            void this.router.navigate(['/presentation']);
+          },
+          markForCheck: () => this.cdr.markForCheck(),
+        }
+      );
+    }, 280);
+  }
+
+  /** Help modal **Full guided tour**: welcome, each section’s tour in `order`, thank-you popover. Presentation leg resumes via `FULL_GUIDED_TOUR_QUEUE_KEY` after `/presentation`. */
+  onFullGuidedTourRequested(sections: HelpSection[]): void {
+    const sorted = [...sections].filter((s) => s.isActive).sort((a, b) => a.order - b.order);
+    if (sorted.length === 0) {
+      return;
+    }
+    this.fullGuidedTourTotalSteps = 2 + sorted.length;
+    this.showHelp = false;
+    this.cdr.markForCheck();
+    window.setTimeout(() => {
+      this.helpDriverTourService.startFullGuidedTourWelcome(
+        () => {
+          window.setTimeout(() => this.runFullGuidedTourStep(sorted, 0, 0), 0);
+        },
+        { totalSteps: this.fullGuidedTourTotalSteps }
+      );
+    }, 280);
+  }
+
+  private runFullGuidedTourStep(sections: HelpSection[], index: number, globalSectionBase: number): void {
+    if (index >= sections.length) {
+      window.setTimeout(() => {
+        this.helpDriverTourService.startFullGuidedTourClosing({
+          totalSteps: this.fullGuidedTourTotalSteps >= 2 ? this.fullGuidedTourTotalSteps : undefined,
+        });
+      }, 200);
+      return;
+    }
+    const section = sections[index];
+    const globalSectionIndex = globalSectionBase + index;
+    if (this.fullGuidedTourTotalSteps >= 2) {
+      this.helpDriverTourService.setFullGuidedTourProgress(1 + globalSectionIndex, this.fullGuidedTourTotalSteps);
+    }
+    const advance = () => this.runFullGuidedTourStep(sections, index + 1, globalSectionBase);
+
+    if (section.id === HELP_SECTION_ID_PRESENTATION) {
+      window.setTimeout(
+        () => this.startPresentationPreludeForFullTour(section, sections.slice(index + 1), globalSectionIndex),
+        0
+      );
+      return;
+    }
+
+    this.helpDriverTourService.queueTourFinishedCallback(advance);
+    switch (section.id) {
+      case 'help_prayers':
+        this.onCreatingPrayersHelpSectionUiTourFromHelp(section);
+        break;
+      case 'help_filtering':
+        this.onFilteringHelpSectionUiTourFromHelp(section);
+        break;
+      case 'help_prompts':
+        this.onPrayerPromptsUiTourFromHelp(section);
+        break;
+      case 'help_prayer_encouragement':
+        this.onPrayerEncouragementUiTourFromHelp(section);
+        break;
+      case 'help_search':
+        this.onSearchPrayersUiTourFromHelp(section);
+        break;
+      case 'help_personal_prayers':
+        this.onPersonalPrayersHelpSectionUiTourFromHelp(section);
+        break;
+      case 'help_printing':
+        this.onPrintingHelpSectionUiTourFromHelp(section);
+        break;
+      case 'help_email_subscription':
+        this.onEmailSubscriptionHelpSectionUiTourFromHelp(section);
+        break;
+      case 'help_prayer_reminders':
+        this.onPrayerRemindersHelpSectionUiTourFromHelp(section);
+        break;
+      case 'help_feedback':
+        this.onFeedbackHelpSectionUiTourFromHelp(section);
+        break;
+      case 'help_settings':
+        this.onAppSettingsHelpSectionUiTourFromHelp(section);
+        break;
+      default:
+        this.helpDriverTourService.queueTourFinishedCallback(null);
+        window.setTimeout(advance, 0);
+        break;
+    }
+  }
+
+  private startPresentationPreludeForFullTour(
+    section: HelpSection,
+    remaining: HelpSection[],
+    presentationGlobalSectionIndex: number
+  ): void {
+    const payload: PresentationHelpTourSessionPayload = {
+      title: section.title,
+      description: section.description,
+      fullGuidedTourFromFullChain: true,
+      fullGuidedTourRemainingSectionIds: remaining.map((s) => s.id),
+      fullGuidedTourTotalSteps:
+        this.fullGuidedTourTotalSteps >= 2 ? this.fullGuidedTourTotalSteps : undefined,
+      fullGuidedTourResumeStartGlobalSectionIndex: presentationGlobalSectionIndex + 1,
+    };
+    try {
+      sessionStorage.setItem(PRESENTATION_HELP_TOUR_SESSION_KEY, JSON.stringify(payload));
+    } catch {
+      /* ignore quota / private mode */
+    }
+    this.helpDriverTourService.startPresentationModePrayButtonPreludeTour(
+      { title: section.title, description: section.description },
+      {
+        continueToPresentation: () => {
+          void this.router.navigate(['/presentation']);
+        },
+        markForCheck: () => this.cdr.markForCheck(),
+      }
+    );
+  }
+
+  /** True when the post-redirect URL is the app root (home). */
+  private isRouterUrlHome(urlAfterRedirects: string): boolean {
+    const path = (urlAfterRedirects.split(/[?#]/)[0] ?? '').replace(/\/+$/, '') || '/';
+    return path === '/' || path === '';
+  }
+
+  private tryResumeFullGuidedTourQueue(): void {
+    if (typeof sessionStorage === 'undefined') {
+      return;
+    }
+    const raw = sessionStorage.getItem(FULL_GUIDED_TOUR_QUEUE_KEY);
+    if (!raw) {
+      return;
+    }
+    const parsed = parseFullGuidedTourQueue(raw);
+    if (parsed.kind === 'empty') {
+      return;
+    }
+    sessionStorage.removeItem(FULL_GUIDED_TOUR_QUEUE_KEY);
+
+    switch (parsed.kind) {
+      case 'legacy_closing':
+        window.setTimeout(() => this.helpDriverTourService.startFullGuidedTourClosing(), 0);
+        break;
+      case 'closing':
+        this.fullGuidedTourTotalSteps = parsed.totalSteps;
+        window.setTimeout(
+          () => this.helpDriverTourService.startFullGuidedTourClosing({ totalSteps: parsed.totalSteps }),
+          0
+        );
+        break;
+      case 'legacy_section_ids':
+      case 'resume': {
+        const ids = parsed.ids;
+        void firstValueFrom(this.helpContentService.getSections().pipe(take(1))).then((all) => {
+          const byId = new Map(all.map((s) => [s.id, s]));
+          const ordered: HelpSection[] = [];
+          for (const id of ids) {
+            const s = byId.get(id);
+            if (s?.isActive) {
+              ordered.push(s);
+            }
+          }
+          if (ordered.length === 0) {
+            return;
+          }
+          if (parsed.kind === 'resume') {
+            this.fullGuidedTourTotalSteps = parsed.totalSteps;
+            window.setTimeout(
+              () => this.runFullGuidedTourStep(ordered, 0, parsed.resumeStartGlobalSectionIndex),
+              0
+            );
+          } else {
+            this.fullGuidedTourTotalSteps = ordered.length + 2;
+            window.setTimeout(() => this.runFullGuidedTourStep(ordered, 0, 0), 0);
+          }
+        });
+        break;
+      }
+    }
+  }
+
+  private getWalkthroughPersonalPrayer(): PrayerRequest | undefined {
+    return this.getFilteredPersonalPrayers().find(
+      (p) =>
+        p.prayer_for === PERSONAL_PRAYER_WALKTHROUGH_PRAYER_FOR &&
+        p.description === PERSONAL_PRAYER_WALKTHROUGH_DESCRIPTION
+    );
+  }
+
+  /** “Prayer Encouragement (Pray For)” — Current filter, optional sample card, then popover-only explanation. */
+  onPrayerEncouragementUiTourFromHelp(section: HelpSection): void {
+    this.showHelp = false;
+    this.cdr.markForCheck();
+    window.setTimeout(() => {
+      void (async () => {
+        this.setFilter('current');
+        this.cdr.markForCheck();
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 80));
+        let hasCommunityPrayer = false;
+        try {
+          const list = await firstValueFrom(this.prayers$.pipe(take(1)));
+          hasCommunityPrayer = (list?.length ?? 0) > 0;
+        } catch {
+          hasCommunityPrayer = false;
+        }
+        this.helpDriverTourService.startPrayerEncouragementTour(
+          { title: section.title, description: section.description },
+          { hasCommunityPrayer },
+          {
+            switchToCurrent: () => {
+              this.setFilter('current');
+              this.cdr.markForCheck();
+            },
+          }
+        );
+      })();
+    }, 280);
   }
 
   private async loadPlanningCenterListData(forceReload = false): Promise<void> {

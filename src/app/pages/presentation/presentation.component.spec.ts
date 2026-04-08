@@ -36,7 +36,17 @@ describe('PresentationComponent', () => {
     mockCacheService = { get: vi.fn(), set: vi.fn(), invalidate: vi.fn() };
     cdr = { markForCheck: vi.fn(), detectChanges: vi.fn() };
     ngZone = { run: (cb: any) => cb() };
-    component = new PresentationComponent(mockRouter, mockSupabase, mockPrayerService, mockCacheService, mockThemeService, cdr, ngZone as any);
+    const helpDriverTour = { destroy: vi.fn(), startPresentationModeTour: vi.fn() };
+    component = new PresentationComponent(
+      mockRouter,
+      mockSupabase,
+      mockPrayerService,
+      mockCacheService,
+      mockThemeService,
+      cdr,
+      ngZone as any,
+      helpDriverTour as any
+    );
   });
 
   afterEach(() => {
@@ -385,6 +395,7 @@ describe('PresentationComponent', () => {
     mockCacheService = { get: vi.fn(), set: vi.fn(), invalidate: vi.fn() };
     mockCdr = { markForCheck: vi.fn(), detectChanges: vi.fn() };
     mockNgZone = { run: (fn: Function) => fn() } as unknown as NgZone;
+    const helpDriverTour = { destroy: vi.fn(), startPresentationModeTour: vi.fn() };
 
     component = new PresentationComponent(
       mockRouter as unknown as Router,
@@ -393,7 +404,8 @@ describe('PresentationComponent', () => {
       mockCacheService as any,
       mockThemeService as unknown as ThemeService,
       mockCdr as unknown as ChangeDetectorRef,
-      mockNgZone as unknown as NgZone
+      mockNgZone as unknown as NgZone,
+      helpDriverTour as any
     );
   });
 

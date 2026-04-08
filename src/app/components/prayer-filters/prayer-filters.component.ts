@@ -33,6 +33,7 @@ export interface PrayerFilters {
               />
             </svg>
             <input
+              id="tour-prayer-search"
               type="text"
               placeholder="Search prayers..."
               [(ngModel)]="filters.searchTerm"

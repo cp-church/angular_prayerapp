@@ -1,4 +1,14 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnChanges, ChangeDetectorRef, HostListener } from '@angular/core';
+import {
+  Component,
+  Input,
+  Output,
+  EventEmitter,
+  OnInit,
+  OnChanges,
+  SimpleChanges,
+  ChangeDetectorRef,
+  HostListener,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NgClass } from '@angular/common';
 import { Observable } from 'rxjs';
@@ -8,6 +18,11 @@ import { AdminAuthService } from '../../services/admin-auth.service';
 import { UserSessionService } from '../../services/user-session.service';
 import { SupabaseService } from '../../services/supabase.service';
 import { ToastService } from '../../services/toast.service';
+import {
+  PERSONAL_PRAYER_WALKTHROUGH_CATEGORY,
+  PERSONAL_PRAYER_WALKTHROUGH_DESCRIPTION,
+  PERSONAL_PRAYER_WALKTHROUGH_PRAYER_FOR,
+} from '../../services/help-driver-tour.service';
 
 @Component({
   selector: 'app-prayer-form',
@@ -100,7 +115,7 @@ import { ToastService } from '../../services/toast.service';
           </div>
 
           <!-- Prayer Visibility Toggle Buttons -->
-          <div class="space-y-2">
+          <div id="tour-prayer-visibility" class="space-y-2">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Prayer Visibility
             </label>
@@ -133,6 +148,7 @@ import { ToastService } from '../../services/toast.service';
               <!-- Personal Prayer Button -->
               <button
                 type="button"
+                id="tour-prayer-choose-personal"
                 (click)="formData.is_personal = true"
                 [class.ring-2]="formData.is_personal"
                 class="relative flex flex-col items-center justify-start py-3 px-4 rounded-lg border-2 transition-all font-medium cursor-pointer text-left"
@@ -159,7 +175,7 @@ import { ToastService } from '../../services/toast.service';
 
           <!-- Anonymous Checkbox - only show for public prayers -->
           @if (!formData.is_personal) {
-          <div class="flex items-center cursor-pointer">
+          <div id="tour-prayer-anonymous" class="flex items-center cursor-pointer">
             <input
               type="checkbox"
               [(ngModel)]="formData.is_anonymous"
@@ -216,6 +232,7 @@ import { ToastService } from '../../services/toast.service';
           <div class="flex gap-3 pt-4">
             <button
               type="submit"
+              id="tour-prayer-submit-request"
               [disabled]="!prayerForm.valid || !isFormValid() || isSubmitting || showSuccessMessage"
               class="flex-1 bg-blue-600 dark:bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
               aria-label="Submit prayer request"
@@ -241,6 +258,8 @@ import { ToastService } from '../../services/toast.service';
 })
 export class PrayerFormComponent implements OnInit, OnChanges {
   @Input() isOpen = false;
+  /** When true and the modal opens, default to Personal Prayer (matches Request while Personal filter is active). */
+  @Input() defaultPersonalPrayer = false;
   @Output() close = new EventEmitter<{isPersonal?: boolean}>();
 
   formData: {
@@ -290,7 +309,10 @@ export class PrayerFormComponent implements OnInit, OnChanges {
     });
   }
 
-  ngOnChanges(): void {
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['isOpen']?.currentValue === true) {
+      this.formData.is_personal = this.defaultPersonalPrayer;
+    }
     if (this.isOpen) {
       this.loadUserInfo();
       this.prayerService.getUniqueCategoriesForUser().then(cats => {
@@ -469,6 +491,40 @@ export class PrayerFormComponent implements OnInit, OnChanges {
 
 
 
+
+  /** Hands-on Personal Prayers help tour — fills “Prayer for”. */
+  fillWalkthroughPrayerFor(): void {
+    this.formData.prayer_for = PERSONAL_PRAYER_WALKTHROUGH_PRAYER_FOR;
+    this.cdr.markForCheck();
+  }
+
+  /** Hands-on tour — fills description. */
+  fillWalkthroughDescription(): void {
+    this.formData.description = PERSONAL_PRAYER_WALKTHROUGH_DESCRIPTION;
+    this.cdr.markForCheck();
+  }
+
+  /** Hands-on tour — selects Personal visibility (shows category field). */
+  ensureWalkthroughPersonalSelected(): void {
+    this.formData.is_personal = true;
+    this.cdr.markForCheck();
+  }
+
+  /** Hands-on tour — category sample value. */
+  fillWalkthroughCategory(): void {
+    this.formData.category = PERSONAL_PRAYER_WALKTHROUGH_CATEGORY;
+    this.showCategoryDropdown = false;
+    this.filteredCategories = [];
+    this.cdr.markForCheck();
+  }
+
+  /** Hands-on tour — submit when valid (personal prayer). */
+  submitWalkthroughPrayerForm(): void {
+    if (!this.isFormValid() || this.isSubmitting) {
+      return;
+    }
+    void this.handleSubmit();
+  }
 
   cancel(): void {
     this.formData = {

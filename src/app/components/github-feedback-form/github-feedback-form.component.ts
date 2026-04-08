@@ -25,7 +25,7 @@ import { Subject, takeUntil } from 'rxjs';
       <!-- Form -->
       <form (ngSubmit)="onSubmit()" class="space-y-4">
         <!-- Issue Type -->
-        <div>
+        <div id="tour-settings-feedback-type">
           <label for="issueType" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Feedback Type
           </label>
@@ -55,6 +55,7 @@ import { Subject, takeUntil } from 'rxjs';
           </div>
         </div>
 
+        <div id="tour-settings-feedback-details" class="space-y-4">
         <!-- Title -->
         <div>
           <label for="feedbackTitle" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -117,6 +118,7 @@ import { Subject, takeUntil } from 'rxjs';
             <span>Send Feedback</span>
             }
           </button>
+        </div>
         </div>
       </form>
 

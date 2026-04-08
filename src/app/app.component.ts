@@ -3,6 +3,7 @@ import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { Capacitor } from '@capacitor/core';
 import { ToastContainerComponent } from './components/toast-container/toast-container.component';
+import { HelpDriverTourService } from './services/help-driver-tour.service';
 import { AdminDataService } from './services/admin-data.service';
 import { filter } from 'rxjs';
 
@@ -13,6 +14,32 @@ import { filter } from 'rxjs';
   template: `
     <ng-container>
       <div class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+        @if (helpDriverTour.fullGuidedTourProgress$ | async; as tourProg) {
+          <div
+            class="fixed top-0 left-0 right-0 z-[10050] pointer-events-none shadow-lg shadow-black/10 dark:shadow-black/40"
+            style="padding-top: env(safe-area-inset-top, 0px)"
+            role="status"
+            aria-live="polite"
+          >
+            <div
+              class="border-b-2 border-emerald-800/25 dark:border-emerald-400/30 bg-white/95 dark:bg-gray-950/95 backdrop-blur-md"
+            >
+              <div class="h-2.5 w-full bg-gray-200/95 dark:bg-gray-800/95">
+                <div
+                  class="h-full bg-gradient-to-r from-emerald-700 to-emerald-600 dark:from-emerald-500 dark:to-emerald-400 transition-[width] duration-300 ease-out shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]"
+                  [style.width.%]="((tourProg.current + 1) / tourProg.total) * 100"
+                ></div>
+              </div>
+              <div class="flex justify-center px-3 py-2.5">
+                <span
+                  class="text-sm sm:text-base font-bold tabular-nums not-dark:text-gray-900 dark:text-white"
+                >
+                  Step {{ tourProg.current + 1 }} of {{ tourProg.total }}
+                </span>
+              </div>
+            </div>
+          </div>
+        }
         <router-outlet></router-outlet>
         <app-toast-container></app-toast-container>
       </div>
@@ -28,7 +55,8 @@ export class AppComponent implements OnInit {
     private router: Router,
     private injector: Injector,
     private ngZone: NgZone,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    readonly helpDriverTour: HelpDriverTourService
   ) {
     // Add native-app class immediately so bottom blur strip shows before first paint
     if (Capacitor.isNativePlatform()) {

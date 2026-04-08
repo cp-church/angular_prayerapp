@@ -10,6 +10,13 @@ import { environment } from '../../../environments/environment';
 import { PresentationToolbarComponent } from '../../components/presentation-toolbar/presentation-toolbar.component';
 import { PrayerDisplayCardComponent } from '../../components/prayer-display-card/prayer-display-card.component';
 import { PresentationSettingsModalComponent } from '../../components/presentation-settings-modal/presentation-settings-modal.component';
+import {
+  FULL_GUIDED_TOUR_CLOSING_SENTINEL,
+  FULL_GUIDED_TOUR_QUEUE_KEY,
+  HelpDriverTourService,
+  PRESENTATION_HELP_TOUR_SESSION_KEY,
+  type PresentationHelpTourSessionPayload,
+} from '../../services/help-driver-tour.service';
 
 interface Prayer {
   id: string;
@@ -224,6 +231,15 @@ export class PresentationComponent implements OnInit, OnDestroy {
   private readonly minSwipeDistance = 50;
   private readonly doubleTapThreshold = 300;
 
+  /** When Help **Full guided tour** opens presentation, we persist these after the on-screen tour so Home can resume. */
+  private fullGuidedTourRemainingSectionIds: string[] | null = null;
+
+  private fullGuidedTourFromFullChain = false;
+
+  private fullGuidedTourTotalSteps: number | null = null;
+
+  private fullGuidedTourResumeStartGlobalSectionIndex: number | null = null;
+
   constructor(
     private router: Router,
     private supabase: SupabaseService,
@@ -231,7 +247,8 @@ export class PresentationComponent implements OnInit, OnDestroy {
     private cacheService: CacheService,
     private themeService: ThemeService,
     private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
+    private ngZone: NgZone,
+    private helpDriverTourService: HelpDriverTourService
   ) {}
 
   ngOnInit(): void {
@@ -244,6 +261,7 @@ export class PresentationComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.helpDriverTourService.destroy();
     this.clearIntervals();
     if (this.initialTimerHandle) {
       clearTimeout(this.initialTimerHandle);
@@ -476,7 +494,97 @@ export class PresentationComponent implements OnInit, OnDestroy {
     } finally {
       this.loading = false;
       this.cdr.markForCheck();
+      this.maybeStartPresentationHelpTourFromSession();
     }
+  }
+
+  /** After Help → “Start guided tour” on presentation mode, Home stores JSON in `sessionStorage`; we consume it once here. */
+  private maybeStartPresentationHelpTourFromSession(): void {
+    if (typeof sessionStorage === 'undefined') {
+      return;
+    }
+    const raw = sessionStorage.getItem(PRESENTATION_HELP_TOUR_SESSION_KEY);
+    if (!raw) {
+      return;
+    }
+    sessionStorage.removeItem(PRESENTATION_HELP_TOUR_SESSION_KEY);
+    let payload: PresentationHelpTourSessionPayload;
+    try {
+      payload = JSON.parse(raw) as PresentationHelpTourSessionPayload;
+    } catch {
+      return;
+    }
+    if (!payload?.title) {
+      return;
+    }
+    this.fullGuidedTourFromFullChain = payload.fullGuidedTourFromFullChain === true;
+    const remaining = payload.fullGuidedTourRemainingSectionIds;
+    this.fullGuidedTourRemainingSectionIds = Array.isArray(remaining) ? remaining : null;
+    this.fullGuidedTourTotalSteps =
+      typeof payload.fullGuidedTourTotalSteps === 'number' && payload.fullGuidedTourTotalSteps >= 2
+        ? payload.fullGuidedTourTotalSteps
+        : null;
+    this.fullGuidedTourResumeStartGlobalSectionIndex =
+      typeof payload.fullGuidedTourResumeStartGlobalSectionIndex === 'number'
+        ? payload.fullGuidedTourResumeStartGlobalSectionIndex
+        : null;
+    if (this.initialTimerHandle) {
+      clearTimeout(this.initialTimerHandle);
+      this.initialTimerHandle = undefined;
+    }
+    this.showControls = true;
+    this.cdr.markForCheck();
+    window.setTimeout(() => {
+      this.helpDriverTourService.startPresentationModeTour(
+        { title: payload.title!, description: payload.description ?? '' },
+        {
+          openSettings: () => {
+            this.showSettings = true;
+            this.cdr.markForCheck();
+          },
+          closeSettings: () => {
+            this.showSettings = false;
+            this.cdr.markForCheck();
+          },
+          exitPresentation: () => this.exitPresentation(),
+          markForCheck: () => this.cdr.markForCheck(),
+          persistFullGuidedTourQueue: () => {
+            if (!this.fullGuidedTourFromFullChain || typeof sessionStorage === 'undefined') {
+              return;
+            }
+            const ids = this.fullGuidedTourRemainingSectionIds;
+            const totalSteps = this.fullGuidedTourTotalSteps;
+            const resumeStart = this.fullGuidedTourResumeStartGlobalSectionIndex ?? 0;
+            try {
+              if (totalSteps != null && totalSteps >= 2) {
+                if (ids && ids.length > 0) {
+                  sessionStorage.setItem(
+                    FULL_GUIDED_TOUR_QUEUE_KEY,
+                    JSON.stringify({
+                      v: 1,
+                      totalSteps,
+                      ids,
+                      resumeStartGlobalSectionIndex: resumeStart,
+                    })
+                  );
+                } else {
+                  sessionStorage.setItem(
+                    FULL_GUIDED_TOUR_QUEUE_KEY,
+                    JSON.stringify({ v: 1, totalSteps, mode: 'closing' })
+                  );
+                }
+              } else {
+                const toStore =
+                  ids && ids.length > 0 ? ids : [FULL_GUIDED_TOUR_CLOSING_SENTINEL];
+                sessionStorage.setItem(FULL_GUIDED_TOUR_QUEUE_KEY, JSON.stringify(toStore));
+              }
+            } catch {
+              /* ignore quota / private mode */
+            }
+          },
+        }
+      );
+    }, 400);
   }
 
   async fetchPrayers(): Promise<void> {

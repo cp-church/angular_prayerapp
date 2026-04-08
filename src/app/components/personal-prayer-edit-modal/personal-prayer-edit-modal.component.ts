@@ -15,6 +15,7 @@ import { ToastService } from '../../services/toast.service';
       class="fixed inset-0 bg-gray-900/50 z-50 flex items-center justify-center p-4"
     >
       <div
+        id="tour-personal-prayer-edit-modal"
         class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
         role="dialog"
         aria-modal="true"

@@ -1,11 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ChangeDetectorRef } from '@angular/core';
+import { ChangeDetectorRef, SimpleChanges } from '@angular/core';
 import { PrayerFormComponent } from './prayer-form.component';
 import { PrayerService } from '../../services/prayer.service';
 import { AdminAuthService } from '../../services/admin-auth.service';
 import { UserSessionService } from '../../services/user-session.service';
 import { SupabaseService } from '../../services/supabase.service';
 import { ToastService } from '../../services/toast.service';
+import {
+  PERSONAL_PRAYER_WALKTHROUGH_CATEGORY,
+  PERSONAL_PRAYER_WALKTHROUGH_DESCRIPTION,
+  PERSONAL_PRAYER_WALKTHROUGH_PRAYER_FOR,
+} from '../../services/help-driver-tour.service';
 import { BehaviorSubject } from 'rxjs';
 import type { User } from '@supabase/supabase-js';
 
@@ -174,10 +179,17 @@ describe('PrayerFormComponent', () => {
   });
 
   describe('ngOnChanges', () => {
+    const isOpenToTrue: SimpleChanges = {
+      isOpen: { currentValue: true, previousValue: false, firstChange: false, isFirstChange: () => false },
+    };
+    const isOpenToFalse: SimpleChanges = {
+      isOpen: { currentValue: false, previousValue: true, firstChange: false, isFirstChange: () => false },
+    };
+
     it('should reload user info when isOpen changes to true', () => {
       const loadUserInfoSpy = vi.spyOn(component as any, 'loadUserInfo');
       component.isOpen = true;
-      component.ngOnChanges();
+      component.ngOnChanges(isOpenToTrue);
       vi.runAllTimers();
       expect(loadUserInfoSpy).toHaveBeenCalled();
     });
@@ -185,8 +197,59 @@ describe('PrayerFormComponent', () => {
     it('should not reload when isOpen is false', () => {
       const loadUserInfoSpy = vi.spyOn(component as any, 'loadUserInfo');
       component.isOpen = false;
-      component.ngOnChanges();
+      component.ngOnChanges(isOpenToFalse);
       expect(loadUserInfoSpy).not.toHaveBeenCalled();
+    });
+
+    it('should set is_personal from defaultPersonalPrayer when modal opens', () => {
+      component.formData.is_personal = false;
+      component.defaultPersonalPrayer = true;
+      component.isOpen = true;
+      component.ngOnChanges(isOpenToTrue);
+      expect(component.formData.is_personal).toBe(true);
+    });
+
+    it('should clear is_personal on open when defaultPersonalPrayer is false', () => {
+      component.formData.is_personal = true;
+      component.defaultPersonalPrayer = false;
+      component.isOpen = true;
+      component.ngOnChanges(isOpenToTrue);
+      expect(component.formData.is_personal).toBe(false);
+    });
+  });
+
+  describe('hands-on help walkthrough helpers', () => {
+    it('fillWalkthroughPrayerFor sets prayer_for', () => {
+      component.fillWalkthroughPrayerFor();
+      expect(component.formData.prayer_for).toBe(PERSONAL_PRAYER_WALKTHROUGH_PRAYER_FOR);
+    });
+
+    it('fillWalkthroughDescription sets description', () => {
+      component.fillWalkthroughDescription();
+      expect(component.formData.description).toBe(PERSONAL_PRAYER_WALKTHROUGH_DESCRIPTION);
+    });
+
+    it('ensureWalkthroughPersonalSelected sets is_personal', () => {
+      component.formData.is_personal = false;
+      component.ensureWalkthroughPersonalSelected();
+      expect(component.formData.is_personal).toBe(true);
+    });
+
+    it('fillWalkthroughCategory sets category and closes dropdown', () => {
+      component.showCategoryDropdown = true;
+      component.fillWalkthroughCategory();
+      expect(component.formData.category).toBe(PERSONAL_PRAYER_WALKTHROUGH_CATEGORY);
+      expect(component.showCategoryDropdown).toBe(false);
+    });
+
+    it('submitWalkthroughPrayerForm calls handleSubmit when valid', () => {
+      const handleSubmitSpy = vi.spyOn(component as any, 'handleSubmit').mockImplementation(() => Promise.resolve());
+      component.currentUserEmail = 'u@example.com';
+      component.formData.prayer_for = 'x';
+      component.formData.description = 'y';
+      component.isSubmitting = false;
+      component.submitWalkthroughPrayerForm();
+      expect(handleSubmitSpy).toHaveBeenCalled();
     });
   });
 
@@ -822,9 +885,11 @@ describe('PrayerFormComponent', () => {
 
   describe('Personal prayer category loading', () => {
     it('should load available categories when opening personal prayer form', () => {
+      component.defaultPersonalPrayer = true;
       component.isOpen = true;
-      component.formData.is_personal = true;
-      component.ngOnChanges();
+      component.ngOnChanges({
+        isOpen: { currentValue: true, previousValue: false, firstChange: false, isFirstChange: () => false },
+      });
       vi.runAllTimers();
 
       expect(component.availableCategories).toEqual([]);

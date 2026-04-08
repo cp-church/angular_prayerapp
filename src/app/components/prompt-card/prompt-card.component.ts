@@ -20,7 +20,10 @@ export interface PrayerPrompt {
   imports: [CommonModule, ConfirmationDialogComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="prompt-card bg-white dark:bg-gray-800 rounded-lg shadow-md border-[2px] !border-[#988F83] dark:!border-[#988F83] p-6 mb-4 hover:shadow-lg transition-shadow relative">
+    <div
+      class="prompt-card bg-white dark:bg-gray-800 rounded-lg shadow-md border-[2px] !border-[#988F83] dark:!border-[#988F83] p-6 mb-4 hover:shadow-lg transition-shadow relative"
+      [attr.id]="tourPromptAnchors ? 'tour-prompt-card-sample' : null"
+    >
       <!-- Header -->
       <div class="flex items-start justify-between mb-4">
         <div class="flex items-center gap-2 flex-1">
@@ -97,6 +100,8 @@ export class PromptCardComponent implements OnInit, OnDestroy {
   @Input() prompt!: PrayerPrompt;
   @Input() isAdmin = false;
   @Input() isTypeSelected = false;
+  /** First visible prompt in the list: stable id for the Prayer Prompts guided tour. */
+  @Input() tourPromptAnchors = false;
   
   @Output() delete = new EventEmitter<string>();
   @Output() onTypeClick = new EventEmitter<string>();
