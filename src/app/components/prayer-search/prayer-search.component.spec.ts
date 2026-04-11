@@ -29,24 +29,39 @@ describe('PrayerSearchComponent', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
+    const defaultPrayersTableMock = {
+      select: vi.fn().mockResolvedValue({ data: [], error: null }),
+      insert: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: mockPrayer, error: null })
+        })
+      }),
+      update: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ error: null })
+      }),
+      delete: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ error: null }),
+        in: vi.fn().mockResolvedValue({ error: null })
+      })
+    };
+
     mockSupabaseService = {
       getSupabaseUrl: vi.fn().mockReturnValue('https://test.supabase.co'),
       getSupabaseKey: vi.fn().mockReturnValue('test-key'),
       getClient: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          select: vi.fn().mockResolvedValue({ data: [], error: null }),
-          insert: vi.fn().mockReturnValue({
-            select: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({ data: mockPrayer, error: null })
-            })
-          }),
-          update: vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({ error: null })
-          }),
-          delete: vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({ error: null }),
-            in: vi.fn().mockResolvedValue({ error: null })
-          })
+        from: vi.fn().mockImplementation((table: string) => {
+          if (table === 'email_subscribers') {
+            return {
+              select: vi.fn().mockReturnValue({
+                or: vi.fn().mockReturnValue({
+                  order: vi.fn().mockReturnValue({
+                    limit: vi.fn().mockResolvedValue({ data: [], error: null })
+                  })
+                })
+              })
+            };
+          }
+          return defaultPrayersTableMock;
         })
       })
     };
@@ -112,6 +127,35 @@ describe('PrayerSearchComponent', () => {
       expect(component.totalItems).toBe(0);
       expect(component.allPrayers).toEqual([]);
       expect(component.displayPrayers).toEqual([]);
+      expect(component.userSearchQuery).toBe('');
+      expect(component.userSearchResults).toEqual([]);
+      expect(component.userSearchLoading).toBe(false);
+      expect(component.userSearchHasSearched).toBe(false);
+    });
+  });
+
+  describe('subscriber lookup (create prayer)', () => {
+    it('should fill create form when a subscriber is selected', () => {
+      component.creatingPrayer = true;
+      component.createForm = {
+        description: '',
+        firstName: '',
+        lastName: '',
+        email: '',
+        prayer_for: '',
+        status: 'current',
+        is_anonymous: false
+      };
+
+      component.selectSubscriberUser(
+        { name: 'Jane Marie Doe', email: 'jane@example.com' },
+        new Event('mousedown')
+      );
+
+      expect(component.createForm.firstName).toBe('Jane');
+      expect(component.createForm.lastName).toBe('Marie Doe');
+      expect(component.createForm.email).toBe('jane@example.com');
+      expect(component.userSearchQuery).toBe('');
     });
   });
 

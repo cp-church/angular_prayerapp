@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../services/supabase.service';
@@ -65,6 +65,16 @@ interface EditUpdateForm {
   author_email: string;
 }
 
+/** Row from email_subscribers for admin create-prayer lookup (minimal columns). */
+interface SubscriberPickRow {
+  email: string;
+  name: string;
+}
+
+function escapeForIlikePattern(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+}
+
 @Component({
   selector: 'app-prayer-search',
   standalone: true,
@@ -119,6 +129,53 @@ interface EditUpdateForm {
     </div>
 
     <form (submit)="createPrayer($event)" class="space-y-3">
+      <div class="relative">
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Find subscriber
+        </label>
+        <input
+          type="search"
+          [(ngModel)]="userSearchQuery"
+          name="userSearchQuery"
+          (ngModelChange)="onUserSearchQueryChange($event)"
+          (focus)="onUserSearchFocus()"
+          (blur)="onUserSearchBlur()"
+          autocomplete="off"
+          placeholder="Search by name or email (min. 2 characters)…"
+          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+        />
+        @if (userSearchLoading) {
+        <div class="pointer-events-none absolute right-3 top-9">
+          <div class="animate-spin rounded-full h-4 w-4 border-2 border-green-600 border-t-transparent"></div>
+        </div>
+        }
+        @if (showUserSearchDropdown && userSearchResults.length > 0) {
+        <ul
+          class="absolute z-30 mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg"
+          role="listbox"
+        >
+          @for (row of userSearchResults; track row.email) {
+          <li>
+            <button
+              type="button"
+              class="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700/80 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+              (mousedown)="selectSubscriberUser(row, $event)"
+            >
+              <div class="font-medium text-gray-900 dark:text-gray-100">{{ row.name }}</div>
+              <div class="text-sm text-gray-600 dark:text-gray-400">{{ row.email }}</div>
+            </button>
+          </li>
+          }
+        </ul>
+        }
+        @if (userSearchQuery.trim().length >= userSearchMinChars && !userSearchLoading && userSearchHasSearched && userSearchResults.length === 0) {
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">No matching subscribers</p>
+        }
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          Debounced search; only name and email are loaded (limited to {{ userSearchResultLimit }} matches).
+        </p>
+      </div>
+
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1172,7 +1229,7 @@ interface EditUpdateForm {
   }
   `
 })
-export class PrayerSearchComponent implements OnInit {
+export class PrayerSearchComponent implements OnInit, OnDestroy {
   Math = Math;
   searchTerm = '';
   statusFilter = '';
@@ -1193,6 +1250,18 @@ export class PrayerSearchComponent implements OnInit {
     status: ''
   };
   creatingPrayer = false;
+  /** Subscriber lookup for create form — debounced, minimal columns, capped rows (low egress). */
+  userSearchQuery = '';
+  userSearchResults: SubscriberPickRow[] = [];
+  userSearchLoading = false;
+  userSearchHasSearched = false;
+  showUserSearchDropdown = false;
+  readonly userSearchMinChars = 2;
+  readonly userSearchResultLimit = 20;
+  private userSearchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private userSearchBlurTimer: ReturnType<typeof setTimeout> | null = null;
+  private userSearchRequestSeq = 0;
+
   createForm: CreateForm = {
     description: '',
     firstName: '',
@@ -1265,6 +1334,138 @@ export class PrayerSearchComponent implements OnInit {
   ngOnInit(): void {
     // Load initial results with default 10 items
     this.handleSearch();
+  }
+
+  ngOnDestroy(): void {
+    if (this.userSearchDebounceTimer) {
+      clearTimeout(this.userSearchDebounceTimer);
+      this.userSearchDebounceTimer = null;
+    }
+    if (this.userSearchBlurTimer) {
+      clearTimeout(this.userSearchBlurTimer);
+      this.userSearchBlurTimer = null;
+    }
+    this.userSearchRequestSeq++;
+  }
+
+  private resetUserSearchState(): void {
+    this.userSearchQuery = '';
+    this.userSearchResults = [];
+    this.userSearchHasSearched = false;
+    this.userSearchLoading = false;
+    this.showUserSearchDropdown = false;
+    if (this.userSearchDebounceTimer) {
+      clearTimeout(this.userSearchDebounceTimer);
+      this.userSearchDebounceTimer = null;
+    }
+    if (this.userSearchBlurTimer) {
+      clearTimeout(this.userSearchBlurTimer);
+      this.userSearchBlurTimer = null;
+    }
+    this.userSearchRequestSeq++;
+  }
+
+  onUserSearchQueryChange(value: string): void {
+    this.userSearchQuery = value;
+    if (this.userSearchDebounceTimer) {
+      clearTimeout(this.userSearchDebounceTimer);
+      this.userSearchDebounceTimer = null;
+    }
+
+    const trimmed = value.trim();
+    if (trimmed.length < this.userSearchMinChars) {
+      this.userSearchResults = [];
+      this.userSearchHasSearched = false;
+      this.userSearchLoading = false;
+      this.showUserSearchDropdown = false;
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.userSearchDebounceTimer = setTimeout(() => {
+      this.userSearchDebounceTimer = null;
+      void this.runSubscriberSearch(trimmed);
+    }, 350);
+  }
+
+  onUserSearchFocus(): void {
+    if (this.userSearchResults.length > 0) {
+      this.showUserSearchDropdown = true;
+    }
+  }
+
+  onUserSearchBlur(): void {
+    if (this.userSearchBlurTimer) {
+      clearTimeout(this.userSearchBlurTimer);
+      this.userSearchBlurTimer = null;
+    }
+    this.userSearchBlurTimer = setTimeout(() => {
+      this.userSearchBlurTimer = null;
+      this.showUserSearchDropdown = false;
+      this.cdr.markForCheck();
+    }, 180);
+  }
+
+  private async runSubscriberSearch(trimmed: string): Promise<void> {
+    const seq = ++this.userSearchRequestSeq;
+    this.userSearchLoading = true;
+    this.userSearchHasSearched = false;
+    this.cdr.markForCheck();
+
+    const escaped = escapeForIlikePattern(trimmed);
+    const pattern = `%${escaped}%`;
+
+    try {
+      const { data, error } = await this.supabaseService
+        .getClient()
+        .from('email_subscribers')
+        .select('email,name')
+        .or(`email.ilike.${pattern},name.ilike.${pattern}`)
+        .order('name', { ascending: true })
+        .limit(this.userSearchResultLimit);
+
+      if (seq !== this.userSearchRequestSeq) {
+        return;
+      }
+
+      if (error) {
+        console.error('Subscriber search error:', error);
+        this.userSearchResults = [];
+        this.userSearchHasSearched = true;
+        this.toast.error(error.message || 'Failed to search subscribers');
+      } else {
+        this.userSearchResults = (data ?? []) as SubscriberPickRow[];
+        this.userSearchHasSearched = true;
+        this.showUserSearchDropdown = this.userSearchResults.length > 0;
+      }
+    } catch (err: unknown) {
+      if (seq !== this.userSearchRequestSeq) {
+        return;
+      }
+      console.error('Subscriber search error:', err);
+      this.userSearchResults = [];
+      this.userSearchHasSearched = true;
+      this.toast.error('Failed to search subscribers');
+    } finally {
+      if (seq === this.userSearchRequestSeq) {
+        this.userSearchLoading = false;
+        this.cdr.markForCheck();
+      }
+    }
+  }
+
+  selectSubscriberUser(row: SubscriberPickRow, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const name = row.name.trim();
+    const parts = name.split(/\s+/).filter(Boolean);
+    this.createForm.firstName = parts[0] ?? '';
+    this.createForm.lastName = parts.length > 1 ? parts.slice(1).join(' ') : '';
+
+    this.createForm.email = row.email.trim();
+    this.resetUserSearchState();
+    this.cdr.markForCheck();
   }
 
   async handleSearch(): Promise<void> {
@@ -1693,6 +1894,7 @@ export class PrayerSearchComponent implements OnInit {
 
   startCreatePrayer(): void {
     this.creatingPrayer = true;
+    this.resetUserSearchState();
     this.createForm = {
       description: '',
       firstName: '',
@@ -1707,6 +1909,7 @@ export class PrayerSearchComponent implements OnInit {
 
   cancelCreatePrayer(): void {
     this.creatingPrayer = false;
+    this.resetUserSearchState();
     this.createForm = {
       description: '',
       firstName: '',
