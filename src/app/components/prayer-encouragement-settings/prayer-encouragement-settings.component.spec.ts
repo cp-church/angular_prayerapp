@@ -38,6 +38,7 @@ describe('PrayerEncouragementSettingsComponent', () => {
   });
 
   it('should have default state', () => {
+    expect(component.sectionExpanded).toBe(false);
     expect(component.prayerEncouragementEnabled).toBe(false);
     expect(component.cooldownHours).toBe(4);
     expect(component.isSaving).toBe(false);
@@ -80,6 +81,7 @@ describe('PrayerEncouragementSettingsComponent', () => {
       });
       await component.loadSettings();
       expect(component.errorMessage).toBe('Failed to load settings.');
+      expect(component.sectionExpanded).toBe(true);
     });
   });
 

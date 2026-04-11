@@ -25,21 +25,53 @@ interface TimelineDay {
   imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
-        <div class="flex items-center gap-3">
-          <svg class="text-orange-600 dark:text-orange-400" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/40">
+      <button
+        type="button"
+        id="prayer-archive-timeline-trigger"
+        class="w-full flex items-center justify-between gap-2 text-left rounded-lg -mx-1 px-1 py-0.5 -my-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800"
+        (click)="sectionExpanded = !sectionExpanded"
+        [attr.aria-expanded]="sectionExpanded"
+        aria-controls="prayer-archive-timeline-panel"
+      >
+        <span class="text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2 min-w-0">
+          <svg class="text-blue-600 dark:text-blue-400 shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
             <line x1="16" y1="2" x2="16" y2="6"></line>
             <line x1="8" y1="2" x2="8" y2="6"></line>
             <line x1="3" y1="10" x2="21" y2="10"></line>
           </svg>
-          <h3 class="text-xl font-bold text-gray-800 dark:text-gray-100">Prayer Timeline</h3>
-        </div>
+          Prayer Timeline
+        </span>
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-200"
+          [class.rotate-180]="sectionExpanded"
+          aria-hidden="true"
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+
+      @if (sectionExpanded) {
+      <div
+        id="prayer-archive-timeline-panel"
+        role="region"
+        aria-labelledby="prayer-archive-timeline-trigger"
+        class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
+      >
+      <div class="flex justify-end mb-6">
         <button
+          type="button"
           (click)="refreshData()"
-          class="flex items-center gap-2 px-3 py-2 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+          class="flex items-center gap-2 px-3 py-2 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors cursor-pointer"
           [disabled]="isLoading"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" [class.animate-spin]="isLoading">
@@ -302,6 +334,8 @@ interface TimelineDay {
           </div>
         </div>
       </div>
+      </div>
+      }
     </div>
   `,
   styles: [`
@@ -330,6 +364,7 @@ interface TimelineDay {
   `]
 })
 export class PrayerArchiveTimelineComponent implements OnInit {
+  sectionExpanded = false;
   isLoading = false;
   reminderIntervalDays = 30;
   daysBeforeArchive = 30;

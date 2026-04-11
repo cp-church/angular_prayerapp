@@ -21,16 +21,49 @@ interface EmailTemplate {
   standalone: true,
   imports: [FormsModule],
   template: `
-    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6">
-      <div class="flex items-center justify-between mb-6">
-        <div class="flex items-center gap-3">
-          <svg class="text-blue-600 dark:text-blue-400" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/40">
+      <button
+        type="button"
+        id="email-templates-manager-trigger"
+        class="w-full flex items-center justify-between gap-2 text-left rounded-lg -mx-1 px-1 py-0.5 -my-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800"
+        (click)="sectionExpanded = !sectionExpanded"
+        [attr.aria-expanded]="sectionExpanded"
+        aria-controls="email-templates-manager-panel"
+      >
+        <span class="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 min-w-0">
+          <svg class="text-blue-600 dark:text-blue-400 shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
             <polyline points="22,6 12,13 2,6"></polyline>
           </svg>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Email Templates</h3>
-        </div>
+          Email Templates
+        </span>
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-200"
+          [class.rotate-180]="sectionExpanded"
+          aria-hidden="true"
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+
+      @if (sectionExpanded) {
+      <div
+        id="email-templates-manager-panel"
+        role="region"
+        aria-labelledby="email-templates-manager-trigger"
+        class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
+      >
+      <div class="flex justify-end mb-6">
         <button
+          type="button"
           (click)="loadTemplates()"
           class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
           title="Refresh templates"
@@ -281,11 +314,15 @@ interface EmailTemplate {
         <p class="text-gray-600 dark:text-gray-400 text-sm">No templates available</p>
       </div>
       }
+      </div>
+      }
     </div>
   `,
   styles: []
 })
 export class EmailTemplatesManagerComponent implements OnInit {
+  sectionExpanded = false;
+
   templates: EmailTemplate[] = [];
   selectedTemplate: EmailTemplate | null = null;
   editedTemplate: EmailTemplate | null = null;
@@ -325,6 +362,7 @@ export class EmailTemplatesManagerComponent implements OnInit {
       this.templates = data || [];
       if (this.templates.length === 0) {
         this.error = 'No templates found. Please run the database migration.';
+        this.sectionExpanded = true;
       }
       // Don't auto-select a template - let user choose one
       this.selectedTemplate = null;
@@ -336,6 +374,7 @@ export class EmailTemplatesManagerComponent implements OnInit {
         : String(err);
       console.error('Failed to load templates:', err);
       this.error = `Failed to load templates: ${errorMsg}`;
+      this.sectionExpanded = true;
       this.cdr.markForCheck();
     } finally {
       this.loading = false;
@@ -396,6 +435,7 @@ export class EmailTemplatesManagerComponent implements OnInit {
         ? String(err.message)
         : 'Unknown error';
       this.error = 'Failed to save template';
+      this.sectionExpanded = true;
       this.toast.error('Failed to save template');
       console.error(err);
       this.cdr.markForCheck();

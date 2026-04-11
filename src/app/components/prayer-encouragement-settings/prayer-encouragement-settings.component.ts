@@ -9,14 +9,45 @@ import { PrayerEncouragementService } from '../../services/prayer-encouragement.
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
-      <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600 dark:text-blue-400">
-          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/40">
+      <button
+        type="button"
+        id="prayer-encouragement-settings-trigger"
+        class="w-full flex items-center justify-between gap-2 text-left rounded-lg -mx-1 px-1 py-0.5 -my-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800"
+        (click)="sectionExpanded = !sectionExpanded"
+        [attr.aria-expanded]="sectionExpanded"
+        aria-controls="prayer-encouragement-panel"
+      >
+        <span class="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 min-w-0">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600 dark:text-blue-400 shrink-0">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+          </svg>
+          Prayer Encouragement
+        </span>
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-200"
+          [class.rotate-180]="sectionExpanded"
+          aria-hidden="true"
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
         </svg>
-        Prayer Encouragement
-      </h3>
+      </button>
 
+      @if (sectionExpanded) {
+      <div
+        id="prayer-encouragement-panel"
+        role="region"
+        aria-labelledby="prayer-encouragement-settings-trigger"
+        class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
+      >
       <p class="text-gray-600 dark:text-gray-400 text-sm mb-6">
         Allow users to click Pray For on prayers; requesters and admins see how many times a prayer was prayed for.
       </p>
@@ -110,11 +141,14 @@ import { PrayerEncouragementService } from '../../services/prayer-encouragement.
           </div>
         </div>
       }
+      </div>
+      }
     </div>
   `,
   styles: []
 })
 export class PrayerEncouragementSettingsComponent implements OnInit {
+  sectionExpanded = false;
   prayerEncouragementEnabled = false;
   cooldownHours = 4;
   isSaving = false;
@@ -145,6 +179,7 @@ export class PrayerEncouragementSettingsComponent implements OnInit {
     } catch (err) {
       console.error('[PrayerEncouragementSettings] Error loading:', err);
       this.errorMessage = 'Failed to load settings.';
+      this.sectionExpanded = true;
     }
   }
 

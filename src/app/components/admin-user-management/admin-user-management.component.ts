@@ -19,26 +19,51 @@ interface AdminUser {
   standalone: true,
   imports: [CommonModule, FormsModule, ConfirmationDialogComponent],
   template: `
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
-      <div class="flex items-center justify-between mb-6 min-h-[3.5rem]">
-        <div class="flex items-center gap-3 min-h-0">
-          <svg class="flex-shrink-0 text-red-600 dark:text-red-400" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/40">
+      <button
+        type="button"
+        id="admin-user-management-trigger"
+        class="w-full flex items-center justify-between gap-2 text-left rounded-lg -mx-1 px-1 py-0.5 -my-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800"
+        (click)="sectionExpanded = !sectionExpanded"
+        [attr.aria-expanded]="sectionExpanded"
+        aria-controls="admin-user-management-panel"
+      >
+        <span class="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 min-w-0">
+          <svg class="text-blue-600 dark:text-blue-400 shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
           </svg>
-          <div class="min-w-0">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 leading-tight">
-              Admin User Management
-            </h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 leading-tight mt-0.5">
-              Manage admin users and send invitations
-            </p>
-          </div>
-        </div>
+          Admin User Management
+        </span>
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-200"
+          [class.rotate-180]="sectionExpanded"
+          aria-hidden="true"
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
 
+      @if (sectionExpanded) {
+      <div
+        id="admin-user-management-panel"
+        role="region"
+        aria-labelledby="admin-user-management-trigger"
+        class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
+      >
+      <div class="flex justify-end mb-4">
         @if (!showAddForm) {
         <button
+          type="button"
           (click)="showAddForm = true"
-          class="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors cursor-pointer flex-shrink-0 self-center"
+          class="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors cursor-pointer flex-shrink-0"
           title="Click to add a new administrator. You will be able to enter their email address and send them an invitation to join as an admin."
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -306,6 +331,9 @@ interface AdminUser {
         </p>
       </div>
 
+      </div>
+      }
+
       @if (showConfirmationDialog) {
       <app-confirmation-dialog
         [title]="confirmationTitle"
@@ -324,6 +352,7 @@ interface AdminUser {
 export class AdminUserManagementComponent implements OnInit {
   @Output() onSave = new EventEmitter<void>();
 
+  sectionExpanded = false;
   admins: AdminUser[] = [];
   loading = false;
   error: string | null = null;
@@ -375,6 +404,7 @@ export class AdminUserManagementComponent implements OnInit {
         : String(err);
       console.error('Error loading admins:', err);
       this.error = 'Failed to load admin users';
+      this.sectionExpanded = true;
       this.cdr.markForCheck();
     } finally {
       this.loading = false;
@@ -385,6 +415,7 @@ export class AdminUserManagementComponent implements OnInit {
   async addAdmin() {
     if (!this.newAdminEmail.trim() || !this.newAdminName.trim()) {
       this.error = 'Email and name are required';
+      this.sectionExpanded = true;
       return;
     }
 
@@ -392,6 +423,7 @@ export class AdminUserManagementComponent implements OnInit {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(this.newAdminEmail)) {
       this.error = 'Please enter a valid email address';
+      this.sectionExpanded = true;
       return;
     }
 
@@ -413,6 +445,7 @@ export class AdminUserManagementComponent implements OnInit {
 
       if (existing) {
         this.error = 'This email is already an admin';
+        this.sectionExpanded = true;
         return;
       }
 
@@ -448,6 +481,7 @@ export class AdminUserManagementComponent implements OnInit {
     } catch (err: unknown) {
       console.error('Error adding admin:', err);
       this.error = 'Failed to add admin user';
+      this.sectionExpanded = true;
     } finally {
       this.adding = false;
     }
@@ -571,6 +605,7 @@ Prayer App Admin Portal
     // Don't allow deleting the last admin
     if (this.admins.length === 1) {
       this.error = 'Cannot delete the last admin user';
+      this.sectionExpanded = true;
       return;
     }
 
@@ -595,6 +630,7 @@ Prayer App Admin Portal
         : String(err);
       console.error('Error deleting admin:', err);
       this.error = 'Failed to remove admin access';
+      this.sectionExpanded = true;
     }
   }
 
@@ -674,6 +710,7 @@ Prayer App Admin Portal
         : String(err);
       console.error('Error toggling email preference:', err);
       this.error = 'Failed to update email preference';
+      this.sectionExpanded = true;
     }
     this.cdr.markForCheck();
   }
@@ -695,6 +732,7 @@ Prayer App Admin Portal
     } catch (err: unknown) {
       console.error('Error toggling push preference:', err);
       this.error = 'Failed to update push preference';
+      this.sectionExpanded = true;
     }
     this.cdr.markForCheck();
   }

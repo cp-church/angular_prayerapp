@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SupabaseService } from '../../services/supabase.service';
 import { ToastService } from '../../services/toast.service';
@@ -20,56 +20,71 @@ interface BackupLog {
   standalone: true,
   imports: [CommonModule, ConfirmationDialogComponent],
   template: `
-@if (loading) {
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-  <div class="flex items-center justify-center">
-    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-  </div>
-</div>
-}
-
-@if (!loading && !latestBackup) {
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
-  <div class="flex items-center gap-3 mb-4">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400">
-      <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
-      <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
-      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
-    </svg>
-    <h3 class="text-lg font-semibold text-gray-900 dark:!text-white">
-      Database Backup Status
-    </h3>
-  </div>
-  <div class="text-center py-8">
-    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400 mx-auto mb-3">
-      <circle cx="12" cy="12" r="10"></circle>
-      <line x1="12" y1="8" x2="12" y2="12"></line>
-      <line x1="12" y1="16" x2="12.01" y2="16"></line>
-    </svg>
-    <p class="text-gray-600 dark:text-gray-400">No backup logs found</p>
-    <p class="text-sm text-gray-500 dark:text-gray-500 mt-2">
-      Backups will appear here once the first automated backup runs
-    </p>
-  </div>
-</div>
-}
-
-@if (!loading && latestBackup) {
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
-  <!-- Header -->
-  <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
-    <div class="flex items-center gap-3">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-600 dark:text-indigo-400">
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/40">
+  <button
+    type="button"
+    id="backup-status-trigger"
+    class="w-full flex items-center justify-between gap-2 text-left rounded-lg -mx-1 px-1 py-0.5 -my-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800"
+    (click)="onBackupSectionToggle()"
+    [attr.aria-expanded]="sectionExpanded"
+    aria-controls="backup-status-panel"
+  >
+    <span class="text-xl font-semibold text-gray-900 dark:!text-white flex items-center gap-2 min-w-0">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600 dark:text-blue-400 shrink-0" aria-hidden="true">
         <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
         <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
         <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
       </svg>
-      <h3 class="text-lg font-semibold text-gray-900 dark:!text-white">
-        Database Backup Status
-      </h3>
+      Database Backup Status
+    </span>
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      class="shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-200"
+      [class.rotate-180]="sectionExpanded"
+      aria-hidden="true"
+    >
+      <polyline points="6 9 12 15 18 9"></polyline>
+    </svg>
+  </button>
+
+  @if (sectionExpanded) {
+  <div
+    id="backup-status-panel"
+    role="region"
+    aria-labelledby="backup-status-trigger"
+    class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
+  >
+    @if (loading) {
+    <div class="flex items-center justify-center py-8">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
     </div>
-    <div class="flex items-center gap-3 justify-end w-full sm:w-auto">
+    }
+
+    @if (!loading && !latestBackup) {
+    <div class="text-center py-8">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400 mx-auto mb-3">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <p class="text-gray-600 dark:text-gray-400">No backup logs found</p>
+      <p class="text-sm text-gray-500 dark:text-gray-500 mt-2">
+        Backups will appear here once the first automated backup runs
+      </p>
+    </div>
+    }
+
+@if (!loading && latestBackup) {
+    <div class="flex flex-wrap items-center justify-end gap-3 mb-6">
       <button
+        type="button"
         (click)="handleManualBackup()"
         [disabled]="backingUp"
         class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer"
@@ -87,6 +102,7 @@ interface BackupLog {
         {{ backingUp ? 'Backing up...' : 'Manual Backup' }}
       </button>
       <button
+        type="button"
         (click)="showRestoreDialog = true"
         [disabled]="restoring"
         class="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer"
@@ -104,7 +120,6 @@ interface BackupLog {
         {{ restoring ? 'Restoring...' : 'Restore' }}
       </button>
     </div>
-  </div>
 
   <!-- Recent Backups -->
   <div class="space-y-4 mb-6">
@@ -281,8 +296,10 @@ interface BackupLog {
       }
     </div>
   </div>
+    }
+  </div>
+  }
 </div>
-}
 
   <!-- Restore Dialog -->
   @if (showRestoreDialog) {
@@ -358,7 +375,10 @@ interface BackupLog {
   }
   `
 })
-export class BackupStatusComponent implements OnInit {
+export class BackupStatusComponent {
+  sectionExpanded = false;
+  /** Avoid fetch while collapsed; first expand runs the automatic load so the spinner is visible. */
+  private backupLogsInitialFetchDone = false;
   latestBackup: BackupLog | null = null;
   allBackups: BackupLog[] = [];
   showFullLog = false;
@@ -385,8 +405,12 @@ export class BackupStatusComponent implements OnInit {
     private toast: ToastService
   ) {}
 
-  ngOnInit(): void {
-    this.fetchBackupLogs();
+  onBackupSectionToggle(): void {
+    this.sectionExpanded = !this.sectionExpanded;
+    if (this.sectionExpanded && !this.backupLogsInitialFetchDone) {
+      this.backupLogsInitialFetchDone = true;
+      void this.fetchBackupLogs();
+    }
   }
 
   async fetchBackupLogs(): Promise<void> {

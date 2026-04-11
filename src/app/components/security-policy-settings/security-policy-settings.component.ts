@@ -11,16 +11,45 @@ type AllowanceLevel = 'everyone' | 'original-requestor' | 'admin-only';
   imports: [FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
-      <div class="flex items-center gap-2 mb-4">
-        <svg class="text-blue-600 dark:text-blue-400" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-        </svg>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/40">
+      <button
+        type="button"
+        id="security-policy-settings-trigger"
+        class="w-full flex items-center justify-between gap-2 text-left rounded-lg -mx-1 px-1 py-0.5 -my-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800"
+        (click)="sectionExpanded = !sectionExpanded"
+        [attr.aria-expanded]="sectionExpanded"
+        aria-controls="security-policy-settings-panel"
+      >
+        <span class="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 min-w-0">
+          <svg class="text-blue-600 dark:text-blue-400 shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
           Security & Access Policies
-        </h3>
-      </div>
+        </span>
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-200"
+          [class.rotate-180]="sectionExpanded"
+          aria-hidden="true"
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
 
+      @if (sectionExpanded) {
+      <div
+        id="security-policy-settings-panel"
+        role="region"
+        aria-labelledby="security-policy-settings-trigger"
+        class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
+      >
       @if (loading) {
       <div class="flex items-center justify-center py-8">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -131,6 +160,8 @@ type AllowanceLevel = 'everyone' | 'original-requestor' | 'admin-only';
           </button>
         </div>
       }
+      </div>
+      }
     </div>
   `,
   styles: [`
@@ -140,6 +171,7 @@ type AllowanceLevel = 'everyone' | 'original-requestor' | 'admin-only';
   `]
 })
 export class SecurityPolicySettingsComponent implements OnInit {
+  sectionExpanded = false;
   deletionsAllowed: AllowanceLevel = 'everyone';
   updatesAllowed: AllowanceLevel = 'everyone';
   loading = false;
@@ -179,6 +211,7 @@ export class SecurityPolicySettingsComponent implements OnInit {
     } catch (err: any) {
       console.error('Error loading security policy settings:', err);
       this.error = 'Failed to load settings';
+      this.sectionExpanded = true;
       this.cdr.markForCheck();
     } finally {
       this.loading = false;
@@ -208,6 +241,7 @@ export class SecurityPolicySettingsComponent implements OnInit {
     } catch (err: any) {
       console.error('Error saving security policy settings:', err);
       this.error = 'Failed to save settings';
+      this.sectionExpanded = true;
       this.toast.error('Failed to save settings');
       this.cdr.markForCheck();
     } finally {

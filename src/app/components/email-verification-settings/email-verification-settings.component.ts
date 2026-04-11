@@ -9,17 +9,46 @@ import { ToastService } from '../../services/toast.service';
   imports: [FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
-      <div class="flex items-center gap-2 mb-4">
-        <svg class="text-blue-600 dark:text-blue-400" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-          <polyline points="22,6 12,13 2,6"></polyline>
-        </svg>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/40">
+      <button
+        type="button"
+        id="email-verification-settings-trigger"
+        class="w-full flex items-center justify-between gap-2 text-left rounded-lg -mx-1 px-1 py-0.5 -my-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800"
+        (click)="sectionExpanded = !sectionExpanded"
+        [attr.aria-expanded]="sectionExpanded"
+        aria-controls="email-verification-settings-panel"
+      >
+        <span class="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 min-w-0">
+          <svg class="text-blue-600 dark:text-blue-400 shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+            <polyline points="22,6 12,13 2,6"></polyline>
+          </svg>
           Email Verification (2FA)
-        </h3>
-      </div>
+        </span>
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-200"
+          [class.rotate-180]="sectionExpanded"
+          aria-hidden="true"
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
 
+      @if (sectionExpanded) {
+      <div
+        id="email-verification-settings-panel"
+        role="region"
+        aria-labelledby="email-verification-settings-trigger"
+        class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
+      >
       @if (loading) {
       <div class="flex items-center justify-center py-8">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -110,11 +139,14 @@ import { ToastService } from '../../services/toast.service';
           </button>
         </div>
       }
+      </div>
+      }
     </div>
   `,
   styles: []
 })
 export class EmailVerificationSettingsComponent implements OnInit {
+  sectionExpanded = false;
   verificationCodeLength = 6;
   verificationCodeExpiryMinutes = 15;
   loading = false;
@@ -149,6 +181,7 @@ export class EmailVerificationSettingsComponent implements OnInit {
       }
     } catch (error: any) {
       console.error('Error loading email verification settings:', error);
+      this.sectionExpanded = true;
       this.toast.error('Failed to load email verification settings');
     } finally {
       this.loading = false;
@@ -176,6 +209,7 @@ export class EmailVerificationSettingsComponent implements OnInit {
       this.toast.success('Email verification settings saved successfully');
     } catch (error: any) {
       console.error('Error saving email verification settings:', error);
+      this.sectionExpanded = true;
       this.toast.error('Failed to save email verification settings');
     } finally {
       this.saving = false;

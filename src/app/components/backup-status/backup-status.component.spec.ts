@@ -491,11 +491,26 @@ describe('BackupStatusComponent', () => {
     });
   });
 
-  describe('ngOnInit', () => {
-    it('should call fetchBackupLogs', async () => {
+  describe('onBackupSectionToggle', () => {
+    it('does not fetch backup logs until section is expanded', () => {
       const spy = vi.spyOn(component, 'fetchBackupLogs').mockResolvedValue();
-      await component.ngOnInit();
-      expect(spy).toHaveBeenCalled();
+      expect(component.sectionExpanded).toBe(false);
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('calls fetchBackupLogs once on first expand', () => {
+      const spy = vi.spyOn(component, 'fetchBackupLogs').mockResolvedValue();
+      component.onBackupSectionToggle();
+      expect(component.sectionExpanded).toBe(true);
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not call fetchBackupLogs again on second expand', () => {
+      const spy = vi.spyOn(component, 'fetchBackupLogs').mockResolvedValue();
+      component.onBackupSectionToggle();
+      component.onBackupSectionToggle();
+      component.onBackupSectionToggle();
+      expect(spy).toHaveBeenCalledTimes(1);
     });
   });
 

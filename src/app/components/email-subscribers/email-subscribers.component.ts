@@ -42,18 +42,49 @@ function escapeForIlikePattern(value: string): string {
   imports: [CommonModule, FormsModule, SendNotificationDialogComponent, ConfirmationDialogComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div #emailSubscribersContainer class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
-      <div class="flex items-center justify-between mb-6">
-        <div class="flex items-center gap-2">
-          <svg class="text-blue-600 dark:text-blue-400" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-            <polyline points="22,6 12,13 2,6"></polyline>
+    <div #emailSubscribersContainer class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-6 border border-gray-200 dark:border-gray-700 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/40">
+      <button
+        type="button"
+        id="email-subscribers-trigger"
+        class="w-full flex items-center justify-between gap-2 text-left rounded-lg -mx-1 px-1 py-0.5 -my-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800"
+        (click)="sectionExpanded = !sectionExpanded"
+        [attr.aria-expanded]="sectionExpanded"
+        aria-controls="email-subscribers-panel"
+      >
+        <span class="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 min-w-0">
+          <svg class="text-blue-600 dark:text-blue-400 shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
           </svg>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Email Subscribers
-          </h3>
-        </div>
+          Email Subscribers
+        </span>
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-200"
+          [class.rotate-180]="sectionExpanded"
+          aria-hidden="true"
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+
+      @if (sectionExpanded) {
+      <div
+        id="email-subscribers-panel"
+        role="region"
+        aria-labelledby="email-subscribers-trigger"
+        class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
+      >
+      <div class="flex justify-end mb-4">
         <button
+          type="button"
           (click)="handleSearch()"
           [disabled]="searching"
           class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
@@ -693,6 +724,8 @@ function escapeForIlikePattern(value: string): string {
       </div>
       <!-- end @if (!searching && hasSearched && subscribers.length > 0) -->
       }
+      </div>
+      }
 
       <!-- Send Welcome Email Dialog -->
       @if (showSendWelcomeEmailDialog) {
@@ -797,6 +830,7 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
   newName = '';
   newEmail = '';
   submitting = false;
+  sectionExpanded = false;
   error: string | null = null;
   csvSuccess: string | null = null;
   
@@ -1164,6 +1198,7 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error('Error:', error);
       this.error = error instanceof Error ? error.message : 'Failed to fetch subscribers';
+      this.sectionExpanded = true;
       this.subscribers = [];
       this.totalItems = 0;
       this.totalActiveCount = 0;

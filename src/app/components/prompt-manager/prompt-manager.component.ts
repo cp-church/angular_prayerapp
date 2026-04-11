@@ -19,20 +19,48 @@ interface CSVRow {
   standalone: true,
   imports: [CommonModule, FormsModule, ConfirmationDialogComponent],
   template: `
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
-      <!-- Header -->
-      <div class="flex flex-col gap-3 mb-4">
-        <div class="flex items-center gap-2">
-          <svg class="text-yellow-600 dark:text-yellow-400" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-6 border border-gray-200 dark:border-gray-700 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/40">
+      <button
+        type="button"
+        id="prompt-manager-settings-trigger"
+        class="w-full flex items-center justify-between gap-2 text-left rounded-lg -mx-1 px-1 py-0.5 -my-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800"
+        (click)="sectionExpanded = !sectionExpanded"
+        [attr.aria-expanded]="sectionExpanded"
+        aria-controls="prompt-manager-panel"
+      >
+        <span class="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 min-w-0">
+          <svg class="text-blue-600 dark:text-blue-400 shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path>
             <path d="M9 18h6"></path>
             <path d="M10 22h4"></path>
           </svg>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Prayer Prompts
-          </h3>
-        </div>
-        <div class="flex gap-2 justify-end">
+          Prayer Prompts
+        </span>
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-200"
+          [class.rotate-180]="sectionExpanded"
+          aria-hidden="true"
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+
+      @if (sectionExpanded) {
+      <div
+        id="prompt-manager-panel"
+        role="region"
+        aria-labelledby="prompt-manager-settings-trigger"
+        class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
+      >
+      <div class="flex flex-wrap gap-2 justify-end mb-4">
           <button
             (click)="toggleCSVUpload()"
             title="Upload prompts from CSV"
@@ -56,7 +84,6 @@ interface CSVRow {
             </svg>
             Add Prompt
           </button>
-        </div>
       </div>
 
       <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
@@ -487,6 +514,8 @@ interface CSVRow {
         </div>
       </div>
       }
+      </div>
+      }
 
       <!-- Confirmation Dialog -->
       @if (showConfirmationDialog) {
@@ -505,6 +534,8 @@ interface CSVRow {
 })
 export class PromptManagerComponent implements OnInit, OnDestroy {
   @Output() onSave = new EventEmitter<void>();
+
+  sectionExpanded = false;
 
   prompts: PrayerPrompt[] = [];
   prayerTypes: PrayerTypeRecord[] = [];
@@ -670,6 +701,7 @@ export class PromptManagerComponent implements OnInit, OnDestroy {
         ? String(err.message)
         : 'Unknown error';
       this.error = `Failed to search prompts: ${message}`;
+      this.sectionExpanded = true;
     } finally {
       this.searching = false;
       this.cdr.markForCheck();

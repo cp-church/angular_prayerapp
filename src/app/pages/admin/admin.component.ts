@@ -618,8 +618,8 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
                   <app-prompt-manager></app-prompt-manager>
                 </div>
                 <div class="mb-4">
-                <app-prayer-types-manager></app-prayer-types-manager>
-              </div>
+                  <app-prayer-types-manager></app-prayer-types-manager>
+                </div>
                 <div class="mb-4">
                   <app-planning-center-list-mapper></app-planning-center-list-mapper>
                 </div>
@@ -651,7 +651,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
 
             <!-- Security Tab -->
             @if (activeSettingsTab === 'security') {
-              <div>
+              <div class="space-y-6">
                 <div class="mb-4">
                   <app-admin-user-management></app-admin-user-management>
                 </div>

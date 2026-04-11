@@ -14,22 +14,51 @@ import type { PrayerTypeRecord } from '../../types/prayer';
   imports: [CommonModule, FormsModule, DragDropModule, ConfirmationDialogComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
-      <!-- Header -->
-      <div class="flex flex-col gap-3 mb-4">
-        <div class="flex items-center gap-2">
-          <svg class="text-indigo-600 dark:text-indigo-400" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-6 border border-gray-200 dark:border-gray-700 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/40">
+      <button
+        type="button"
+        id="prayer-types-manager-trigger"
+        class="w-full flex items-center justify-between gap-2 text-left rounded-lg -mx-1 px-1 py-0.5 -my-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800"
+        (click)="sectionExpanded = !sectionExpanded"
+        [attr.aria-expanded]="sectionExpanded"
+        aria-controls="prayer-types-manager-panel"
+      >
+        <span class="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 min-w-0">
+          <svg class="text-blue-600 dark:text-blue-400 shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
             <line x1="7" y1="7" x2="7.01" y2="7"></line>
           </svg>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Prayer Types
-          </h3>
-        </div>
+          Prayer Types
+        </span>
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-200"
+          [class.rotate-180]="sectionExpanded"
+          aria-hidden="true"
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+
+      @if (sectionExpanded) {
+      <div
+        id="prayer-types-manager-panel"
+        role="region"
+        aria-labelledby="prayer-types-manager-trigger"
+        class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
+      >
+      <div class="flex justify-end mb-4">
         <button
           (click)="toggleAddForm()"
           title="Add new prayer type"
-          class="flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm whitespace-nowrap w-fit ml-auto cursor-pointer"
+          class="flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm whitespace-nowrap cursor-pointer"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -257,6 +286,8 @@ import type { PrayerTypeRecord } from '../../types/prayer';
         </div>
       </div>
       }
+      </div>
+      }
 
       <!-- Confirmation Dialog -->
       @if (showConfirmationDialog) {
@@ -275,6 +306,8 @@ import type { PrayerTypeRecord } from '../../types/prayer';
 })
 export class PrayerTypesManagerComponent implements OnInit {
   @Output() onSave = new EventEmitter<void>();
+
+  sectionExpanded = false;
 
   types: PrayerTypeRecord[] = [];
   loading = true;
@@ -329,6 +362,7 @@ export class PrayerTypesManagerComponent implements OnInit {
         ? String(err.message)
         : 'Unknown error';
       this.error = message;
+      this.sectionExpanded = true;
     } finally {
       this.loading = false;
       this.cdr.markForCheck();

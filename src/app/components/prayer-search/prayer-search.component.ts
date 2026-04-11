@@ -80,17 +80,46 @@ function escapeForIlikePattern(value: string): string {
   standalone: true,
   imports: [CommonModule, FormsModule, SendNotificationDialogComponent, ConfirmationDialogComponent],
   template: `
-<div #prayerEditorContainer class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
-  <div class="flex items-center gap-2 mb-4">
-    <svg class="text-red-600 dark:text-red-400" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="11" cy="11" r="8"></circle>
-      <path d="m21 21-4.35-4.35"></path>
-    </svg>
-    <h3 class="text-lg font-medium text-gray-800 dark:text-gray-100">
+<div #prayerEditorContainer class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/40">
+  <button
+    type="button"
+    id="prayer-editor-settings-trigger"
+    class="w-full flex items-center justify-between gap-2 text-left rounded-lg -mx-1 px-1 py-0.5 -my-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800"
+    (click)="sectionExpanded = !sectionExpanded"
+    [attr.aria-expanded]="sectionExpanded"
+    aria-controls="prayer-editor-panel"
+  >
+    <span class="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 min-w-0">
+      <svg class="text-blue-600 dark:text-blue-400 shrink-0" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"></circle>
+        <path d="m21 21-4.35-4.35"></path>
+      </svg>
       Prayer Editor
-    </h3>
-  </div>
+    </span>
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      class="shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-200"
+      [class.rotate-180]="sectionExpanded"
+      aria-hidden="true"
+    >
+      <polyline points="6 9 12 15 18 9"></polyline>
+    </svg>
+  </button>
 
+  @if (sectionExpanded) {
+  <div
+    id="prayer-editor-panel"
+    role="region"
+    aria-labelledby="prayer-editor-settings-trigger"
+    class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
+  >
   <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
     Type at least {{ mainSearchMinChars }} characters to search title, requester, email, description, denial reasons, or prayer update content (debounced). Dropdown filters load results when changed. Delete individually or in bulk.
   </p>
@@ -1204,6 +1233,8 @@ function escapeForIlikePattern(value: string): string {
       <strong>Warning:</strong> Deleting prayers is permanent and cannot be undone. All associated updates will also be deleted.
     </p>
   </div>
+  </div>
+  }
 </div>
 
   <!-- Send Notification Dialog -->
@@ -1238,6 +1269,7 @@ export class PrayerSearchComponent implements OnInit, OnDestroy {
   searching = false;
   deleting = false;
   error: string | null = null;
+  sectionExpanded = false;
   selectedPrayers = new Set<string>();
   expandedCards = new Set<string>();
   editingPrayer: string | null = null;
@@ -1679,6 +1711,7 @@ export class PrayerSearchComponent implements OnInit, OnDestroy {
       console.error('Error searching prayers:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to search prayers';
       this.error = errorMessage;
+      this.sectionExpanded = true;
       this.toast.error(errorMessage);
       this.cdr.markForCheck();
     } finally {
@@ -1914,6 +1947,7 @@ export class PrayerSearchComponent implements OnInit, OnDestroy {
       console.error('Error deleting prayer:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete prayer';
       this.error = errorMessage;
+      this.sectionExpanded = true;
       this.toast.error(errorMessage);
     } finally {
       this.deleting = false;
@@ -1996,6 +2030,7 @@ export class PrayerSearchComponent implements OnInit, OnDestroy {
 
     if (!this.isCreateFormValid()) {
       this.error = 'All fields are required';
+      this.sectionExpanded = true;
       this.toast.error(this.error);
       return;
     }
@@ -2057,6 +2092,7 @@ export class PrayerSearchComponent implements OnInit, OnDestroy {
       console.error('Error creating prayer:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to create prayer';
       this.error = errorMessage;
+      this.sectionExpanded = true;
       this.toast.error(errorMessage);
     } finally {
       this.saving = false;
@@ -2066,6 +2102,7 @@ export class PrayerSearchComponent implements OnInit, OnDestroy {
   async savePrayer(prayerId: string): Promise<void> {
     if (!this.editForm.title.trim() || !this.editForm.description.trim() || !this.editForm.requester.trim()) {
       this.error = 'Title, description, and requester are required';
+      this.sectionExpanded = true;
       this.toast.error(this.error);
       return;
     }
@@ -2138,6 +2175,7 @@ export class PrayerSearchComponent implements OnInit, OnDestroy {
       console.error('Error updating prayer:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to update prayer';
       this.error = errorMessage;
+      this.sectionExpanded = true;
       this.toast.error(errorMessage);
     } finally {
       this.saving = false;
@@ -2175,6 +2213,7 @@ export class PrayerSearchComponent implements OnInit, OnDestroy {
   async saveNewUpdate(prayerId: string): Promise<void> {
     if (!this.isUpdateFormValid()) {
       this.error = 'All fields are required';
+      this.sectionExpanded = true;
       this.toast.error(this.error);
       return;
     }
@@ -2232,6 +2271,7 @@ export class PrayerSearchComponent implements OnInit, OnDestroy {
       console.error('Error saving update:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to save update';
       this.error = errorMessage;
+      this.sectionExpanded = true;
       this.toast.error(errorMessage);
     } finally {
       this.savingUpdate = false;
@@ -2293,6 +2333,7 @@ export class PrayerSearchComponent implements OnInit, OnDestroy {
       console.error('Error deleting update:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete update';
       this.error = errorMessage;
+      this.sectionExpanded = true;
       this.toast.error(errorMessage);
     } finally {
       this.deleting = false;
@@ -2326,6 +2367,7 @@ export class PrayerSearchComponent implements OnInit, OnDestroy {
   async saveEditUpdate(prayerId: string, updateId: string): Promise<void> {
     if (!this.isEditUpdateFormValid()) {
       this.error = 'All fields are required';
+      this.sectionExpanded = true;
       this.toast.error(this.error);
       return;
     }
@@ -2388,6 +2430,7 @@ export class PrayerSearchComponent implements OnInit, OnDestroy {
       console.error('Error updating update:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to update';
       this.error = errorMessage;
+      this.sectionExpanded = true;
       this.toast.error(errorMessage);
     } finally {
       this.savingEditUpdate = false;
