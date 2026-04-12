@@ -27,11 +27,11 @@ import { EmailSubscribersComponent } from '../email-subscribers/email-subscriber
 
       <!-- Prayer Update Reminders Section -->
       <div class="mb-4">
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-4 sm:p-6 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/40">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/40">
         <button
           type="button"
           id="email-reminders-settings-trigger"
-          class="w-full flex items-center justify-between gap-2 text-left rounded-lg -mx-1 px-1 py-0.5 -my-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800"
+          class="admin-settings-collapsible-trigger w-full flex min-h-12 items-center justify-between gap-2 text-left rounded-lg -mx-1 px-1 py-0.5 -my-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800"
           (click)="onRemindersSectionToggle()"
           [attr.aria-expanded]="remindersSectionExpanded"
           aria-controls="email-reminders-panel"
