@@ -1,4 +1,4 @@
--- Hourly user prayer reminders: optional "spotlight" email (random recent prayer).
+-- Hourly user prayer reminders: optional "spotlight" email (random pick from current community + subscriber personal prayers; see Edge Function for pool rules).
 -- Admins pick template via admin_settings; Edge fills {{spotlight*}}, {{updateContent}}, {{spotlightUpdateBlockHtml}}, etc.
 -- Template layout matches Prayer Update emails: gray shell, green original-request container; Update block is {{spotlightUpdateBlockHtml}} only when an update exists.
 
@@ -31,7 +31,7 @@ COMMENT ON COLUMN public.email_subscribers.hourly_reminder_last_spotlight_key IS
 INSERT INTO public.email_templates (template_key, name, subject, html_body, text_body, description)
 VALUES (
   'user_hourly_prayer_reminder_with_spotlight',
-  'User hourly prayer reminder (random recent prayer)',
+  'User hourly prayer reminder (spotlight mix)',
   'Time to pray',
   $html$<!DOCTYPE html>
 <html>
@@ -57,7 +57,7 @@ VALUES (
     </div>
   </div>
   <div style="margin-top: 20px; text-align: center; color: #6b7280; font-size: 14px;">
-    <p>Take a moment to pray. Spotlight items are current community or personal prayers from the last two weeks.</p>
+    <p>Take a moment to pray. Spotlight items are current community prayers or your personal prayers (not answered).</p>
     <p style="margin-top: 15px; font-size: 12px;">
       To change hourly reminders, <a href="{{appLink}}" style="color: #6b7280; text-decoration: underline;">open the app</a> and go to <strong>Settings</strong> → <strong>Prayer reminders</strong> (gear icon).
     </p>
@@ -65,7 +65,7 @@ VALUES (
 </body>
 </html>$html$,
   E'Time to pray — prayer spotlight\n\n{{spotlightPrayerTitle}}\n{{spotlightPrayerKind}}\n\nOriginal prayer request:\n{{spotlightPrayerDescription}}{{spotlightUpdateTextSection}}\n\nOpen the app:\n{{appLink}}\n\nSettings → Prayer reminders to turn off hourly reminders.\n',
-  'Hourly spotlight email: random current community or personal prayer (activity in the last 14 days). Variables: {{appLink}}, {{spotlightPrayerKind}}, {{spotlightPrayerTitle}}, {{spotlightPrayerFor}}, {{spotlightPrayerDescription}}, {{updateContent}}, {{spotlightUpdateBlockHtml}} (Update subsection HTML; empty when no update), {{spotlightLatestUpdateHtml}} (legacy alias), {{spotlightUpdateTextSection}}.'
+  'Hourly spotlight email: random pick from all approved current community prayers plus that subscriber’s personal prayers (excluding Answered). Variables: {{appLink}}, {{spotlightPrayerKind}}, {{spotlightPrayerTitle}}, {{spotlightPrayerFor}}, {{spotlightPrayerDescription}}, {{updateContent}}, {{spotlightUpdateBlockHtml}} (Update subsection HTML; empty when no update), {{spotlightLatestUpdateHtml}} (legacy alias), {{spotlightUpdateTextSection}}.'
 )
 ON CONFLICT (template_key) DO UPDATE SET
   name = EXCLUDED.name,

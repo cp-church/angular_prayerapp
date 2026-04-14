@@ -6,7 +6,8 @@
  * Template: admin_settings.user_hourly_prayer_reminder_template_key → email_templates (default user_hourly_prayer_reminder).
  * Spotlight template fills {{spotlightPrayerKind}}, {{spotlightPrayerTitle}}, {{spotlightPrayerFor}}, {{spotlightPrayerDescription}},
  * {{updateContent}}, {{spotlightUpdateBlockHtml}} (Update subsection HTML; empty if no update), {{spotlightLatestUpdateHtml}} (alias), {{spotlightUpdateTextSection}}.
- * Random prayer from the last 14 days; previous pick avoided when possible.
+ * Community spotlight: **all** approved + **current** `prayers` (app-wide; no date window).
+ * Personal spotlight: **all** non-**Answered** `personal_prayers` for the recipient’s `user_email`. Previous pick avoided when possible.
  * Set Edge secret APP_URL to match Angular environment.appUrl in production.
  * If APP_URL is host-only (no https://), it is prefixed with https:// so mail clients do not rewrite links to x-webdoc://…
  * Auth matches send-prayer-reminders: Supabase Edge JWT verification only.
@@ -22,7 +23,6 @@ const corsHeaders = {
   'Access-Control-Max-Age': '86400',
 };
 
-const SPOTLIGHT_WINDOW_DAYS = 14;
 const DEFAULT_HOURLY_TEMPLATE_KEY = 'user_hourly_prayer_reminder';
 const SPOTLIGHT_TEMPLATE_KEY = 'user_hourly_prayer_reminder_with_spotlight';
 
@@ -247,10 +247,6 @@ serve(async (req) => {
       (tokenRows ?? []).map((t: { user_email: string }) => t.user_email.toLowerCase())
     );
 
-    const cutoffIso = new Date(
-      Date.now() - SPOTLIGHT_WINDOW_DAYS * 24 * 60 * 60 * 1000
-    ).toISOString();
-
     let pushesSent = 0;
     let emailsSent = 0;
     const errors: string[] = [];
@@ -284,7 +280,6 @@ serve(async (req) => {
         spotlight = await loadSpotlightCandidate(
           supabase,
           recipient,
-          cutoffIso,
           sub.hourly_reminder_last_spotlight_key ?? null
         );
       }
@@ -368,6 +363,7 @@ serve(async (req) => {
             )
           : 'Take a moment to pray.';
 
+      let pushDelivered = false;
       if (wantPush) {
         const { error: pushErr } = await supabase.functions.invoke('send-push-notification', {
           body: {
@@ -385,9 +381,11 @@ serve(async (req) => {
           errors.push(`${recipient} push: ${pushErr.message ?? String(pushErr)}`);
         } else {
           pushesSent++;
+          pushDelivered = true;
         }
       }
 
+      let emailDelivered = false;
       if (wantEmail) {
         let subject: string;
         let textBody: string;
@@ -416,16 +414,20 @@ serve(async (req) => {
           errors.push(`${recipient} email: ${mailErr.message ?? String(mailErr)}`);
         } else {
           emailsSent++;
-          if (activeTemplateKey === SPOTLIGHT_TEMPLATE_KEY) {
-            const nextKey = spotlight?.key ?? null;
-            const { error: spotErr } = await supabase
-              .from('email_subscribers')
-              .update({ hourly_reminder_last_spotlight_key: nextKey })
-              .eq('email', recipient);
-            if (spotErr) {
-              console.error('hourly_reminder_last_spotlight_key update failed', recipient, spotErr);
-            }
-          }
+          emailDelivered = true;
+        }
+      }
+
+      // Persist last spotlight for rotation on the next run. Must run after push *or* email success;
+      // previously only email updated this, so push-only users never excluded the prior pick.
+      if (activeTemplateKey === SPOTLIGHT_TEMPLATE_KEY && (pushDelivered || emailDelivered)) {
+        const nextKey = spotlight?.key ?? null;
+        const { error: spotErr } = await supabase
+          .from('email_subscribers')
+          .update({ hourly_reminder_last_spotlight_key: nextKey })
+          .eq('email', recipient);
+        if (spotErr) {
+          console.error('hourly_reminder_last_spotlight_key update failed', recipient, spotErr);
         }
       }
     }
@@ -456,19 +458,14 @@ serve(async (req) => {
 async function loadSpotlightCandidate(
   supabase: ReturnType<typeof createClient>,
   recipientEmail: string,
-  cutoffIso: string,
   lastSpotlightKey: string | null
 ): Promise<SpotlightCandidate | null> {
-  // PostgREST: unquoted ISO after gte./lt. (same pattern as prayer.service.ts getPrayersByMonth); quoted values can misparse.
-  const cutoffOr = `created_at.gte.${cutoffIso},updated_at.gte.${cutoffIso}`;
-
+  const commSelect = 'id, title, description, prayer_for, created_at, updated_at';
   const { data: commRows, error: cErr } = await supabase
     .from('prayers')
-    .select('id, title, description, prayer_for, created_at, updated_at')
-    .ilike('email', recipientEmail)
+    .select(commSelect)
     .eq('approval_status', 'approved')
-    .eq('status', 'current')
-    .or(cutoffOr);
+    .eq('status', 'current');
 
   if (cErr) {
     console.error('spotlight community prayers query failed', cErr);
@@ -477,8 +474,7 @@ async function loadSpotlightCandidate(
   const { data: persRows, error: pErr } = await supabase
     .from('personal_prayers')
     .select('id, title, description, prayer_for, category, created_at, updated_at')
-    .ilike('user_email', recipientEmail)
-    .or(cutoffOr);
+    .ilike('user_email', recipientEmail);
 
   if (pErr) {
     console.error('spotlight personal prayers query failed', pErr);
