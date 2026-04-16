@@ -694,6 +694,37 @@ describe('PrayerSearchComponent', () => {
       expect(component.newUpdate.content).toBe('');
     });
 
+    it('should start add update with clean form and subscriber lookup', () => {
+      component.newUpdate = {
+        content: 'leftover',
+        firstName: 'A',
+        lastName: 'B',
+        author_email: 'a@b.com'
+      };
+      component.addUpdateUserSearchQuery = 'jo';
+      component.startAddUpdate('prayer-1');
+      expect(component.addingUpdate).toBe('prayer-1');
+      expect(component.newUpdate).toEqual({
+        content: '',
+        firstName: '',
+        lastName: '',
+        author_email: ''
+      });
+      expect(component.addUpdateUserSearchQuery).toBe('');
+    });
+
+    it('should fill add-update fields when selecting a subscriber', () => {
+      const ev = new Event('mousedown');
+      vi.spyOn(ev, 'preventDefault');
+      vi.spyOn(ev, 'stopPropagation');
+      component.selectAddUpdateSubscriberUser({ name: 'Jane Q Public', email: 'jane@example.com' }, ev);
+      expect(component.newUpdate.firstName).toBe('Jane');
+      expect(component.newUpdate.lastName).toBe('Q Public');
+      expect(component.newUpdate.author_email).toBe('jane@example.com');
+      expect(component.addUpdateUserSearchQuery).toBe('');
+      expect(ev.preventDefault).toHaveBeenCalled();
+    });
+
     it('should delete update successfully', async () => {
       component.allPrayers = [{
         ...mockPrayer,

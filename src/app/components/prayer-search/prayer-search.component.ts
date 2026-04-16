@@ -1059,6 +1059,56 @@ function escapeForIlikePattern(value: string): string {
                   </div>
                 </div>
 
+                <div
+                  class="relative"
+                  [attr.id]="i === 0 ? 'tour-prayer-editor-add-update-find-subscriber' : null"
+                >
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Find subscriber
+                  </label>
+                  <input
+                    type="search"
+                    [(ngModel)]="addUpdateUserSearchQuery"
+                    name="addUpdateUserSearchQuery"
+                    (ngModelChange)="onAddUpdateUserSearchQueryChange($event)"
+                    (focus)="onAddUpdateUserSearchFocus()"
+                    (blur)="onAddUpdateUserSearchBlur()"
+                    autocomplete="off"
+                    placeholder="Search by name or email (min. 2 characters)…"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  @if (addUpdateUserSearchLoading) {
+                  <div class="pointer-events-none absolute right-3 top-9">
+                    <div class="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+                  </div>
+                  }
+                  @if (showAddUpdateUserSearchDropdown && addUpdateUserSearchResults.length > 0) {
+                  <ul
+                    class="absolute z-30 mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg"
+                    role="listbox"
+                  >
+                    @for (row of addUpdateUserSearchResults; track row.email) {
+                    <li>
+                      <button
+                        type="button"
+                        class="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700/80 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                        (mousedown)="selectAddUpdateSubscriberUser(row, $event)"
+                      >
+                        <div class="font-medium text-gray-900 dark:text-gray-100">{{ row.name }}</div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400">{{ row.email }}</div>
+                      </button>
+                    </li>
+                    }
+                  </ul>
+                  }
+                  @if (addUpdateUserSearchQuery.trim().length >= userSearchMinChars && !addUpdateUserSearchLoading && addUpdateUserSearchHasSearched && addUpdateUserSearchResults.length === 0) {
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">No matching subscribers</p>
+                  }
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Debounced search; only name and email are loaded (limited to {{ userSearchResultLimit }} matches).
+                  </p>
+                </div>
+
                 <div class="grid grid-cols-2 gap-3" [attr.id]="i === 0 ? 'tour-prayer-editor-add-update-field-names' : null">
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1119,7 +1169,7 @@ function escapeForIlikePattern(value: string): string {
               <button
                 type="button"
                 [attr.id]="i === 0 ? 'tour-prayer-editor-add-update-btn' : null"
-                (click)="addingUpdate = prayer.id"
+                (click)="startAddUpdate(prayer.id)"
                 class="ml-auto flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1316,6 +1366,16 @@ export class PrayerSearchComponent implements OnDestroy {
   private userSearchBlurTimer: ReturnType<typeof setTimeout> | null = null;
   private userSearchRequestSeq = 0;
 
+  /** Subscriber lookup for Add New Update — same behavior as create form, separate state. */
+  addUpdateUserSearchQuery = '';
+  addUpdateUserSearchResults: SubscriberPickRow[] = [];
+  addUpdateUserSearchLoading = false;
+  addUpdateUserSearchHasSearched = false;
+  showAddUpdateUserSearchDropdown = false;
+  private addUpdateUserSearchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private addUpdateUserSearchBlurTimer: ReturnType<typeof setTimeout> | null = null;
+  private addUpdateUserSearchRequestSeq = 0;
+
   /** Main prayer list text search — debounced like subscriber lookup. */
   readonly mainSearchMinChars = 2;
   readonly mainSearchDebounceMs = 350;
@@ -1409,11 +1469,20 @@ export class PrayerSearchComponent implements OnDestroy {
       clearTimeout(this.userSearchBlurTimer);
       this.userSearchBlurTimer = null;
     }
+    if (this.addUpdateUserSearchDebounceTimer) {
+      clearTimeout(this.addUpdateUserSearchDebounceTimer);
+      this.addUpdateUserSearchDebounceTimer = null;
+    }
+    if (this.addUpdateUserSearchBlurTimer) {
+      clearTimeout(this.addUpdateUserSearchBlurTimer);
+      this.addUpdateUserSearchBlurTimer = null;
+    }
     if (this.mainSearchDebounceTimer) {
       clearTimeout(this.mainSearchDebounceTimer);
       this.mainSearchDebounceTimer = null;
     }
     this.userSearchRequestSeq++;
+    this.addUpdateUserSearchRequestSeq++;
   }
 
   private resetUserSearchState(): void {
@@ -1431,6 +1500,137 @@ export class PrayerSearchComponent implements OnDestroy {
       this.userSearchBlurTimer = null;
     }
     this.userSearchRequestSeq++;
+  }
+
+  private resetAddUpdateUserSearchState(): void {
+    this.addUpdateUserSearchQuery = '';
+    this.addUpdateUserSearchResults = [];
+    this.addUpdateUserSearchHasSearched = false;
+    this.addUpdateUserSearchLoading = false;
+    this.showAddUpdateUserSearchDropdown = false;
+    if (this.addUpdateUserSearchDebounceTimer) {
+      clearTimeout(this.addUpdateUserSearchDebounceTimer);
+      this.addUpdateUserSearchDebounceTimer = null;
+    }
+    if (this.addUpdateUserSearchBlurTimer) {
+      clearTimeout(this.addUpdateUserSearchBlurTimer);
+      this.addUpdateUserSearchBlurTimer = null;
+    }
+    this.addUpdateUserSearchRequestSeq++;
+  }
+
+  onAddUpdateUserSearchQueryChange(value: string): void {
+    this.addUpdateUserSearchQuery = value;
+    if (this.addUpdateUserSearchDebounceTimer) {
+      clearTimeout(this.addUpdateUserSearchDebounceTimer);
+      this.addUpdateUserSearchDebounceTimer = null;
+    }
+
+    const trimmed = value.trim();
+    if (trimmed.length < this.userSearchMinChars) {
+      this.addUpdateUserSearchResults = [];
+      this.addUpdateUserSearchHasSearched = false;
+      this.addUpdateUserSearchLoading = false;
+      this.showAddUpdateUserSearchDropdown = false;
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.addUpdateUserSearchDebounceTimer = setTimeout(() => {
+      this.addUpdateUserSearchDebounceTimer = null;
+      void this.runAddUpdateSubscriberSearch(trimmed);
+    }, 350);
+  }
+
+  onAddUpdateUserSearchFocus(): void {
+    if (this.addUpdateUserSearchResults.length > 0) {
+      this.showAddUpdateUserSearchDropdown = true;
+    }
+  }
+
+  onAddUpdateUserSearchBlur(): void {
+    if (this.addUpdateUserSearchBlurTimer) {
+      clearTimeout(this.addUpdateUserSearchBlurTimer);
+      this.addUpdateUserSearchBlurTimer = null;
+    }
+    this.addUpdateUserSearchBlurTimer = setTimeout(() => {
+      this.addUpdateUserSearchBlurTimer = null;
+      this.showAddUpdateUserSearchDropdown = false;
+      this.cdr.markForCheck();
+    }, 180);
+  }
+
+  /** Loads matching rows from `email_subscribers` (shared by create-prayer and add-update lookups). */
+  private async fetchSubscriberRows(trimmed: string): Promise<SubscriberPickRow[]> {
+    const escaped = escapeForIlikePattern(trimmed);
+    const pattern = `%${escaped}%`;
+
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from('email_subscribers')
+      .select('email,name')
+      .or(`email.ilike.${pattern},name.ilike.${pattern}`)
+      .order('name', { ascending: true })
+      .limit(this.userSearchResultLimit);
+
+    if (error) {
+      throw error;
+    }
+    return (data ?? []) as SubscriberPickRow[];
+  }
+
+  private async runAddUpdateSubscriberSearch(trimmed: string): Promise<void> {
+    const seq = ++this.addUpdateUserSearchRequestSeq;
+    this.addUpdateUserSearchLoading = true;
+    this.addUpdateUserSearchHasSearched = false;
+    this.cdr.markForCheck();
+
+    try {
+      const rows = await this.fetchSubscriberRows(trimmed);
+      if (seq !== this.addUpdateUserSearchRequestSeq) {
+        return;
+      }
+      this.addUpdateUserSearchResults = rows;
+      this.addUpdateUserSearchHasSearched = true;
+      this.showAddUpdateUserSearchDropdown = rows.length > 0;
+    } catch (err: unknown) {
+      if (seq !== this.addUpdateUserSearchRequestSeq) {
+        return;
+      }
+      console.error('Add-update subscriber search error:', err);
+      this.addUpdateUserSearchResults = [];
+      this.addUpdateUserSearchHasSearched = true;
+      const msg =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message?: string }).message)
+          : '';
+      this.toast.error(msg || 'Failed to search subscribers');
+    } finally {
+      if (seq === this.addUpdateUserSearchRequestSeq) {
+        this.addUpdateUserSearchLoading = false;
+        this.cdr.markForCheck();
+      }
+    }
+  }
+
+  selectAddUpdateSubscriberUser(row: SubscriberPickRow, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const name = row.name.trim();
+    const parts = name.split(/\s+/).filter(Boolean);
+    this.newUpdate.firstName = parts[0] ?? '';
+    this.newUpdate.lastName = parts.length > 1 ? parts.slice(1).join(' ') : '';
+    this.newUpdate.author_email = row.email.trim();
+    this.resetAddUpdateUserSearchState();
+    this.cdr.markForCheck();
+  }
+
+  /** Opens the add-update form with a clean draft and lookup field. */
+  startAddUpdate(prayerId: string): void {
+    this.addingUpdate = prayerId;
+    this.newUpdate = { content: '', firstName: '', lastName: '', author_email: '' };
+    this.resetAddUpdateUserSearchState();
   }
 
   onMainSearchTermChange(value: string): void {
@@ -1535,32 +1735,14 @@ export class PrayerSearchComponent implements OnDestroy {
     this.userSearchHasSearched = false;
     this.cdr.markForCheck();
 
-    const escaped = escapeForIlikePattern(trimmed);
-    const pattern = `%${escaped}%`;
-
     try {
-      const { data, error } = await this.supabaseService
-        .getClient()
-        .from('email_subscribers')
-        .select('email,name')
-        .or(`email.ilike.${pattern},name.ilike.${pattern}`)
-        .order('name', { ascending: true })
-        .limit(this.userSearchResultLimit);
-
+      const rows = await this.fetchSubscriberRows(trimmed);
       if (seq !== this.userSearchRequestSeq) {
         return;
       }
-
-      if (error) {
-        console.error('Subscriber search error:', error);
-        this.userSearchResults = [];
-        this.userSearchHasSearched = true;
-        this.toast.error(error.message || 'Failed to search subscribers');
-      } else {
-        this.userSearchResults = (data ?? []) as SubscriberPickRow[];
-        this.userSearchHasSearched = true;
-        this.showUserSearchDropdown = this.userSearchResults.length > 0;
-      }
+      this.userSearchResults = rows;
+      this.userSearchHasSearched = true;
+      this.showUserSearchDropdown = rows.length > 0;
     } catch (err: unknown) {
       if (seq !== this.userSearchRequestSeq) {
         return;
@@ -1568,7 +1750,11 @@ export class PrayerSearchComponent implements OnDestroy {
       console.error('Subscriber search error:', err);
       this.userSearchResults = [];
       this.userSearchHasSearched = true;
-      this.toast.error('Failed to search subscribers');
+      const msg =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message?: string }).message)
+          : '';
+      this.toast.error(msg || 'Failed to search subscribers');
     } finally {
       if (seq === this.userSearchRequestSeq) {
         this.userSearchLoading = false;
@@ -2082,8 +2268,7 @@ export class PrayerSearchComponent implements OnDestroy {
     this.cancelEdit();
     this.cancelEditUpdate();
     this.expandedCards = new Set([prayer.id]);
-    this.addingUpdate = prayer.id;
-    this.newUpdate = { content: '', firstName: '', lastName: '', author_email: '' };
+    this.startAddUpdate(prayer.id);
     this.cdr.markForCheck();
   }
 
@@ -2369,6 +2554,7 @@ export class PrayerSearchComponent implements OnDestroy {
 
       this.newUpdate = { content: '', firstName: '', lastName: '', author_email: '' };
       this.addingUpdate = null;
+      this.resetAddUpdateUserSearchState();
       this.toast.success('Update added successfully');
       
       // Show dialog asking if they want to send notification
@@ -2396,6 +2582,7 @@ export class PrayerSearchComponent implements OnDestroy {
   cancelAddUpdate(): void {
     this.addingUpdate = null;
     this.newUpdate = { content: '', firstName: '', lastName: '', author_email: '' };
+    this.resetAddUpdateUserSearchState();
   }
 
   isUpdateFormValid(): boolean {
