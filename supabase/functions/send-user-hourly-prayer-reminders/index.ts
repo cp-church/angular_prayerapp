@@ -4,8 +4,9 @@
  * Push when receive_push and a device_tokens row exists (matches receivePush + native token).
  * Both run when both are enabled.
  * Template: admin_settings.user_hourly_prayer_reminder_template_key → email_templates (default user_hourly_prayer_reminder).
- * Spotlight template fills {{spotlightPrayerKind}}, {{spotlightPrayerTitle}}, {{spotlightPrayerFor}}, {{spotlightPrayerDescription}},
- * {{updateContent}}, {{spotlightUpdateBlockHtml}} (Update subsection HTML; empty if no update), {{spotlightLatestUpdateHtml}} (alias), {{spotlightUpdateTextSection}}.
+ * Spotlight template fills {{spotlightPrayerKind}}, {{spotlightPrayerTitle}}, {{spotlightPrayerFor}}, {{spotlightPrayerRequester}},
+ * {{spotlightPrayerDescription}}, {{updateContent}}, {{spotlightUpdateBlockHtml}} (Update subsection HTML; empty if no update),
+ * {{spotlightLatestUpdateHtml}} (alias), {{spotlightUpdateTextSection}}. Community prayers: requester = prayers.requester; personal: empty.
  * Community spotlight: **all** approved + **current** `prayers` (app-wide; no date window).
  * Personal spotlight: **all** non-**Answered** `personal_prayers` for the recipient’s `user_email`. Previous pick avoided when possible.
  * Set Edge secret APP_URL to match Angular environment.appUrl in production.
@@ -43,6 +44,8 @@ interface SpotlightCandidate {
   key: string;
   title: string;
   prayerFor: string;
+  /** Community: `prayers.requester`. Personal prayers: no column — empty string. */
+  requester: string;
   description: string;
   kindLabel: string;
 }
@@ -306,6 +309,7 @@ serve(async (req) => {
             spotlightPrayerKind: spotlight.kindLabel,
             spotlightPrayerTitle: spotlight.title,
             spotlightPrayerFor: spotlight.prayerFor,
+            spotlightPrayerRequester: spotlight.requester,
             spotlightPrayerDescription: truncateText(
               stripHtmlToText(spotlight.description),
               600
@@ -317,6 +321,7 @@ serve(async (req) => {
             spotlightPrayerKind: '',
             spotlightPrayerTitle: '',
             spotlightPrayerFor: '',
+            spotlightPrayerRequester: '',
             spotlightPrayerDescription: '',
             updateContent: '',
             spotlightUpdateTextSection: '',
@@ -327,6 +332,7 @@ serve(async (req) => {
             spotlightPrayerKind: escapeHtml(spotlight.kindLabel),
             spotlightPrayerTitle: escapeHtml(spotlight.title),
             spotlightPrayerFor: escapeHtml(spotlight.prayerFor),
+            spotlightPrayerRequester: escapeHtml(spotlight.requester),
             spotlightPrayerDescription: escapeHtml(
               truncateText(stripHtmlToText(spotlight.description), 600)
             ),
@@ -336,6 +342,7 @@ serve(async (req) => {
             spotlightPrayerKind: '',
             spotlightPrayerTitle: '',
             spotlightPrayerFor: '',
+            spotlightPrayerRequester: '',
             spotlightPrayerDescription: '',
             updateContent: '',
           };
@@ -460,7 +467,7 @@ async function loadSpotlightCandidate(
   recipientEmail: string,
   lastSpotlightKey: string | null
 ): Promise<SpotlightCandidate | null> {
-  const commSelect = 'id, title, description, prayer_for, created_at, updated_at';
+  const commSelect = 'id, title, description, prayer_for, requester, created_at, updated_at';
   const { data: commRows, error: cErr } = await supabase
     .from('prayers')
     .select(commSelect)
@@ -488,11 +495,13 @@ async function loadSpotlightCandidate(
       title: string;
       description: string | null;
       prayer_for: string | null;
+      requester: string | null;
     };
     candidates.push({
       key: `c:${row.id}`,
       title: row.title ?? '',
       prayerFor: row.prayer_for ?? '',
+      requester: row.requester ?? '',
       description: row.description ?? '',
       kindLabel: 'Community prayer',
     });
@@ -511,6 +520,7 @@ async function loadSpotlightCandidate(
       key: `p:${row.id}`,
       title: row.title ?? '',
       prayerFor: row.prayer_for ?? '',
+      requester: '',
       description: row.description ?? '',
       kindLabel: 'Personal prayer',
     });
@@ -573,7 +583,11 @@ async function fetchLatestUpdatePlain(
 function applyTemplateVariables(content: string, variables: Record<string, string>): string {
   let result = content;
   for (const [key, value] of Object.entries(variables)) {
-    result = result.replace(new RegExp(`{{${key}}}`, 'g'), value || '');
+    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    result = result.replace(
+      new RegExp(`{{\\s*${escapedKey}\\s*}}`, 'g'),
+      value ?? ''
+    );
   }
   return result;
 }
