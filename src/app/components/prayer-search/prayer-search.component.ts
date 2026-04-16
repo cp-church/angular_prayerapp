@@ -2411,6 +2411,9 @@ export class PrayerSearchComponent implements OnDestroy {
       this.cdr.markForCheck();
       this.error = null;
 
+      // Admin edit implies approval — align with createPrayer / approvePrayer
+      const approvedAt = new Date().toISOString();
+
       const { error: updateError } = await this.supabaseService.getClient()
         .from('prayers')
         .update({
@@ -2419,7 +2422,8 @@ export class PrayerSearchComponent implements OnDestroy {
           requester: this.editForm.requester.trim(),
           email: this.editForm.email.trim() || null,
           prayer_for: this.editForm.prayer_for.trim() || null,
-          status: this.editForm.status
+          status: this.editForm.status,
+          approved_at: approvedAt
         })
         .eq('id', prayerId);
 
@@ -2436,7 +2440,8 @@ export class PrayerSearchComponent implements OnDestroy {
               requester: this.editForm.requester.trim(),
               email: this.editForm.email.trim() || null,
               prayer_for: this.editForm.prayer_for.trim() || undefined,
-              status: this.editForm.status
+              status: this.editForm.status,
+              approved_at: approvedAt
             } as Prayer
           : p
       );
@@ -2450,7 +2455,8 @@ export class PrayerSearchComponent implements OnDestroy {
               requester: this.editForm.requester.trim(),
               email: this.editForm.email.trim() || null,
               prayer_for: this.editForm.prayer_for.trim() || undefined,
-              status: this.editForm.status
+              status: this.editForm.status,
+              approved_at: approvedAt
             } as Prayer
           : p
       );
@@ -2525,6 +2531,8 @@ export class PrayerSearchComponent implements OnDestroy {
       // Combine first and last name
       const fullName = `${this.newUpdate.firstName.trim()} ${this.newUpdate.lastName.trim()}`;
 
+      const approvedAt = new Date().toISOString();
+
       const { data, error: insertError } = await this.supabaseService.getClient()
         .from('prayer_updates')
         .insert({
@@ -2532,7 +2540,8 @@ export class PrayerSearchComponent implements OnDestroy {
           content: this.newUpdate.content.trim(),
           author: fullName,
           author_email: this.newUpdate.author_email.trim(),
-          approval_status: 'approved'
+          approval_status: 'approved',
+          approved_at: approvedAt
         })
         .select()
         .single();
@@ -2678,12 +2687,15 @@ export class PrayerSearchComponent implements OnDestroy {
       this.cdr.markForCheck();
       this.error = null;
 
+      const approvedAt = new Date().toISOString();
+
       const { error: updateError } = await this.supabaseService.getClient()
         .from('prayer_updates')
         .update({
           content: this.editUpdateForm.content.trim(),
           author: this.editUpdateForm.author.trim(),
-          author_email: this.editUpdateForm.author_email.trim()
+          author_email: this.editUpdateForm.author_email.trim(),
+          approved_at: approvedAt
         })
         .eq('id', updateId);
 
@@ -2701,7 +2713,8 @@ export class PrayerSearchComponent implements OnDestroy {
                     ...u,
                     content: this.editUpdateForm.content.trim(),
                     author: this.editUpdateForm.author.trim(),
-                    author_email: this.editUpdateForm.author_email.trim()
+                    author_email: this.editUpdateForm.author_email.trim(),
+                    approved_at: approvedAt
                   }
                 : u
             )

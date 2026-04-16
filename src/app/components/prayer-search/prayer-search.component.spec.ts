@@ -467,6 +467,8 @@ describe('PrayerSearchComponent', () => {
 
       expect(mockToastService.success).toHaveBeenCalled();
       expect(component.editingPrayer).toBeNull();
+      const updatePayload = mockSupabaseService.getClient().from().update.mock.calls[0][0];
+      expect(updatePayload.approved_at).toBeDefined();
     });
 
     it('should not save prayer with invalid data', async () => {
@@ -676,6 +678,8 @@ describe('PrayerSearchComponent', () => {
 
       expect(mockToastService.success).toHaveBeenCalled();
       expect(component.addingUpdate).toBeNull();
+      const insertPayload = mockSupabaseService.getClient().from().insert.mock.calls[0][0];
+      expect(insertPayload.approved_at).toBeDefined();
     });
 
     it('should not save update with invalid form', async () => {
@@ -827,6 +831,8 @@ describe('PrayerSearchComponent', () => {
       expect(mockToastService.success).toHaveBeenCalled();
       expect(component.editingUpdateId).toBeNull();
       expect(component.editingUpdatePrayerId).toBeNull();
+      const updatePayload = mockSupabaseService.getClient().from().update.mock.calls[0][0];
+      expect(updatePayload.approved_at).toBeDefined();
     });
 
     it('should not save edit update with invalid form', async () => {
@@ -1328,6 +1334,8 @@ describe('PrayerSearchComponent', () => {
       await component.savePrayer('123');
 
       expect(mockSupabaseService.getClient().from().update).toHaveBeenCalled();
+      const updatePayload = mockSupabaseService.getClient().from().update.mock.calls[0][0];
+      expect(updatePayload.approved_at).toBeDefined();
     });
 
     it('should handle createForm validation', () => {
