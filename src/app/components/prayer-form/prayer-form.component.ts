@@ -8,9 +8,13 @@ import {
   SimpleChanges,
   ChangeDetectorRef,
   HostListener,
+  ViewChild,
+  DestroyRef,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { NgClass } from '@angular/common';
+import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
 import { Observable } from 'rxjs';
 import type { User } from '@supabase/supabase-js';
 import { PrayerService } from '../../services/prayer.service';
@@ -18,6 +22,7 @@ import { AdminAuthService } from '../../services/admin-auth.service';
 import { UserSessionService } from '../../services/user-session.service';
 import { SupabaseService } from '../../services/supabase.service';
 import { ToastService } from '../../services/toast.service';
+import { RichTextEditorsSettingsService } from '../../services/rich-text-editors-settings.service';
 import {
   PERSONAL_PRAYER_WALKTHROUGH_CATEGORY,
   PERSONAL_PRAYER_WALKTHROUGH_DESCRIPTION,
@@ -27,7 +32,7 @@ import {
 @Component({
   selector: 'app-prayer-form',
   standalone: true,
-  imports: [FormsModule, NgClass],
+  imports: [FormsModule, NgClass, RichTextEditorComponent],
   template: `
     @if (isOpen) {
     <div
@@ -102,16 +107,29 @@ import {
             <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Prayer Request Details <span aria-label="required">*</span>
             </label>
-            <textarea
-              id="description"
+            @if (richTextEditorsEnabled) {
+            <app-rich-text-editor
+              #descriptionEditor
               [(ngModel)]="formData.description"
               name="description"
+              ngDefaultControl
               required
-              aria-required="true"
-              aria-label="Prayer Request Details"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 h-24"
+              ariaLabel="Prayer Request Details"
               placeholder="Describe the prayer request in detail"
+              minHeight="6rem"
+            ></app-rich-text-editor>
+            } @else {
+            <textarea
+              id="description"
+              name="description"
+              [(ngModel)]="formData.description"
+              required
+              rows="8"
+              aria-label="Prayer Request Details"
+              placeholder="Describe the prayer request in detail"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 min-h-[6rem] whitespace-pre-wrap"
             ></textarea>
+            }
           </div>
 
           <!-- Prayer Visibility Toggle Buttons -->
@@ -257,6 +275,8 @@ import {
   styles: []
 })
 export class PrayerFormComponent implements OnInit, OnChanges {
+  @ViewChild('descriptionEditor') descriptionEditor?: RichTextEditorComponent;
+
   @Input() isOpen = false;
   /** When true and the modal opens, default to Personal Prayer (matches Request while Personal filter is active). */
   @Input() defaultPersonalPrayer = false;
@@ -278,6 +298,8 @@ export class PrayerFormComponent implements OnInit, OnChanges {
     category: ''
   };
 
+  richTextEditorsEnabled = true;
+
   isSubmitting = false;
   showSuccessMessage = false;
   isAdmin = false;
@@ -294,8 +316,18 @@ export class PrayerFormComponent implements OnInit, OnChanges {
     private userSessionService: UserSessionService,
     private supabase: SupabaseService,
     private toast: ToastService,
-    private cdr: ChangeDetectorRef
-  ) {}
+    private cdr: ChangeDetectorRef,
+    private destroyRef: DestroyRef,
+    richTextEditorsSettings: RichTextEditorsSettingsService
+  ) {
+    richTextEditorsSettings
+      .getRichTextEditorsEnabled$()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(v => {
+        this.richTextEditorsEnabled = v;
+        this.cdr.markForCheck();
+      });
+  }
 
   ngOnInit(): void {
     this.loadUserInfo();
@@ -423,6 +455,8 @@ export class PrayerFormComponent implements OnInit, OnChanges {
     try {
       this.isSubmitting = true;
       this.cdr.markForCheck();
+
+      this.descriptionEditor?.flushMarkdownToForm();
 
       // Get user name from UserSessionService cache
       const userSession = this.userSessionService.getCurrentSession();

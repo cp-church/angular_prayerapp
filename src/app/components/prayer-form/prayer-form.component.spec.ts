@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ChangeDetectorRef, SimpleChanges } from '@angular/core';
+import { ChangeDetectorRef, DestroyRef, SimpleChanges } from '@angular/core';
 import { PrayerFormComponent } from './prayer-form.component';
 import { PrayerService } from '../../services/prayer.service';
 import { AdminAuthService } from '../../services/admin-auth.service';
@@ -11,7 +11,8 @@ import {
   PERSONAL_PRAYER_WALKTHROUGH_DESCRIPTION,
   PERSONAL_PRAYER_WALKTHROUGH_PRAYER_FOR,
 } from '../../services/help-driver-tour.service';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
+import { RichTextEditorsSettingsService } from '../../services/rich-text-editors-settings.service';
 import type { User } from '@supabase/supabase-js';
 
 describe('PrayerFormComponent', () => {
@@ -22,6 +23,8 @@ describe('PrayerFormComponent', () => {
   let mockChangeDetectorRef: any;
   let mockSupabaseService: any;
   let mockToastService: any;
+  let mockDestroyRef: DestroyRef;
+  let mockRichTextEditorsSettings: RichTextEditorsSettingsService;
   let mockUser: User | null;
 
   beforeEach(() => {
@@ -104,13 +107,20 @@ describe('PrayerFormComponent', () => {
       success: vi.fn()
     };
 
+    mockDestroyRef = { onDestroy: vi.fn() } as unknown as DestroyRef;
+    mockRichTextEditorsSettings = {
+      getRichTextEditorsEnabled$: () => of(true),
+    } as unknown as RichTextEditorsSettingsService;
+
     component = new PrayerFormComponent(
       mockPrayerService,
       mockAdminAuthService,
       mockUserSessionService,
       mockSupabaseService,
       mockToastService as any as ToastService,
-      mockChangeDetectorRef as ChangeDetectorRef
+      mockChangeDetectorRef as ChangeDetectorRef,
+      mockDestroyRef,
+      mockRichTextEditorsSettings
     );
   });
 

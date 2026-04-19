@@ -419,7 +419,7 @@ describe('PendingPrayerCardComponent', () => {
 
     it('should display edit form with current values', async () => {
       const user = userEvent.setup();
-      const { container } = await render(PendingPrayerCardComponent, {
+      const { container, fixture } = await render(PendingPrayerCardComponent, {
         componentProperties: {
           prayer: mockPrayer
         },
@@ -432,10 +432,9 @@ describe('PendingPrayerCardComponent', () => {
       await user.click(editButton);
 
       const inputs = container.querySelectorAll('input');
-      const textareas = container.querySelectorAll('textarea');
 
       expect(inputs[0].value).toBe('Jane Doe'); // prayer_for
-      expect(textareas[0].value).toBe('Test description');
+      expect(fixture.componentInstance.editedPrayer.description).toBe('Test description');
       expect(inputs[1].value).toBe('John Doe'); // requester
       expect(inputs[2].value).toBe('test@example.com'); // email
     });

@@ -3,6 +3,7 @@ import {
   ChangeDetectorRef,
   Component,
   EventEmitter,
+  Inject,
   Input,
   OnChanges,
   OnInit,
@@ -417,8 +418,8 @@ export class AdminHelpModalComponent implements OnInit, OnChanges {
 
   constructor(
     private adminHelpContentService: AdminHelpContentService,
-    private sanitizer: DomSanitizer,
-    private cdr: ChangeDetectorRef,
+    @Inject(DomSanitizer) private sanitizer: DomSanitizer,
+    @Inject(ChangeDetectorRef) private cdr: ChangeDetectorRef,
     private adminHelpDriverTour: AdminHelpDriverTourService
   ) {}
 

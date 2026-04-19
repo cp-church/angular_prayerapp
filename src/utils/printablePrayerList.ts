@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { markdownToSafeHtml } from './markdown';
 
 export interface Prayer {
   id: string;
@@ -416,6 +417,49 @@ function generatePrintableHTML(prayers: Prayer[], timeRange: TimeRange = 'month'
             overflow-wrap: break-word;
           }
 
+          /* Markdown HTML: * { padding: 0 } strips ul/ol indent — bullets/numbers vanish in print */
+          .prayer-description p,
+          .update-item p {
+            margin: 0 0 0.35em 0;
+          }
+          .prayer-description p:last-child,
+          .update-item p:last-child {
+            margin-bottom: 0;
+          }
+          .prayer-description ul,
+          .prayer-description ol,
+          .update-item ul,
+          .update-item ol {
+            margin: 0.35em 0;
+            padding-left: 1.5em;
+          }
+          .prayer-description ul,
+          .update-item ul {
+            list-style-type: disc;
+            list-style-position: outside;
+          }
+          .prayer-description ol,
+          .update-item ol {
+            list-style-type: decimal;
+            list-style-position: outside;
+          }
+          .prayer-description li,
+          .update-item li {
+            display: list-item;
+            margin: 0.15em 0;
+          }
+          .prayer-description ul ul,
+          .update-item ul ul {
+            list-style-type: circle;
+            margin-top: 0.15em;
+          }
+          .prayer-description blockquote,
+          .update-item blockquote {
+            margin: 0.35em 0;
+            padding: 0.2em 0 0.2em 0.75em;
+            border-left: 3px solid #cbd5e1;
+          }
+
           /* Updates section - more prominent styling */
           .updates-section {
             margin-top: 6px;
@@ -568,7 +612,7 @@ function generatePrayerHTML(prayer: Prayer): string {
           day: 'numeric'
         });
         const authorName = update.is_anonymous ? 'Anonymous' : (update.author || 'Anonymous');
-        return `<div class="update-item"><span class="update-meta">Updated by: ${authorName} • ${updateDate}:</span> ${update.content}</div>`;
+        return `<div class="update-item"><span class="update-meta">Updated by: ${authorName} • ${updateDate}:</span> ${markdownToSafeHtml(update.content)}</div>`;
       }).join('')}
     </div>
   ` : '';
@@ -586,7 +630,7 @@ function generatePrayerHTML(prayer: Prayer): string {
         <span>${requesterText} • ${createdDate}</span>
         <span>${rightMeta}</span>
       </div>
-      <div class="prayer-description">${prayer.description}</div>
+      <div class="prayer-description">${markdownToSafeHtml(prayer.description)}</div>
       ${updatesHTML}
     </div>
   `;

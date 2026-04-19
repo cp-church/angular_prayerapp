@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { PrayerUpdate } from '../../services/prayer.service';
 import { AdminDataService } from '../../services/admin-data.service';
 import { ToastService } from '../../services/toast.service';
+import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
 
 @Component({
   selector: 'app-admin-update-edit-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RichTextEditorComponent],
   template: `
     @if (isOpen && update) {
     <div
@@ -43,15 +44,15 @@ import { ToastService } from '../../services/toast.service';
             <label for="content" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Update Content <span aria-label="required">*</span>
             </label>
-            <textarea
-              id="content"
+            <app-rich-text-editor
               [(ngModel)]="formData.content"
               name="content"
+              ngDefaultControl
               required
-              aria-required="true"
-              aria-label="Prayer update content"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 h-32"
-            ></textarea>
+              ariaLabel="Prayer update content"
+              placeholder="Update details…"
+              minHeight="8rem"
+            ></app-rich-text-editor>
           </div>
 
           <!-- Buttons -->

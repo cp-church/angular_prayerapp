@@ -408,7 +408,7 @@ describe('PendingUpdateCardComponent', () => {
 
     it('should display edit form with current values', async () => {
       const user = userEvent.setup();
-      const { container } = await render(PendingUpdateCardComponent, {
+      const { container, fixture } = await render(PendingUpdateCardComponent, {
         componentProperties: {
           update: mockUpdate
         },
@@ -420,10 +420,9 @@ describe('PendingUpdateCardComponent', () => {
       const editButton = screen.getByText('Edit');
       await user.click(editButton);
 
-      const textarea = container.querySelector('textarea');
       const input = container.querySelector('input');
 
-      expect(textarea?.value).toBe('Test update content');
+      expect(fixture.componentInstance.editedUpdate.content).toBe('Test update content');
       expect(input?.value).toBe('John Doe');
     });
 

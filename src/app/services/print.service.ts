@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { PrayerService } from './prayer.service';
 import { Printer } from '@capgo/capacitor-printer';
+import { markdownToSafeHtml } from '../../utils/markdown';
 
 export interface Prayer {
   id: string;
@@ -476,6 +477,49 @@ export class PrintService {
       overflow-wrap: break-word;
     }
 
+    /* Markdown HTML: * { padding: 0 } strips ul/ol indent — bullets/numbers vanish in print */
+    .prayer-description p,
+    .update-item p {
+      margin: 0 0 0.35em 0;
+    }
+    .prayer-description p:last-child,
+    .update-item p:last-child {
+      margin-bottom: 0;
+    }
+    .prayer-description ul,
+    .prayer-description ol,
+    .update-item ul,
+    .update-item ol {
+      margin: 0.35em 0;
+      padding-left: 1.5em;
+    }
+    .prayer-description ul,
+    .update-item ul {
+      list-style-type: disc;
+      list-style-position: outside;
+    }
+    .prayer-description ol,
+    .update-item ol {
+      list-style-type: decimal;
+      list-style-position: outside;
+    }
+    .prayer-description li,
+    .update-item li {
+      display: list-item;
+      margin: 0.15em 0;
+    }
+    .prayer-description ul ul,
+    .update-item ul ul {
+      list-style-type: circle;
+      margin-top: 0.15em;
+    }
+    .prayer-description blockquote,
+    .update-item blockquote {
+      margin: 0.35em 0;
+      padding: 0.2em 0 0.2em 0.75em;
+      border-left: 3px solid #cbd5e1;
+    }
+
     .updates-section {
       margin-top: 6px;
       padding: 6px 8px;
@@ -637,7 +681,7 @@ export class PrintService {
             day: 'numeric'
           });
           const authorName = (update as any).is_anonymous ? 'Anonymous' : (update.author || 'Anonymous');
-          return `<div class="update-item"><span class="update-meta">Updated by: ${this.escapeHtml(authorName)} • ${updateDate}:</span> ${this.escapeHtml(update.content)}</div>`;
+          return `<div class="update-item"><span class="update-meta">Updated by: ${this.escapeHtml(authorName)} • ${updateDate}:</span> ${this.renderMarkdown(update.content)}</div>`;
         }).join('')}
       </div>
     ` : '';
@@ -655,7 +699,7 @@ export class PrintService {
           <span>${requesterText} • ${createdDate}</span>
           <span>${rightMeta}</span>
         </div>
-        <div class="prayer-description">${this.escapeHtml(prayer.description)}</div>
+        <div class="prayer-description">${this.renderMarkdown(prayer.description)}</div>
         ${updatesHTML}
       </div>
     `;
@@ -1058,6 +1102,49 @@ export class PrintService {
       overflow-wrap: break-word;
     }
 
+    /* Markdown HTML: * { padding: 0 } strips ul/ol indent — bullets/numbers vanish in print */
+    .prayer-description p,
+    .update-item p {
+      margin: 0 0 0.35em 0;
+    }
+    .prayer-description p:last-child,
+    .update-item p:last-child {
+      margin-bottom: 0;
+    }
+    .prayer-description ul,
+    .prayer-description ol,
+    .update-item ul,
+    .update-item ol {
+      margin: 0.35em 0;
+      padding-left: 1.5em;
+    }
+    .prayer-description ul,
+    .update-item ul {
+      list-style-type: disc;
+      list-style-position: outside;
+    }
+    .prayer-description ol,
+    .update-item ol {
+      list-style-type: decimal;
+      list-style-position: outside;
+    }
+    .prayer-description li,
+    .update-item li {
+      display: list-item;
+      margin: 0.15em 0;
+    }
+    .prayer-description ul ul,
+    .update-item ul ul {
+      list-style-type: circle;
+      margin-top: 0.15em;
+    }
+    .prayer-description blockquote,
+    .update-item blockquote {
+      margin: 0.35em 0;
+      padding: 0.2em 0 0.2em 0.75em;
+      border-left: 3px solid #cbd5e1;
+    }
+
     .updates-section {
       margin-top: 6px;
       padding: 6px 8px;
@@ -1191,7 +1278,7 @@ export class PrintService {
             month: 'short',
             day: 'numeric'
           });
-          return `<div class="update-item"><span class="update-meta">${updateDate}:</span> ${this.escapeHtml(update.content)}</div>`;
+          return `<div class="update-item"><span class="update-meta">${updateDate}:</span> ${this.renderMarkdown(update.content)}</div>`;
         }).join('')}
       </div>
     ` : '';
@@ -1202,7 +1289,7 @@ export class PrintService {
         <div class="prayer-meta">
           <span>${createdDate}</span>
         </div>
-        ${prayer.description ? `<div class="prayer-description">${this.escapeHtml(prayer.description)}</div>` : ''}
+        ${prayer.description ? `<div class="prayer-description">${this.renderMarkdown(prayer.description)}</div>` : ''}
         ${updatesHTML}
       </div>
     `;
@@ -1446,6 +1533,14 @@ export class PrintService {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  /**
+   * Render markdown to sanitized HTML for printable pages.
+   * Falls back to escaped text when markdown module fails to load.
+   */
+  private renderMarkdown(text: string | null | undefined): string {
+    return markdownToSafeHtml(text || '');
   }
 
   /**

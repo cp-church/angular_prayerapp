@@ -7,6 +7,8 @@ import { PrayerService } from '../../services/prayer.service';
 import { AdminDataService } from '../../services/admin-data.service';
 import { SendNotificationDialogComponent, type NotificationType } from '../send-notification-dialog/send-notification-dialog.component';
 import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog.component';
+import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
+import { RichTextViewComponent } from '../rich-text-view/rich-text-view.component';
 
 interface PrayerUpdate {
   id: string;
@@ -78,7 +80,7 @@ function escapeForIlikePattern(value: string): string {
 @Component({
   selector: 'app-prayer-search',
   standalone: true,
-  imports: [CommonModule, FormsModule, SendNotificationDialogComponent, ConfirmationDialogComponent],
+  imports: [CommonModule, FormsModule, SendNotificationDialogComponent, ConfirmationDialogComponent, RichTextEditorComponent, RichTextViewComponent],
   template: `
 <div #prayerEditorContainer class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/40" [class.cursor-pointer]="!sectionExpanded" (click)="!sectionExpanded && onSectionToggle()">
   <button
@@ -119,6 +121,7 @@ function escapeForIlikePattern(value: string): string {
     role="region"
     aria-labelledby="prayer-editor-settings-trigger"
     class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
+    (click)="$event.stopPropagation()"
   >
 
   <!-- Create New Prayer Button -->
@@ -269,25 +272,28 @@ function escapeForIlikePattern(value: string): string {
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           Description *
         </label>
-        <textarea
+        <app-rich-text-editor
+          #createDescriptionEditor
           [(ngModel)]="createForm.description"
           name="description"
+          ngDefaultControl
           required
-          rows="3"
-          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
-        ></textarea>
+          ariaLabel="Prayer description"
+          placeholder="Describe the prayer request"
+          minHeight="5rem"
+        ></app-rich-text-editor>
       </div>
 
-      <div id="tour-prayer-editor-field-anonymous" class="flex items-center cursor-pointer">
-        <input
-          type="checkbox"
-          [(ngModel)]="createForm.is_anonymous"
-          name="is_anonymous"
-          id="create_is_anonymous"
-          class="w-4 h-4 text-green-600 border-gray-900 dark:border-white rounded focus:ring-green-500 bg-white dark:bg-gray-800"
-        />
-        <label for="create_is_anonymous" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
-          Submit anonymously (your name will not be shown publicly)
+      <div id="tour-prayer-editor-field-anonymous" class="flex items-start">
+        <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300 select-none">
+          <input
+            type="checkbox"
+            [(ngModel)]="createForm.is_anonymous"
+            name="createPrayerIsAnonymous"
+            id="create_is_anonymous"
+            class="w-4 h-4 mt-0.5 shrink-0 text-green-600 border-gray-900 dark:border-white rounded focus:ring-green-500 bg-white dark:bg-gray-800"
+          />
+          <span>Submit anonymously (your name will not be shown publicly)</span>
         </label>
       </div>
 
@@ -315,8 +321,9 @@ function escapeForIlikePattern(value: string): string {
       <div class="flex gap-3">
         <button
           id="tour-prayer-editor-create-submit"
-          type="submit"
-          [disabled]="!isCreateFormValid() || saving"
+          type="button"
+          [disabled]="saving"
+          (click)="createPrayer($event)"
           class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors"
         >
           @if (saving) {
@@ -686,12 +693,15 @@ function escapeForIlikePattern(value: string): string {
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Description *
               </label>
-              <textarea
+              <app-rich-text-editor
+                #editPrayerDescriptionEditor
                 [(ngModel)]="editForm.description"
-                rows="4"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                [name]="'editPrayerDescription-' + i"
+                ngDefaultControl
+                ariaLabel="Prayer description"
                 placeholder="Prayer description"
-              ></textarea>
+                minHeight="6rem"
+              ></app-rich-text-editor>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4" [attr.id]="i === 0 ? 'tour-prayer-editor-edit-field-requester-email' : null">
@@ -833,9 +843,10 @@ function escapeForIlikePattern(value: string): string {
               <h6 class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-2">
                 Prayer Description
               </h6>
-              <p class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap leading-relaxed">
-                {{ prayer.description }}
-              </p>
+              <app-rich-text-view
+                class="block text-sm text-gray-600 dark:text-gray-400 leading-relaxed"
+                [text]="prayer.description"
+              ></app-rich-text-view>
             </div>
             }
             
@@ -904,12 +915,15 @@ function escapeForIlikePattern(value: string): string {
                       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Update Content *
                       </label>
-                      <textarea
+                      <app-rich-text-editor
                         [(ngModel)]="editUpdateForm.content"
+                        [name]="'editUpdateContent-' + update.id"
+                        ngDefaultControl
                         required
-                        rows="3"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
-                      ></textarea>
+                        ariaLabel="Update content"
+                        placeholder="Update details…"
+                        minHeight="5rem"
+                      ></app-rich-text-editor>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -983,9 +997,10 @@ function escapeForIlikePattern(value: string): string {
                       </button>
                     </div>
                   </div>
-                  <p class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap mb-2">
-                    {{ update.content }}
-                  </p>
+                  <app-rich-text-view
+                    class="block text-sm text-gray-600 dark:text-gray-400 mb-2"
+                    [text]="update.content"
+                  ></app-rich-text-view>
                   }
                   
                   @if (update.denial_reason) {
@@ -1154,13 +1169,15 @@ function escapeForIlikePattern(value: string): string {
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Update Content *
                   </label>
-                  <textarea
+                  <app-rich-text-editor
                     [(ngModel)]="newUpdate.content"
+                    [name]="'newUpdateContent-' + prayer.id"
+                    ngDefaultControl
                     required
-                    rows="4"
-                    placeholder="Enter the update content..."
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
-                  ></textarea>
+                    ariaLabel="Update content"
+                    placeholder="Enter the update content…"
+                    minHeight="6rem"
+                  ></app-rich-text-editor>
                 </div>
               </div>
               }
@@ -1391,6 +1408,7 @@ export class PrayerSearchComponent implements OnDestroy {
     status: 'current',
     is_anonymous: false
   };
+
   saving = false;
   bulkStatus = '';
   updatingStatus = false;
@@ -1430,6 +1448,9 @@ export class PrayerSearchComponent implements OnDestroy {
 
   // Template references
   @ViewChild('prayerEditorContainer') prayerEditorContainer!: ElementRef;
+
+  @ViewChild('createDescriptionEditor') createDescriptionEditor?: RichTextEditorComponent;
+  @ViewChild('editPrayerDescriptionEditor') editPrayerDescriptionEditor?: RichTextEditorComponent;
 
   constructor(
     private supabaseService: SupabaseService,
@@ -2327,6 +2348,10 @@ export class PrayerSearchComponent implements OnDestroy {
   async createPrayer(event: Event): Promise<void> {
     event.preventDefault();
 
+    // Sync TipTap → ngModel before validation (last keystroke / lists may not have fired onUpdate yet)
+    this.createDescriptionEditor?.flushMarkdownToForm();
+    this.cdr.markForCheck();
+
     if (!this.isCreateFormValid()) {
       this.error = 'All fields are required';
       this.sectionExpanded = true;
@@ -2399,6 +2424,9 @@ export class PrayerSearchComponent implements OnDestroy {
   }
 
   async savePrayer(prayerId: string): Promise<void> {
+    this.editPrayerDescriptionEditor?.flushMarkdownToForm();
+    this.cdr.markForCheck();
+
     if (!this.editForm.title.trim() || !this.editForm.description.trim() || !this.editForm.requester.trim()) {
       this.error = 'Title, description, and requester are required';
       this.sectionExpanded = true;

@@ -4,6 +4,7 @@ import { SupabaseService } from './supabase.service';
 import { PrayerService } from './prayer.service';
 import { EmailNotificationService } from './email-notification.service';
 import { PushNotificationService } from './push-notification.service';
+import { markdownToPlainText } from '../../utils/markdown';
 import type { 
   PrayerRequest, 
   PrayerUpdate, 
@@ -505,7 +506,7 @@ export class AdminDataService {
 
     // Push notification: title = prayer title, body = description (truncated) or fallback
     const pushTitle = prayer.title.length > 50 ? prayer.title.slice(0, 47) + '...' : prayer.title;
-    const desc = (prayer.description || '').trim();
+    const desc = markdownToPlainText(prayer.description).trim();
     const pushBody = desc.length > 0
       ? (desc.length > 120 ? desc.slice(0, 117) + '...' : desc)
       : 'A new prayer has been shared.';
@@ -620,7 +621,7 @@ export class AdminDataService {
 
     // Push to subscribers: title = prayer title, body = description (truncated) or fallback
     const pushTitle = prayer.title.length > 50 ? prayer.title.slice(0, 47) + '...' : prayer.title;
-    const desc = (prayer.description || '').trim();
+    const desc = markdownToPlainText(prayer.description).trim();
     const pushBody = desc.length > 0
       ? (desc.length > 120 ? desc.slice(0, 117) + '...' : desc)
       : 'A new prayer has been shared.';
@@ -706,7 +707,8 @@ export class AdminDataService {
       // Push to update author when their update is approved (only if they have receive_push and app installed)
       if (update.author_email) {
         const pushTitle = 'Update approved';
-        const pushBody = `${prayerTitle}: ${(update.content || '').trim().slice(0, 60)}${(update.content || '').length > 60 ? '...' : ''}`;
+        const updatePlain = markdownToPlainText(update.content || '').trim();
+        const pushBody = `${prayerTitle}: ${updatePlain.slice(0, 60)}${updatePlain.length > 60 ? '...' : ''}`;
         this.pushNotification.sendPushToEmails([update.author_email], {
           title: pushTitle,
           body: pushBody || prayerTitle,
@@ -760,7 +762,7 @@ export class AdminDataService {
 
     // Push: title = prayer title, body = update content (truncated)
     const pushTitle = prayerTitle.length > 50 ? prayerTitle.slice(0, 47) + '...' : prayerTitle;
-    const updateContent = (update.content || '').trim();
+    const updateContent = markdownToPlainText(update.content || '').trim();
     const pushBody = updateContent.length > 0
       ? (updateContent.length > 120 ? updateContent.slice(0, 117) + '...' : updateContent)
       : 'New prayer update.';
@@ -895,7 +897,7 @@ export class AdminDataService {
 
     // Push: title = prayer title, body = update content (truncated)
     const pushTitle = prayerTitle.length > 50 ? prayerTitle.slice(0, 47) + '...' : prayerTitle;
-    const updateContent = (update.content || '').trim();
+    const updateContent = markdownToPlainText(update.content || '').trim();
     const pushBody = updateContent.length > 0
       ? (updateContent.length > 120 ? updateContent.slice(0, 117) + '...' : updateContent)
       : 'New prayer update.';

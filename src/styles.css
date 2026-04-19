@@ -339,6 +339,37 @@ html {
   box-sizing: border-box;
 }
 
+/* Rich text editor: ensure the Tiptap ProseMirror surface never shows a
+   focus ring / border / distinct background on most block children.
+   `blockquote` is omitted so the green left bar from RichTextEditorComponent
+   can show (same as read-only rich text).
+   Kept global (outside a component) because ProseMirror elements are
+   created at runtime and miss Angular's view-encapsulation attributes. */
+.rte-host .ProseMirror,
+.rte-host .ProseMirror:focus,
+.rte-host .ProseMirror:focus-visible,
+.rte-host .ProseMirror *,
+.rte-host .ProseMirror *:focus,
+.rte-host .ProseMirror *:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.rte-host .ProseMirror,
+.rte-host .ProseMirror p,
+.rte-host .ProseMirror h3,
+.rte-host .ProseMirror h4,
+.rte-host .ProseMirror ul,
+.rte-host .ProseMirror ol,
+.rte-host .ProseMirror li,
+.rte-host .ProseMirror strong,
+.rte-host .ProseMirror em,
+.rte-host .ProseMirror u,
+.rte-host .ProseMirror s,
+.rte-host .ProseMirror span {
+  background: transparent !important;
+  border: 0 !important;
+}
+
 body {
   margin: 0;
   padding: 0;

@@ -103,6 +103,29 @@ function stripHtmlToText(s: string): string {
   return s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+/**
+ * Strip common markdown syntax to produce plain text for notifications/previews.
+ * Handles code, images, links, bold/italic/strikethrough, headings, blockquotes, list markers.
+ */
+function stripMarkdownToText(input: string | null | undefined): string {
+  if (!input) return '';
+  let text = String(input);
+  text = text.replace(/```[\s\S]*?```/g, ' ');
+  text = text.replace(/`([^`]+)`/g, '$1');
+  text = text.replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1');
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1');
+  text = text.replace(/(\*\*\*|___)(.*?)\1/g, '$2');
+  text = text.replace(/(\*\*|__)(.*?)\1/g, '$2');
+  text = text.replace(/(\*|_)(.*?)\1/g, '$2');
+  text = text.replace(/~~(.*?)~~/g, '$1');
+  text = text.replace(/^\s{0,3}#{1,6}\s+/gm, '');
+  text = text.replace(/^\s{0,3}>\s?/gm, '');
+  text = text.replace(/^\s*[-*+]\s+/gm, '');
+  text = text.replace(/^\s*\d+\.\s+/gm, '');
+  text = text.replace(/\s+/g, ' ').trim();
+  return text;
+}
+
 function truncateText(s: string, maxLen: number): string {
   if (s.length <= maxLen) return s;
   return `${s.slice(0, maxLen - 1)}…`;
@@ -325,7 +348,7 @@ serve(async (req) => {
             spotlightPrayerFor: spotlight.prayerFor,
             spotlightPrayerRequester: spotlight.requester,
             spotlightPrayerDescription: truncateText(
-              stripHtmlToText(spotlight.description),
+              stripMarkdownToText(spotlight.description),
               600
             ),
             updateContent: updatePlain,
@@ -348,7 +371,7 @@ serve(async (req) => {
             spotlightPrayerFor: escapeHtml(spotlight.prayerFor),
             spotlightPrayerRequester: escapeHtml(spotlight.requester),
             spotlightPrayerDescription: escapeHtml(
-              truncateText(stripHtmlToText(spotlight.description), 600)
+              truncateText(stripMarkdownToText(spotlight.description), 600)
             ),
             updateContent: escapeHtml(updatePlain),
           }
@@ -570,7 +593,7 @@ async function fetchLatestUpdatePlain(
       return '';
     }
     const raw = data?.content;
-    return raw ? stripHtmlToText(raw) : '';
+    return raw ? stripMarkdownToText(raw) : '';
   }
 
   if (kind === 'p') {
@@ -586,7 +609,7 @@ async function fetchLatestUpdatePlain(
       return '';
     }
     const raw = data?.content;
-    return raw ? stripHtmlToText(raw) : '';
+    return raw ? stripMarkdownToText(raw) : '';
   }
 
   return '';

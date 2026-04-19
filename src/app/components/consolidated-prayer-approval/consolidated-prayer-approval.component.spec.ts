@@ -20,7 +20,18 @@ describe('ConsolidatedPrayerApprovalComponent', () => {
   });
 
   beforeEach(() => {
-    component = new ConsolidatedPrayerApprovalComponent();
+    const mockAdminDataService = {
+      editPrayer: vi.fn().mockResolvedValue(undefined),
+      editUpdate: vi.fn().mockResolvedValue(undefined),
+    } as unknown as import('../../services/admin-data.service').AdminDataService;
+    const mockToast = {
+      success: vi.fn(),
+      error: vi.fn(),
+      info: vi.fn(),
+      warning: vi.fn(),
+    } as unknown as import('../../services/toast.service').ToastService;
+    const mockCdr = { markForCheck: vi.fn(), detectChanges: vi.fn() } as unknown as import('@angular/core').ChangeDetectorRef;
+    component = new ConsolidatedPrayerApprovalComponent(mockAdminDataService, mockToast, mockCdr);
     component.prayer = makePrayer();
     component.pendingUpdates = [];
     component.hasAnyPendingUpdates = false;

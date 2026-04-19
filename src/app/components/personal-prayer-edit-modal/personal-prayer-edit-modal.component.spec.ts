@@ -2,13 +2,18 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PersonalPrayerEditModalComponent } from './personal-prayer-edit-modal.component';
 import { PrayerService, PrayerRequest } from '../../services/prayer.service';
 import { ToastService } from '../../services/toast.service';
-import { ChangeDetectorRef } from '@angular/core';
+import { ChangeDetectorRef, DestroyRef } from '@angular/core';
+import { of } from 'rxjs';
 
 describe('PersonalPrayerEditModalComponent', () => {
   let component: PersonalPrayerEditModalComponent;
   let prayerService: any;
   let toastService: any;
   let changeDetectorRef: any;
+  const mockDestroyRef = { onDestroy: vi.fn() } as unknown as DestroyRef;
+  const mockRichTextEditorsSettings = {
+    getRichTextEditorsEnabled$: () => of(true),
+  };
 
   const mockPrayer: PrayerRequest = {
     id: '123',
@@ -36,7 +41,9 @@ describe('PersonalPrayerEditModalComponent', () => {
     component = new PersonalPrayerEditModalComponent(
       prayerService,
       toastService,
-      changeDetectorRef
+      changeDetectorRef,
+      mockDestroyRef,
+      mockRichTextEditorsSettings as any
     );
   });
 

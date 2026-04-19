@@ -4,6 +4,19 @@ import { PrayerCardComponent } from './prayer-card.component';
 import { SupabaseService } from '../../services/supabase.service';
 import { UserSessionService } from '../../services/user-session.service';
 
+const mockRichTextEditorsSettings = {
+  getRichTextEditorsEnabled$: () => of(true),
+};
+
+function defaultPrayerCardCtorDeps() {
+  return {
+    badge: {} as any,
+    prayerService: {} as any,
+    encouragement: {} as any,
+    cdr: { markForCheck: vi.fn() } as any,
+  };
+}
+
 describe('PrayerCardComponent', () => {
   let component: PrayerCardComponent;
   let mockSupabaseService: any;
@@ -57,7 +70,16 @@ describe('PrayerCardComponent', () => {
       })
     };
 
-    component = new PrayerCardComponent(mockSupabaseService, mockUserSessionService, {} as any);
+    const deps = defaultPrayerCardCtorDeps();
+    component = new PrayerCardComponent(
+      mockSupabaseService,
+      mockUserSessionService,
+      deps.badge,
+      deps.prayerService,
+      deps.encouragement,
+      deps.cdr,
+      mockRichTextEditorsSettings as any
+    );
 
     component.prayer = {
       id: 'p1',
@@ -446,7 +468,8 @@ describe('PrayerCardComponent', () => {
       { getBadgeFunctionalityEnabled$: () => of(false) } as any,
       localPrayerService as any,
       localPrayerEncouragementService as any,
-      localCdr as any
+      localCdr as any,
+      mockRichTextEditorsSettings as any
     );
     localComponent.prayer = {
       id: 'prayer-2',
@@ -517,7 +540,8 @@ describe('PrayerCardComponent', () => {
         { getBadgeFunctionalityEnabled$: () => of(false) } as any,
         mockPrayerService,
         mockPrayerEncouragementService,
-        mockCdr as any
+        mockCdr as any,
+        mockRichTextEditorsSettings as any
       );
       prayForComponent.prayer = {
         id: 'prayer-1',
@@ -593,7 +617,16 @@ describe('PrayerCardComponent', () => {
         userSession$: of(null)
       };
 
-      component = new PrayerCardComponent(mockSupabaseService as any, mockUserSessionService as any, {} as any);
+      const deps = defaultPrayerCardCtorDeps();
+      component = new PrayerCardComponent(
+        mockSupabaseService as any,
+        mockUserSessionService as any,
+        deps.badge,
+        deps.prayerService,
+        deps.encouragement,
+        deps.cdr,
+        mockRichTextEditorsSettings as any
+      );
     });
 
     it('should display prayer_for field in header', () => {
@@ -724,7 +757,16 @@ describe('PrayerCardComponent', () => {
     beforeEach(() => {
       const mockSupabaseService = { client: {} };
       const mockUserSessionService = { userSession$: of(null) };
-      component = new PrayerCardComponent(mockSupabaseService as any, mockUserSessionService as any, {} as any);
+      const deps = defaultPrayerCardCtorDeps();
+      component = new PrayerCardComponent(
+        mockSupabaseService as any,
+        mockUserSessionService as any,
+        deps.badge,
+        deps.prayerService,
+        deps.encouragement,
+        deps.cdr,
+        mockRichTextEditorsSettings as any
+      );
     });
 
     it('should identify current prayer status', () => {
@@ -820,7 +862,16 @@ describe('PrayerCardComponent', () => {
     beforeEach(() => {
       const mockSupabaseService = { client: {} };
       const mockUserSessionService = { userSession$: of(null) };
-      component = new PrayerCardComponent(mockSupabaseService as any, mockUserSessionService as any, {} as any);
+      const deps = defaultPrayerCardCtorDeps();
+      component = new PrayerCardComponent(
+        mockSupabaseService as any,
+        mockUserSessionService as any,
+        deps.badge,
+        deps.prayerService,
+        deps.encouragement,
+        deps.cdr,
+        mockRichTextEditorsSettings as any
+      );
     });
 
     it('should have dark mode background class', () => {
@@ -894,7 +945,16 @@ describe('PrayerCardComponent', () => {
       mockUserSessionService = {
         userSession$: of(null)
       };
-      component = new PrayerCardComponent(mockSupabaseService as any, mockUserSessionService as any, {} as any);
+      const deps = defaultPrayerCardCtorDeps();
+      component = new PrayerCardComponent(
+        mockSupabaseService as any,
+        mockUserSessionService as any,
+        deps.badge,
+        deps.prayerService,
+        deps.encouragement,
+        deps.cdr,
+        mockRichTextEditorsSettings as any
+      );
     });
 
     it('should initialize output events', () => {
@@ -961,7 +1021,16 @@ describe('PrayerCardComponent', () => {
     beforeEach(() => {
       const mockSupabaseService = { client: {} };
       const mockUserSessionService = { userSession$: of(null) };
-      component = new PrayerCardComponent(mockSupabaseService as any, mockUserSessionService as any, {} as any);
+      const deps = defaultPrayerCardCtorDeps();
+      component = new PrayerCardComponent(
+        mockSupabaseService as any,
+        mockUserSessionService as any,
+        deps.badge,
+        deps.prayerService,
+        deps.encouragement,
+        deps.cdr,
+        mockRichTextEditorsSettings as any
+      );
     });
 
     it('should show badge when prayer is unread', () => {
@@ -1008,7 +1077,16 @@ describe('PrayerCardComponent', () => {
     beforeEach(() => {
       const mockSupabaseService = { client: {} };
       const mockUserSessionService = { userSession$: of(null) };
-      component = new PrayerCardComponent(mockSupabaseService as any, mockUserSessionService as any, {} as any);
+      const deps = defaultPrayerCardCtorDeps();
+      component = new PrayerCardComponent(
+        mockSupabaseService as any,
+        mockUserSessionService as any,
+        deps.badge,
+        deps.prayerService,
+        deps.encouragement,
+        deps.cdr,
+        mockRichTextEditorsSettings as any
+      );
     });
 
     it('should handle very long prayer descriptions', () => {

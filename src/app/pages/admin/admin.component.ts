@@ -35,6 +35,7 @@ import { TestAccountSettingsComponent } from '../../components/test-account-sett
 import { EmailVerificationSettingsComponent } from '../../components/email-verification-settings/email-verification-settings.component';
 import { GitHubSettingsComponent } from '../../components/github-settings/github-settings.component';
 import { PrayerEncouragementSettingsComponent } from '../../components/prayer-encouragement-settings/prayer-encouragement-settings.component';
+import { RichTextEditorsSettingsComponent } from '../../components/rich-text-editors-settings/rich-text-editors-settings.component';
 import { PlanningCenterListMapperComponent } from '../../components/planning-center-list-mapper/planning-center-list-mapper.component';
 import { ConfirmationDialogComponent } from '../../components/confirmation-dialog/confirmation-dialog.component';
 import { SiteAnalyticsActivityChartComponent } from '../../components/site-analytics-activity-chart/site-analytics-activity-chart.component';
@@ -68,6 +69,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
     EmailVerificationSettingsComponent,
     GitHubSettingsComponent,
     PrayerEncouragementSettingsComponent,
+    RichTextEditorsSettingsComponent,
     PlanningCenterListMapperComponent,
     ConfirmationDialogComponent,
     SiteAnalyticsActivityChartComponent,
@@ -640,6 +642,9 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
               <div class="space-y-6">
                 <div class="mb-4">
                   <app-prayer-encouragement-settings></app-prayer-encouragement-settings>
+                </div>
+                <div class="mb-4">
+                  <app-rich-text-editors-settings></app-rich-text-editors-settings>
                 </div>
                 <div class="mb-4">
                   <app-github-settings></app-github-settings>

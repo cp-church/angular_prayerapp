@@ -1,13 +1,26 @@
-import { Component, Input, Output, EventEmitter, OnInit, ChangeDetectorRef, OnChanges } from '@angular/core';
+import {
+  Component,
+  Input,
+  Output,
+  EventEmitter,
+  OnInit,
+  ChangeDetectorRef,
+  OnChanges,
+  ViewChild,
+  DestroyRef,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PrayerService, PrayerUpdate } from '../../services/prayer.service';
 import { ToastService } from '../../services/toast.service';
+import { RichTextEditorsSettingsService } from '../../services/rich-text-editors-settings.service';
+import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
 
 @Component({
   selector: 'app-personal-prayer-update-edit-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RichTextEditorComponent],
   template: `
     @if (isOpen && update) {
     <div
@@ -42,15 +55,29 @@ import { ToastService } from '../../services/toast.service';
             <label for="content" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Update Content <span aria-label="required">*</span>
             </label>
-            <textarea
-              id="content"
+            @if (richTextEditorsEnabled) {
+            <app-rich-text-editor
+              #contentEditor
               [(ngModel)]="formData.content"
               name="content"
+              ngDefaultControl
               required
-              aria-required="true"
+              ariaLabel="Prayer update content"
+              placeholder="Update details…"
+              minHeight="8rem"
+            ></app-rich-text-editor>
+            } @else {
+            <textarea
+              id="content"
+              name="content"
+              [(ngModel)]="formData.content"
+              required
+              rows="10"
               aria-label="Prayer update content"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 h-32"
+              placeholder="Update details…"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 min-h-[8rem] whitespace-pre-wrap"
             ></textarea>
+            }
           </div>
 
           <!-- Buttons -->
@@ -81,6 +108,8 @@ import { ToastService } from '../../services/toast.service';
   styles: []
 })
 export class PersonalPrayerUpdateEditModalComponent implements OnInit, OnChanges {
+  @ViewChild('contentEditor') contentEditor?: RichTextEditorComponent;
+
   @Input() isOpen = false;
   @Input() update: PrayerUpdate | null = null;
   @Input() prayerId: string = '';
@@ -94,12 +123,23 @@ export class PersonalPrayerUpdateEditModalComponent implements OnInit, OnChanges
   };
 
   isSubmitting = false;
+  richTextEditorsEnabled = true;
 
   constructor(
     private prayerService: PrayerService,
     private toast: ToastService,
-    private cdr: ChangeDetectorRef
-  ) {}
+    private cdr: ChangeDetectorRef,
+    private destroyRef: DestroyRef,
+    richTextEditorsSettings: RichTextEditorsSettingsService
+  ) {
+    richTextEditorsSettings
+      .getRichTextEditorsEnabled$()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(v => {
+        this.richTextEditorsEnabled = v;
+        this.cdr.markForCheck();
+      });
+  }
 
   ngOnInit(): void {}
 
@@ -117,6 +157,8 @@ export class PersonalPrayerUpdateEditModalComponent implements OnInit, OnChanges
     try {
       this.isSubmitting = true;
       this.cdr.markForCheck();
+
+      this.contentEditor?.flushMarkdownToForm();
 
       const updates: Partial<PrayerUpdate> = {
         content: this.formData.content

@@ -1,11 +1,17 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AdminPrayerApprovalComponent } from './admin-prayer-approval.component';
 import type { PrayerRequest } from '../../services/prayer.service';
+import type { AdminDataService } from '../../services/admin-data.service';
+import type { ToastService } from '../../services/toast.service';
+import type { ChangeDetectorRef } from '@angular/core';
 
 describe('AdminPrayerApprovalComponent', () => {
   let component: AdminPrayerApprovalComponent;
+  let mockAdminDataService: { editPrayer: ReturnType<typeof vi.fn> };
+  let mockToast: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
+  let mockCdr: { markForCheck: ReturnType<typeof vi.fn> };
 
-  const mockPrayer: PrayerRequest = {
+  const basePrayer: PrayerRequest = {
     id: 'test-prayer-1',
     title: 'Test Prayer Request',
     description: 'Please pray for this test request',
@@ -16,257 +22,158 @@ describe('AdminPrayerApprovalComponent', () => {
     date_requested: '2025-01-01T00:00:00Z',
     created_at: '2025-01-01T00:00:00Z',
     updated_at: '2025-01-01T00:00:00Z',
-    updates: []
+    updates: [],
   };
 
   beforeEach(() => {
-    component = new AdminPrayerApprovalComponent();
-    component.prayer = mockPrayer;
+    mockAdminDataService = {
+      editPrayer: vi.fn().mockResolvedValue(undefined),
+    };
+    mockToast = {
+      success: vi.fn(),
+      error: vi.fn(),
+    };
+    mockCdr = { markForCheck: vi.fn() };
+
+    component = new AdminPrayerApprovalComponent(
+      mockAdminDataService as unknown as AdminDataService,
+      mockToast as unknown as ToastService,
+      mockCdr as unknown as ChangeDetectorRef
+    );
+    component.prayer = { ...basePrayer };
   });
 
-  describe('Component Initialization', () => {
-    it('should create the component', () => {
-      expect(component).toBeTruthy();
+  it('should create with default state', () => {
+    expect(component.isDenying).toBe(false);
+    expect(component.denialReason).toBe('');
+    expect(component.isEditingDescription).toBe(false);
+    expect(component.isSavingDescription).toBe(false);
+    expect(component.editedDescription).toBe('');
+  });
+
+  it('exposes outputs', () => {
+    expect(component.onApprove).toBeDefined();
+    expect(component.onDeny).toBeDefined();
+    expect(component.onEdit).toBeDefined();
+    expect(component.onDelete).toBeDefined();
+    expect(component.onToggleUpdateAnswered).toBeDefined();
+    expect(component.onToggleMemberUpdateAnswered).toBeDefined();
+  });
+
+  describe('startDescriptionEdit / cancelDescriptionEdit', () => {
+    it('startDescriptionEdit copies prayer description and opens editor', () => {
+      component.startDescriptionEdit();
+      expect(component.isEditingDescription).toBe(true);
+      expect(component.editedDescription).toBe('Please pray for this test request');
     });
 
-    it('should initialize with isDenying = false', () => {
-      expect(component.isDenying).toBe(false);
+    it('startDescriptionEdit uses empty string when description is missing', () => {
+      component.prayer = { ...basePrayer, description: undefined as unknown as string };
+      component.startDescriptionEdit();
+      expect(component.editedDescription).toBe('');
     });
 
-    it('should initialize with empty denialReason', () => {
-      expect(component.denialReason).toBe('');
-    });
-
-    it('should have all required outputs', () => {
-      expect(component.onApprove).toBeDefined();
-      expect(component.onDeny).toBeDefined();
-      expect(component.onEdit).toBeDefined();
-      expect(component.onDelete).toBeDefined();
-      expect(component.onToggleUpdateAnswered).toBeDefined();
-      expect(component.onToggleMemberUpdateAnswered).toBeDefined();
-    });
-
-    it('should accept a prayer input', () => {
-      expect(component.prayer).toEqual(mockPrayer);
+    it('cancelDescriptionEdit closes editor and clears draft', () => {
+      component.startDescriptionEdit();
+      component.editedDescription = 'edited';
+      component.cancelDescriptionEdit();
+      expect(component.isEditingDescription).toBe(false);
+      expect(component.editedDescription).toBe('');
     });
   });
 
-  describe('Prayer Card Rendering', () => {
-    it('should render the prayer card with correct prayer input', () => {
-      expect(component.prayer).toEqual(mockPrayer);
-    });
-  });
+  describe('saveDescription', () => {
+    it('updates prayer via AdminDataService, emits onEdit, shows success, and closes editor', async () => {
+      const editSpy = vi.fn();
+      component.onEdit.subscribe(editSpy);
+      component.startDescriptionEdit();
+      component.editedDescription = 'New body';
 
-  describe('Denial Form', () => {
-    it('should not show denial form initially', () => {
-      expect(component.isDenying).toBe(false);
-    });
+      await component.saveDescription();
 
-    it('should mark isDenying as true to show form', () => {
-      component.isDenying = true;
-      expect(component.isDenying).toBe(true);
-    });
-
-    it('should update denialReason property', () => {
-      component.denialReason = 'This prayer violates our policies';
-      expect(component.denialReason).toBe('This prayer violates our policies');
-    });
-
-    it('should initialize denialReason as empty string', () => {
-      expect(component.denialReason).toBe('');
-    });
-  });
-
-  describe('Approval Action', () => {
-    it('should emit onApprove with prayer id when approve is called', () => {
-      const spy = vi.spyOn(component.onApprove, 'emit');
-      component.onApprove.emit('test-prayer-1');
-      expect(spy).toHaveBeenCalledWith('test-prayer-1');
-    });
-
-    it('should be able to emit approve events', () => {
-      let approveEmitted = false;
-      component.onApprove.subscribe(() => {
-        approveEmitted = true;
+      expect(mockAdminDataService.editPrayer).toHaveBeenCalledWith('test-prayer-1', {
+        description: 'New body',
       });
-      component.onApprove.emit(mockPrayer.id);
-      expect(approveEmitted).toBe(true);
-    });
-
-    it('should not show approval when denying', () => {
-      component.isDenying = true;
-      expect(component.isDenying).toBe(true);
-    });
-
-    it('should show approval option when not denying', () => {
-      component.isDenying = false;
-      expect(component.isDenying).toBe(false);
-    });
-  });
-
-  describe('Denial Action', () => {
-    it('should be able to toggle isDenying', () => {
-      component.isDenying = false;
-      expect(component.isDenying).toBe(false);
-      component.isDenying = true;
-      expect(component.isDenying).toBe(true);
-    });
-
-    it('should show deny button when not denying', () => {
-      component.isDenying = false;
-      expect(component.isDenying).toBe(false);
-    });
-
-    it('should show confirm denial button when denying', () => {
-      component.isDenying = true;
-      expect(component.isDenying).toBe(true);
-    });
-
-    it('should emit onDeny with id and reason when confirm denial is called', () => {
-      const spy = vi.spyOn(component.onDeny, 'emit');
-      component.denialReason = 'Invalid request';
-      component.handleDeny();
-      expect(spy).toHaveBeenCalledWith({ id: 'test-prayer-1', reason: 'Invalid request' });
-    });
-
-    it('should emit onDeny with null reason when no reason provided', () => {
-      const spy = vi.spyOn(component.onDeny, 'emit');
-      component.denialReason = '';
-      component.handleDeny();
-      expect(spy).toHaveBeenCalledWith({ id: 'test-prayer-1', reason: null });
-    });
-
-    it('should reset isDenying to false after confirming denial', () => {
-      component.isDenying = true;
-      component.handleDeny();
-      expect(component.isDenying).toBe(false);
-    });
-
-    it('should reset denialReason to empty after confirming denial', () => {
-      component.denialReason = 'Some reason';
-      component.handleDeny();
-      expect(component.denialReason).toBe('');
-    });
-  });
-
-  describe('Cancel Denial Action', () => {
-    it('should show cancel button when denying', () => {
-      component.isDenying = true;
-      expect(component.isDenying).toBe(true);
-    });
-
-    it('should toggle isDenying to false when cancel is invoked', () => {
-      component.isDenying = true;
-      component.isDenying = false;
-      expect(component.isDenying).toBe(false);
-    });
-
-    it('should clear denialReason when cancel is invoked', () => {
-      component.isDenying = true;
-      component.denialReason = 'Some reason';
-      component.isDenying = false;
-      component.denialReason = '';
-      expect(component.denialReason).toBe('');
-    });
-
-    it('should not emit onDeny when toggling cancel', () => {
-      const spy = vi.spyOn(component.onDeny, 'emit');
-      component.isDenying = true;
-      component.denialReason = 'Some reason';
-      component.isDenying = false;
-      expect(spy).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('handleDeny Method', () => {
-    it('should emit onDeny event with prayer id and reason', () => {
-      const spy = vi.spyOn(component.onDeny, 'emit');
-      component.prayer = mockPrayer;
-      component.denialReason = 'Duplicate request';
-      component.handleDeny();
-      expect(spy).toHaveBeenCalledWith({
+      expect(component.prayer.description).toBe('New body');
+      expect(editSpy).toHaveBeenCalledWith({
         id: 'test-prayer-1',
-        reason: 'Duplicate request'
+        updates: { description: 'New body' },
       });
+      expect(mockToast.success).toHaveBeenCalledWith('Description updated.');
+      expect(component.isEditingDescription).toBe(false);
+      expect(component.isSavingDescription).toBe(false);
+      expect(mockCdr.markForCheck).toHaveBeenCalled();
     });
 
-    it('should reset isDenying state after handling denial', () => {
+    it('shows error toast when editPrayer rejects', async () => {
+      mockAdminDataService.editPrayer.mockRejectedValueOnce(new Error('network'));
+      const warn = vi.spyOn(console, 'error').mockImplementation(() => {});
+      component.startDescriptionEdit();
+      component.editedDescription = 'x';
+
+      await component.saveDescription();
+
+      expect(mockToast.error).toHaveBeenCalledWith('Failed to update description.');
+      expect(component.isEditingDescription).toBe(true);
+      warn.mockRestore();
+    });
+
+    it('returns immediately when save is already in progress', async () => {
+      mockAdminDataService.editPrayer.mockImplementation(
+        () => new Promise(() => {})
+      );
+      component.startDescriptionEdit();
+
+      void component.saveDescription();
+      await Promise.resolve();
+
+      await component.saveDescription();
+
+      expect(mockAdminDataService.editPrayer).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('handleDeny', () => {
+    it('emits id and reason, then resets denial state', () => {
+      const spy = vi.fn();
+      component.onDeny.subscribe(spy);
       component.isDenying = true;
-      component.handleDeny();
-      expect(component.isDenying).toBe(false);
-    });
+      component.denialReason = 'Not appropriate';
 
-    it('should reset denialReason state after handling denial', () => {
-      component.denialReason = 'Test reason';
       component.handleDeny();
+
+      expect(spy).toHaveBeenCalledWith({ id: 'test-prayer-1', reason: 'Not appropriate' });
+      expect(component.isDenying).toBe(false);
       expect(component.denialReason).toBe('');
     });
 
-    it('should handle denial with empty string reason as null', () => {
-      const spy = vi.spyOn(component.onDeny, 'emit');
+    it('emits null reason when denialReason is empty', () => {
+      const spy = vi.fn();
+      component.onDeny.subscribe(spy);
       component.denialReason = '';
+
       component.handleDeny();
+
       expect(spy).toHaveBeenCalledWith({ id: 'test-prayer-1', reason: null });
     });
 
-    it('should handle denial with whitespace-only reason as null', () => {
-      const spy = vi.spyOn(component.onDeny, 'emit');
+    it('preserves non-empty whitespace as reason (|| only treats empty string as falsy)', () => {
+      const spy = vi.fn();
+      component.onDeny.subscribe(spy);
       component.denialReason = '   ';
+
       component.handleDeny();
-      // Empty string or whitespace converts to null in the handler
+
       expect(spy).toHaveBeenCalledWith({ id: 'test-prayer-1', reason: '   ' });
     });
   });
 
-  describe('Change Detection Strategy', () => {
-    it('should have OnPush change detection', () => {
-      // Component is configured with OnPush strategy in its definition
-      expect(component).toBeTruthy();
-      // The strategy is checked at compile time via the changeDetection property
-    });
-  });
-
-  describe('Multiple Prayer Updates', () => {
-    it('should update view when prayer input changes', () => {
-      const newPrayer: PrayerRequest = {
-        ...mockPrayer,
-        id: 'test-prayer-2',
-        title: 'Different Prayer',
-        description: 'Different description'
-      };
-      component.prayer = newPrayer;
-      expect(component.prayer).toEqual(newPrayer);
-    });
-
-    it('should reset denial form when switching between prayers', () => {
-      component.isDenying = true;
-      component.denialReason = 'Reason 1';
-      const newPrayer = { ...mockPrayer, id: 'test-prayer-2' };
-      component.prayer = newPrayer;
-      // Note: The component doesn't have logic to reset these, so this documents current behavior
-      expect(component.isDenying).toBe(true);
-      expect(component.denialReason).toBe('Reason 1');
-    });
-  });
-
-  describe('Button Rendering and States', () => {
-    it('should initialize with approve/deny button states', () => {
-      expect(component.isDenying).toBe(false);
-    });
-
-    it('should switch to confirm/cancel button states when denying', () => {
-      component.isDenying = true;
-      expect(component.isDenying).toBe(true);
-    });
-
-    it('should have proper button styling defined in component', () => {
-      // Component defines button classes in template
-      expect(component).toBeTruthy();
-    });
-
-    it('should render component with all outputs defined', () => {
-      expect(component.onApprove).toBeDefined();
-      expect(component.onDeny).toBeDefined();
+  describe('onApprove', () => {
+    it('emits prayer id', () => {
+      const spy = vi.fn();
+      component.onApprove.subscribe(spy);
+      component.onApprove.emit(basePrayer.id);
+      expect(spy).toHaveBeenCalledWith('test-prayer-1');
     });
   });
 });

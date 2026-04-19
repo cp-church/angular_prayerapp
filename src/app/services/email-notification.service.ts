@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { SupabaseService } from './supabase.service';
 import { PushNotificationService } from './push-notification.service';
+import { markdownToPlainText, markdownToSafeHtml } from '../../utils/markdown';
 
 export interface SendEmailOptions {
   to: string | string[];
@@ -281,6 +282,8 @@ export class EmailNotificationService {
         prayerFor: payload.prayerFor,
         requesterName: payload.requester,
         prayerDescription: payload.description,
+        prayerDescriptionText: markdownToPlainText(payload.description),
+        prayerDescriptionHtml: markdownToSafeHtml(payload.description),
         status: payload.status,
         appLink
       };
@@ -335,8 +338,12 @@ export class EmailNotificationService {
       const variables = {
         prayerTitle: payload.prayerTitle,
         prayerDescription: payload.prayerDescription,
+        prayerDescriptionText: markdownToPlainText(payload.prayerDescription),
+        prayerDescriptionHtml: markdownToSafeHtml(payload.prayerDescription),
         authorName: payload.author,
         updateContent: payload.content,
+        updateContentText: markdownToPlainText(payload.content),
+        updateContentHtml: markdownToSafeHtml(payload.content),
         /** Lets the queue processor fix `appLink` if a template omitted `?filter=`. */
         prayerStatus: payload.prayerStatus ?? 'current',
         appLink
@@ -394,17 +401,21 @@ export class EmailNotificationService {
       try {
         const template = await this.getTemplate('requester_approval');
         if (template) {
-          const variables = {
+          const textVariables = {
             prayerTitle: payload.title,
             prayerFor: payload.prayerFor,
-            prayerDescription: payload.description,
+            prayerDescription: markdownToPlainText(payload.description),
             appLink: `${this.getEmailBaseUrl()}/`
           };
-          console.log('[EmailNotificationService.sendRequesterApprovalNotification] Template variables:', variables);
+          const htmlVariables = {
+            ...textVariables,
+            prayerDescription: markdownToSafeHtml(payload.description)
+          };
+          console.log('[EmailNotificationService.sendRequesterApprovalNotification] Template variables:', textVariables);
           console.log('[EmailNotificationService.sendRequesterApprovalNotification] Template HTML before substitution:', template.html_body.substring(0, 200));
-          subject = this.applyTemplateVariables(template.subject, variables);
-          body = this.applyTemplateVariables(template.text_body, variables);
-          html = this.applyTemplateVariables(template.html_body, variables);
+          subject = this.applyTemplateVariables(template.subject, textVariables);
+          body = this.applyTemplateVariables(template.text_body, textVariables);
+          html = this.applyTemplateVariables(template.html_body, htmlVariables);
           console.log('[EmailNotificationService.sendRequesterApprovalNotification] HTML after substitution contains prayerFor:', html.includes(payload.prayerFor));
         } else {
           throw new Error('Template not found');
@@ -445,15 +456,19 @@ export class EmailNotificationService {
       try {
         const template = await this.getTemplate('denied_prayer');
         if (template) {
-          const variables = {
+          const textVariables = {
             prayerTitle: payload.title,
-            prayerDescription: payload.description,
+            prayerDescription: markdownToPlainText(payload.description),
             denialReason: payload.denialReason,
             appLink: `${this.getEmailBaseUrl()}/`
           };
-          subject = this.applyTemplateVariables(template.subject, variables);
-          body = this.applyTemplateVariables(template.text_body, variables);
-          html = this.applyTemplateVariables(template.html_body, variables);
+          const htmlVariables = {
+            ...textVariables,
+            prayerDescription: markdownToSafeHtml(payload.description)
+          };
+          subject = this.applyTemplateVariables(template.subject, textVariables);
+          body = this.applyTemplateVariables(template.text_body, textVariables);
+          html = this.applyTemplateVariables(template.html_body, htmlVariables);
         }
       } catch (templateError) {
         console.warn('Failed to fetch denied_prayer template, using fallback:', templateError);
@@ -487,15 +502,19 @@ export class EmailNotificationService {
       try {
         const template = await this.getTemplate('denied_update');
         if (template) {
-          const variables = {
+          const textVariables = {
             prayerTitle: payload.prayerTitle,
-            updateContent: payload.content,
+            updateContent: markdownToPlainText(payload.content),
             denialReason: payload.denialReason,
             appLink: `${this.getEmailBaseUrl()}/`
           };
-          subject = this.applyTemplateVariables(template.subject, variables);
-          body = this.applyTemplateVariables(template.text_body, variables);
-          html = this.applyTemplateVariables(template.html_body, variables);
+          const htmlVariables = {
+            ...textVariables,
+            updateContent: markdownToSafeHtml(payload.content)
+          };
+          subject = this.applyTemplateVariables(template.subject, textVariables);
+          body = this.applyTemplateVariables(template.text_body, textVariables);
+          html = this.applyTemplateVariables(template.html_body, htmlVariables);
         }
       } catch (templateError) {
         console.warn('Failed to fetch denied_update template, using fallback:', templateError);
@@ -529,22 +548,26 @@ export class EmailNotificationService {
       try {
         const template = await this.getTemplate('update_author_approval');
         if (template) {
-          const variables = {
+          const textVariables = {
             prayerTitle: payload.prayerTitle,
-            updateContent: payload.content,
+            updateContent: markdownToPlainText(payload.content),
             author: payload.author,
             appLink: `${this.getEmailBaseUrl()}/`
           };
-          subject = this.applyTemplateVariables(template.subject, variables);
-          body = this.applyTemplateVariables(template.text_body, variables);
-          html = this.applyTemplateVariables(template.html_body, variables);
+          const htmlVariables = {
+            ...textVariables,
+            updateContent: markdownToSafeHtml(payload.content)
+          };
+          subject = this.applyTemplateVariables(template.subject, textVariables);
+          body = this.applyTemplateVariables(template.text_body, textVariables);
+          html = this.applyTemplateVariables(template.html_body, htmlVariables);
         } else {
           throw new Error('Template not found');
         }
       } catch (error) {
         console.warn('Failed to load update_author_approval template, using fallback:', error);
         subject = `Your Update Has Been Approved: ${payload.prayerTitle}`;
-        body = `Great news! Your update for "${payload.prayerTitle}" has been approved and is now live on the prayer app.\n\nUpdate: ${payload.content}\n\nThank you for keeping our community updated!`;
+        body = `Great news! Your update for "${payload.prayerTitle}" has been approved and is now live on the prayer app.\n\nUpdate: ${markdownToPlainText(payload.content)}\n\nThank you for keeping our community updated!`;
         html = this.generateUpdateAuthorApprovalHTML(payload);
       }
 
@@ -729,51 +752,61 @@ export class EmailNotificationService {
       // Load appropriate template based on payload type
       try {
         let templateKey: string;
-        let variables: Record<string, string>;
-        
+        let textVariables: Record<string, string>;
+        let htmlVariables: Record<string, string>;
+
         switch (payload.type) {
           case 'prayer':
             templateKey = 'admin_notification_prayer';
-            variables = {
+            textVariables = {
               prayerTitle: payload.title,
               requesterName: payload.requester || 'Anonymous',
-              prayerDescription: payload.description || 'No description provided',
+              prayerDescription: payload.description ? markdownToPlainText(payload.description) : 'No description provided',
               adminLink
             };
+            htmlVariables = {
+              ...textVariables,
+              prayerDescription: payload.description ? markdownToSafeHtml(payload.description) : 'No description provided'
+            };
             break;
-            
+
           case 'update':
             templateKey = 'admin_notification_update';
-            variables = {
+            textVariables = {
               prayerTitle: payload.title,
               authorName: payload.author || 'Anonymous',
-              updateContent: payload.content || 'No content provided',
+              updateContent: payload.content ? markdownToPlainText(payload.content) : 'No content provided',
               adminLink
             };
+            htmlVariables = {
+              ...textVariables,
+              updateContent: payload.content ? markdownToSafeHtml(payload.content) : 'No content provided'
+            };
             break;
-            
+
           case 'deletion':
             templateKey = 'admin_notification_deletion';
-            variables = {
+            textVariables = {
               prayerTitle: payload.title,
               requestedBy: payload.requester || 'Anonymous',
               reason: payload.reason || 'No reason provided',
               adminLink
             };
+            htmlVariables = textVariables;
             break;
-            
+
           default:
             subject = `New Admin Action Required: ${payload.title}`;
             body = `A new item requires your attention in the admin portal.`;
             throw new Error('Unknown payload type');
         }
-        
+
         const template = await this.getTemplate(templateKey);
-        
+
         if (template) {
-          subject = this.applyTemplateVariables(template.subject, variables);
-          body = this.applyTemplateVariables(template.text_body, variables);
-          html = this.applyTemplateVariables(template.html_body, variables);
+          subject = this.applyTemplateVariables(template.subject, textVariables);
+          body = this.applyTemplateVariables(template.text_body, textVariables);
+          html = this.applyTemplateVariables(template.html_body, htmlVariables);
         } else {
           throw new Error(`Template ${templateKey} not found`);
         }
@@ -781,11 +814,11 @@ export class EmailNotificationService {
         // Fallback templates
         if (payload.type === 'prayer') {
           subject = `New Prayer Request: ${payload.title}`;
-          body = `A new prayer request has been submitted and is pending approval.\n\nTitle: ${payload.title}\nRequested by: ${payload.requester || 'Anonymous'}\n\nDescription: ${payload.description || 'No description provided'}\n\nApprove this request here: ${adminLink}`;
+          body = `A new prayer request has been submitted and is pending approval.\n\nTitle: ${payload.title}\nRequested by: ${payload.requester || 'Anonymous'}\n\nDescription: ${markdownToPlainText(payload.description) || 'No description provided'}\n\nApprove this request here: ${adminLink}`;
           html = this.generateAdminNotificationPrayerHTML(payload, adminLink);
         } else if (payload.type === 'update') {
           subject = `New Prayer Update: ${payload.title}`;
-          body = `A new prayer update has been submitted and is pending approval.\n\nPrayer: ${payload.title}\nUpdate by: ${payload.author || 'Anonymous'}\n\nContent: ${payload.content || 'No content provided'}\n\nApprove this request here: ${adminLink}`;
+          body = `A new prayer update has been submitted and is pending approval.\n\nPrayer: ${payload.title}\nUpdate by: ${payload.author || 'Anonymous'}\n\nContent: ${markdownToPlainText(payload.content) || 'No content provided'}\n\nApprove this request here: ${adminLink}`;
           html = this.generateAdminNotificationUpdateHTML(payload, adminLink);
         } else if (payload.type === 'deletion') {
           subject = `Deletion Request: ${payload.title}`;
@@ -835,7 +868,7 @@ export class EmailNotificationService {
               <p style="margin: 5px 0;"><strong>Status:</strong> ${payload.status}</p>
             </div>
             <p><strong>Description:</strong></p>
-            <p style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #10b981;">${payload.description}</p>
+            <div style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #10b981;">${markdownToSafeHtml(payload.description)}</div>
             <div style="margin-top: 30px; text-align: center;">
               <a href="${appUrl}" style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">View Prayer</a>
             </div>
@@ -871,7 +904,7 @@ export class EmailNotificationService {
               <p style="margin: 5px 0;"><strong>Requested by:</strong> ${payload.requester}</p>
             </div>
             <p><strong>Description:</strong></p>
-            <p style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #10b981;">${payload.description}</p>
+            <div style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #10b981;">${markdownToSafeHtml(payload.description)}</div>
             <div style="margin-top: 30px; text-align: center;">
               <a href="${appUrl}" style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">View Prayer</a>
             </div>
@@ -917,7 +950,7 @@ export class EmailNotificationService {
             <h2 style="color: #1f2937; margin-top: 0;">Update for: ${payload.prayerTitle}</h2>
             <p style="margin: 5px 0 15px 0;"><strong>Posted by:</strong> ${payload.author}</p>
             <p><strong>Update:</strong></p>
-            <p style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid ${borderColor};">${payload.content}</p>
+            <div style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid ${borderColor};">${markdownToSafeHtml(payload.content)}</div>
             <div style="margin-top: 30px; text-align: center;">
               <a href="${appUrl}" style="background: ${buttonColor}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">View Prayer</a>
             </div>
@@ -953,7 +986,7 @@ export class EmailNotificationService {
               <p style="margin: 0 0 10px 0; color: #065f46; font-size: 14px;"><strong>Your Prayer Request:</strong></p>
               <p style="margin: 0 0 5px 0; color: #065f46; font-weight: 600; font-size: 18px;">${payload.title}</p>
               <p style="margin: 0 0 10px 0; color: #047857; font-size: 14px;"><strong>Prayer for:</strong> ${payload.prayerFor}</p>
-              <p style="margin: 0; color: #047857;">${payload.description}</p>
+              <div style="color: #047857;">${markdownToSafeHtml(payload.description)}</div>
             </div>
             
             <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 15px; margin: 20px 0;">
@@ -1003,7 +1036,7 @@ export class EmailNotificationService {
               <p style="margin: 10px 0 0 0; color: #991b1b;">${payload.denialReason}</p>
             </div>
             <p style="margin-top: 20px;"><strong>Your Submission:</strong></p>
-            <p style="background: white; padding: 15px; border-radius: 6px; border: 1px solid #e5e7eb;">${payload.description}</p>
+            <div style="background: white; padding: 15px; border-radius: 6px; border: 1px solid #e5e7eb;">${markdownToSafeHtml(payload.description)}</div>
             <p style="margin-top: 20px; font-size: 14px; color: #6b7280;">If you have questions or would like to discuss this decision, please feel free to contact the administrator.</p>
             <div style="margin-top: 30px; text-align: center;">
               <a href="${appUrl}" style="background: #6b7280; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">Visit Prayer App</a>
@@ -1040,7 +1073,7 @@ export class EmailNotificationService {
               <p style="margin: 10px 0 0 0; color: #991b1b;">${payload.denialReason}</p>
             </div>
             <p style="margin-top: 20px;"><strong>Your Update:</strong></p>
-            <p style="background: white; padding: 15px; border-radius: 6px; border: 1px solid #e5e7eb;">${payload.content}</p>
+            <div style="background: white; padding: 15px; border-radius: 6px; border: 1px solid #e5e7eb;">${markdownToSafeHtml(payload.content)}</div>
             <p style="margin-top: 20px; font-size: 14px; color: #6b7280;">If you have questions or would like to discuss this decision, please feel free to contact the administrator.</p>
             <div style="margin-top: 30px; text-align: center;">
               <a href="${appUrl}" style="background: #6b7280; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">Visit Prayer App</a>
@@ -1073,7 +1106,7 @@ export class EmailNotificationService {
             <h2 style="color: #1f2937; margin-top: 0;">Update for: ${payload.prayerTitle}</h2>
             <p style="margin-bottom: 15px;">Great news! Your update has been approved and is now live on the prayer app.</p>
             <p style="margin-top: 20px;"><strong>Your Update:</strong></p>
-            <p style="background: white; padding: 15px; border-radius: 6px; border: 1px solid #e5e7eb;">${payload.content}</p>
+            <div style="background: white; padding: 15px; border-radius: 6px; border: 1px solid #e5e7eb;">${markdownToSafeHtml(payload.content)}</div>
             <p style="margin-top: 20px; font-size: 14px; color: #6b7280;">Thank you for keeping our community updated on this prayer!</p>
             <div style="margin-top: 30px; text-align: center;">
               <a href="${appUrl}" style="background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">Visit Prayer App</a>
@@ -1104,7 +1137,7 @@ export class EmailNotificationService {
             <h2 style="color: #1f2937; margin-top: 0;">${payload.title}</h2>
             <p><strong>Requested by:</strong> ${payload.requester || 'Anonymous'}</p>
             <p><strong>Description:</strong></p>
-            <p style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #3b82f6;">${payload.description || 'No description provided'}</p>
+            <div style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #3b82f6;">${payload.description ? markdownToSafeHtml(payload.description) : 'No description provided'}</div>
             <div style="margin-top: 30px; text-align: center;">
               <a href="${adminLink}" style="background: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">Go to Admin Portal</a>
             </div>
@@ -1134,7 +1167,7 @@ export class EmailNotificationService {
             <h2 style="color: #1f2937; margin-top: 0;">Update for: ${payload.title}</h2>
             <p><strong>Update by:</strong> ${payload.author || 'Anonymous'}</p>
             <p><strong>Content:</strong></p>
-            <p style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #3b82f6;">${payload.content || 'No content provided'}</p>
+            <div style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #3b82f6;">${payload.content ? markdownToSafeHtml(payload.content) : 'No content provided'}</div>
             <div style="margin-top: 30px; text-align: center;">
               <a href="${adminLink}" style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">Go to Admin Portal</a>
             </div>

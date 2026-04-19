@@ -5,11 +5,13 @@ import type { PrayerUpdate } from '../../types/prayer';
 import { SupabaseService } from '../../services/supabase.service';
 import { lookupPersonByEmail, formatPersonName, type PlanningCenterPerson } from '../../../lib/planning-center';
 import { environment } from '../../../environments/environment';
+import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
+import { RichTextViewComponent } from '../rich-text-view/rich-text-view.component';
 
 @Component({
   selector: 'app-pending-update-card',
   standalone: true,
-  imports: [FormsModule, TitleCasePipe],
+  imports: [FormsModule, TitleCasePipe, RichTextEditorComponent, RichTextViewComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6 mb-4">
@@ -32,7 +34,14 @@ import { environment } from '../../../environments/environment';
           </div>
           <div>
             <span class="font-medium text-gray-700 dark:text-gray-200">Description:</span>
-            <p class="text-gray-600 dark:text-gray-300">{{ update.prayers.description || 'No description provided' }}</p>
+            @if (update.prayers.description) {
+              <app-rich-text-view
+                class="block text-gray-600 dark:text-gray-300"
+                [text]="update.prayers.description"
+              ></app-rich-text-view>
+            } @else {
+              <p class="text-gray-600 dark:text-gray-300">No description provided</p>
+            }
           </div>
           <div>
             <span class="font-medium text-gray-700 dark:text-gray-200">Current Status:</span>
@@ -54,7 +63,10 @@ import { environment } from '../../../environments/environment';
 
           <!-- Update Content -->
           <div class="mb-4">
-            <p class="text-gray-600 dark:text-gray-300">{{ update.content }}</p>
+            <app-rich-text-view
+              class="block text-gray-600 dark:text-gray-300"
+              [text]="update.content"
+            ></app-rich-text-view>
           </div>
 
           <!-- Meta Information -->
@@ -136,11 +148,14 @@ import { environment } from '../../../environments/environment';
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Update Content
           </label>
-          <textarea
+          <app-rich-text-editor
             [(ngModel)]="editedUpdate.content"
-            rows="3"
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-          ></textarea>
+            name="editedUpdateContent"
+            ngDefaultControl
+            ariaLabel="Update content"
+            placeholder="Update details…"
+            minHeight="5rem"
+          ></app-rich-text-editor>
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
