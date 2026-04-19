@@ -43,7 +43,26 @@ function isSafeHref(value: string): boolean {
 const INLINE_STYLES: Record<string, string> = {
   BLOCKQUOTE:
     'margin: 0.5rem 0; padding: 0.25rem 0.75rem; border-left: 3px solid rgba(57, 112, 77, 0.5); opacity: 0.9;',
+  /** Email clients often ignore default `u` styling; matches `RichTextViewComponent` */
+  U: 'text-decoration: underline;',
 };
+
+/**
+ * TipTap's Underline mark serializes as ++text++. Common Markdown parsers do not
+ * treat that as underline, so we expand to &lt;u&gt; before `marked` (skipping
+ * fenced code blocks so literal ++ in code is preserved).
+ */
+function expandTiptapUnderlineForMarked(markdown: string): string {
+  const segments = markdown.split(/(```[\s\S]*?```)/g);
+  return segments
+    .map((segment) => {
+      if (segment.startsWith('```')) {
+        return segment;
+      }
+      return segment.replace(/\+\+([\s\S]+?)\+\+/g, '<u>$1</u>');
+    })
+    .join('');
+}
 
 let hookInstalled = false;
 function ensureDomPurifyHook(): void {
@@ -70,7 +89,8 @@ function ensureDomPurifyHook(): void {
 export function markdownToSafeHtml(markdown: string | null | undefined): string {
   if (!markdown) return '';
   ensureDomPurifyHook();
-  const rawHtml = marked.parse(markdown, { async: false }) as string;
+  const preprocessed = expandTiptapUnderlineForMarked(markdown);
+  const rawHtml = marked.parse(preprocessed, { async: false }) as string;
   return DOMPurify.sanitize(rawHtml, {
     ALLOWED_TAGS,
     ALLOWED_ATTR,
@@ -99,6 +119,7 @@ export function markdownToPlainText(markdown: string | null | undefined): string
   text = text.replace(/(\*\*|__)(.*?)\1/g, '$2');
   text = text.replace(/(\*|_)(.*?)\1/g, '$2');
   text = text.replace(/~~(.*?)~~/g, '$1');
+  text = text.replace(/\+\+([\s\S]+?)\+\+/g, '$1');
   // Headings
   text = text.replace(/^\s{0,3}#{1,6}\s+/gm, '');
   // Blockquote markers

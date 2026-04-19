@@ -460,6 +460,23 @@ function generatePrintableHTML(prayers: Prayer[], timeRange: TimeRange = 'month'
             border-left: 3px solid #cbd5e1;
           }
 
+          .prayer-description strong,
+          .update-item strong {
+            font-weight: 600;
+          }
+          .prayer-description em,
+          .update-item em {
+            font-style: italic;
+          }
+          .prayer-description u,
+          .update-item u {
+            text-decoration: underline;
+          }
+          .prayer-description s,
+          .update-item s {
+            text-decoration: line-through;
+          }
+
           /* Updates section - more prominent styling */
           .updates-section {
             margin-top: 6px;

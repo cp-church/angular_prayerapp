@@ -18,6 +18,7 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from 'tiptap-markdown';
+import { UnderlineWithMarkdown } from '../../lib/tiptap-underline-markdown.extension';
 
 type ToolbarButton = {
   id: string;
@@ -54,16 +55,23 @@ type ToolbarButton = {
             [attr.aria-pressed]="editor ? btn.isActive(editor) : false"
             [disabled]="disabled || !editor"
             (click)="runToolbarAction(btn)"
-            [innerHTML]="btn.label"
-          ></button>
+          >
+            @switch (btn.id) {
+              @case ('bold') {
+                <span class="rte-toolbar-glyph rte-toolbar-glyph-bold">B</span>
+              }
+              @case ('italic') {
+                <span class="rte-toolbar-glyph rte-toolbar-glyph-italic">I</span>
+              }
+              @case ('underline') {
+                <span class="rte-toolbar-glyph rte-toolbar-glyph-underline">U</span>
+              }
+              @default {
+                <span [innerHTML]="btn.label"></span>
+              }
+            }
+          </button>
         }
-        <button
-          type="button"
-          class="rte-btn px-2 py-1 text-xs font-medium rounded-md border border-transparent text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-600 focus:outline-none focus:ring-2 focus:ring-[#39704D] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          [disabled]="disabled || !editor"
-          aria-label="Clear formatting"
-          (click)="clearFormatting()"
-        >Clear</button>
       </div>
       <div
         #host
@@ -92,6 +100,20 @@ type ToolbarButton = {
         background-color: rgba(95, 184, 118, 0.18);
         border-color: rgba(95, 184, 118, 0.5) !important;
         color: #5fb876 !important;
+      }
+      .rte-toolbar-glyph-bold {
+        font-weight: 700;
+      }
+      /* Glyphs are real template nodes so styles apply (innerHTML strips most inline styles). */
+      .rte-toolbar-glyph-italic {
+        display: inline-block;
+        font-style: italic;
+        font-family: Georgia, 'Times New Roman', Times, serif;
+        transform: skewX(-12deg);
+      }
+      .rte-toolbar-glyph-underline {
+        text-decoration: underline;
+        text-underline-offset: 2px;
       }
       :host ::ng-deep .rte-host .ProseMirror {
         outline: none !important;
@@ -178,7 +200,7 @@ export class RichTextEditorComponent
   toolbarButtons: ToolbarButton[] = [
     {
       id: 'bold',
-      label: '<span style="font-weight:700">Bold</span>',
+      label: '',
       ariaLabel: 'Bold',
       isActive: (e) => e.isActive('bold'),
       toggle: (e) => {
@@ -187,11 +209,20 @@ export class RichTextEditorComponent
     },
     {
       id: 'italic',
-      label: '<span style="font-style:italic">Italic</span>',
+      label: '',
       ariaLabel: 'Italic',
       isActive: (e) => e.isActive('italic'),
       toggle: (e) => {
         e.chain().focus().toggleItalic().run();
+      },
+    },
+    {
+      id: 'underline',
+      label: '',
+      ariaLabel: 'Underline',
+      isActive: (e) => e.isActive('underline'),
+      toggle: (e) => {
+        e.chain().focus().toggleUnderline().run();
       },
     },
     {
@@ -236,7 +267,9 @@ export class RichTextEditorComponent
           heading: { levels: [3, 4] },
           codeBlock: false,
           horizontalRule: false,
+          underline: false,
         }),
+        UnderlineWithMarkdown,
         Markdown.configure({
           html: false,
           linkify: true,
@@ -291,12 +324,6 @@ export class RichTextEditorComponent
   runToolbarAction(btn: ToolbarButton): void {
     if (!this.editor || this.disabled) return;
     btn.toggle(this.editor);
-    this.cdr.markForCheck();
-  }
-
-  clearFormatting(): void {
-    if (!this.editor || this.disabled) return;
-    this.editor.chain().focus().unsetAllMarks().clearNodes().run();
     this.cdr.markForCheck();
   }
 

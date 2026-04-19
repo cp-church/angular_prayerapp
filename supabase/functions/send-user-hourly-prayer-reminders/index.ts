@@ -15,7 +15,7 @@
  * Auth matches send-prayer-reminders: Supabase Edge JWT verification only.
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -118,6 +118,7 @@ function stripMarkdownToText(input: string | null | undefined): string {
   text = text.replace(/(\*\*|__)(.*?)\1/g, '$2');
   text = text.replace(/(\*|_)(.*?)\1/g, '$2');
   text = text.replace(/~~(.*?)~~/g, '$1');
+  text = text.replace(/\+\+([\s\S]+?)\+\+/g, '$1');
   text = text.replace(/^\s{0,3}#{1,6}\s+/gm, '');
   text = text.replace(/^\s{0,3}>\s?/gm, '');
   text = text.replace(/^\s*[-*+]\s+/gm, '');
@@ -500,7 +501,7 @@ serve(async (req) => {
 });
 
 async function loadSpotlightCandidate(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any>,
   recipientEmail: string,
   lastSpotlightKey: string | null
 ): Promise<SpotlightCandidate | null> {
@@ -570,7 +571,7 @@ async function loadSpotlightCandidate(
 
 /** Latest approved community update or latest personal update (plain text, not truncated). */
 async function fetchLatestUpdatePlain(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any>,
   spotlightKey: string
 ): Promise<string> {
   const colon = spotlightKey.indexOf(':');

@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import { markdownToPlainText, markdownToSafeHtml } from './markdown';
 
 describe('markdownToPlainText', () => {
@@ -7,10 +8,11 @@ describe('markdownToPlainText', () => {
     expect(markdownToPlainText('')).toBe('');
   });
 
-  it('strips bold, italic, and strikethrough markers', () => {
+  it('strips bold, italic, strikethrough, and TipTap ++underline++ markers', () => {
     expect(markdownToPlainText('**bold** and *italic* and ~~strike~~')).toBe(
       'bold and italic and strike'
     );
+    expect(markdownToPlainText('++under++')).toBe('under');
   });
 
   it('strips list markers and headings', () => {
@@ -54,6 +56,13 @@ describe('markdownToSafeHtml', () => {
     const html = markdownToSafeHtml('**bold** *italic*');
     expect(html).toContain('<strong>bold</strong>');
     expect(html).toContain('<em>italic</em>');
+  });
+
+  it('renders TipTap ++underline++ as underline', () => {
+    const html = markdownToSafeHtml('++underscored++');
+    expect(html).toContain('<u');
+    expect(html).toContain('underscored');
+    expect(html).toContain('text-decoration: underline');
   });
 
   it('renders lists', () => {
