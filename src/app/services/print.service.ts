@@ -1420,13 +1420,21 @@ export class PrintService {
       min-height: 0;
       width: 100%;
     }
+    .booklet-notes-page,
+    .booklet-back-cover {
+      --booklet-notes-line-interval: 0.42in;
+    }
     .booklet-notes-heading {
       flex: 0 0 auto;
+      width: 100%;
+      box-sizing: border-box;
+      text-align: center;
       color: #1d4ed8;
       font-size: 16.5px;
       font-weight: 400;
       border-bottom: 1px solid #93c5fd;
-      margin: 0 0 12px;
+      /* Match clearance after header underline to clearance between successive ruled lines (grid period minus rule thickness). */
+      margin: 0 0 calc(var(--booklet-notes-line-interval) - 1px);
       padding: 0 0 6px;
       line-height: 1.25;
       page-break-after: avoid;
@@ -1435,6 +1443,7 @@ export class PrintService {
     .booklet-notes-title-row {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
     }
     .booklet-notes-pencil {
@@ -1450,7 +1459,7 @@ export class PrintService {
         #d1d5db 0,
         #d1d5db 1px,
         transparent 1px,
-        transparent 0.42in
+        transparent var(--booklet-notes-line-interval, 0.42in)
       );
       background-color: transparent;
       -webkit-print-color-adjust: exact;
@@ -1466,7 +1475,13 @@ export class PrintService {
       min-height: 2in;
       width: 100%;
     }
-    ${this.getPrintInfoFooterStyles()}
+    /* Back cover column centers the logo row; stretch header + ruled block so underline and rules span the panel width. */
+    .booklet-back-cover > .booklet-notes-heading,
+    .booklet-back-cover > .booklet-back-cover-ruled {
+      align-self: stretch;
+      width: 100%;
+      box-sizing: border-box;
+    }
     .booklet-back-cover {
       flex: 1 1 auto;
       display: flex;
