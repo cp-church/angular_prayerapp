@@ -5,6 +5,7 @@ import { EmailNotificationService } from './email-notification.service';
 import { Printer } from '@capgo/capacitor-printer';
 import { markdownToSafeHtml } from '../../utils/markdown';
 import { padToMultipleOfFourWithBackCoverLast, saddleStitchImpose } from '../lib/print-booklet-imposition';
+import { buildBookletMeasurePackScript } from '../lib/booklet-measure-inline';
 import { BrandingService } from './branding.service';
 
 export interface Prayer {
@@ -964,6 +965,7 @@ export class PrintService {
 
     const statusLabels = { current: 'Current Prayer Requests', answered: 'Answered Prayers' } as const;
     const contentPageInners: string[] = [];
+    const sectionsForMeasure: { h2: string; fragments: string[] }[] = [];
 
     (['current', 'answered'] as const).forEach(status => {
       const list = prayersByStatus[status];
@@ -1000,6 +1002,11 @@ export class PrintService {
           });
         });
       }
+
+      sectionsForMeasure.push({
+        h2,
+        fragments: units.map(u => u.html)
+      });
 
       const packed = this.packBookletUnitsIntoPageChunks(
         units,
@@ -1038,7 +1045,7 @@ export class PrintService {
     const padded = padToMultipleOfFourWithBackCoverLast(pagesBeforeBack, () => blankInner, coverBackInner);
     const panels = saddleStitchImpose(padded);
 
-    const pageSurfaces = panels
+    const pageSurfacesHeuristic = panels
       .map(
         side => `
   <div class="booklet-print-surface">
@@ -1047,6 +1054,17 @@ export class PrintService {
   </div>`
       )
       .join('\n');
+
+    const bookletPackB64 = this.encodeUtf8Base64(
+      JSON.stringify({
+        sections: sectionsForMeasure,
+        covers: {
+          coverFront: coverFrontInner,
+          coverBack: coverBackInner,
+          blankInner
+        }
+      })
+    );
 
     return `<!DOCTYPE html>
 <html>
@@ -1386,12 +1404,30 @@ export class PrintService {
 </head>
 <body>
   <div class="no-print">
-    <strong>Print tips:</strong> Use <strong>double-sided</strong> printing, <strong>flip on short edge</strong>, on US Letter. Then fold each sheet in half and staple at the fold. Short prayers pack together where they fit; long ones split with <strong>(continued)</strong>.
+    <strong>Print tips:</strong> Use <strong>double-sided</strong> printing, <strong>flip on short edge</strong>, on US Letter. Then fold each sheet in half and staple at the fold. Prayer cards are packed top-to-bottom on each half-letter page until the next card would overflow — then the sheet reflows before printing. Long descriptions still split with <strong>(continued)</strong>.
   </div>
-  ${pageSurfaces}
-  <script>window.onload=function(){window.print();};</script>
+  <div id="__book_meas_host" aria-hidden="true" style="position:absolute;left:-9999px;top:0;visibility:hidden;pointer-events:none;width:5.5in;z-index:-1;">
+    <div id="__book_meas_panel" class="booklet-panel"></div>
+  </div>
+  <div id="booklet-dynamic-root">
+  ${pageSurfacesHeuristic}
+  </div>
+  <script type="application/x-booklet-b64" id="booklet-pack-b64">${bookletPackB64}</script>
+  <script>${buildBookletMeasurePackScript()}</script>
 </body>
 </html>`;
+  }
+
+  /** UTF-8 JSON payload for inlined booklet layout script (avoid <code>&lt;/script&gt;</code> in prayer HTML). */
+  private encodeUtf8Base64(raw: string): string {
+    try {
+      const bytes = new TextEncoder().encode(raw);
+      let binary = '';
+      bytes.forEach(b => (binary += String.fromCharCode(b)));
+      return typeof btoa === 'function' ? btoa(binary) : '';
+    } catch {
+      return '';
+    }
   }
 
   /**

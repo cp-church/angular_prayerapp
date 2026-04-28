@@ -19,6 +19,13 @@ const mockBrandingService = {
   })
 };
 
+/** Booklet HTML embeds a measuring script whose source repeats `booklet-chunk`; count only markup before the base64 payload. */
+function bookletHtmlBeforePackScript(html: string): string {
+  const marker = '<script type="application/x-booklet-b64"';
+  const idx = html.indexOf(marker);
+  return idx >= 0 ? html.slice(0, idx) : html;
+}
+
 describe('PrintService', () => {
   let service: PrintService;
   let mockSupabaseService: any;
@@ -434,7 +441,9 @@ describe('PrintService', () => {
       try {
         await service.downloadPrintableBookletPrayerList('month', mockWindow as any);
         const html = (mockWindow.document.write as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
-        const chunkCount = (html.match(/<div class="booklet-chunk">/g) || []).length;
+        const chunkCount = (
+          bookletHtmlBeforePackScript(html).match(/<div class="booklet-chunk">/g) || []
+        ).length;
         expect(chunkCount).toBe(1);
         expect(html).toContain('Current Prayer Requests');
         expect(html).toContain('Anna');
@@ -483,7 +492,9 @@ describe('PrintService', () => {
       try {
         await service.downloadPrintableBookletPrayerList('month', mockWindow as any);
         const html = (mockWindow.document.write as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
-        const chunkCount = (html.match(/<div class="booklet-chunk">/g) || []).length;
+        const chunkCount = (
+          bookletHtmlBeforePackScript(html).match(/<div class="booklet-chunk">/g) || []
+        ).length;
         expect(chunkCount).toBe(1);
         expect(html).toContain('Current Prayer Requests');
         expect(html).toContain('Dee');
@@ -538,7 +549,9 @@ describe('PrintService', () => {
       try {
         await service.downloadPrintableBookletPrayerList('month', mockWindow as any);
         const html = (mockWindow.document.write as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
-        const chunkCount = (html.match(/<div class="booklet-chunk">/g) || []).length;
+        const chunkCount = (
+          bookletHtmlBeforePackScript(html).match(/<div class="booklet-chunk">/g) || []
+        ).length;
         expect(chunkCount).toBe(2);
         expect(html).toContain('Current Prayer Requests');
         expect(html).toContain('Gus');
