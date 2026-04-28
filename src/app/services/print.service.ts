@@ -63,9 +63,14 @@ export class PrintService {
    */
   private static readonly BOOKLET_MARKDOWN_TO_HTML_WEIGHT = 1.25;
   /** Subtract from cap each chunk so totals stay below `.booklet-panel { overflow:hidden }` (roomier type + padding in print CSS) */
-  private static readonly BOOKLET_PANEL_BOTTOM_SLACK = 460;
-  /** One compact “Updates” block + first update line in booklet mode */
-  private static readonly BOOKLET_COMPACT_UPDATE_RESERVE = 380;
+  private static readonly BOOKLET_PANEL_BOTTOM_SLACK = 620;
+  /**
+   * Box chrome for compact booklet Updates (header “Updates (n):”, meta row, margins, bordered panel).
+   * Does **not** include update body — that is weighed separately via {@link estimateBookletCompactUpdatesBlockWeight}.
+   */
+  private static readonly BOOKLET_COMPACT_UPDATE_BOX_CHROME_CHARS = 320;
+  /** Updates render in a narrow inset column; prose wraps more aggressively than descriptions — weight a bit higher per char */
+  private static readonly BOOKLET_UPDATES_MARKDOWN_FACTOR = 1.48;
   /**
    * Bullet / numbered Markdown lines inflate height versus running prose (margins + list markers outside text box).
    * Used only inside {@link estimateBookletUnitWeight}; tuned with {@link BOOKLET_PANEL_PACK_BUDGET} so plain prose packs densely.
@@ -73,9 +78,9 @@ export class PrintService {
   private static readonly BOOKLET_MARKDOWN_LIST_LINE_PREMIUM = 102;
   private static readonly BOOKLET_SOFT_NEWLINE_VERTICAL_PREMIUM = 18;
   /**
-   * Upper bound per column — seven short cards fits before list-heavy clipping risk; greedy weight still splits earlier when heavy.
+   * Upper bound stacked cards per half-letter chunk — conservative to avoid underestimated combined height.
    */
-  private static readonly BOOKLET_MAX_UNITS_PER_PANEL_CHUNK = 7;
+  private static readonly BOOKLET_MAX_UNITS_PER_PANEL_CHUNK = 5;
 
   private setStartDateForTimeRange(startDate: Date, endDate: Date, timeRange: TimeRange): void {
     switch (timeRange) {
@@ -970,9 +975,13 @@ export class PrintService {
 
       const units: { html: string; weight: number }[] = [];
       for (const prayer of list) {
+        const hasUpdates =
+          Array.isArray(prayer.prayer_updates) && prayer.prayer_updates.length > 0;
+        const firstUpdateMarkdown = hasUpdates ? this.getBookletSortedFirstUpdateMarkdown(prayer) : null;
+        const descSegmentMax = this.getBookletDescriptionSegmentMaxChars(firstUpdateMarkdown);
         const descParts = this.splitBookletMarkdownIntoPanelParts(
           prayer.description,
-          PrintService.BOOKLET_MARKDOWN_CHARS_PER_PANEL
+          descSegmentMax
         );
         descParts.forEach((partMarkdown, pi) => {
           const slice = {
@@ -981,11 +990,13 @@ export class PrintService {
             partCount: descParts.length,
             includeUpdates: pi === descParts.length - 1
           };
-          const hasUpdates =
-            Array.isArray(prayer.prayer_updates) && prayer.prayer_updates.length > 0;
+          const includeUpdateBlock = !!(slice.includeUpdates && hasUpdates && firstUpdateMarkdown);
           units.push({
             html: this.generatePrayerHTML(prayer, true, slice),
-            weight: this.estimateBookletUnitWeight(partMarkdown, slice.includeUpdates && hasUpdates)
+            weight: this.estimateBookletUnitWeight(
+              partMarkdown,
+              includeUpdateBlock ? firstUpdateMarkdown! : null
+            )
           });
         });
       }
@@ -1384,9 +1395,65 @@ export class PrintService {
   }
 
   /**
-   * Heuristic “height” for packing — lists and explicit line breaks are far taller than the same raw char length.
+   * Newest-first update body used for booklet compact block (same order as {@link generatePrayerHTML}).
    */
-  private estimateBookletUnitWeight(descriptionMarkdown: string, includeCompactUpdateBlock: boolean): number {
+  private getBookletSortedFirstUpdateMarkdown(prayer: Prayer): string | null {
+    const list = prayer.prayer_updates;
+    if (!Array.isArray(list) || list.length === 0) {
+      return null;
+    }
+    const sorted = [...list].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    const c = sorted[0]?.content;
+    return typeof c === 'string' && c.trim().length ? c.trim() : null;
+  }
+
+  /**
+   * When a prayer includes a compact Updates block, description segments must be shorter so the
+   * last segment + box + rendered update body still fits under `.booklet-panel { overflow:hidden }`.
+   */
+  private getBookletDescriptionSegmentMaxChars(firstUpdateMarkdown: string | null): number {
+    if (!firstUpdateMarkdown) {
+      return PrintService.BOOKLET_MARKDOWN_CHARS_PER_PANEL;
+    }
+    const updateBlockWeight = this.estimateBookletCompactUpdatesBlockWeight(firstUpdateMarkdown);
+    const shave = Math.min(
+      Math.floor(PrintService.BOOKLET_MARKDOWN_CHARS_PER_PANEL * 0.58),
+      Math.max(0, Math.floor((updateBlockWeight - 420) * 0.52))
+    );
+    return Math.max(260, PrintService.BOOKLET_MARKDOWN_CHARS_PER_PANEL - shave);
+  }
+
+  /**
+   * Virtual height of the compact booklet “Updates (1)” box (header, meta, padding) plus **full**
+   * first update markdown rendered in a narrow column (wraps more than raw char count suggests).
+   */
+  private estimateBookletCompactUpdatesBlockWeight(updateMarkdown: string): number {
+    const m = updateMarkdown ?? '';
+    if (!m.length) {
+      return PrintService.BOOKLET_COMPACT_UPDATE_BOX_CHROME_CHARS;
+    }
+    const newlineCount = m.match(/\r?\n/g)?.length ?? 0;
+    const listLineHints =
+      m.match(/(?:^|\r?\n)[ \t]{0,3}(?:[-*+] |\d+[.)]\s)/g) ?? [];
+    const listHeadCount = listLineHints.length;
+    const narrowColumnWrapPremium = Math.ceil((m.length / 52) * 14);
+
+    return (
+      PrintService.BOOKLET_COMPACT_UPDATE_BOX_CHROME_CHARS +
+      Math.ceil(m.length * PrintService.BOOKLET_UPDATES_MARKDOWN_FACTOR) +
+      newlineCount * PrintService.BOOKLET_SOFT_NEWLINE_VERTICAL_PREMIUM +
+      listHeadCount * PrintService.BOOKLET_MARKDOWN_LIST_LINE_PREMIUM +
+      narrowColumnWrapPremium
+    );
+  }
+
+  /**
+   * Heuristic “height” for packing — lists and explicit line breaks are far taller than the same raw char length.
+   * When `compactUpdatesMarkdown` is set (newest-first update shown in booklet), its full body is weighed.
+   */
+  private estimateBookletUnitWeight(descriptionMarkdown: string, compactUpdatesMarkdown: string | null): number {
     const markdown = descriptionMarkdown ?? '';
     const newlineCount = markdown.match(/\r?\n/g)?.length ?? 0;
     const listLineHints =
@@ -1398,8 +1465,9 @@ export class PrintService {
       PrintService.BOOKLET_CARD_FRAME_CHARS +
       newlineCount * PrintService.BOOKLET_SOFT_NEWLINE_VERTICAL_PREMIUM +
       listHeadCount * PrintService.BOOKLET_MARKDOWN_LIST_LINE_PREMIUM;
-    if (includeCompactUpdateBlock) {
-      w += PrintService.BOOKLET_COMPACT_UPDATE_RESERVE;
+
+    if (compactUpdatesMarkdown && compactUpdatesMarkdown.length > 0) {
+      w += this.estimateBookletCompactUpdatesBlockWeight(compactUpdatesMarkdown);
     }
     return w;
   }

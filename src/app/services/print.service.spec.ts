@@ -492,7 +492,7 @@ describe('PrintService', () => {
       }
     });
 
-    it('should pack seven short current prayers into one booklet chunk when weights allow', { timeout: 10000 }, async () => {
+    it('should split seven short current prayers across two booklet chunks (max five cards per column)', { timeout: 10000 }, async () => {
       const mk = (id: string, forName: string): Prayer => ({
         id,
         title: 't',
@@ -539,7 +539,7 @@ describe('PrintService', () => {
         await service.downloadPrintableBookletPrayerList('month', mockWindow as any);
         const html = (mockWindow.document.write as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
         const chunkCount = (html.match(/<div class="booklet-chunk">/g) || []).length;
-        expect(chunkCount).toBe(1);
+        expect(chunkCount).toBe(2);
         expect(html).toContain('Current Prayer Requests');
         expect(html).toContain('Gus');
       } finally {
