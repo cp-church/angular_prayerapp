@@ -343,6 +343,210 @@ describe('PrintService', () => {
       expect(html).toContain('overflow room');
     });
 
+    it('should emit (continued) booklet fragments when descriptions exceed panel budget', {
+      timeout: 10000
+    }, async () => {
+      const longDesc =
+        `${'Heavy text block alpha. '.repeat(150)}\n\n${'Heavy text block beta. '.repeat(150)}`;
+      const longPrayers: Prayer[] = [
+        {
+          id: 'longp',
+          title: 'Long',
+          prayer_for: 'Someone',
+          description: longDesc,
+          requester: 'R',
+          status: 'current',
+          created_at: new Date().toISOString(),
+          prayer_updates: []
+        },
+        mockPrayers[1]
+      ];
+
+      const createMockChain = () => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        neq: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({ data: longPrayers, error: null })
+      });
+
+      const origFrom = mockSupabaseClient.from;
+      mockSupabaseClient.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prayer_updates') {
+          return {
+            select: vi.fn().mockResolvedValue({ data: [], error: null })
+          };
+        }
+        return createMockChain();
+      }) as typeof mockSupabaseClient.from;
+
+      const mockWindow = {
+        document: { open: vi.fn(), write: vi.fn(), close: vi.fn() },
+        focus: vi.fn()
+      };
+      try {
+        await service.downloadPrintableBookletPrayerList('month', mockWindow as any);
+        const html = (mockWindow.document.write as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+        expect(html).toContain('booklet-prayer-top-continued');
+        expect(html).toContain('(continued)');
+      } finally {
+        mockSupabaseClient.from = origFrom;
+      }
+    });
+
+    it('should pack multiple short current prayers into one booklet chunk when they fit the panel budget', {
+      timeout: 10000
+    }, async () => {
+      const mk = (id: string, forName: string): Prayer => ({
+        id,
+        title: 't',
+        prayer_for: forName,
+        description: 'Short text. ',
+        requester: 'r',
+        status: 'current',
+        created_at: new Date().toISOString(),
+        prayer_updates: []
+      });
+      const threeCurrent: Prayer[] = [mk('1', 'Anna'), mk('2', 'Ben'), mk('3', 'Cal')];
+
+      const createMockChain = () => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        neq: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({ data: threeCurrent, error: null })
+      });
+
+      const origFrom = mockSupabaseClient.from;
+      mockSupabaseClient.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prayer_updates') {
+          return {
+            select: vi.fn().mockResolvedValue({ data: [], error: null })
+          };
+        }
+        return createMockChain();
+      }) as typeof mockSupabaseClient.from;
+
+      const mockWindow = {
+        document: { open: vi.fn(), write: vi.fn(), close: vi.fn() },
+        focus: vi.fn()
+      };
+      try {
+        await service.downloadPrintableBookletPrayerList('month', mockWindow as any);
+        const html = (mockWindow.document.write as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+        const chunkCount = (html.match(/<div class="booklet-chunk">/g) || []).length;
+        expect(chunkCount).toBe(1);
+        expect(html).toContain('Current Prayer Requests');
+        expect(html).toContain('Anna');
+        expect(html).toContain('Ben');
+        expect(html).toContain('Cal');
+      } finally {
+        mockSupabaseClient.from = origFrom;
+      }
+    });
+
+    it('should pack four short current prayers into one booklet chunk when weights allow', { timeout: 10000 }, async () => {
+      const mk = (id: string, forName: string): Prayer => ({
+        id,
+        title: 't',
+        prayer_for: forName,
+        description: 'Short text. ',
+        requester: 'r',
+        status: 'current',
+        created_at: new Date().toISOString(),
+        prayer_updates: []
+      });
+      const fourCurrent: Prayer[] = [mk('1', 'Anna'), mk('2', 'Ben'), mk('3', 'Cal'), mk('4', 'Dee')];
+
+      const createMockChain = () => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        neq: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({ data: fourCurrent, error: null })
+      });
+
+      const origFrom = mockSupabaseClient.from;
+      mockSupabaseClient.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prayer_updates') {
+          return {
+            select: vi.fn().mockResolvedValue({ data: [], error: null })
+          };
+        }
+        return createMockChain();
+      }) as typeof mockSupabaseClient.from;
+
+      const mockWindow = {
+        document: { open: vi.fn(), write: vi.fn(), close: vi.fn() },
+        focus: vi.fn()
+      };
+      try {
+        await service.downloadPrintableBookletPrayerList('month', mockWindow as any);
+        const html = (mockWindow.document.write as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+        const chunkCount = (html.match(/<div class="booklet-chunk">/g) || []).length;
+        expect(chunkCount).toBe(1);
+        expect(html).toContain('Current Prayer Requests');
+        expect(html).toContain('Dee');
+      } finally {
+        mockSupabaseClient.from = origFrom;
+      }
+    });
+
+    it('should pack seven short current prayers into one booklet chunk when weights allow', { timeout: 10000 }, async () => {
+      const mk = (id: string, forName: string): Prayer => ({
+        id,
+        title: 't',
+        prayer_for: forName,
+        description: 'Short text. ',
+        requester: 'r',
+        status: 'current',
+        created_at: new Date().toISOString(),
+        prayer_updates: []
+      });
+      const sevenCurrent: Prayer[] = [
+        mk('1', 'Anna'),
+        mk('2', 'Ben'),
+        mk('3', 'Cal'),
+        mk('4', 'Dee'),
+        mk('5', 'Eva'),
+        mk('6', 'Fox'),
+        mk('7', 'Gus')
+      ];
+
+      const createMockChain = () => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        neq: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({ data: sevenCurrent, error: null })
+      });
+
+      const origFrom = mockSupabaseClient.from;
+      mockSupabaseClient.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prayer_updates') {
+          return {
+            select: vi.fn().mockResolvedValue({ data: [], error: null })
+          };
+        }
+        return createMockChain();
+      }) as typeof mockSupabaseClient.from;
+
+      const mockWindow = {
+        document: { open: vi.fn(), write: vi.fn(), close: vi.fn() },
+        focus: vi.fn()
+      };
+      try {
+        await service.downloadPrintableBookletPrayerList('month', mockWindow as any);
+        const html = (mockWindow.document.write as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+        const chunkCount = (html.match(/<div class="booklet-chunk">/g) || []).length;
+        expect(chunkCount).toBe(1);
+        expect(html).toContain('Current Prayer Requests');
+        expect(html).toContain('Gus');
+      } finally {
+        mockSupabaseClient.from = origFrom;
+      }
+    });
+
     it('should embed branding logo on booklet cover when useLogo and logo URL are set', { timeout: 10000 }, async () => {
       const defaultBr = {
         useLogo: false,
@@ -859,6 +1063,13 @@ describe('PrintService', () => {
     it('should include print styles', () => {
       const styles = '@media print { body { font-size: 12pt; } }';
       expect(styles).toContain('@media print');
+    });
+
+    it('splitBookletMarkdownIntoPanelParts returns trim-end markdown for short bodies', () => {
+      const split = (service as any).splitBookletMarkdownIntoPanelParts.bind(service);
+      const max = PrintService.BOOKLET_MARKDOWN_CHARS_PER_PANEL;
+      expect(split('Pray for us.   \n\n\t', max)).toEqual(['Pray for us.']);
+      expect(split('Single line.  ', max)).toEqual(['Single line.']);
     });
   });
 

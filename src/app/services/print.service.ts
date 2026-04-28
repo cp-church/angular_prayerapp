@@ -44,9 +44,38 @@ export class PrintService {
   ) {}
 
   /**
-   * Target prayer cards per half-letter panel. Kept moderate so larger type + wide margins still fit in print.
+   * Max markdown characters per **split segment** before hard-splitting (one card body per segment).
+   * Kept below what fits in a half-letter column so segments + updates rarely clip under `overflow:hidden`.
    */
-  static readonly BOOKLET_PRAYERS_PER_PAGE = 4;
+  static readonly BOOKLET_MARKDOWN_CHARS_PER_PANEL = 1750;
+
+  /** Card chrome: header row, border, gaps between stacked cards (tune with booklet CSS padding) */
+  private static readonly BOOKLET_CARD_FRAME_CHARS = 228;
+  /** First chunk of each status section carries the colored section `h2` */
+  private static readonly BOOKLET_SECTION_H2_RESERVE = 275;
+  /**
+   * Virtual “ink” budget per half-letter chunk when greedily packing prayer cards.
+   * First usable slice ≈ this − {@link BOOKLET_SECTION_H2_RESERVE} − {@link BOOKLET_PANEL_BOTTOM_SLACK} when `h2` is present.
+   */
+  private static readonly BOOKLET_PANEL_PACK_BUDGET = 3400;
+  /**
+   * Markdown often expands in HTML (lists, line wraps). Weight ≈ ceil(len * factor) + frame + reserves.
+   */
+  private static readonly BOOKLET_MARKDOWN_TO_HTML_WEIGHT = 1.25;
+  /** Subtract from cap each chunk so totals stay below `.booklet-panel { overflow:hidden }` (roomier type + padding in print CSS) */
+  private static readonly BOOKLET_PANEL_BOTTOM_SLACK = 460;
+  /** One compact “Updates” block + first update line in booklet mode */
+  private static readonly BOOKLET_COMPACT_UPDATE_RESERVE = 380;
+  /**
+   * Bullet / numbered Markdown lines inflate height versus running prose (margins + list markers outside text box).
+   * Used only inside {@link estimateBookletUnitWeight}; tuned with {@link BOOKLET_PANEL_PACK_BUDGET} so plain prose packs densely.
+   */
+  private static readonly BOOKLET_MARKDOWN_LIST_LINE_PREMIUM = 102;
+  private static readonly BOOKLET_SOFT_NEWLINE_VERTICAL_PREMIUM = 18;
+  /**
+   * Upper bound per column — seven short cards fits before list-heavy clipping risk; greedy weight still splits earlier when heavy.
+   */
+  private static readonly BOOKLET_MAX_UNITS_PER_PANEL_CHUNK = 7;
 
   private setStartDateForTimeRange(startDate: Date, endDate: Date, timeRange: TimeRange): void {
     switch (timeRange) {
@@ -929,7 +958,6 @@ export class PrintService {
     prayersByStatus.answered.sort(sortByRecentActivity);
 
     const statusLabels = { current: 'Current Prayer Requests', answered: 'Answered Prayers' } as const;
-    const perPage = PrintService.BOOKLET_PRAYERS_PER_PAGE;
     const contentPageInners: string[] = [];
 
     (['current', 'answered'] as const).forEach(status => {
@@ -937,15 +965,39 @@ export class PrintService {
       if (list.length === 0) {
         return;
       }
-      const items = list.map(p => this.generateBookletPrayerHTML(p));
       const title = `${statusLabels[status]} (${list.length})`;
       const h2 = `<h2 class="booklet-h2">${this.escapeHtml(title)}</h2>`;
-      const firstBatch = items.slice(0, perPage);
-      contentPageInners.push(`<div class="booklet-chunk">${h2}${firstBatch.join('')}</div>`);
-      for (let i = perPage; i < items.length; i += perPage) {
-        const slice = items.slice(i, i + perPage);
-        contentPageInners.push(`<div class="booklet-chunk">${slice.join('')}</div>`);
+
+      const units: { html: string; weight: number }[] = [];
+      for (const prayer of list) {
+        const descParts = this.splitBookletMarkdownIntoPanelParts(
+          prayer.description,
+          PrintService.BOOKLET_MARKDOWN_CHARS_PER_PANEL
+        );
+        descParts.forEach((partMarkdown, pi) => {
+          const slice = {
+            descriptionMarkdown: partMarkdown,
+            partIndex: pi,
+            partCount: descParts.length,
+            includeUpdates: pi === descParts.length - 1
+          };
+          const hasUpdates =
+            Array.isArray(prayer.prayer_updates) && prayer.prayer_updates.length > 0;
+          units.push({
+            html: this.generatePrayerHTML(prayer, true, slice),
+            weight: this.estimateBookletUnitWeight(partMarkdown, slice.includeUpdates && hasUpdates)
+          });
+        });
       }
+
+      const packed = this.packBookletUnitsIntoPageChunks(
+        units,
+        h2,
+        PrintService.BOOKLET_PANEL_PACK_BUDGET,
+        PrintService.BOOKLET_SECTION_H2_RESERVE,
+        PrintService.BOOKLET_PANEL_BOTTOM_SLACK
+      );
+      contentPageInners.push(...packed);
     });
 
     const backLogoBlock =
@@ -996,21 +1048,44 @@ export class PrintService {
     .no-print { font-size: 13px; padding: 12px 16px; background: #eff6ff; border-bottom: 1px solid #93c5fd; }
     @media print { .no-print { display: none !important; } body { background: #fff; } }
     @page { size: letter landscape; margin: 0; }
-    .booklet-print-surface { display: flex; flex-direction: row; width: 11in; height: 8.5in; page-break-after: always; }
+    .booklet-print-surface {
+      display: flex;
+      flex-direction: row;
+      width: 11in;
+      height: 8.5in;
+      overflow: hidden;
+      page-break-after: always;
+    }
     .booklet-panel {
-      width: 5.5in; height: 8.5in; padding: 0.4in; overflow: hidden;
-      font-size: 12.5px; line-height: 1.4; border-left: 1px solid #d1d5db;
+      width: 5.5in;
+      height: 8.5in;
+      padding: 0.42in 0.45in 0.75in 0.45in;
+      overflow: hidden;
+      font-size: 13px;
+      line-height: 1.45;
+      border-left: 1px solid #d1d5db;
+      box-sizing: border-box;
     }
     .booklet-panel:first-child { border-left: none; }
-    .booklet-h2 { color: #1d4ed8; font-size: 16px; font-weight: 700; border-bottom: 1px solid #93c5fd; margin: 0 0 5px; padding: 0 0 3px; line-height: 1.2; }
-    .booklet-chunk { display: flex; flex-direction: column; gap: 4px; }
-    /* Prayer cards: match generatePrintableHTML() list cards (borders, status accent, type scale) */
+    .booklet-h2 {
+      color: #1d4ed8;
+      font-size: 16.5px;
+      font-weight: 700;
+      border-bottom: 1px solid #93c5fd;
+      margin: 0 0 10px;
+      padding: 0 0 5px;
+      line-height: 1.25;
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+    .booklet-chunk { display: flex; flex-direction: column; gap: 11px; }
+    /* Prayer cards: match generatePrintableHTML(); long prayers continue via extra reader slots, not CSS break */
     .prayer-item {
       background: transparent;
       border: 1px solid #e6e6e6;
-      padding: 4px 6px;
-      margin-bottom: 4px;
-      border-radius: 2px;
+      padding: 8px 10px;
+      margin-bottom: 0;
+      border-radius: 3px;
       page-break-inside: avoid;
       break-inside: avoid;
       width: 100%;
@@ -1025,17 +1100,24 @@ export class PrintService {
       border-left: 3px solid #6b7280;
     }
     .booklet-prayer-top {
-      font-size: 13px;
+      font-size: 13.5px;
       font-weight: 600;
       color: #4b5563;
-      margin-bottom: 3px;
-      line-height: 1.3;
+      margin-bottom: 5px;
+      line-height: 1.35;
     }
     .booklet-prayer-top-meta {
       font-size: 11px;
       font-weight: 500;
       color: #6b7280;
       font-style: italic;
+    }
+    .booklet-prayer-top-continued {
+      margin-left: 4px;
+      font-weight: 600;
+      font-style: normal;
+      color: #1d4ed8;
+      font-size: 12px;
     }
     .prayer-for {
       font-size: 13px;
@@ -1056,10 +1138,10 @@ export class PrintService {
       line-height: 1.35;
     }
     .prayer-description {
-      font-size: 12px;
+      font-size: 13px;
       color: #374151;
-      line-height: 1.4;
-      margin-bottom: 3px;
+      line-height: 1.5;
+      margin-bottom: 4px;
       word-wrap: break-word;
       overflow-wrap: break-word;
     }
@@ -1121,8 +1203,8 @@ export class PrintService {
       text-decoration: line-through;
     }
     .updates-section {
-      margin-top: 6px;
-      padding: 6px 8px;
+      margin-top: 8px;
+      padding: 8px 10px;
       background: #f0f9ff;
       border: 1px solid #bae6fd;
       border-radius: 4px;
@@ -1293,7 +1375,7 @@ export class PrintService {
 </head>
 <body>
   <div class="no-print">
-    <strong>Print tips:</strong> Use <strong>double-sided</strong> printing, <strong>flip on short edge</strong>, on US Letter. Then fold each sheet in half and staple at the fold.
+    <strong>Print tips:</strong> Use <strong>double-sided</strong> printing, <strong>flip on short edge</strong>, on US Letter. Then fold each sheet in half and staple at the fold. Short prayers pack together where they fit; long ones split with <strong>(continued)</strong>.
   </div>
   ${pageSurfaces}
   <script>window.onload=function(){window.print();};</script>
@@ -1302,10 +1384,160 @@ export class PrintService {
   }
 
   /**
+   * Heuristic “height” for packing — lists and explicit line breaks are far taller than the same raw char length.
+   */
+  private estimateBookletUnitWeight(descriptionMarkdown: string, includeCompactUpdateBlock: boolean): number {
+    const markdown = descriptionMarkdown ?? '';
+    const newlineCount = markdown.match(/\r?\n/g)?.length ?? 0;
+    const listLineHints =
+      markdown.match(/(?:^|\r?\n)[ \t]{0,3}(?:[-*+] |\d+[.)]\s)/g) ?? [];
+    const listHeadCount = listLineHints.length;
+
+    let w =
+      Math.ceil(markdown.length * PrintService.BOOKLET_MARKDOWN_TO_HTML_WEIGHT) +
+      PrintService.BOOKLET_CARD_FRAME_CHARS +
+      newlineCount * PrintService.BOOKLET_SOFT_NEWLINE_VERTICAL_PREMIUM +
+      listHeadCount * PrintService.BOOKLET_MARKDOWN_LIST_LINE_PREMIUM;
+    if (includeCompactUpdateBlock) {
+      w += PrintService.BOOKLET_COMPACT_UPDATE_RESERVE;
+    }
+    return w;
+  }
+
+  /**
+   * Greedy-pack prayer card HTML onto half-letter reader chunks so several short requests share one panel.
+   * A single oversized unit still occupies its own chunk (may match one long split segment).
+   */
+  private packBookletUnitsIntoPageChunks(
+    units: { html: string; weight: number }[],
+    sectionH2: string,
+    panelBudget: number,
+    sectionH2Reserve: number,
+    bottomMarginSlack: number
+  ): string[] {
+    const out: string[] = [];
+    let idx = 0;
+    /** First emitted chunk carries the colored section heading */
+    let pendingHeading = true;
+
+    while (idx < units.length) {
+      const cap =
+        (pendingHeading ? panelBudget - sectionH2Reserve : panelBudget) - bottomMarginSlack;
+      const chunk: { html: string; weight: number }[] = [];
+      let sum = 0;
+
+      while (idx < units.length) {
+        const u = units[idx]!;
+        if (chunk.length === 0) {
+          chunk.push(u);
+          sum += u.weight;
+          idx++;
+          continue;
+        }
+        if (
+          chunk.length >= PrintService.BOOKLET_MAX_UNITS_PER_PANEL_CHUNK ||
+          !(sum + u.weight <= cap)
+        ) {
+          break;
+        }
+        chunk.push(u);
+        sum += u.weight;
+        idx++;
+      }
+
+      const heading = pendingHeading ? sectionH2 : '';
+      pendingHeading = false;
+      out.push(`<div class="booklet-chunk">${heading}${chunk.map(c => c.html).join('')}</div>`);
+    }
+
+    return out;
+  }
+
+  /**
+   * Pack markdown into bounded segments for one half-letter panel (plain-text length heuristic).
+   * All returned segments use **trim-end** on the source so short single-segment bodies stay
+   * consistent with split chunks (trailing whitespace does not affect rendered booklet height).
+   * Overlong paragraphs are hard-split on spaces/newlines.
+   */
+  private splitBookletMarkdownIntoPanelParts(markdown: string, maxChars: number): string[] {
+    const t = markdown.trimEnd();
+    if (!t.length) {
+      return [''];
+    }
+    if (t.length <= maxChars) {
+      return [t];
+    }
+    const paragraphs = t.split(/\n\n+/).map(p => p.trim()).filter(p => p.length > 0);
+    const chunks: string[] = [];
+    let cur = '';
+
+    for (const para of paragraphs) {
+      if (para.length > maxChars) {
+        if (cur.trim()) {
+          chunks.push(cur.trim());
+          cur = '';
+        }
+        chunks.push(...this.hardSplitBookletMarkdown(para, maxChars));
+        continue;
+      }
+      const joiner = cur.trim() ? '\n\n' : '';
+      const next = `${cur}${joiner}${para}`;
+      if (next.length <= maxChars) {
+        cur = next;
+      } else {
+        if (cur.trim()) {
+          chunks.push(cur.trim());
+        }
+        cur = para;
+      }
+    }
+    if (cur.trim()) {
+      chunks.push(cur.trim());
+    }
+
+    const out = chunks.filter(c => c.length > 0);
+    return out.length ? out : [''];
+  }
+
+  private hardSplitBookletMarkdown(text: string, maxChars: number): string[] {
+    const pieces: string[] = [];
+    let rest = text.trim();
+    const minChunk = Math.max(200, Math.floor(maxChars * 0.35));
+    while (rest.length > maxChars) {
+      let cut = rest.lastIndexOf('\n', maxChars);
+      if (cut < minChunk) {
+        cut = rest.lastIndexOf(' ', maxChars);
+      }
+      if (cut < minChunk || cut <= 0) {
+        cut = Math.min(maxChars, rest.length);
+      }
+      const head = rest.slice(0, cut).trimEnd();
+      if (head.length) {
+        pieces.push(head);
+      }
+      rest = rest.slice(cut).trimStart();
+    }
+    if (rest.length) {
+      pieces.push(rest);
+    }
+    return pieces.length ? pieces : [text.slice(0, maxChars)];
+  }
+
+  /**
    * Generate HTML for a single prayer
    * @param compactBooklet - tighter copy and one update only (saddle-stitch booklet panels)
+   * @param bookletSlice - optional per-panel slice when a prayer spans multiple reader pages
    */
-  private generatePrayerHTML(prayer: Prayer, compactBooklet = false): string {
+  private generatePrayerHTML(
+    prayer: Prayer,
+    compactBooklet = false,
+    bookletSlice?: {
+      descriptionMarkdown: string;
+      partIndex: number;
+      partCount: number;
+      includeUpdates: boolean;
+    }
+  ): string {
     const shortDate = (iso: string) =>
       new Date(iso).toLocaleDateString('en-US', {
         month: 'short',
@@ -1348,16 +1580,21 @@ export class PrintService {
       updates = recentUpdates.length > 0 ? recentUpdates : sortedUpdates.slice(0, 1);
     }
 
-    const updatesHTML =
-      updates.length > 0
-        ? compactBooklet
-          ? (() => {
-              const u = updates[0]!;
-              const uDate = shortDate(u.created_at);
-              const authorName = (u as { is_anonymous?: boolean }).is_anonymous
-                ? 'Anonymous'
-                : u.author || 'Anonymous';
-              return `
+    const descMarkdown = bookletSlice?.descriptionMarkdown ?? prayer.description;
+
+    const shouldRenderUpdates =
+      updates.length > 0 &&
+      (!compactBooklet || !(bookletSlice && !bookletSlice.includeUpdates));
+
+    const updatesHTML = shouldRenderUpdates
+      ? compactBooklet
+        ? (() => {
+            const u = updates[0]!;
+            const uDate = shortDate(u.created_at);
+            const authorName = (u as { is_anonymous?: boolean }).is_anonymous
+              ? 'Anonymous'
+              : u.author || 'Anonymous';
+            return `
       <div class="updates-section">
         <div class="updates-header">Updates (${updates.length}):</div>
         <div class="update-item">
@@ -1365,8 +1602,8 @@ export class PrintService {
           ${this.renderMarkdown(u.content)}
         </div>
       </div>`;
-            })()
-          : `
+          })()
+        : `
       <div class="updates-section">
         <div class="updates-header">Updates (${updates.length}):</div>
         ${updates
@@ -1383,7 +1620,7 @@ export class PrintService {
           .join('')}
       </div>
     `
-        : '';
+      : '';
 
     const requesterDisplay = prayer.is_anonymous ? 'Anonymous' : prayer.requester || 'Anonymous';
     const requesterText = `Requested by ${this.escapeHtml(requesterDisplay)}`;
@@ -1406,21 +1643,18 @@ export class PrintService {
     }
 
     const topMeta = `${this.escapeHtml(requesterDisplay)} · ${createdDate}${rightMeta ? ` · ${rightMeta}` : ''}`;
+    const showContinued = !!(bookletSlice && bookletSlice.partCount > 1 && bookletSlice.partIndex > 0);
     return `
       <div class="prayer-item ${prayer.status}">
         <div class="booklet-prayer-top">
           <strong>For:</strong> ${this.escapeHtml(prayer.prayer_for)}
+          ${showContinued ? '<span class="booklet-prayer-top-continued">(continued)</span>' : ''}
           <span class="booklet-prayer-top-meta"> · ${topMeta}</span>
         </div>
-        <div class="prayer-description">${this.renderMarkdown(prayer.description)}</div>
+        <div class="prayer-description">${this.renderMarkdown(descMarkdown)}</div>
         ${updatesHTML}
       </div>
     `;
-  }
-
-  /** Booklet: compact card HTML (shorter labels, one update; styles match {@link generatePrintableHTML} prayer cards). */
-  private generateBookletPrayerHTML(prayer: Prayer): string {
-    return this.generatePrayerHTML(prayer, true);
   }
 
   /**

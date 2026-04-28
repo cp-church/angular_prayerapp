@@ -1,12 +1,11 @@
 import { ChangeDetectionStrategy, Component, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { PrintService, type BookletTimeRange } from '../../services/print.service';
 
 @Component({
   selector: 'app-prayer-list-booklet-print',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
 <div
@@ -70,21 +69,22 @@ import { PrintService, type BookletTimeRange } from '../../services/print.servic
 
     <div class="flex flex-col gap-2">
       <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Time range</span>
-      <div class="flex flex-wrap gap-2">
+      <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Booklet time range">
         @for (opt of rangeOptions; track opt.value) {
-        <label
-          class="inline-flex items-center gap-2 cursor-pointer rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-sm has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500 dark:has-[:checked]:bg-blue-900/20 dark:has-[:checked]:border-blue-400"
+        <button
+          type="button"
+          role="radio"
+          [attr.aria-checked]="bookletRange === opt.value"
+          (click)="setBookletRange(opt.value)"
+          class="inline-flex items-center gap-2 cursor-pointer rounded-lg border px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800"
+          [ngClass]="
+            bookletRange === opt.value
+              ? 'bg-blue-50 border-blue-500 dark:bg-blue-900/20 dark:border-blue-400'
+              : 'border-gray-200 dark:border-gray-600'
+          "
         >
-          <input
-            type="radio"
-            name="booklet-range"
-            [value]="opt.value"
-            [ngModel]="bookletRange"
-            (ngModelChange)="bookletRange = $event; cdr.markForCheck()"
-            class="h-4 w-4"
-          />
-          <span class="text-gray-800 dark:text-gray-200">{{ opt.label }}</span>
-        </label>
+          {{ opt.label }}
+        </button>
         }
       </div>
     </div>
@@ -134,6 +134,11 @@ export class PrayerListBookletPrintComponent {
 
   onSectionToggle(): void {
     this.sectionExpanded = !this.sectionExpanded;
+    this.cdr.markForCheck();
+  }
+
+  setBookletRange(value: BookletTimeRange): void {
+    this.bookletRange = value;
     this.cdr.markForCheck();
   }
 
