@@ -63,8 +63,11 @@ export class PrintService {
    * Markdown often expands in HTML (lists, line wraps). Weight ≈ ceil(len * factor) + frame + reserves.
    */
   private static readonly BOOKLET_MARKDOWN_TO_HTML_WEIGHT = 1.25;
-  /** Subtract from cap each chunk so totals stay below `.booklet-panel { overflow:hidden }` (roomier type + padding in print CSS) */
-  private static readonly BOOKLET_PANEL_BOTTOM_SLACK = 620;
+  /**
+   * Subtract from cap each chunk so totals stay below `.booklet-panel { overflow:hidden }`.
+   * Tuned with panel padding (see `generateSaddleStitchBookletHTML`); half the bottom inset → ~half this slack.
+   */
+  private static readonly BOOKLET_PANEL_BOTTOM_SLACK = 310;
   /**
    * Box chrome for compact booklet Updates (header “Updates (n):”, meta row, margins, bordered panel).
    * Does **not** include update body — that is weighed separately via {@link estimateBookletCompactUpdatesBlockWeight}.
@@ -1088,7 +1091,8 @@ export class PrintService {
     .booklet-panel {
       width: 5.5in;
       height: 8.5in;
-      padding: 0.42in 0.45in 0.75in 0.45in;
+      /* Half-letter content inset: outer edges + spine/gutter (halved for more text per page). */
+      padding: 0.21in 0.225in 0.375in 0.225in;
       overflow: hidden;
       font-size: 13px;
       line-height: 1.45;
@@ -1266,8 +1270,8 @@ export class PrintService {
       display: flex;
       flex-direction: column;
       box-sizing: border-box;
-      min-height: calc(8.5in - 0.8in);
-      padding: 0.2in;
+      min-height: calc(8.5in - 0.4in);
+      padding: 0.1in;
     }
     .booklet-cover-main {
       flex: 1 1 auto;
@@ -1382,7 +1386,7 @@ export class PrintService {
       flex-direction: column;
       justify-content: flex-end;
       align-items: center;
-      min-height: calc(8.5in - 0.8in);
+      min-height: calc(8.5in - 0.4in);
       box-sizing: border-box;
     }
     .booklet-back-cover-logo-bottom {
@@ -1474,7 +1478,8 @@ export class PrintService {
     const listLineHints =
       m.match(/(?:^|\r?\n)[ \t]{0,3}(?:[-*+] |\d+[.)]\s)/g) ?? [];
     const listHeadCount = listLineHints.length;
-    const narrowColumnWrapPremium = Math.ceil((m.length / 52) * 14);
+    /** ~chars per line scales with column width; narrower panel padding widens the text box vs older 52-char est. */
+    const narrowColumnWrapPremium = Math.ceil((m.length / 57) * 14);
 
     return (
       PrintService.BOOKLET_COMPACT_UPDATE_BOX_CHROME_CHARS +
