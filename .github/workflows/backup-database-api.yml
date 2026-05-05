@@ -12,14 +12,14 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
       
       - name: Create backup directory
         run: |
@@ -28,19 +28,29 @@ jobs:
       
       - name: Install dependencies
         run: |
-          npm install @supabase/supabase-js
+          npm install @supabase/supabase-js ws
       
       - name: Create backup script
         run: |
           cat > backup-script.mjs << 'EOF'
           import { createClient } from '@supabase/supabase-js';
           import fs from 'fs';
+          import ws from 'ws';
+
+          function createSupabaseServiceClient() {
+            return createClient(
+              process.env.SUPABASE_URL,
+              process.env.SUPABASE_SERVICE_KEY,
+              {
+                realtime: {
+                  transport: ws
+                }
+              }
+            );
+          }
 
           async function backupDatabase() {
-            const supabase = createClient(
-              process.env.SUPABASE_URL,
-              process.env.SUPABASE_SERVICE_KEY
-            );
+            const supabase = createSupabaseServiceClient();
 
             const startTime = Date.now();
             console.log('Discovering tables to backup...');
@@ -179,10 +189,7 @@ jobs:
             
             // Try to log the failure
             try {
-              const supabase = createClient(
-                process.env.SUPABASE_URL,
-                process.env.SUPABASE_SERVICE_KEY
-              );
+              const supabase = createSupabaseServiceClient();
               
               await supabase.from('backup_logs').insert({
                 backup_date: new Date().toISOString(),

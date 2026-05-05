@@ -4,6 +4,12 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Backup workflow CI fix (Node 20 + Supabase Realtime) ✅
+- **Behavior**: `.github/workflows/backup-database-api.yml` now installs `ws` and builds the service-role Supabase client with `realtime.transport = ws` in the generated `backup-script.mjs`, so the daily backup job no longer fails on GitHub Actions Node 20 with `Node.js 20 detected without native WebSocket support`.
+- **Implementation**: Added `createSupabaseServiceClient()` in the inline backup script and reused it for both normal backup work and failure logging inserts to `backup_logs`.
+- **Actions runtime update**: GitHub workflows now use `actions/checkout@v5` and `actions/setup-node@v5` (where used) so CI aligns with the Node 24 JavaScript action runtime migration and avoids Node 20 deprecation warnings.
+- **Workflow Node runtime update**: Workflows that explicitly pinned `node-version: '20'` now pin `node-version: '22'` (`backup-database-api`, `restore-database`, `process-email-queue`, and `test`) to align with current LTS and reduce CI risk ahead of Node 20 runner removal.
+
 ### Admin — saddle-stitch prayer booklet (Tools) ✅
 - **Behavior**: **Admin** → **Settings** → **Tools** includes a collapsible **Saddle-stitch prayer booklet** card. Admins pick **1 week**, **2 weeks**, **1 month**, or **2 months**, then **Open for printing** to get an HTML file with **saddle-stitch imposition** on **US Letter landscape** (two **5.5"×8.5"** panels per print side), plus on-screen print tips (duplex, flip on short edge, fold, staple). Uses the same public prayer time-range filter as the standard printable list. **`TimeRange`** in [`print.service.ts`](src/app/services/print.service.ts) and [`printablePrayerList.ts`](src/utils/printablePrayerList.ts) includes **`twomonths`** (two calendar months back) for parity.
 - **Fix (Tools UI)**: [`prayer-list-booklet-print`](src/app/components/prayer-list-booklet-print/prayer-list-booklet-print.component.ts) time range uses **`type="button"`** options (**`role="radio"`**, **`aria-checked`**) wired to **`setBookletRange`**, avoiding native **`<input type="radio">`** + **`[checked]`** quirks where only the default fit looked selectable in some browsers.
