@@ -85,6 +85,9 @@ export interface AdminNotificationPayload {
   requestId?: string;
 }
 
+/** Queued template for Admin → Settings → Email → manual broadcast to subscriber list. */
+export const ADMIN_SUBSCRIBER_MANUAL_BROADCAST_TEMPLATE_KEY = 'admin_subscriber_manual_broadcast';
+
 @Injectable({
   providedIn: 'root'
 })
@@ -264,6 +267,112 @@ export class EmailNotificationService {
     if (!data?.success) {
       throw new Error(data?.error || 'Failed to send bulk email');
     }
+  }
+
+  /**
+   * Tester email from Admin → Security → Test Account (excluded from manual subscriber broadcasts).
+   */
+  private async getConfiguredTestAccountEmailLower(): Promise<string | null> {
+    const { data, error } = await this.supabase.client
+      .from('admin_settings')
+      .select('test_account_email')
+      .eq('id', 1)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Failed to load test_account_email for broadcast exclusion:', error);
+      return null;
+    }
+    const raw = data?.test_account_email;
+    if (raw == null || typeof raw !== 'string') {
+      return null;
+    }
+    const t = raw.trim().toLowerCase();
+    return t.length > 0 ? t : null;
+  }
+
+  /**
+   * Non-blocked subscriber emails for the admin manual broadcast, excluding the configured app test account.
+   */
+  async getManualBroadcastRecipientEmails(): Promise<string[]> {
+    const excludeLower = await this.getConfiguredTestAccountEmailLower();
+    const { data: rows, error } = await this.supabase.client
+      .from('email_subscribers')
+      .select('email')
+      .eq('is_blocked', false);
+
+    if (error) {
+      throw error;
+    }
+    if (!rows?.length) {
+      return [];
+    }
+    return rows
+      .map((r: { email: string }) => String(r.email ?? '').trim())
+      .filter((email: string) => {
+        if (!email) {
+          return false;
+        }
+        if (!excludeLower) {
+          return true;
+        }
+        return email.toLowerCase() !== excludeLower;
+      });
+  }
+
+  /** Count of recipients that would receive `queueAdminManualBroadcastToSubscribers`. */
+  async getManualBroadcastRecipientCount(): Promise<number> {
+    const emails = await this.getManualBroadcastRecipientEmails();
+    return emails.length;
+  }
+
+  /**
+   * Queue one email per non-blocked subscriber (ignores mass-email opt-out / is_active).
+   * Uses the same email_queue + process-email-queue pipeline as prayer/update notifications.
+   * Excludes `admin_settings.test_account_email` when set (Admin → Security → Test Account).
+   */
+  async queueAdminManualBroadcastToSubscribers(options: {
+    subject: string;
+    bodyMarkdown: string;
+  }): Promise<{ queued: number }> {
+    const broadcastSubject = options.subject.trim();
+    const bodyMarkdown = options.bodyMarkdown.trim();
+    if (!broadcastSubject) {
+      throw new Error('Subject is required');
+    }
+    if (!bodyMarkdown) {
+      throw new Error('Message body is required');
+    }
+
+    const broadcastBodyHtml = markdownToSafeHtml(bodyMarkdown);
+    const broadcastBodyText = markdownToPlainText(bodyMarkdown);
+    const variables = {
+      broadcastSubject,
+      broadcastBodyHtml,
+      broadcastBodyText,
+    };
+
+    const recipientEmails = await this.getManualBroadcastRecipientEmails();
+
+    if (recipientEmails.length === 0) {
+      return { queued: 0 };
+    }
+
+    const queuePromises = recipientEmails.map(email =>
+      this.enqueueEmail(email, ADMIN_SUBSCRIBER_MANUAL_BROADCAST_TEMPLATE_KEY, variables).catch(err =>
+        console.error(`Failed to queue admin broadcast for ${email}:`, err)
+      )
+    );
+
+    await Promise.all(queuePromises);
+
+    console.log(`📧 Queued admin manual broadcast to ${recipientEmails.length} subscriber(s)`);
+
+    await this.triggerEmailProcessor().catch(err =>
+      console.error('Failed to trigger email processor:', err)
+    );
+
+    return { queued: recipientEmails.length };
   }
 
   /**

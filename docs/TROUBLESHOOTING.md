@@ -150,6 +150,38 @@ const { data } = await supabase
 
 ## Email Problems
 
+### Email queue processor — missing template
+
+**Symptoms**: GitHub Action `process-email-queue` (or `npx tsx scripts/process-email-queue.ts` locally) logs a **fatal** error such as:
+
+`Database query returned no templates for keys: …` or `Missing email templates in database. Not found: …`
+
+**Cause**: Rows were inserted into `email_queue` with a `template_key` that does not exist in `email_templates` for the **same** Supabase project the workflow uses (`SUPABASE_URL` / `SUPABASE_SERVICE_KEY` secrets).
+
+**Common case**: After shipping **Send email to all subscribers**, the app queues `admin_subscriber_manual_broadcast` but the database was never migrated.
+
+**Fix**:
+
+1. Apply pending migrations to that project, for example:
+
+```bash
+supabase link   # if not already linked
+supabase db push
+```
+
+2. Or run the SQL from the repo migration in the **Supabase Dashboard → SQL Editor** (idempotent `INSERT … ON CONFLICT`):
+
+[`supabase/migrations/20260509120000_admin_subscriber_manual_broadcast_template.sql`](supabase/migrations/20260509120000_admin_subscriber_manual_broadcast_template.sql)
+
+3. Confirm:
+
+```sql
+SELECT template_key, name FROM public.email_templates
+WHERE template_key = 'admin_subscriber_manual_broadcast';
+```
+
+4. Re-run the workflow or wait for the next scheduled run; pending queue rows should process once the template exists.
+
 ### Emails Not Sending
 
 **Error**: `403 Forbidden` from Resend

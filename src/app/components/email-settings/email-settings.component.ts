@@ -12,11 +12,17 @@ import { SupabaseService } from '../../services/supabase.service';
 import { ToastService } from '../../services/toast.service';
 import { EmailTemplatesManagerComponent } from '../email-templates-manager/email-templates-manager.component';
 import { EmailSubscribersComponent } from '../email-subscribers/email-subscribers.component';
+import { AdminSubscriberEmailBroadcastComponent } from '../admin-subscriber-email-broadcast/admin-subscriber-email-broadcast.component';
 
 @Component({
   selector: 'app-email-settings',
   standalone: true,
-  imports: [FormsModule, EmailTemplatesManagerComponent, EmailSubscribersComponent],
+  imports: [
+    FormsModule,
+    EmailTemplatesManagerComponent,
+    EmailSubscribersComponent,
+    AdminSubscriberEmailBroadcastComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="space-y-6">
@@ -31,6 +37,10 @@ import { EmailSubscribersComponent } from '../email-subscribers/email-subscriber
       <!-- Email Subscribers Component -->
       <div class="mb-4">
         <app-email-subscribers></app-email-subscribers>
+      </div>
+
+      <div class="mb-4">
+        <app-admin-subscriber-email-broadcast></app-admin-subscriber-email-broadcast>
       </div>
 
       <!-- Prayer Update Reminders Section -->

@@ -291,7 +291,11 @@ async function prefetchTemplates(templateKeys: string[]): Promise<void> {
   }
 
   if (!data || data.length === 0) {
-    throw new Error(`Database query returned no templates for keys: ${keysToFetch.join(', ')}. Check that email_templates table exists and contains these template keys.`);
+    throw new Error(
+      `Database query returned no templates for keys: ${keysToFetch.join(', ')}. ` +
+        `Ensure email_templates contains these template_key values (apply pending Supabase migrations to the database this job uses, e.g. supabase db push, or run the migration SQL in the Supabase Dashboard). ` +
+        `See docs/TROUBLESHOOTING.md → Email queue processor — missing template.`
+    );
   }
 
   // Validate all requested templates were found
@@ -301,7 +305,8 @@ async function prefetchTemplates(templateKeys: string[]): Promise<void> {
   if (missingKeys.length > 0) {
     throw new Error(
       `Missing email templates in database. Not found: ${missingKeys.join(', ')}. ` +
-      `This will cause emails to fail. Verify these template_key values exist in email_templates table.`
+        `This will cause emails to fail. Verify these template_key values exist in email_templates (apply repo migrations to this Supabase project). ` +
+        `See docs/TROUBLESHOOTING.md → Email queue processor — missing template.`
     );
   }
 

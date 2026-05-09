@@ -1,0 +1,242 @@
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  OnInit,
+} from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { EmailNotificationService } from '../../services/email-notification.service';
+import { ToastService } from '../../services/toast.service';
+import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
+import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog.component';
+
+@Component({
+  selector: 'app-admin-subscriber-email-broadcast',
+  standalone: true,
+  imports: [FormsModule, RichTextEditorComponent, ConfirmationDialogComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <div
+      class="mb-4 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/40"
+      [class.cursor-pointer]="!sectionExpanded"
+      (click)="!sectionExpanded && toggleSection()"
+    >
+      <button
+        type="button"
+        id="admin-subscriber-email-broadcast-trigger"
+        class="admin-settings-collapsible-trigger cursor-pointer w-full flex min-h-12 items-center justify-between gap-2 text-left rounded-lg -mx-1 px-1 py-0.5 -my-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-800"
+        (click)="toggleSection(); $event.stopPropagation()"
+        [attr.aria-expanded]="sectionExpanded"
+        aria-controls="admin-subscriber-email-broadcast-panel"
+      >
+        <span class="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 min-w-0">
+          <svg
+            class="text-blue-600 dark:text-blue-400 shrink-0"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M22 2 11 13"></path>
+            <path d="M22 2 15 22 11 13 2 9 22 2"></path>
+          </svg>
+          Send email to all subscribers
+        </span>
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="shrink-0 text-gray-500 dark:text-gray-400 transition-transform duration-200"
+          [class.rotate-180]="sectionExpanded"
+          aria-hidden="true"
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+
+      @if (sectionExpanded) {
+        <div
+          id="admin-subscriber-email-broadcast-panel"
+          role="region"
+          aria-labelledby="admin-subscriber-email-broadcast-trigger"
+          class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-4"
+        >
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            Sends one queued email per address (same pipeline as prayer/update notifications). Recipients are all
+            <strong class="font-medium text-gray-800 dark:text-gray-200">non-blocked</strong> rows in Email Subscribers,
+            including people who turned off mass-email. The address configured under
+            <strong class="font-medium text-gray-800 dark:text-gray-200">Security → Test Account</strong> is excluded
+            when set.
+          </p>
+
+          @if (recipientCountLoading) {
+            <p class="text-sm text-gray-500 dark:text-gray-400">Loading recipient count…</p>
+          } @else if (recipientCount !== null) {
+            <p class="text-sm text-gray-700 dark:text-gray-300">
+              <span class="font-medium">{{ recipientCount }}</span>
+              recipient{{ recipientCount === 1 ? '' : 's' }} will be queued.
+            </p>
+          }
+
+          <div>
+            <label for="admin-broadcast-subject" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >Subject</label
+            >
+            <input
+              id="admin-broadcast-subject"
+              type="text"
+              name="adminBroadcastSubject"
+              [(ngModel)]="subject"
+              [disabled]="sending"
+              maxlength="998"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              autocomplete="off"
+            />
+          </div>
+
+          <div>
+            <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Message</span>
+            <app-rich-text-editor
+              [(ngModel)]="bodyMarkdown"
+              name="adminBroadcastBody"
+              [disabled]="sending"
+              placeholder="Write your message…"
+              minHeight="12rem"
+              ariaLabel="Broadcast message body"
+            ></app-rich-text-editor>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3 justify-end pt-2">
+            <button
+              type="button"
+              (click)="onSendClick()"
+              [disabled]="!canSend || sending || recipientCount === 0"
+              class="inline-flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            >
+              @if (sending) {
+                <span class="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" aria-hidden="true"></span>
+              }
+              {{ sending ? 'Sending…' : 'Send' }}
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+
+    @if (showConfirmDialog) {
+      <app-confirmation-dialog
+        title="Send to all non-blocked subscribers?"
+        [message]="confirmMessage"
+        [details]="confirmDetails"
+        [isDangerous]="true"
+        confirmText="Queue emails"
+        (confirm)="onConfirmSend()"
+        (cancel)="onCancelSend()"
+      ></app-confirmation-dialog>
+    }
+  `,
+})
+export class AdminSubscriberEmailBroadcastComponent implements OnInit {
+  sectionExpanded = false;
+  subject = '';
+  bodyMarkdown = '';
+  recipientCount: number | null = null;
+  recipientCountLoading = true;
+  sending = false;
+  showConfirmDialog = false;
+
+  confirmMessage =
+    'This will queue one email per subscriber address using the normal email queue (processed one at a time).';
+  confirmDetails =
+    'Includes subscribers who unsubscribed from mass email. Blocked accounts are excluded. The Security → Test Account email is never queued.';
+
+  constructor(
+    private emailNotification: EmailNotificationService,
+    private toast: ToastService,
+    private cdr: ChangeDetectorRef
+  ) {}
+
+  ngOnInit(): void {
+    void this.loadRecipientCount();
+  }
+
+  get canSend(): boolean {
+    return this.subject.trim().length > 0 && this.bodyMarkdown.trim().length > 0;
+  }
+
+  toggleSection(): void {
+    this.sectionExpanded = !this.sectionExpanded;
+    if (this.sectionExpanded && this.recipientCount === null && !this.recipientCountLoading) {
+      void this.loadRecipientCount();
+    }
+    this.cdr.markForCheck();
+  }
+
+  private async loadRecipientCount(): Promise<void> {
+    this.recipientCountLoading = true;
+    this.cdr.markForCheck();
+    try {
+      this.recipientCount = await this.emailNotification.getManualBroadcastRecipientCount();
+    } catch (e) {
+      console.error('Failed to load subscriber count', e);
+      this.recipientCount = null;
+      this.toast.error('Could not load subscriber count');
+    } finally {
+      this.recipientCountLoading = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  onSendClick(): void {
+    if (!this.canSend || this.sending || this.recipientCount === 0) {
+      return;
+    }
+    this.showConfirmDialog = true;
+    this.cdr.markForCheck();
+  }
+
+  onCancelSend(): void {
+    this.showConfirmDialog = false;
+    this.cdr.markForCheck();
+  }
+
+  async onConfirmSend(): Promise<void> {
+    this.showConfirmDialog = false;
+    if (!this.canSend) {
+      this.cdr.markForCheck();
+      return;
+    }
+    this.sending = true;
+    this.cdr.markForCheck();
+    try {
+      const { queued } = await this.emailNotification.queueAdminManualBroadcastToSubscribers({
+        subject: this.subject,
+        bodyMarkdown: this.bodyMarkdown,
+      });
+      if (queued === 0) {
+        this.toast.info('No subscribers to email (non-blocked list is empty).');
+      } else {
+        this.toast.success(`Queued ${queued} email(s). The processor will send them one at a time.`);
+        this.subject = '';
+        this.bodyMarkdown = '';
+      }
+      await this.loadRecipientCount();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to queue emails';
+      this.toast.error(msg);
+    } finally {
+      this.sending = false;
+      this.cdr.markForCheck();
+    }
+  }
+}

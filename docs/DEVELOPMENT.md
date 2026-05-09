@@ -187,6 +187,8 @@ interface BrandingData {
 // Email queue management
 - sendApprovedPrayerNotification()   // Queue email
 - sendDeniedPrayerNotification()     // Queue email
+- queueAdminManualBroadcastToSubscribers() // Admin Email: manual broadcast to non-blocked subscribers (ignores is_active); excludes Security → Test Account email; template admin_subscriber_manual_broadcast
+- getManualBroadcastRecipientEmails() / getManualBroadcastRecipientCount() // Same recipient rules as the manual broadcast (for UI count)
 - triggerEmailProcessor()            // Invoke GitHub Action
 ```
 
@@ -646,7 +648,7 @@ prayers$ = this.prayersSubject.asObservable();
 
 ### Admin portal (Settings collapsibles)
 
-- **`src/app/pages/admin/admin.component.ts`** embeds settings subtabs (Analytics, Email, Content, Tools, Security). Each block is typically a standalone component (`prayer-encouragement-settings`, `github-settings`, `app-branding`, `prompt-manager`, `prayer-types-manager`, `planning-center-list-mapper`, `email-settings` / subscribers / templates / verification, `prayer-search`, `prayer-archive-timeline`, `backup-status`, `security-policy-settings`, `test-account-settings`, `admin-user-management`, etc.) with the same **card + collapsible header** pattern.
+- **`src/app/pages/admin/admin.component.ts`** embeds settings subtabs (Analytics, Email, Content, Tools, Security). Each block is typically a standalone component (`prayer-encouragement-settings`, `github-settings`, `app-branding`, `prompt-manager`, `prayer-types-manager`, `planning-center-list-mapper`, `email-settings` / subscribers / **admin-subscriber-email-broadcast** (queued broadcast to all subscribers) / templates / verification, `prayer-search`, `prayer-archive-timeline`, `backup-status`, `security-policy-settings`, `test-account-settings`, `admin-user-management`, etc.) with the same **card + collapsible header** pattern.
 - **Interaction**: When a section is **collapsed**, the outer card adds **`cursor-pointer`** and a shell **`(click)`** that runs the toggle only while collapsed, so the whole surface opens the panel; the visible header remains a **`<button type="button">`** (focusable, **`cursor-pointer`**) whose handler calls **`$event.stopPropagation()`** after toggling so the shell does not receive a second click. When **expanded**, only the header button collapses; clicks on forms and controls do not use the shell toggle.
 - **Prayer Editor** (`app-prayer-search`): Search hints for admins live in the main search **placeholder** (minimum length and fields); body copy above the toolbar was removed as duplicate.
 

@@ -4,6 +4,12 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Admin — send email to all subscribers (Email tab) ✅
+- **Behavior**: **Admin** → **Settings** → **Email**, under **Email Subscribers**, includes a collapsible **Send email to all subscribers** card: **Subject**, rich **Message** ([`RichTextEditorComponent`](src/app/components/rich-text-editor/rich-text-editor.component.ts)), and **Send**. Sends queue **one `email_queue` row per recipient** and invokes **`trigger-email-processor`** (same path as prayer/update subscriber blasts). Recipients are all **`email_subscribers`** rows with **`is_blocked = false`**, **ignoring `is_active`** (includes people who turned off mass email). The email configured under **Admin → Security → Test Account** (`admin_settings.test_account_email`) is **excluded** when set (case-insensitive match). Template key **`admin_subscriber_manual_broadcast`**; migration [`20260509120000_admin_subscriber_manual_broadcast_template.sql`](supabase/migrations/20260509120000_admin_subscriber_manual_broadcast_template.sql).
+- **Deploy**: Apply that migration to the **same** Supabase database your GitHub **`process-email-queue`** workflow uses; otherwise the processor fails with a missing `template_key` error. See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) (*Email queue processor — missing template*).
+- **Implementation**: [`queueAdminManualBroadcastToSubscribers`](src/app/services/email-notification.service.ts); UI [`admin-subscriber-email-broadcast.component.ts`](src/app/components/admin-subscriber-email-broadcast/admin-subscriber-email-broadcast.component.ts); wired from [`email-settings.component.ts`](src/app/components/email-settings/email-settings.component.ts).
+- **Tests**: [`email-notification.service.spec.ts`](src/app/services/email-notification.service.spec.ts) covers validation, fetch filter, enqueue, and processor trigger.
+
 ### Backup workflow CI fix (Node 20 + Supabase Realtime) ✅
 - **Behavior**: `.github/workflows/backup-database-api.yml` now installs `ws` and builds the service-role Supabase client with `realtime.transport = ws` in the generated `backup-script.mjs`, so the daily backup job no longer fails on GitHub Actions Node 20 with `Node.js 20 detected without native WebSocket support`.
 - **Implementation**: Added `createSupabaseServiceClient()` in the inline backup script and reused it for both normal backup work and failure logging inserts to `backup_logs`.

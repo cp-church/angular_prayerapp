@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { EmailNotificationService } from './email-notification.service';
+import {
+  ADMIN_SUBSCRIBER_MANUAL_BROADCAST_TEMPLATE_KEY,
+  EmailNotificationService,
+} from './email-notification.service';
 import { environment } from '../../environments/environment';
 
 function makeFromQuery(result: any) {
@@ -9,6 +12,19 @@ function makeFromQuery(result: any) {
         single: async () => result
       })
     })
+  };
+}
+
+function mockAdminSettingsForBroadcast(testAccountEmail: string | null, error: unknown = null) {
+  return {
+    select: vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        maybeSingle: vi.fn().mockResolvedValue({
+          data: { test_account_email: testAccountEmail },
+          error,
+        }),
+      }),
+    }),
   };
 }
 
@@ -82,6 +98,166 @@ describe('EmailNotificationService', () => {
     mockSupabase.client.functions.invoke.mockResolvedValue({ data: { success: false, error: 'Queue failed' }, error: null });
 
     await expect(service.sendEmailToAllSubscribers({ subject: 's' })).rejects.toThrow('Queue failed');
+  });
+
+  it('queueAdminManualBroadcastToSubscribers throws when subject or body is empty', async () => {
+    await expect(
+      service.queueAdminManualBroadcastToSubscribers({ subject: '', bodyMarkdown: 'x' })
+    ).rejects.toThrow('Subject is required');
+    await expect(
+      service.queueAdminManualBroadcastToSubscribers({ subject: '  ', bodyMarkdown: 'x' })
+    ).rejects.toThrow('Subject is required');
+    await expect(
+      service.queueAdminManualBroadcastToSubscribers({ subject: 's', bodyMarkdown: '' })
+    ).rejects.toThrow('Message body is required');
+  });
+
+  it('queueAdminManualBroadcastToSubscribers returns queued 0 and does not trigger processor when no subscribers', async () => {
+    mockSupabase.client.from = vi.fn((table: string) => {
+      if (table === 'admin_settings') {
+        return mockAdminSettingsForBroadcast(null);
+      }
+      if (table === 'email_subscribers') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        };
+      }
+      return { insert: vi.fn().mockResolvedValue({ error: null }) };
+    });
+    const res = await service.queueAdminManualBroadcastToSubscribers({
+      subject: 'Hello',
+      bodyMarkdown: 'Body **here**',
+    });
+    expect(res).toEqual({ queued: 0 });
+    expect(mockSupabase.client.functions.invoke).not.toHaveBeenCalled();
+  });
+
+  it('queueAdminManualBroadcastToSubscribers propagates subscriber fetch errors', async () => {
+    const dbErr = { message: 'db fail' };
+    mockSupabase.client.from = vi.fn((table: string) => {
+      if (table === 'admin_settings') {
+        return mockAdminSettingsForBroadcast(null);
+      }
+      if (table === 'email_subscribers') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: null, error: dbErr }),
+          }),
+        };
+      }
+      return {};
+    });
+    await expect(
+      service.queueAdminManualBroadcastToSubscribers({ subject: 'S', bodyMarkdown: 'B' })
+    ).rejects.toEqual(dbErr);
+  });
+
+  it('queueAdminManualBroadcastToSubscribers uses is_blocked false only and queues template rows', async () => {
+    const eqSpy = vi.fn().mockResolvedValue({
+      data: [{ email: 'a@x.com' }, { email: 'b@x.com' }],
+      error: null,
+    });
+    mockSupabase.client.from = vi.fn((table: string) => {
+      if (table === 'admin_settings') {
+        return mockAdminSettingsForBroadcast(null);
+      }
+      if (table === 'email_subscribers') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: eqSpy,
+          }),
+        };
+      }
+      if (table === 'email_queue') {
+        return { insert: vi.fn().mockResolvedValue({ data: null, error: null }) };
+      }
+      return {};
+    });
+    mockSupabase.client.functions.invoke.mockResolvedValue({ data: { success: true }, error: null });
+
+    const enqueueSpy = vi.spyOn(service, 'enqueueEmail').mockResolvedValue(undefined);
+
+    const res = await service.queueAdminManualBroadcastToSubscribers({
+      subject: 'Subj',
+      bodyMarkdown: '**Bold**',
+    });
+
+    expect(res).toEqual({ queued: 2 });
+    expect(eqSpy).toHaveBeenCalledWith('is_blocked', false);
+    expect(eqSpy).toHaveBeenCalledTimes(1);
+    expect(enqueueSpy).toHaveBeenCalledTimes(2);
+    expect(enqueueSpy).toHaveBeenCalledWith(
+      'a@x.com',
+      ADMIN_SUBSCRIBER_MANUAL_BROADCAST_TEMPLATE_KEY,
+      expect.objectContaining({
+        broadcastSubject: 'Subj',
+        broadcastBodyHtml: expect.any(String),
+        broadcastBodyText: expect.any(String),
+      })
+    );
+    expect(mockSupabase.client.functions.invoke).toHaveBeenCalledWith('trigger-email-processor', {
+      method: 'POST',
+    });
+  });
+
+  it('queueAdminManualBroadcastToSubscribers excludes configured test account email (case-insensitive)', async () => {
+    const eqSpy = vi.fn().mockResolvedValue({
+      data: [{ email: 'App-Test@Example.COM' }, { email: 'real@church.org' }],
+      error: null,
+    });
+    mockSupabase.client.from = vi.fn((table: string) => {
+      if (table === 'admin_settings') {
+        return mockAdminSettingsForBroadcast('app-test@example.com');
+      }
+      if (table === 'email_subscribers') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: eqSpy,
+          }),
+        };
+      }
+      if (table === 'email_queue') {
+        return { insert: vi.fn().mockResolvedValue({ data: null, error: null }) };
+      }
+      return {};
+    });
+    mockSupabase.client.functions.invoke.mockResolvedValue({ data: { success: true }, error: null });
+    const enqueueSpy = vi.spyOn(service, 'enqueueEmail').mockResolvedValue(undefined);
+
+    const res = await service.queueAdminManualBroadcastToSubscribers({
+      subject: 'Hi',
+      bodyMarkdown: 'Body',
+    });
+
+    expect(res).toEqual({ queued: 1 });
+    expect(enqueueSpy).toHaveBeenCalledTimes(1);
+    expect(enqueueSpy).toHaveBeenCalledWith(
+      'real@church.org',
+      ADMIN_SUBSCRIBER_MANUAL_BROADCAST_TEMPLATE_KEY,
+      expect.any(Object)
+    );
+  });
+
+  it('getManualBroadcastRecipientCount matches post-exclusion list length', async () => {
+    mockSupabase.client.from = vi.fn((table: string) => {
+      if (table === 'admin_settings') {
+        return mockAdminSettingsForBroadcast('only@exclude.me');
+      }
+      if (table === 'email_subscribers') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({
+              data: [{ email: 'only@exclude.me' }, { email: 'keep@here.org' }],
+              error: null,
+            }),
+          }),
+        };
+      }
+      return {};
+    });
+    await expect(service.getManualBroadcastRecipientCount()).resolves.toBe(1);
   });
 
   it('sendApprovedPrayerNotification uses fallback when template missing', async () => {
