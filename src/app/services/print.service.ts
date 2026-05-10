@@ -635,15 +635,12 @@ export class PrintService {
     batchPrompts: any[],
     opts: { continued: boolean; totalCountInType: number }
   ): string {
-    const color = this.getPromptTypeColor(typeName);
     const { col1, col2 } = this.splitPromptsIntoTwoColumnsRowMajor(batchPrompts);
     const col1HTML = col1.map((prompt: any) => this.generatePromptHTML(prompt)).join('');
     const col2HTML = col2.map((prompt: any) => this.generatePromptHTML(prompt)).join('');
     const heading = opts.continued
       ? `<p class="booklet-prompt-continued-note">(continued)</p>`
-      : `<h2 style="color: ${color}; border-bottom: 2px solid ${color}; padding-bottom: 2px; margin-bottom: 2px; margin-top: 4px; font-size: 14px;">
-            ${this.escapeHtml(typeName)} Prompts (${opts.totalCountInType})
-          </h2>`;
+      : `<h2 class="booklet-h2">${this.escapeHtml(typeName)} Prompts (${opts.totalCountInType})</h2>`;
     return `<div class="booklet-prompt-print-root"><div class="type-section">${heading}<div class="columns"><div class="col">${col1HTML}</div><div class="col">${col2HTML}</div></div></div></div>`;
   }
 

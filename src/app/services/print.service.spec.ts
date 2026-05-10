@@ -471,6 +471,7 @@ describe('PrintService', () => {
         expect(idxPrompt).toBeGreaterThan(idxAnswered);
         expect(body).toContain('booklet-prompt-print-root');
         expect(body).toContain('class="type-section"');
+        expect(body).toContain('class="booklet-h2"');
         expect(body).toContain('class="columns"');
       } finally {
         mockSupabaseClient.from = origFrom;
