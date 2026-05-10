@@ -166,7 +166,7 @@ function generatePrintableHTML(prompts: PrayerPrompt[]): string {
     promptSectionsHTML += `
       <div class="type-section">
         <h2 style="color: ${color}; border-bottom: 2px solid ${color}; padding-bottom: 2px; margin-bottom: 2px; margin-top: 4px; font-size: 14px;">
-          ${escapeHtml(type)} (${typePrompts.length})
+          ${escapeHtml(type)} Prompts (${typePrompts.length})
         </h2>
         <div class="columns">
           <div class="col">${col1HTML}</div>

@@ -125,6 +125,8 @@ export interface PrayerTypeRecord {
   name: string;
   display_order: number;
   is_active: boolean;
+  /** When true and the type is active, prompts may appear in the admin saddle-stitch booklet. */
+  include_in_booklet: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -34,6 +34,21 @@ export type TimeRange = 'week' | 'twoweeks' | 'month' | 'twomonths' | 'year' | '
 /** Time ranges for the admin saddle-stitch booklet print only. */
 export type BookletTimeRange = 'week' | 'twoweeks' | 'month' | 'twomonths';
 
+/** Metadata for booklet prompt fragments: inlined into JSON so the measure script can drop misleading "(continued)" lines when scroll-height packing differs from server weights. */
+interface BookletPromptPackMeta {
+  typeName: string;
+  batchIndex: number;
+  batchPrompts: any[];
+  totalCountInType: number;
+}
+
+/** Booklet pack unit (prayer cards or prompt batches). Prompt batches may carry {@link BookletPromptPackMeta} for inline measurement. */
+type BookletPackUnit = {
+  html: string;
+  weight: number;
+  bookletPromptMeta?: BookletPromptPackMeta;
+};
+
 @Injectable({
   providedIn: 'root'
 })
@@ -87,6 +102,9 @@ export class PrintService {
    * Upper bound stacked cards per half-letter chunk — conservative to avoid underestimated combined height.
    */
   private static readonly BOOKLET_MAX_UNITS_PER_PANEL_CHUNK = 5;
+
+  /** Virtual weight for one booklet prompt type block: section `h2` + title cards (one fragment per type). */
+  private static readonly BOOKLET_PROMPT_SECTION_HEADING_WEIGHT = 220;
 
   private setStartDateForTimeRange(startDate: Date, endDate: Date, timeRange: TimeRange): void {
     switch (timeRange) {
@@ -364,7 +382,10 @@ export class PrintService {
       if (prayers === null) {
         return;
       }
-      if (prayers.length === 0) {
+
+      const bookletPromptSections = await this.loadBookletPromptSectionsOrdered();
+
+      if (prayers.length === 0 && bookletPromptSections.length === 0) {
         /* Booklet Tools flow only: avoid blocking browser dialogs for empty range / download / errors. */
         this.toast.warning(this.getEmptyRangeUserMessage(timeRange));
         if (newWindow) {
@@ -388,7 +409,8 @@ export class PrintService {
         coverLogoUrl,
         embeddedQr,
         embeddedAppIcon,
-        embeddedBackLogo
+        embeddedBackLogo,
+        bookletPromptSections
       );
 
       if (this.isNativeApp()) {
@@ -472,6 +494,256 @@ export class PrintService {
       color: #4b5563;
       margin: 0;
     }`;
+  }
+
+  /** Default accent colors for prayer prompt categories (matches {@link generatePromptsPrintableHTML}). */
+  private getPromptTypeColors(): Record<string, string> {
+    return {
+      Praise: '#39704D',
+      Confession: '#C9A961',
+      Thanksgiving: '#0047AB',
+      Supplication: '#8b5cf6'
+    };
+  }
+
+  private getPromptTypeColor(typeName: string): string {
+    return this.getPromptTypeColors()[typeName] ?? '#6b7280';
+  }
+
+  /**
+   * Shared CSS for prayer prompt blocks (standalone Prayer Prompts print + saddle-stitch booklet).
+   * Optional `scopedRoot` prefixes selectors for booklet (e.g. `.booklet-prompt-print-root`).
+   */
+  private getPrintablePromptBlockStyles(options?: {
+    scopedRoot?: string;
+    includeStandaloneResponsive?: boolean;
+  }): string {
+    const root = options?.scopedRoot?.trim();
+    const p = root ? `${root} ` : '';
+    let css = `
+    ${p}.type-section {
+      margin-bottom: 3px;
+    }
+
+    ${p}.prompt-item {
+      background: transparent;
+      border: 1px solid #e6e6e6;
+      padding: 3px 6px;
+      margin-bottom: 3px;
+      border-radius: 2px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    ${p}.prompt-text {
+      font-size: 13px;
+      color: #374151;
+      line-height: 1.3;
+      display: inline;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    ${p}.columns {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    ${p}.col {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+
+    ${p}.booklet-prompt-continued-note {
+      font-size: 12px;
+      font-weight: 600;
+      color: #1d4ed8;
+      margin: 0 0 4px 0;
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+
+    @media print {
+      ${p}.prompt-item {
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
+      ${p}.type-section > h2 {
+        page-break-after: avoid;
+        break-after: avoid;
+      }
+    }`;
+
+    if (options?.includeStandaloneResponsive) {
+      css += `
+    @media screen and (max-width: 768px) {
+      ${p}.prompt-text {
+        font-size: 16px;
+      }
+    }`;
+    }
+
+    return css;
+  }
+
+  /** Heuristic height budget for one prompt title card in the booklet (matches packing splits). */
+  private estimateBookletPromptTitleWeight(title: string): number {
+    const t = typeof title === 'string' ? title : '';
+    return Math.ceil(t.length * 1.15) + 130;
+  }
+
+  private estimateBookletPromptBatchWeight(batch: any[]): number {
+    const w = batch.reduce((sum, p) => sum + this.estimateBookletPromptTitleWeight(p?.title), 0);
+    return w + PrintService.BOOKLET_PROMPT_SECTION_HEADING_WEIGHT;
+  }
+
+  /**
+   * Within a category, A→Z by title (case-insensitive) for printable prompts and booklet.
+   */
+  private sortPromptsAlphabeticalByTitle(prompts: any[]): any[] {
+    return [...prompts].sort((a, b) =>
+      String(a?.title ?? '')
+        .trim()
+        .localeCompare(String(b?.title ?? '').trim(), undefined, { sensitivity: 'base' })
+    );
+  }
+
+  /**
+   * Split prompts into two `.col` stacks in **reading order**: row 1 (left, right), row 2 (left, right), …
+   * (not “first half of the list in column 1, second half in column 2”).
+   */
+  private splitPromptsIntoTwoColumnsRowMajor(prompts: any[]): { col1: any[]; col2: any[] } {
+    const col1: any[] = [];
+    const col2: any[] = [];
+    for (let i = 0; i < prompts.length; i++) {
+      if (i % 2 === 0) {
+        col1.push(prompts[i]!);
+      } else {
+        col2.push(prompts[i]!);
+      }
+    }
+    return { col1, col2 };
+  }
+
+  /**
+   * Same row-major two-column layout as {@link generatePromptsPrintableHTML}, wrapped for booklet CSS scope.
+   */
+  private buildBookletPromptBatchHtml(
+    typeName: string,
+    batchPrompts: any[],
+    opts: { continued: boolean; totalCountInType: number }
+  ): string {
+    const color = this.getPromptTypeColor(typeName);
+    const { col1, col2 } = this.splitPromptsIntoTwoColumnsRowMajor(batchPrompts);
+    const col1HTML = col1.map((prompt: any) => this.generatePromptHTML(prompt)).join('');
+    const col2HTML = col2.map((prompt: any) => this.generatePromptHTML(prompt)).join('');
+    const heading = opts.continued
+      ? `<p class="booklet-prompt-continued-note">(continued)</p>`
+      : `<h2 style="color: ${color}; border-bottom: 2px solid ${color}; padding-bottom: 2px; margin-bottom: 2px; margin-top: 4px; font-size: 14px;">
+            ${this.escapeHtml(typeName)} Prompts (${opts.totalCountInType})
+          </h2>`;
+    return `<div class="booklet-prompt-print-root"><div class="type-section">${heading}<div class="columns"><div class="col">${col1HTML}</div><div class="col">${col2HTML}</div></div></div></div>`;
+  }
+
+  /**
+   * Partition greedy-packed units into chunk arrays (same rules as HTML emission).
+   */
+  private partitionBookletUnitsIntoChunks(
+    units: { html: string; weight: number }[],
+    panelBudget: number,
+    sectionH2Reserve: number,
+    bottomMarginSlack: number
+  ): BookletPackUnit[][] {
+    const partitions: { html: string; weight: number }[][] = [];
+    let idx = 0;
+    let pendingHeading = true;
+
+    while (idx < units.length) {
+      const cap =
+        (pendingHeading ? panelBudget - sectionH2Reserve : panelBudget) - bottomMarginSlack;
+      const chunk: { html: string; weight: number }[] = [];
+      let sum = 0;
+
+      while (idx < units.length) {
+        const u = units[idx]!;
+        if (chunk.length === 0) {
+          chunk.push(u);
+          sum += u.weight;
+          idx++;
+          continue;
+        }
+        if (
+          chunk.length >= PrintService.BOOKLET_MAX_UNITS_PER_PANEL_CHUNK ||
+          !(sum + u.weight <= cap)
+        ) {
+          break;
+        }
+        chunk.push(u);
+        sum += u.weight;
+        idx++;
+      }
+
+      partitions.push(chunk);
+      pendingHeading = false;
+    }
+
+    return partitions;
+  }
+
+  /** Booklet-included prompt categories after answered prayers: active types with flag, in display_order. */
+  private async loadBookletPromptSectionsOrdered(): Promise<Array<{ typeName: string; prompts: any[] }>> {
+    const { data: typesRows, error: typesErr } = await this.supabase.client
+      .from('prayer_types')
+      .select('name, display_order')
+      .eq('is_active', true)
+      .eq('include_in_booklet', true)
+      .order('display_order', { ascending: true });
+
+    if (typesErr) {
+      console.error('[PrintService] Booklet prompt types:', typesErr);
+      return [];
+    }
+    if (!typesRows?.length) {
+      return [];
+    }
+
+    const names = typesRows.map((t: { name: string }) => t.name);
+    const { data: promptsData, error: promptsErr } = await this.supabase.client
+      .from('prayer_prompts')
+      .select('*')
+      .in('type', names)
+      .order('title', { ascending: true });
+
+    if (promptsErr) {
+      console.error('[PrintService] Booklet prompts:', promptsErr);
+      return [];
+    }
+    if (!promptsData?.length) {
+      return [];
+    }
+
+    const byType = new Map<string, any[]>();
+    for (const p of promptsData) {
+      const k = p.type as string;
+      if (!byType.has(k)) {
+        byType.set(k, []);
+      }
+      byType.get(k)!.push(p);
+    }
+
+    const ordered: Array<{ typeName: string; prompts: any[] }> = [];
+    for (const row of typesRows) {
+      const list = byType.get(row.name);
+      if (list?.length) {
+        ordered.push({
+          typeName: row.name,
+          prompts: this.sortPromptsAlphabeticalByTitle(list)
+        });
+      }
+    }
+    return ordered;
   }
 
   /** QR image URL for the public `/info` page (same target as the Info page and other print footers). */
@@ -1029,7 +1301,8 @@ export class PrintService {
     coverLogoUrl: string,
     embeddedQrDataUrl: string | null = null,
     embeddedAppIconDataUrl: string | null = null,
-    embeddedBackLogoDataUrl: string | null = null
+    embeddedBackLogoDataUrl: string | null = null,
+    bookletPromptSections: Array<{ typeName: string; prompts: any[] }> = []
   ): string {
     const now = new Date();
     const today = now.toLocaleDateString('en-US', {
@@ -1068,7 +1341,12 @@ export class PrintService {
 
     const statusLabels = { current: 'Current Prayer Requests', answered: 'Answered Prayers' } as const;
     const contentPageInners: string[] = [];
-    const sectionsForMeasure: { h2: string; fragments: string[] }[] = [];
+    const sectionsForMeasure: Array<{
+      h2: string;
+      fragments: string[];
+      /** Booklet prompt batches only: parallel to fragments for inline measure script (`buildBookletMeasurePackScript`). */
+      promptBatchMeta?: Array<{ t: string; b: number } | null>;
+    }> = [];
 
     (['current', 'answered'] as const).forEach(status => {
       const list = prayersByStatus[status];
@@ -1120,6 +1398,49 @@ export class PrintService {
       );
       contentPageInners.push(...packed);
     });
+
+    /** One fragment per prompt type (display_order); scroll-height packing splits panels — no server-side batching within a type. */
+    const bookletPromptUnits: BookletPackUnit[] = [];
+    for (const sec of bookletPromptSections) {
+      if (!sec.prompts?.length) {
+        continue;
+      }
+      const batch = sec.prompts;
+      bookletPromptUnits.push({
+        html: this.buildBookletPromptBatchHtml(sec.typeName, batch, {
+          continued: false,
+          totalCountInType: sec.prompts.length
+        }),
+        weight: this.estimateBookletPromptBatchWeight(batch),
+        bookletPromptMeta: {
+          typeName: sec.typeName,
+          batchIndex: 0,
+          batchPrompts: batch,
+          totalCountInType: sec.prompts.length
+        }
+      });
+    }
+
+    if (bookletPromptUnits.length > 0) {
+      sectionsForMeasure.push({
+        h2: '',
+        fragments: bookletPromptUnits.map(u => u.html),
+        promptBatchMeta: bookletPromptUnits.map(u =>
+          u.bookletPromptMeta
+            ? { t: u.bookletPromptMeta.typeName, b: u.bookletPromptMeta.batchIndex }
+            : null
+        )
+      });
+
+      const packedPrompts = this.packBookletUnitsIntoPageChunks(
+        bookletPromptUnits.map(({ html, weight }) => ({ html, weight })),
+        '',
+        PrintService.BOOKLET_PANEL_PACK_BUDGET,
+        0,
+        PrintService.BOOKLET_PANEL_BOTTOM_SLACK
+      );
+      contentPageInners.push(...packedPrompts);
+    }
 
     const backLogoSrc =
       coverLogoUrl.trim().length === 0
@@ -1609,6 +1930,7 @@ export class PrintService {
       max-width: min(100%, 2.25in);
       object-fit: contain;
     }
+    ${this.getPrintablePromptBlockStyles({ scopedRoot: '.booklet-prompt-print-root' })}
   </style>
 </head>
 <body>
@@ -1729,39 +2051,23 @@ export class PrintService {
     sectionH2Reserve: number,
     bottomMarginSlack: number
   ): string[] {
+    const partitions = this.partitionBookletUnitsIntoChunks(
+      units,
+      panelBudget,
+      sectionH2Reserve,
+      bottomMarginSlack
+    );
     const out: string[] = [];
-    let idx = 0;
     /** First emitted chunk carries the colored section heading */
     let pendingHeading = true;
 
-    while (idx < units.length) {
-      const cap =
-        (pendingHeading ? panelBudget - sectionH2Reserve : panelBudget) - bottomMarginSlack;
-      const chunk: { html: string; weight: number }[] = [];
-      let sum = 0;
-
-      while (idx < units.length) {
-        const u = units[idx]!;
-        if (chunk.length === 0) {
-          chunk.push(u);
-          sum += u.weight;
-          idx++;
-          continue;
-        }
-        if (
-          chunk.length >= PrintService.BOOKLET_MAX_UNITS_PER_PANEL_CHUNK ||
-          !(sum + u.weight <= cap)
-        ) {
-          break;
-        }
-        chunk.push(u);
-        sum += u.weight;
-        idx++;
-      }
-
+    for (const chunk of partitions) {
       const heading = pendingHeading ? sectionH2 : '';
       pendingHeading = false;
-      out.push(`<div class="booklet-chunk">${heading}${chunk.map(c => c.html).join('')}</div>`);
+
+      const body = chunk.map(u => u.html).join('');
+
+      out.push(`<div class="booklet-chunk">${heading}${body}</div>`);
     }
 
     return out;
@@ -2613,32 +2919,21 @@ export class PrintService {
       }
     });
 
-    // Type colors for visual distinction
-    const typeColors: { [key: string]: string } = {
-      'Praise': '#39704D',
-      'Confession': '#C9A961',
-      'Thanksgiving': '#0047AB',
-      'Supplication': '#8b5cf6'
-    };
-
     let promptSectionsHTML = '';
 
     sortedTypes.forEach(type => {
-      const typePrompts = promptsByType[type];
-      const color = typeColors[type] || '#6b7280';
-      
-      // Split into two columns (column-major ordering)
-      const mid = Math.ceil(typePrompts.length / 2);
-      const col1 = typePrompts.slice(0, mid);
-      const col2 = typePrompts.slice(mid);
+      const typePrompts = this.sortPromptsAlphabeticalByTitle(promptsByType[type]);
+      const color = this.getPromptTypeColor(type);
 
-      const col1HTML = col1.map((prompt) => this.generatePromptHTML(prompt)).join('');
-      const col2HTML = col2.map((prompt) => this.generatePromptHTML(prompt)).join('');
+      const { col1, col2 } = this.splitPromptsIntoTwoColumnsRowMajor(typePrompts);
+
+      const col1HTML = col1.map((prompt: any) => this.generatePromptHTML(prompt)).join('');
+      const col2HTML = col2.map((prompt: any) => this.generatePromptHTML(prompt)).join('');
 
       promptSectionsHTML += `
         <div class="type-section">
           <h2 style="color: ${color}; border-bottom: 2px solid ${color}; padding-bottom: 2px; margin-bottom: 2px; margin-top: 4px; font-size: 14px;">
-            ${this.escapeHtml(type)} (${typePrompts.length})
+            ${this.escapeHtml(type)} Prompts (${typePrompts.length})
           </h2>
           <div class="columns">
             <div class="col">${col1HTML}</div>
@@ -2703,39 +2998,7 @@ export class PrintService {
       margin: 0;
     }
 
-    .type-section {
-      margin-bottom: 3px;
-    }
-
-    .prompt-item {
-      background: transparent;
-      border: 1px solid #e6e6e6;
-      padding: 3px 6px;
-      margin-bottom: 3px;
-      border-radius: 2px;
-      page-break-inside: avoid;
-      break-inside: avoid;
-    }
-
-    .prompt-text {
-      font-size: 13px;
-      color: #374151;
-      line-height: 1.3;
-      display: inline;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-    }
-
-    .columns {
-      display: flex;
-      gap: 8px;
-      align-items: flex-start;
-    }
-
-    .col {
-      flex: 1 1 0;
-      min-width: 0;
-    }
+    ${this.getPrintablePromptBlockStyles({ includeStandaloneResponsive: true })}
     ${this.getPrintInfoFooterStyles()}
 
     @media screen and (max-width: 768px) {
@@ -2747,10 +3010,6 @@ export class PrintService {
       .header h1 {
         font-size: 24px;
       }
-
-      .prompt-text {
-        font-size: 16px;
-      }
     }
 
     @media print {
@@ -2760,16 +3019,6 @@ export class PrintService {
 
       .no-print {
         display: none !important;
-      }
-
-      .prompt-item {
-        page-break-inside: avoid;
-        break-inside: avoid;
-      }
-
-      h2 {
-        page-break-after: avoid;
-        break-after: avoid;
       }
 
       .print-info-footer {

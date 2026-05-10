@@ -1,10 +1,12 @@
 /**
  * Injected once into saddle-stitch booklet HTML. After fonts load, greedily assigns prayer
  * fragments to reader pages using an off-screen `.booklet-panel`: add cards until the chunk would
- * exceed usable height (`scrollHeight`), then start the next page. The fit tolerance allows a modest
- * dip into bottom inset plus rounding (~subpixel/fonts); overflow is still bounded by `.booklet-panel`
- * (`overflow:hidden` on paper). If measurement is unavailable (e.g. zero-height fixture),
- * the pre-rendered fallback markup in `#booklet-dynamic-root` stays.
+ * exceed usable height (`scrollHeight`), then start the next page. Optional **`promptBatchMeta`**
+ * per fragment (booklet prompt batches) strips misleading **`(continued)`** when consecutive batches
+ * of the same type land in the same measured chunk — server-side weight packing can disagree with
+ * scroll-height fits. The fit tolerance allows a modest dip into bottom inset plus rounding (~subpixel/fonts);
+ * overflow is still bounded by `.booklet-panel { overflow:hidden }` on paper. If measurement is unavailable
+ * (e.g. zero-height fixture), the pre-rendered fallback markup in `#booklet-dynamic-root` stays.
  */
 
 export function buildBookletMeasurePackScript(): string {
@@ -63,33 +65,77 @@ export function buildBookletMeasurePackScript(): string {
     var dip = pb > 0 ? Math.min(20, Math.round(pb * 0.45)) : 8;
     return 12 + dip;
   }
-  function packSectionFragments(measurePanel, h2, fragments, epsPx) {
+  /** Strip booklet prompt batch "(continued)" line when server sends meta (same regex intent as PrintService). */
+  function stripBookletPromptContinued(html) {
+    return html.replace(/<p class="booklet-prompt-continued-note">\\s*\\(continued\\)\\s*<\\/p>\\s*/gi, '');
+  }
+  /**
+   * Build HTML for a tentative chunk from global fragment indices. When promptBatchMeta is set,
+   * consecutive fragments that are batch N and N+1 of the same type drop "(continued)" so labels
+   * match scroll-height packing (differs from weight-based chunking on the server).
+   */
+  function htmlChunksFromIndices(memberIndices, fragments, promptBatchMeta) {
+    var htmls = [];
+    for (var pos = 0; pos < memberIndices.length; pos++) {
+      var gi = memberIndices[pos];
+      var raw = fragments[gi];
+      if (!promptBatchMeta || !promptBatchMeta[gi]) {
+        htmls.push(raw);
+        continue;
+      }
+      var m = promptBatchMeta[gi];
+      if (!m || m.b === 0) {
+        htmls.push(raw);
+        continue;
+      }
+      if (pos > 0) {
+        var pi = memberIndices[pos - 1];
+        var pm = promptBatchMeta[pi];
+        if (pm && pm.t === m.t && pm.b === m.b - 1) {
+          htmls.push(stripBookletPromptContinued(raw));
+          continue;
+        }
+      }
+      htmls.push(raw);
+    }
+    return htmls;
+  }
+  function packSectionFragments(measurePanel, h2, fragments, epsPx, promptBatchMeta) {
     var chunksHtml = [];
-    var cur = [];
+    var curIdx = [];
     var includeH2Next = true;
     var fi = 0;
     while (fi < fragments.length) {
-      var trial = cur.concat([fragments[fi]]);
+      var trialIdx = curIdx.concat([fi]);
+      var trial = htmlChunksFromIndices(trialIdx, fragments, promptBatchMeta || null);
       measurePanel.innerHTML = wrapChunk(includeH2Next, h2, trial);
       var maxH = measurePanel.clientHeight + epsPx;
       var fits = measurePanel.scrollHeight <= maxH;
       if (fits) {
-        cur = trial;
+        curIdx = trialIdx;
         fi++;
         continue;
       }
-      if (cur.length === 0) {
-        chunksHtml.push(wrapChunk(includeH2Next, h2, [fragments[fi]]));
+      if (curIdx.length === 0) {
+        chunksHtml.push(
+          wrapChunk(includeH2Next, h2, htmlChunksFromIndices([fi], fragments, promptBatchMeta || null))
+        );
         includeH2Next = false;
-        cur = [];
+        curIdx = [];
         fi++;
         continue;
       }
-      chunksHtml.push(wrapChunk(includeH2Next, h2, cur));
+      chunksHtml.push(
+        wrapChunk(includeH2Next, h2, htmlChunksFromIndices(curIdx, fragments, promptBatchMeta || null))
+      );
       includeH2Next = false;
-      cur = [];
+      curIdx = [];
     }
-    if (cur.length) chunksHtml.push(wrapChunk(includeH2Next, h2, cur));
+    if (curIdx.length) {
+      chunksHtml.push(
+        wrapChunk(includeH2Next, h2, htmlChunksFromIndices(curIdx, fragments, promptBatchMeta || null))
+      );
+    }
     return chunksHtml;
   }
   function run() {
@@ -112,7 +158,7 @@ export function buildBookletMeasurePackScript(): string {
       var sec = data.sections[si];
       var h2 = sec.h2 || '';
       var fr = sec.fragments || [];
-      var part = packSectionFragments(meas, h2, fr, eps);
+      var part = packSectionFragments(meas, h2, fr, eps, sec.promptBatchMeta || null);
       for (var pi = 0; pi < part.length; pi++) allChunks.push(part[pi]);
     }
     var readerPages = [data.covers.coverFront].concat(allChunks);

@@ -149,6 +149,25 @@ import type { PrayerTypeRecord } from '../../types/prayer';
               </p>
             </div>
           </div>
+          <div>
+            <label for="includeInBooklet" class="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                id="includeInBooklet"
+                [(ngModel)]="includeInBooklet"
+                name="includeInBooklet"
+                class="w-4 h-4 mt-0.5 text-amber-600 border-gray-300 rounded focus:ring-amber-500 dark:bg-gray-800 dark:border-gray-600"
+              />
+              <span>
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-300 block">
+                  Include in saddle-stitch booklet
+                </span>
+                <span class="text-xs text-gray-500 dark:text-gray-400 block mt-0.5">
+                  When enabled, prompts for this category appear after answered prayers in Admin → Tools → Saddle-stitch booklet (same setting as the book icon on each row).
+                </span>
+              </span>
+            </label>
+          </div>
         </div>
         <div class="mt-4 space-y-2">
           @if (submitting) {
@@ -246,8 +265,72 @@ import type { PrayerTypeRecord } from '../../types/prayer';
             </div>
           </div>
           <div class="flex items-center gap-2">
+            <span class="relative inline-flex shrink-0 group/booklet-tip">
+              <button
+                type="button"
+                (pointerdown)="$event.stopPropagation()"
+                (click)="beginIncludeInBookletToggle(type, $event)"
+                [class]="
+                  'p-2 rounded-lg transition-colors cursor-pointer ' +
+                  (type.include_in_booklet
+                    ? 'text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30'
+                    : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800')
+                "
+                [title]="
+                  type.include_in_booklet
+                    ? 'Included in saddle-stitch booklet (click to exclude)'
+                    : 'Include in saddle-stitch booklet'
+                "
+                [attr.aria-describedby]="'prayer-type-booklet-tip-' + type.id"
+                [attr.aria-label]="
+                  type.include_in_booklet
+                    ? 'Included in saddle-stitch booklet. Click to exclude.'
+                    : 'Not in booklet. Click to include.'
+                "
+                [attr.aria-pressed]="type.include_in_booklet"
+              >
+                @if (type.include_in_booklet) {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path
+                    d="M21 4.27V18.5c0 .83-.67 1.5-1.5 1.5h-4.25c-.28 0-.5.22-.5.5v1.25c0 .28-.22.5-.5.5H9.75c-.28 0-.5-.22-.5-.5V20.5c0-.28-.22-.5-.5-.5H4.5c-.83 0-1.5-.67-1.5-1.5V4.27c0-.97.78-1.75 1.75-1.75h3.5c.72 0 1.4.37 1.78.97l.47.73.47-.73c.39-.6 1.06-.97 1.78-.97h3.5c.97 0 1.75.78 1.75 1.75ZM8.25 6H5v11h3.25c.41 0 .75-.34.75-.75V6.75c0-.41-.34-.75-.75-.75Zm7.5 0h-3.25c-.41 0-.75.34-.75.75v9.5c0 .41.34.75.75.75H15.75c.41 0 .75-.34.75-.75V6.75c0-.41-.34-.75-.75-.75Z"
+                  />
+                </svg>
+                }
+                @if (!type.include_in_booklet) {
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                  <path d="M8 7h6" />
+                  <path d="M8 11h8" />
+                </svg>
+                }
+              </button>
+              <span
+                role="tooltip"
+                [id]="'prayer-type-booklet-tip-' + type.id"
+                class="pointer-events-none absolute z-[60] bottom-full left-1/2 mb-1.5 w-max max-w-[min(17rem,calc(100vw-2.5rem))] -translate-x-1/2 rounded-md border border-gray-200 bg-gray-900 px-2.5 py-1.5 text-center text-xs font-medium leading-snug text-white shadow-lg opacity-0 transition-opacity duration-150 invisible group-hover/booklet-tip:opacity-100 group-hover/booklet-tip:visible group-focus-within/booklet-tip:opacity-100 group-focus-within/booklet-tip:visible dark:border-gray-600 dark:bg-gray-700"
+              >
+                {{
+                  type.include_in_booklet
+                    ? 'Included in saddle-stitch booklet (click to exclude)'
+                    : 'Include in saddle-stitch booklet'
+                }}
+              </span>
+            </span>
             <button
-              (click)="toggleActive(type)"
+              type="button"
+              (pointerdown)="$event.stopPropagation()"
+              (click)="beginActiveToggle(type, $event)"
               [class]="'p-2 rounded-lg transition-colors cursor-pointer ' + 
                 (type.is_active ? 'text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30' : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800')"
               [title]="type.is_active ? 'Deactivate' : 'Activate'"
@@ -266,6 +349,7 @@ import type { PrayerTypeRecord } from '../../types/prayer';
               }
             </button>
             <button
+              type="button"
               (click)="handleEdit(type)"
               class="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors cursor-pointer"
               title="Edit"
@@ -276,6 +360,7 @@ import type { PrayerTypeRecord } from '../../types/prayer';
               </svg>
             </button>
             <button
+              type="button"
               (click)="handleDelete(type.id, type.name)"
               class="p-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors cursor-pointer"
               title="Delete"
@@ -317,10 +402,10 @@ import type { PrayerTypeRecord } from '../../types/prayer';
       <app-confirmation-dialog
         [title]="confirmationTitle"
         [message]="confirmationMessage"
-        [isDangerous]="true"
-        [confirmText]="'Delete'"
-        (confirm)="onConfirmDelete()"
-        (cancel)="onCancelDelete()">
+        [isDangerous]="confirmationIsDangerous"
+        [confirmText]="confirmationConfirmText"
+        (confirm)="onConfirmationConfirm()"
+        (cancel)="onConfirmationCancel()">
       </app-confirmation-dialog>
       }
     </div>
@@ -341,15 +426,22 @@ export class PrayerTypesManagerComponent {
 
   // Confirmation dialog properties
   showConfirmationDialog = false;
+  confirmationKind: 'delete' | 'toggleBooklet' | 'toggleActive' | null = null;
   confirmationTitle = '';
   confirmationMessage = '';
+  confirmationIsDangerous = true;
+  confirmationConfirmText = 'Delete';
   confirmationDeleteId: string | null = null;
+  /** Row snapshot for toggle confirmations (booklet / active). */
+  pendingToggleType: PrayerTypeRecord | null = null;
 
   // Form state
   editingId: string | null = null;
   name = '';
   displayOrder = 0;
   isActive = true;
+  /** Preserved when editing a type (booklet toggle is also on each row). */
+  includeInBooklet = false;
   submitting = false;
   reordering = false;
 
@@ -424,6 +516,7 @@ export class PrayerTypesManagerComponent {
     this.name = '';
     this.displayOrder = 0;
     this.isActive = true;
+    this.includeInBooklet = false;
     this.error = null;
     this.success = null;
     this.cdr.markForCheck();
@@ -466,7 +559,8 @@ export class PrayerTypesManagerComponent {
           .update({
             name: this.name.trim(),
             display_order: this.displayOrder,
-            is_active: this.isActive
+            is_active: this.isActive,
+            include_in_booklet: this.includeInBooklet
           })
           .eq('id', this.editingId);
 
@@ -480,7 +574,8 @@ export class PrayerTypesManagerComponent {
           .insert({
             name: this.name.trim(),
             display_order: this.displayOrder,
-            is_active: this.isActive
+            is_active: this.isActive,
+            include_in_booklet: this.includeInBooklet
           });
 
         if (error) throw error;
@@ -492,6 +587,7 @@ export class PrayerTypesManagerComponent {
       this.name = '';
       this.displayOrder = 0;
       this.isActive = true;
+      this.includeInBooklet = false;
       this.editingId = null;
       this.showAddForm = false;
 
@@ -522,6 +618,7 @@ export class PrayerTypesManagerComponent {
     this.name = type.name;
     this.displayOrder = type.display_order;
     this.isActive = type.is_active;
+    this.includeInBooklet = type.include_in_booklet ?? false;
     this.editingId = type.id;
     this.showAddForm = true;
     this.error = null;
@@ -530,48 +627,135 @@ export class PrayerTypesManagerComponent {
   }
 
   async handleDelete(id: string, name: string) {
+    this.confirmationKind = 'delete';
     this.confirmationTitle = 'Delete Prayer Type';
     this.confirmationMessage = `Are you sure you want to delete the "${name}" type? This may affect existing prayer prompts using this type.`;
+    this.confirmationIsDangerous = true;
+    this.confirmationConfirmText = 'Delete';
     this.confirmationDeleteId = id;
+    this.pendingToggleType = null;
     this.showConfirmationDialog = true;
+    this.cdr.markForCheck();
   }
 
-  async onConfirmDelete() {
-    if (!this.confirmationDeleteId) return;
-
-    const id = this.confirmationDeleteId;
-    this.showConfirmationDialog = false;
+  /** Opens confirm dialog; avoids CDK drag eating the first interaction on the row. */
+  beginIncludeInBookletToggle(type: PrayerTypeRecord, event?: Event) {
+    event?.stopPropagation();
+    const includeNext = !(type.include_in_booklet ?? false);
+    this.confirmationKind = 'toggleBooklet';
+    this.pendingToggleType = type;
     this.confirmationDeleteId = null;
+    this.confirmationTitle = includeNext ? 'Include in saddle-stitch booklet?' : 'Remove from saddle-stitch booklet?';
+    this.confirmationMessage = includeNext
+      ? `Include prompts for "${type.name}" in Admin → Tools → Saddle-stitch booklet (after answered prayers)?`
+      : `Stop including "${type.name}" prompts in the saddle-stitch booklet printout?`;
+    this.confirmationIsDangerous = false;
+    this.confirmationConfirmText = 'Confirm';
+    this.showConfirmationDialog = true;
+    this.cdr.markForCheck();
+  }
 
+  /** Opens confirm dialog; avoids CDK drag eating the first interaction on the row. */
+  beginActiveToggle(type: PrayerTypeRecord, event?: Event) {
+    event?.stopPropagation();
+    const activating = !type.is_active;
+    this.confirmationKind = 'toggleActive';
+    this.pendingToggleType = type;
+    this.confirmationDeleteId = null;
+    this.confirmationTitle = activating ? 'Activate prayer type?' : 'Deactivate prayer type?';
+    this.confirmationMessage = activating
+      ? `"${type.name}" will appear in prayer prompt type dropdowns.`
+      : `"${type.name}" will be hidden from dropdowns until you activate it again.`;
+    this.confirmationIsDangerous = false;
+    this.confirmationConfirmText = 'Confirm';
+    this.showConfirmationDialog = true;
+    this.cdr.markForCheck();
+  }
+
+  async onConfirmationConfirm() {
+    const kind = this.confirmationKind;
+    const deleteId = this.confirmationDeleteId;
+    const pendingType = this.pendingToggleType;
+
+    this.showConfirmationDialog = false;
+    this.confirmationKind = null;
+    this.confirmationDeleteId = null;
+    this.pendingToggleType = null;
+
+    if (kind === 'delete') {
+      if (!deleteId) return;
+
+      try {
+        this.error = null;
+        this.success = null;
+
+        const { error } = await this.supabase.client
+          .from('prayer_types')
+          .delete()
+          .eq('id', deleteId);
+
+        if (error) throw error;
+
+        this.success = 'Prayer type deleted successfully!';
+        await this.fetchTypes();
+        await this.promptService.loadPrompts();
+      } catch (err: unknown) {
+        console.error('Error deleting prayer type:', err);
+        const message = err && typeof err === 'object' && 'message' in err
+          ? String(err.message)
+          : 'Unknown error';
+        this.error = message;
+      } finally {
+        this.cdr.markForCheck();
+      }
+      return;
+    }
+
+    if (kind === 'toggleBooklet') {
+      if (!pendingType) return;
+      await this.toggleIncludeInBooklet(pendingType);
+      return;
+    }
+
+    if (kind === 'toggleActive') {
+      if (!pendingType) return;
+      await this.toggleActive(pendingType);
+    }
+  }
+
+  onConfirmationCancel() {
+    this.showConfirmationDialog = false;
+    this.confirmationKind = null;
+    this.confirmationDeleteId = null;
+    this.pendingToggleType = null;
+  }
+
+  async toggleIncludeInBooklet(type: PrayerTypeRecord) {
     try {
       this.error = null;
       this.success = null;
 
       const { error } = await this.supabase.client
         .from('prayer_types')
-        .delete()
-        .eq('id', id);
+        .update({ include_in_booklet: !type.include_in_booklet })
+        .eq('id', type.id);
 
       if (error) throw error;
 
-      this.success = 'Prayer type deleted successfully!';
       await this.fetchTypes();
-      // Reload prompts to reflect type deletion on main site
-      await this.promptService.loadPrompts();
-    } catch (err: unknown) {
-      console.error('Error deleting prayer type:', err);
-      const message = err && typeof err === 'object' && 'message' in err
-        ? String(err.message)
-        : 'Unknown error';
-      this.error = message;
-    } finally {
       this.cdr.markForCheck();
+      this.cdr.detectChanges();
+      this.appRef.tick();
+    } catch (err: unknown) {
+      console.error('Error updating booklet inclusion:', err);
+      const message =
+        err && typeof err === 'object' && 'message' in err ? String(err.message) : 'Unknown error';
+      this.error = message;
+      this.toast.error(`Could not update booklet setting: ${message}`);
+      this.cdr.markForCheck();
+      this.cdr.detectChanges();
+      this.appRef.tick();
     }
-  }
-
-  onCancelDelete() {
-    this.showConfirmationDialog = false;
-    this.confirmationDeleteId = null;
   }
 
   async toggleActive(type: PrayerTypeRecord) {
@@ -650,6 +834,7 @@ export class PrayerTypesManagerComponent {
     this.name = '';
     this.displayOrder = 0;
     this.isActive = true;
+    this.includeInBooklet = false;
     this.error = null;
     this.cdr.markForCheck();
   }

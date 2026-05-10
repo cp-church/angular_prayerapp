@@ -34,6 +34,35 @@ function bookletHtmlBeforePackScript(html: string): string {
   return idx >= 0 ? html.slice(0, idx) : html;
 }
 
+/** Decode `#booklet-pack-b64` JSON (Vitest runs in Node). */
+function parseBookletPackSections(html: string): { h2: string; fragments: string[] }[] {
+  const m = html.match(/id="booklet-pack-b64">([^<]+)<\/script>/);
+  const b64 = m?.[1]?.trim();
+  if (!b64) return [];
+  const json = Buffer.from(b64, 'base64').toString('utf8');
+  const data = JSON.parse(json) as { sections?: { h2: string; fragments: string[] }[] };
+  return data.sections ?? [];
+}
+
+/** Booklet download also queries `prayer_types` / `prayer_prompts`; tests that override `from` for prayers must stub these. */
+function mockSupabaseBookletAuxiliaryTables(table: string): any | null {
+  if (table === 'prayer_types') {
+    return {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockResolvedValue({ data: [], error: null }),
+    };
+  }
+  if (table === 'prayer_prompts') {
+    return {
+      select: vi.fn().mockReturnThis(),
+      in: vi.fn().mockReturnThis(),
+      order: vi.fn().mockResolvedValue({ data: [], error: null }),
+    };
+  }
+  return null;
+}
+
 describe('PrintService', () => {
   let service: PrintService;
   let mockSupabaseService: any;
@@ -102,6 +131,20 @@ describe('PrintService', () => {
       if (table === 'prayer_updates') {
         return {
           select: vi.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
+      if (table === 'prayer_types') {
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          order: vi.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
+      if (table === 'prayer_prompts') {
+        return {
+          select: vi.fn().mockReturnThis(),
+          in: vi.fn().mockReturnThis(),
+          order: vi.fn().mockResolvedValue({ data: [], error: null }),
         };
       }
       return originalFrom(table);
@@ -340,7 +383,8 @@ describe('PrintService', () => {
           write: vi.fn(),
           close: vi.fn()
         },
-        focus: vi.fn()
+        focus: vi.fn(),
+        close: vi.fn()
       };
       await service.downloadPrintableBookletPrayerList('month', mockWindow as any);
       expect(mockBrandingService.initialize).toHaveBeenCalled();
@@ -357,6 +401,162 @@ describe('PrintService', () => {
       expect(html).toContain('Join us in prayer');
       expect(html).toContain('6 - 6:25 PM');
       expect(html).toContain('overflow room');
+    });
+
+    it('should append prayer prompt sections after answered prayers when types are marked for booklet', {
+      timeout: 10000
+    }, async () => {
+      const origFrom = mockSupabaseClient.from;
+      mockSupabaseClient.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prayer_types') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({
+              data: [{ name: 'Thanksgiving', display_order: 0 }],
+              error: null
+            })
+          };
+        }
+        if (table === 'prayer_prompts') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            in: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({
+              data: [
+                {
+                  id: 'p1',
+                  type: 'Thanksgiving',
+                  title: 'Name three things you are grateful for',
+                  description: 'd',
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                }
+              ],
+              error: null
+            })
+          };
+        }
+        if (table === 'prayer_updates') {
+          return {
+            select: vi.fn().mockResolvedValue({ data: [], error: null })
+          };
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          neq: vi.fn().mockReturnThis(),
+          gte: vi.fn().mockReturnThis(),
+          order: vi.fn().mockResolvedValue({ data: mockPrayers, error: null })
+        };
+      }) as typeof mockSupabaseClient.from;
+
+      const mockWindow = {
+        document: {
+          open: vi.fn(),
+          write: vi.fn(),
+          close: vi.fn()
+        },
+        focus: vi.fn(),
+        close: vi.fn()
+      };
+      try {
+        await service.downloadPrintableBookletPrayerList('month', mockWindow as any);
+        const html = (mockWindow.document.write as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+        const body = bookletHtmlBeforePackScript(html);
+        const idxAnswered = body.indexOf('Answered Prayers');
+        const idxPrompt = body.indexOf('Thanksgiving Prompts (1)');
+        expect(idxAnswered).toBeGreaterThan(-1);
+        expect(idxPrompt).toBeGreaterThan(-1);
+        expect(idxPrompt).toBeGreaterThan(idxAnswered);
+        expect(body).toContain('booklet-prompt-print-root');
+        expect(body).toContain('class="type-section"');
+        expect(body).toContain('class="columns"');
+      } finally {
+        mockSupabaseClient.from = origFrom;
+      }
+    });
+
+    it('should merge booklet prompt types into one measurement section (multiple types share packing)', {
+      timeout: 10000
+    }, async () => {
+      const origFrom = mockSupabaseClient.from;
+      mockSupabaseClient.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'prayer_types') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({
+              data: [
+                { name: 'Thanksgiving', display_order: 0 },
+                { name: 'Praise', display_order: 1 }
+              ],
+              error: null
+            })
+          };
+        }
+        if (table === 'prayer_prompts') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            in: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({
+              data: [
+                {
+                  id: 'p1',
+                  type: 'Thanksgiving',
+                  title: 'Grateful item',
+                  description: 'd',
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                },
+                {
+                  id: 'p2',
+                  type: 'Praise',
+                  title: 'Praise item',
+                  description: 'd',
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                }
+              ],
+              error: null
+            })
+          };
+        }
+        if (table === 'prayer_updates') {
+          return {
+            select: vi.fn().mockResolvedValue({ data: [], error: null })
+          };
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          neq: vi.fn().mockReturnThis(),
+          gte: vi.fn().mockReturnThis(),
+          order: vi.fn().mockResolvedValue({ data: mockPrayers, error: null })
+        };
+      }) as typeof mockSupabaseClient.from;
+
+      const mockWindow = {
+        document: {
+          open: vi.fn(),
+          write: vi.fn(),
+          close: vi.fn()
+        },
+        focus: vi.fn(),
+        close: vi.fn()
+      };
+      try {
+        await service.downloadPrintableBookletPrayerList('month', mockWindow as any);
+        const html = (mockWindow.document.write as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+        const sections = parseBookletPackSections(html);
+        const promptSections = sections.filter(s => s.h2 === '');
+        expect(promptSections.length).toBe(1);
+        expect(promptSections[0]!.fragments.length).toBe(2);
+        expect(promptSections[0]!.fragments.some(f => f.includes('Thanksgiving'))).toBe(true);
+        expect(promptSections[0]!.fragments.some(f => f.includes('Praise'))).toBe(true);
+      } finally {
+        mockSupabaseClient.from = origFrom;
+      }
     });
 
     it('should pass embedded QR and app icon as data URLs when embed helpers succeed', {
@@ -384,7 +584,8 @@ describe('PrintService', () => {
 
       const mockWindow = {
         document: { open: vi.fn(), write: vi.fn(), close: vi.fn() },
-        focus: vi.fn()
+        focus: vi.fn(),
+        close: vi.fn()
       };
       try {
         await service.downloadPrintableBookletPrayerList('month', mockWindow as any);
@@ -442,7 +643,8 @@ describe('PrintService', () => {
           write: vi.fn(),
           close: vi.fn()
         },
-        focus: vi.fn()
+        focus: vi.fn(),
+        close: vi.fn()
       };
       try {
         await service.downloadPrintableBookletPrayerList('month', mockWindow as any);
@@ -486,6 +688,8 @@ describe('PrintService', () => {
 
       const origFrom = mockSupabaseClient.from;
       mockSupabaseClient.from = vi.fn().mockImplementation((table: string) => {
+        const aux = mockSupabaseBookletAuxiliaryTables(table);
+        if (aux) return aux;
         if (table === 'prayer_updates') {
           return {
             select: vi.fn().mockResolvedValue({ data: [], error: null })
@@ -496,7 +700,8 @@ describe('PrintService', () => {
 
       const mockWindow = {
         document: { open: vi.fn(), write: vi.fn(), close: vi.fn() },
-        focus: vi.fn()
+        focus: vi.fn(),
+        close: vi.fn()
       };
       try {
         await service.downloadPrintableBookletPrayerList('month', mockWindow as any);
@@ -533,6 +738,8 @@ describe('PrintService', () => {
 
       const origFrom = mockSupabaseClient.from;
       mockSupabaseClient.from = vi.fn().mockImplementation((table: string) => {
+        const aux = mockSupabaseBookletAuxiliaryTables(table);
+        if (aux) return aux;
         if (table === 'prayer_updates') {
           return {
             select: vi.fn().mockResolvedValue({ data: [], error: null })
@@ -543,7 +750,8 @@ describe('PrintService', () => {
 
       const mockWindow = {
         document: { open: vi.fn(), write: vi.fn(), close: vi.fn() },
-        focus: vi.fn()
+        focus: vi.fn(),
+        close: vi.fn()
       };
       try {
         await service.downloadPrintableBookletPrayerList('month', mockWindow as any);
@@ -584,6 +792,8 @@ describe('PrintService', () => {
 
       const origFrom = mockSupabaseClient.from;
       mockSupabaseClient.from = vi.fn().mockImplementation((table: string) => {
+        const aux = mockSupabaseBookletAuxiliaryTables(table);
+        if (aux) return aux;
         if (table === 'prayer_updates') {
           return {
             select: vi.fn().mockResolvedValue({ data: [], error: null })
@@ -594,7 +804,8 @@ describe('PrintService', () => {
 
       const mockWindow = {
         document: { open: vi.fn(), write: vi.fn(), close: vi.fn() },
-        focus: vi.fn()
+        focus: vi.fn(),
+        close: vi.fn()
       };
       try {
         await service.downloadPrintableBookletPrayerList('month', mockWindow as any);
@@ -641,6 +852,8 @@ describe('PrintService', () => {
 
       const origFrom = mockSupabaseClient.from;
       mockSupabaseClient.from = vi.fn().mockImplementation((table: string) => {
+        const aux = mockSupabaseBookletAuxiliaryTables(table);
+        if (aux) return aux;
         if (table === 'prayer_updates') {
           return {
             select: vi.fn().mockResolvedValue({ data: [], error: null })
@@ -651,7 +864,8 @@ describe('PrintService', () => {
 
       const mockWindow = {
         document: { open: vi.fn(), write: vi.fn(), close: vi.fn() },
-        focus: vi.fn()
+        focus: vi.fn(),
+        close: vi.fn()
       };
       try {
         await service.downloadPrintableBookletPrayerList('month', mockWindow as any);
@@ -701,7 +915,8 @@ describe('PrintService', () => {
           write: vi.fn(),
           close: vi.fn()
         },
-        focus: vi.fn()
+        focus: vi.fn(),
+        close: vi.fn()
       };
       try {
         await service.downloadPrintableBookletPrayerList('month', mockWindow as any);

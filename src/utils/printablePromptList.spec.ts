@@ -77,8 +77,10 @@ describe('printablePromptList', () => {
     // Mock global objects
     global.window = mockWindow as any;
     global.document = mockDocument as any;
-    global.alert = mockAlert = vi.fn();
-    global.console.error = mockConsoleError = vi.fn();
+    mockAlert = vi.fn();
+    global.alert = mockAlert as typeof alert;
+    mockConsoleError = vi.fn();
+    global.console.error = mockConsoleError as typeof console.error;
 
     // Mock URL.createObjectURL and revokeObjectURL
     global.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
@@ -802,8 +804,8 @@ describe('printablePromptList', () => {
       const htmlContent = (newWindow.document.write as any).mock.calls[0][0];
       
       // Should have Praise section with count
-      expect(htmlContent).toContain('Praise (2)');
-      expect(htmlContent).toContain('Thanksgiving (1)');
+      expect(htmlContent).toContain('Praise Prompts (2)');
+      expect(htmlContent).toContain('Thanksgiving Prompts (1)');
       expect(htmlContent).toContain('Praise 1');
       expect(htmlContent).toContain('Praise 2');
       expect(htmlContent).toContain('Thanksgiving 1');

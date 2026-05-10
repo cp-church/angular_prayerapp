@@ -20,6 +20,7 @@ describe('PrayerTypesManagerComponent', () => {
     name: 'Healing',
     display_order: 0,
     is_active: true,
+    include_in_booklet: false,
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
     ...overrides
@@ -97,6 +98,7 @@ describe('PrayerTypesManagerComponent', () => {
     expect(component.name).toBe('');
     expect(component.displayOrder).toBe(0);
     expect(component.isActive).toBe(true);
+    expect(component.includeInBooklet).toBe(false);
   });
 
   describe('onSectionToggle', () => {
@@ -311,7 +313,8 @@ describe('PrayerTypesManagerComponent', () => {
       expect(insertSpy).toHaveBeenCalledWith({
         name: 'Trimmed Name',
         display_order: 0,
-        is_active: true
+        is_active: true,
+        include_in_booklet: false
       });
     });
 
@@ -346,8 +349,15 @@ describe('PrayerTypesManagerComponent', () => {
       expect(component.name).toBe('Test Type');
       expect(component.displayOrder).toBe(5);
       expect(component.isActive).toBe(false);
+      expect(component.includeInBooklet).toBe(false);
       expect(component.editingId).toBe('type-1');
       expect(component.showAddForm).toBe(true);
+    });
+
+    it('should populate includeInBooklet when type is included in booklet', () => {
+      const type = createMockPrayerType({ include_in_booklet: true });
+      component.handleEdit(type);
+      expect(component.includeInBooklet).toBe(true);
     });
 
     it('should clear error and success messages', () => {
@@ -367,7 +377,7 @@ describe('PrayerTypesManagerComponent', () => {
       await component.handleDelete('type-1', 'Test Type');
       expect(component.showConfirmationDialog).toBe(true);
 
-      await component.onCancelDelete();
+      await component.onConfirmationCancel();
 
       expect(component.showConfirmationDialog).toBe(false);
     });
@@ -382,7 +392,7 @@ describe('PrayerTypesManagerComponent', () => {
       mockSupabaseService.directQuery = vi.fn(() => Promise.resolve({ data: [], error: null }));
 
       await component.handleDelete('type-1', 'Test Type');
-      await component.onConfirmDelete();
+      await component.onConfirmationConfirm();
 
       expect(component.success).toBe('Prayer type deleted successfully!');
       expect(mockPromptService.loadPrompts).toHaveBeenCalled();
@@ -398,7 +408,7 @@ describe('PrayerTypesManagerComponent', () => {
       }));
 
       await component.handleDelete('type-1', 'Test Type');
-      await component.onConfirmDelete();
+      await component.onConfirmationConfirm();
 
       expect(component.error).toBe('Delete failed');
     });
@@ -406,6 +416,7 @@ describe('PrayerTypesManagerComponent', () => {
     it('should display confirmation with type name', async () => {
       await component.handleDelete('type-1', 'Healing');
 
+      expect(component.confirmationKind).toBe('delete');
       expect(component.confirmationMessage).toContain('"Healing"');
       expect(component.showConfirmationDialog).toBe(true);
     });
@@ -458,6 +469,84 @@ describe('PrayerTypesManagerComponent', () => {
       await component.toggleActive(type);
 
       expect(component.error).toBe('Toggle failed');
+    });
+  });
+
+  describe('beginIncludeInBookletToggle', () => {
+    it('should open confirmation and apply toggle on confirm', async () => {
+      const type = createMockPrayerType({ id: 'type-1', include_in_booklet: false });
+
+      mockSupabaseClient.from = vi.fn(() => ({
+        update: vi.fn(() => ({
+          eq: vi.fn(() => Promise.resolve({ error: null }))
+        }))
+      }));
+
+      mockSupabaseService.directQuery = vi.fn(() => Promise.resolve({ data: [], error: null }));
+
+      component.beginIncludeInBookletToggle(type);
+      expect(component.showConfirmationDialog).toBe(true);
+      expect(component.confirmationKind).toBe('toggleBooklet');
+
+      await component.onConfirmationConfirm();
+
+      expect(mockSupabaseClient.from).toHaveBeenCalledWith('prayer_types');
+      expect(mockSupabaseService.directQuery).toHaveBeenCalled();
+    });
+  });
+
+  describe('beginActiveToggle', () => {
+    it('should open confirmation and apply active toggle on confirm', async () => {
+      const type = createMockPrayerType({ id: 'type-1', is_active: true });
+
+      mockSupabaseClient.from = vi.fn(() => ({
+        update: vi.fn(() => ({
+          eq: vi.fn(() => Promise.resolve({ error: null }))
+        }))
+      }));
+
+      mockSupabaseService.directQuery = vi.fn(() => Promise.resolve({ data: [], error: null }));
+
+      component.beginActiveToggle(type);
+      expect(component.showConfirmationDialog).toBe(true);
+      expect(component.confirmationKind).toBe('toggleActive');
+
+      await component.onConfirmationConfirm();
+
+      expect(component.success).toBe('Prayer type deactivated successfully!');
+      expect(mockPromptService.loadPrompts).toHaveBeenCalled();
+    });
+  });
+
+  describe('toggleIncludeInBooklet', () => {
+    it('should flip include_in_booklet and refresh types', async () => {
+      const type = createMockPrayerType({ id: 'type-1', include_in_booklet: false });
+
+      mockSupabaseClient.from = vi.fn(() => ({
+        update: vi.fn(() => ({
+          eq: vi.fn(() => Promise.resolve({ error: null }))
+        }))
+      }));
+
+      mockSupabaseService.directQuery = vi.fn(() => Promise.resolve({ data: [], error: null }));
+
+      await component.toggleIncludeInBooklet(type);
+
+      expect(mockSupabaseClient.from).toHaveBeenCalledWith('prayer_types');
+      expect(mockSupabaseService.directQuery).toHaveBeenCalled();
+    });
+
+    it('should surface update errors', async () => {
+      const type = createMockPrayerType({ include_in_booklet: false });
+      mockSupabaseClient.from = vi.fn(() => ({
+        update: vi.fn(() => ({
+          eq: vi.fn(() => Promise.resolve({ error: { message: 'nope' } }))
+        }))
+      }));
+
+      await component.toggleIncludeInBooklet(type);
+
+      expect(mockToastService.error).toHaveBeenCalled();
     });
   });
 
