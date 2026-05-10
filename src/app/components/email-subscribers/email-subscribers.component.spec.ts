@@ -3,7 +3,7 @@ import { EmailSubscribersComponent } from './email-subscribers.component';
 import { SupabaseService } from '../../services/supabase.service';
 import { ToastService } from '../../services/toast.service';
 import { AdminDataService } from '../../services/admin-data.service';
-import { ChangeDetectorRef } from '@angular/core';
+import { ApplicationRef, ChangeDetectorRef } from '@angular/core';
 import * as planningCenter from '../../../lib/planning-center';
 
 vi.mock('../../../lib/planning-center', () => ({
@@ -90,10 +90,15 @@ describe('EmailSubscribersComponent', () => {
       })
     };
 
+    const mockApplicationRef = {
+      tick: vi.fn()
+    } as unknown as ApplicationRef;
+
     component = new EmailSubscribersComponent(
       mockSupabaseService,
       mockToastService,
       mockChangeDetectorRef,
+      mockApplicationRef,
       mockAdminDataService,
       mockBreakpointObserver
     );
@@ -152,20 +157,20 @@ describe('EmailSubscribersComponent', () => {
   describe('prepareOverviewTourListState', () => {
     it('sets search to app-test, expands section, marks initial load done, and awaits handleSearch', async () => {
       const searchSpy = vi.spyOn(component, 'handleSearch').mockResolvedValue();
-      (component as { sectionInitialLoadDone: boolean }).sectionInitialLoadDone = false;
+      (component as unknown as { sectionInitialLoadDone: boolean }).sectionInitialLoadDone = false;
 
       await component.prepareOverviewTourListState();
 
       expect(component.searchQuery).toBe('app-test');
       expect(component.sectionExpanded).toBe(true);
       expect(component.showAddForm).toBe(false);
-      expect((component as { sectionInitialLoadDone: boolean }).sectionInitialLoadDone).toBe(true);
+      expect((component as unknown as { sectionInitialLoadDone: boolean }).sectionInitialLoadDone).toBe(true);
       expect(searchSpy).toHaveBeenCalled();
     });
 
     it('clears list search debounce timer before calling handleSearch', async () => {
-      (component as { listSearchDebounceTimer: ReturnType<typeof setTimeout> | null }).listSearchDebounceTimer =
-        setTimeout(() => {}, 99999);
+      (component as unknown as { listSearchDebounceTimer: ReturnType<typeof setTimeout> | null })
+        .listSearchDebounceTimer = setTimeout(() => {}, 99999);
       const searchSpy = vi.spyOn(component, 'handleSearch').mockResolvedValue();
 
       await component.prepareOverviewTourListState();

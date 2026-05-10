@@ -375,7 +375,21 @@ export class PrintService {
 
       await this.brandingService.initialize();
       const coverLogoUrl = this.getBookletFrontCoverLogoUrl();
-      const html = this.generateSaddleStitchBookletHTML(prayers, timeRange, coverLogoUrl);
+      const [embeddedQr, embeddedAppIcon, embeddedBackLogo] = await Promise.all([
+        this.tryEmbedInfoQrAsDataUrl(),
+        this.tryEmbedBookletAppIconAsDataUrl(),
+        coverLogoUrl.trim().length > 0
+          ? this.tryEmbedBookletBackLogoAsDataUrl(coverLogoUrl)
+          : Promise.resolve<string | null>(null)
+      ]);
+      const html = this.generateSaddleStitchBookletHTML(
+        prayers,
+        timeRange,
+        coverLogoUrl,
+        embeddedQr,
+        embeddedAppIcon,
+        embeddedBackLogo
+      );
 
       if (this.isNativeApp()) {
         const today = new Date().toISOString().split('T')[0];
@@ -468,9 +482,72 @@ export class PrintService {
     return 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(infoUrl);
   }
 
+  private getGlobalFetch(): typeof fetch | undefined {
+    if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
+      return window.fetch.bind(window);
+    }
+    const g = globalThis as typeof globalThis & { fetch?: typeof fetch };
+    return typeof g.fetch === 'function' ? g.fetch.bind(g) : undefined;
+  }
+
+  /**
+   * Fetch an image URL and return a data URL for self-contained print HTML (offline / before remote images load).
+   */
+  private async tryFetchImageAsDataUrl(httpUrl: string): Promise<string | null> {
+    const fetchFn = this.getGlobalFetch();
+    if (!fetchFn) {
+      return null;
+    }
+    try {
+      const res = await fetchFn(httpUrl, { mode: 'cors', credentials: 'omit' });
+      if (!res.ok) {
+        return null;
+      }
+      const blob = await res.blob();
+      if (blob.type && !blob.type.startsWith('image/')) {
+        return null;
+      }
+      if (typeof btoa === 'undefined') {
+        return null;
+      }
+      const buf = await blob.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = btoa(binary);
+      const mime = blob.type || 'image/png';
+      return `data:${mime};base64,${base64}`;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Fetches the `/info` QR PNG and returns a data URL so booklet HTML is self-contained for printing.
+   * Avoids blank QR when the browser prints before remote images load or when the saved file is opened offline.
+   */
+  private async tryEmbedInfoQrAsDataUrl(): Promise<string | null> {
+    return this.tryFetchImageAsDataUrl(this.getInfoQrImageSrc());
+  }
+
+  /** Cover PWA icon (`/icons/icon-512.png`); inlined like the QR so the front cover prints reliably. */
+  private async tryEmbedBookletAppIconAsDataUrl(): Promise<string | null> {
+    return this.tryFetchImageAsDataUrl(this.getBookletAppIconUrl());
+  }
+
+  /** Optional branding logo on the outer back cover; inlined when **Use logo** supplies a URL. */
+  private async tryEmbedBookletBackLogoAsDataUrl(resolvedLogoUrl: string): Promise<string | null> {
+    const t = resolvedLogoUrl.trim();
+    if (!t) {
+      return null;
+    }
+    return this.tryFetchImageAsDataUrl(t);
+  }
+
   /** Booklet front cover: bold CTA + copy left, `/info` QR right (bottom of panel), below `<hr />`. */
-  private buildBookletFrontQrFooterHtml(): string {
-    const qrSrc = this.getInfoQrImageSrc();
+  private buildBookletFrontQrFooterHtml(qrSrc: string): string {
     return `<section class="booklet-cover-front-bottom-section" aria-label="Download the app">
   <hr class="booklet-cover-front-hr" />
   <div class="booklet-cover-front-footer">
@@ -480,7 +557,7 @@ export class PrintService {
       <p class="booklet-front-copy"><strong>Join us in prayer</strong> at our weekly prayer meetings on Sundays from 6 - 6:25 PM in the overflow room.</p>
     </div>
     <div class="booklet-cover-front-footer-qr">
-      <img class="booklet-front-qr" src="${this.escapeHtml(qrSrc)}" width="180" height="180" alt="" />
+      <img class="booklet-front-qr" src="${this.escapeHtml(qrSrc)}" width="180" height="180" alt="" loading="eager" decoding="sync" />
     </div>
   </div>
 </section>`;
@@ -949,7 +1026,10 @@ export class PrintService {
   private generateSaddleStitchBookletHTML(
     prayers: Prayer[],
     timeRange: BookletTimeRange,
-    coverLogoUrl: string
+    coverLogoUrl: string,
+    embeddedQrDataUrl: string | null = null,
+    embeddedAppIconDataUrl: string | null = null,
+    embeddedBackLogoDataUrl: string | null = null
   ): string {
     const now = new Date();
     const today = now.toLocaleDateString('en-US', {
@@ -1041,17 +1121,30 @@ export class PrintService {
       contentPageInners.push(...packed);
     });
 
+    const backLogoSrc =
+      coverLogoUrl.trim().length === 0
+        ? ''
+        : embeddedBackLogoDataUrl && embeddedBackLogoDataUrl.startsWith('data:')
+          ? embeddedBackLogoDataUrl
+          : coverLogoUrl;
     const backLogoBlock =
-      coverLogoUrl.trim().length > 0
+      backLogoSrc.trim().length > 0
         ? `<div class="booklet-back-cover-logo-bottom"><img class="booklet-logo" src="${this.escapeHtml(
-            coverLogoUrl
-          )}" alt="" width="160" height="60" loading="eager" /></div>`
+            backLogoSrc
+          )}" alt="" width="160" height="60" loading="eager" decoding="sync" /></div>`
         : '';
-    const bookletFrontQrFooter = this.buildBookletFrontQrFooterHtml();
-    const appIconUrl = this.getBookletAppIconUrl();
+    const qrSrcForCover =
+      embeddedQrDataUrl && embeddedQrDataUrl.startsWith('data:')
+        ? embeddedQrDataUrl
+        : this.getInfoQrImageSrc();
+    const bookletFrontQrFooter = this.buildBookletFrontQrFooterHtml(qrSrcForCover);
+    const appIconSrc =
+      embeddedAppIconDataUrl && embeddedAppIconDataUrl.startsWith('data:')
+        ? embeddedAppIconDataUrl
+        : this.getBookletAppIconUrl();
     const appIconBlock = `<div class="booklet-cover-app-icon-wrap"><img class="booklet-app-icon" src="${this.escapeHtml(
-      appIconUrl
-    )}" alt="" width="512" height="512" loading="eager" /></div>`;
+      appIconSrc
+    )}" alt="" width="512" height="512" loading="eager" decoding="sync" /></div>`;
     const coverFrontInner = `
       <div class="booklet-cover">
         <div class="booklet-cover-main">
@@ -1107,7 +1200,16 @@ export class PrintService {
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; color: #111; background: #e5e7eb; }
     .no-print { font-size: 13px; padding: 12px 16px; background: #eff6ff; border-bottom: 1px solid #93c5fd; }
-    @media print { .no-print { display: none !important; } body { background: #fff; } }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #fff; }
+      img.booklet-front-qr,
+      img.booklet-app-icon,
+      img.booklet-logo {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
     @page { size: letter landscape; margin: 0; }
     .booklet-print-surface {
       display: flex;

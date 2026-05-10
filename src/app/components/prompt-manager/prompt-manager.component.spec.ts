@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ChangeDetectorRef } from '@angular/core';
+import { ApplicationRef, ChangeDetectorRef } from '@angular/core';
 import { PromptManagerComponent } from './prompt-manager.component';
 import { SupabaseService } from '../../services/supabase.service';
 import { ToastService } from '../../services/toast.service';
@@ -36,17 +36,24 @@ describe('PromptManagerComponent', () => {
     mockToastService = {
       show: vi.fn(),
       error: vi.fn(),
-      success: vi.fn()
+      success: vi.fn(),
+      warning: vi.fn()
     };
 
     const mockChangeDetectorRef = {
-      markForCheck: vi.fn()
+      markForCheck: vi.fn(),
+      detectChanges: vi.fn()
     } as unknown as ChangeDetectorRef;
+
+    const mockApplicationRef = {
+      tick: vi.fn()
+    } as unknown as ApplicationRef;
 
     component = new PromptManagerComponent(
       mockSupabaseService,
       mockToastService,
-      mockChangeDetectorRef
+      mockChangeDetectorRef,
+      mockApplicationRef
     );
   });
 
@@ -629,17 +636,18 @@ describe('PromptManagerComponent', () => {
     });
   });
 
-  describe('handleSubmit', () => {
+  describe('savePrompt', () => {
     it('should add new prompt', async () => {
       component.title = 'New Prayer';
       component.type = 'Prayer';
       component.description = 'New description';
 
-      await component.handleSubmit(new Event('submit'));
+      await component.savePrompt(new Event('submit'));
 
       expect(mockSupabaseService.client.from).toHaveBeenCalledWith('prayer_prompts');
       expect(component.success).toBe('Prayer prompt added successfully!');
       expect(component.showAddForm).toBe(false);
+      expect(mockToastService.success).toHaveBeenCalledWith('Prompt added.');
     });
 
     it('should update existing prompt', async () => {
@@ -648,10 +656,11 @@ describe('PromptManagerComponent', () => {
       component.type = 'Prayer';
       component.description = 'Updated description';
 
-      await component.handleSubmit(new Event('submit'));
+      await component.savePrompt(new Event('submit'));
 
       expect(component.success).toBe('Prayer prompt updated successfully!');
       expect(component.editingId).toBeNull();
+      expect(mockToastService.success).toHaveBeenCalledWith('Prompt updated.');
     });
 
     it('should validate required fields', async () => {
@@ -659,9 +668,10 @@ describe('PromptManagerComponent', () => {
       component.type = 'Prayer';
       component.description = 'Description';
 
-      await component.handleSubmit(new Event('submit'));
+      await component.savePrompt(new Event('submit'));
 
       expect(component.error).toBe('All fields are required');
+      expect(mockToastService.warning).toHaveBeenCalledWith('All fields are required.');
     });
 
     it('should trim whitespace from fields', async () => {
@@ -677,7 +687,7 @@ describe('PromptManagerComponent', () => {
         })
       });
 
-      await component.handleSubmit(new Event('submit'));
+      await component.savePrompt(new Event('submit'));
 
       expect(insertData.title).toBe('Prayer Title');
       expect(insertData.description).toBe('Description');
@@ -694,10 +704,11 @@ describe('PromptManagerComponent', () => {
         insert: vi.fn(() => Promise.resolve({ data: null, error: new Error('Insert failed') }))
       });
 
-      await component.handleSubmit(new Event('submit'));
+      await component.savePrompt(new Event('submit'));
 
       expect(component.error).toContain('Failed to save prayer prompt');
       expect(component.submitting).toBe(false);
+      expect(mockToastService.error).toHaveBeenCalled();
       consoleSpy.mockRestore();
     });
 
@@ -707,7 +718,7 @@ describe('PromptManagerComponent', () => {
       component.type = 'Prayer';
       component.description = 'Description';
 
-      await component.handleSubmit(new Event('submit'));
+      await component.savePrompt(new Event('submit'));
 
       expect(component.title).toBe('');
       expect(component.description).toBe('');
@@ -721,7 +732,7 @@ describe('PromptManagerComponent', () => {
       component.type = 'Prayer';
       component.description = 'Description';
 
-      await component.handleSubmit(new Event('submit'));
+      await component.savePrompt(new Event('submit'));
 
       expect(emitSpy).toHaveBeenCalled();
     });
@@ -737,7 +748,7 @@ describe('PromptManagerComponent', () => {
         error: null
       });
 
-      await component.handleSubmit(new Event('submit'));
+      await component.savePrompt(new Event('submit'));
 
       // Check that directQuery was called (for handleSearch)
       expect(mockSupabaseService.directQuery).toHaveBeenCalled();

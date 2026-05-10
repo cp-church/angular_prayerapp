@@ -1,4 +1,4 @@
-import { Component, Output, EventEmitter, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { ApplicationRef, Component, Output, EventEmitter, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
@@ -89,7 +89,7 @@ import type { PrayerTypeRecord } from '../../types/prayer';
 
       <!-- Add/Edit Form -->
       @if (showAddForm) {
-      <form (submit)="handleSubmit($event)" class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 mb-4 border border-gray-200 dark:border-gray-700">
+      <form novalidate class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 mb-4 border border-gray-200 dark:border-gray-700">
         <div class="flex items-center justify-between mb-4">
           <h4 class="text-md font-semibold text-gray-900 dark:text-gray-100">
             {{ editingId ? 'Edit Prayer Type' : 'Add New Prayer Type' }}
@@ -115,6 +115,7 @@ import type { PrayerTypeRecord } from '../../types/prayer';
               id="name"
               [(ngModel)]="name"
               name="name"
+              (keydown.enter)="onTypeNameEnter($event)"
               placeholder="e.g., Healing, Guidance, Thanksgiving"
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
@@ -149,21 +150,38 @@ import type { PrayerTypeRecord } from '../../types/prayer';
             </div>
           </div>
         </div>
-        <div class="flex gap-2 mt-4">
-          <button
-            type="submit"
-            [disabled]="submitting"
-            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 transition-colors text-sm cursor-pointer"
+        <div class="mt-4 space-y-2">
+          @if (submitting) {
+          <div
+            class="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300"
+            role="status"
+            aria-live="polite"
           >
-            {{ submitting ? 'Saving...' : (editingId ? 'Update Type' : 'Add Type') }}
-          </button>
-          <button
-            type="button"
-            (click)="cancelEdit()"
-            class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-sm cursor-pointer"
-          >
-            Cancel
-          </button>
+            <span
+              class="inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-blue-600 border-t-transparent dark:border-blue-400 dark:border-t-transparent"
+              aria-hidden="true"
+            ></span>
+            <span>Saving…</span>
+          </div>
+          }
+          <div class="flex gap-2">
+            <button
+              type="button"
+              (click)="saveType()"
+              [disabled]="submitting"
+              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 transition-colors text-sm cursor-pointer"
+            >
+              {{ submitting ? 'Saving…' : (editingId ? 'Update Type' : 'Add Type') }}
+            </button>
+            <button
+              type="button"
+              (click)="cancelEdit()"
+              [disabled]="submitting"
+              class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:pointer-events-none transition-colors text-sm cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       </form>
       }
@@ -339,7 +357,8 @@ export class PrayerTypesManagerComponent {
     private supabase: SupabaseService,
     private toast: ToastService,
     private promptService: PromptService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private appRef: ApplicationRef
   ) {}
 
   onSectionToggle(): void {
@@ -407,13 +426,27 @@ export class PrayerTypesManagerComponent {
     this.isActive = true;
     this.error = null;
     this.success = null;
+    this.cdr.markForCheck();
   }
 
-  async handleSubmit(event: Event) {
-    event.preventDefault();
+  /** Enter in name field submits (single-line). */
+  onTypeNameEnter(event: Event): void {
+    const ke = event as KeyboardEvent;
+    if (ke.key !== 'Enter') return;
+    ke.preventDefault();
+    void this.saveType();
+  }
+
+  /** Add/update type; click-driven save + CD/toasts align with OnPush + Admin parent. */
+  async saveType(event?: Event): Promise<void> {
+    event?.preventDefault();
 
     if (!this.name.trim()) {
       this.error = 'Please enter a type name';
+      this.toast.warning('Please enter a type name.');
+      this.cdr.markForCheck();
+      this.cdr.detectChanges();
+      this.appRef.tick();
       return;
     }
 
@@ -421,6 +454,10 @@ export class PrayerTypesManagerComponent {
       this.submitting = true;
       this.error = null;
       this.success = null;
+      this.cdr.markForCheck();
+      this.cdr.detectChanges();
+      this.appRef.tick();
+      await Promise.resolve();
 
       if (this.editingId) {
         // Update existing type
@@ -435,6 +472,7 @@ export class PrayerTypesManagerComponent {
 
         if (error) throw error;
         this.success = 'Prayer type updated successfully!';
+        this.toast.success('Prayer type updated.');
       } else {
         // Add new type
         const { error } = await this.supabase.client
@@ -447,6 +485,7 @@ export class PrayerTypesManagerComponent {
 
         if (error) throw error;
         this.success = 'Prayer type added successfully!';
+        this.toast.success('Prayer type added.');
       }
 
       // Reset form
@@ -455,6 +494,10 @@ export class PrayerTypesManagerComponent {
       this.isActive = true;
       this.editingId = null;
       this.showAddForm = false;
+
+      this.cdr.markForCheck();
+      this.cdr.detectChanges();
+      this.appRef.tick();
 
       await this.fetchTypes();
       // Reload prompts to reflect type changes on main site
@@ -466,9 +509,12 @@ export class PrayerTypesManagerComponent {
         ? String(err.message)
         : 'Unknown error';
       this.error = `Failed to save prayer type: ${message}`;
+      this.toast.error(`Could not save prayer type: ${message}`);
     } finally {
       this.submitting = false;
       this.cdr.markForCheck();
+      this.cdr.detectChanges();
+      this.appRef.tick();
     }
   }
 
@@ -480,6 +526,7 @@ export class PrayerTypesManagerComponent {
     this.showAddForm = true;
     this.error = null;
     this.success = null;
+    this.cdr.markForCheck();
   }
 
   async handleDelete(id: string, name: string) {
@@ -604,6 +651,7 @@ export class PrayerTypesManagerComponent {
     this.displayOrder = 0;
     this.isActive = true;
     this.error = null;
+    this.cdr.markForCheck();
   }
 
   formatDate(dateString: string): string {

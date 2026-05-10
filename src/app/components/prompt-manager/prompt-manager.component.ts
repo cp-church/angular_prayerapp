@@ -1,4 +1,4 @@
-import { Component, OnDestroy, Output, EventEmitter, ChangeDetectorRef } from '@angular/core';
+import { ApplicationRef, Component, OnDestroy, Output, EventEmitter, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../services/supabase.service';
@@ -248,7 +248,7 @@ interface CSVRow {
 
       <!-- Add/Edit Form -->
       @if (showAddForm) {
-      <form (submit)="handleSubmit($event)" class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 mb-4 border border-gray-200 dark:border-gray-700">
+      <form novalidate class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 mb-4 border border-gray-200 dark:border-gray-700">
         <div class="flex items-center justify-between mb-4">
           <h4 class="text-md font-semibold text-gray-900 dark:text-gray-100">
             {{ editingId ? 'Edit Prayer Prompt' : 'Add New Prayer Prompt' }}
@@ -274,6 +274,7 @@ interface CSVRow {
               id="title"
               [(ngModel)]="title"
               name="title"
+              (keydown.enter)="onPromptTitleEnter($event)"
               placeholder="e.g., Pray for those in need"
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
@@ -317,21 +318,38 @@ interface CSVRow {
             ></textarea>
           </div>
         </div>
-        <div class="flex gap-2 mt-3">
-          <button
-            type="submit"
-            [disabled]="submitting"
-            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 transition-colors text-sm"
+        <div class="mt-3 space-y-2">
+          @if (submitting) {
+          <div
+            class="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300"
+            role="status"
+            aria-live="polite"
           >
-            {{ submitting ? 'Saving...' : (editingId ? 'Update Prompt' : 'Add Prompt') }}
-          </button>
-          <button
-            type="button"
-            (click)="cancelEdit()"
-            class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-sm cursor-pointer"
-          >
-            Cancel
-          </button>
+            <span
+              class="inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-blue-600 border-t-transparent dark:border-blue-400 dark:border-t-transparent"
+              aria-hidden="true"
+            ></span>
+            <span>Saving…</span>
+          </div>
+          }
+          <div class="flex gap-2">
+            <button
+              type="button"
+              (click)="savePrompt()"
+              [disabled]="submitting"
+              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 transition-colors text-sm"
+            >
+              {{ submitting ? 'Saving…' : (editingId ? 'Update Prompt' : 'Add Prompt') }}
+            </button>
+            <button
+              type="button"
+              (click)="cancelEdit()"
+              [disabled]="submitting"
+              class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:pointer-events-none transition-colors text-sm cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       </form>
       }
@@ -375,7 +393,7 @@ interface CSVRow {
           <div class="block">
             <!-- Edit Form (inline) -->
             @if (editingId === prompt.id) {
-            <form (submit)="handleSubmit($event)" class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 border border-blue-300 dark:border-blue-600">
+            <form novalidate class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 border border-blue-300 dark:border-blue-600">
               <div class="flex items-center justify-between mb-3">
                 <h4 class="text-md font-semibold text-gray-900 dark:text-gray-100">
                   Edit Prayer Prompt
@@ -400,6 +418,7 @@ interface CSVRow {
                     type="text"
                     [(ngModel)]="title"
                     name="editTitle"
+                    (keydown.enter)="onPromptTitleEnter($event)"
                     placeholder="e.g., Pray for those in need"
                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
@@ -438,21 +457,38 @@ interface CSVRow {
                   ></textarea>
                 </div>
               </div>
-              <div class="flex gap-2 mt-3">
-                <button
-                  type="submit"
-                  [disabled]="submitting"
-                  class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 transition-colors text-sm"
+              <div class="mt-3 space-y-2">
+                @if (submitting) {
+                <div
+                  class="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300"
+                  role="status"
+                  aria-live="polite"
                 >
-                  {{ submitting ? 'Saving...' : 'Update Prompt' }}
-                </button>
-                <button
-                  type="button"
-                  (click)="cancelEdit()"
-                  class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-sm cursor-pointer"
-                >
-                  Cancel
-                </button>
+                  <span
+                    class="inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-blue-600 border-t-transparent dark:border-blue-400 dark:border-t-transparent"
+                    aria-hidden="true"
+                  ></span>
+                  <span>Saving…</span>
+                </div>
+                }
+                <div class="flex gap-2">
+                  <button
+                    type="button"
+                    (click)="savePrompt()"
+                    [disabled]="submitting"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 transition-colors text-sm"
+                  >
+                    {{ submitting ? 'Saving…' : 'Update Prompt' }}
+                  </button>
+                  <button
+                    type="button"
+                    (click)="cancelEdit()"
+                    [disabled]="submitting"
+                    class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:pointer-events-none transition-colors text-sm cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             </form>
             }
@@ -575,7 +611,8 @@ export class PromptManagerComponent implements OnDestroy {
   constructor(
     private supabase: SupabaseService,
     private toast: ToastService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private appRef: ApplicationRef
   ) {}
 
   onSectionToggle(): void {
@@ -874,11 +911,24 @@ export class PromptManagerComponent implements OnDestroy {
     }
   }
 
-  async handleSubmit(event: Event) {
-    event.preventDefault();
+  /** Enter in title field saves (textarea keeps newlines on Enter). */
+  onPromptTitleEnter(event: Event): void {
+    const ke = event as KeyboardEvent;
+    if (ke.key !== 'Enter') return;
+    ke.preventDefault();
+    void this.savePrompt();
+  }
+
+  /** Persist add / inline edit; success/error toast on completion; full-app tick for OnPush admin. */
+  async savePrompt(event?: Event): Promise<void> {
+    event?.preventDefault();
 
     if (!this.title.trim() || !this.type || !this.description.trim()) {
       this.error = 'All fields are required';
+      this.toast.warning('All fields are required.');
+      this.cdr.markForCheck();
+      this.cdr.detectChanges();
+      this.appRef.tick();
       return;
     }
 
@@ -886,6 +936,10 @@ export class PromptManagerComponent implements OnDestroy {
       this.submitting = true;
       this.error = null;
       this.success = null;
+      this.cdr.markForCheck();
+      this.cdr.detectChanges();
+      this.appRef.tick();
+      await Promise.resolve();
 
       if (this.editingId) {
         // Update existing prompt
@@ -900,6 +954,7 @@ export class PromptManagerComponent implements OnDestroy {
 
         if (error) throw error;
         this.success = 'Prayer prompt updated successfully!';
+        this.toast.success('Prompt updated.');
       } else {
         // Add new prompt
         const { error } = await this.supabase.client
@@ -912,6 +967,7 @@ export class PromptManagerComponent implements OnDestroy {
 
         if (error) throw error;
         this.success = 'Prayer prompt added successfully!';
+        this.toast.success('Prompt added.');
       }
 
       // Reset form
@@ -920,6 +976,10 @@ export class PromptManagerComponent implements OnDestroy {
       this.type = this.prayerTypes.length > 0 ? this.prayerTypes[0].name : '';
       this.editingId = null;
       this.showAddForm = false;
+
+      this.cdr.markForCheck();
+      this.cdr.detectChanges();
+      this.appRef.tick();
 
       // Refresh search results if user has already searched
       if (this.hasSearched) {
@@ -933,8 +993,12 @@ export class PromptManagerComponent implements OnDestroy {
         ? String(err.message)
         : 'Unknown error';
       this.error = `Failed to save prayer prompt: ${message}`;
+      this.toast.error(`Could not save prompt: ${message}`);
     } finally {
       this.submitting = false;
+      this.cdr.markForCheck();
+      this.cdr.detectChanges();
+      this.appRef.tick();
     }
   }
 
@@ -947,6 +1011,7 @@ export class PromptManagerComponent implements OnDestroy {
     this.showCSVUpload = false;
     this.error = null;
     this.success = null;
+    this.cdr.markForCheck();
   }
 
   async handleDelete(id: string, title: string) {
@@ -1004,6 +1069,7 @@ export class PromptManagerComponent implements OnDestroy {
     this.description = '';
     this.type = this.prayerTypes.length > 0 ? this.prayerTypes[0].name : '';
     this.error = null;
+    this.cdr.markForCheck();
   }
 
   formatDate(dateString: string): string {

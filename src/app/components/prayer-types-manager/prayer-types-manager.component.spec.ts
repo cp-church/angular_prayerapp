@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { ChangeDetectorRef } from '@angular/core';
+import { ApplicationRef, ChangeDetectorRef } from '@angular/core';
 import { PrayerTypesManagerComponent } from './prayer-types-manager.component';
 import { SupabaseService } from '../../services/supabase.service';
 import { ToastService } from '../../services/toast.service';
@@ -62,10 +62,21 @@ describe('PrayerTypesManagerComponent', () => {
 
     // Create mock ChangeDetectorRef
     mockChangeDetectorRef = {
-      markForCheck: vi.fn()
+      markForCheck: vi.fn(),
+      detectChanges: vi.fn()
     } as unknown as ChangeDetectorRef;
 
-    component = new PrayerTypesManagerComponent(mockSupabaseService, mockToastService, mockPromptService, mockChangeDetectorRef);
+    const mockApplicationRef = {
+      tick: vi.fn()
+    } as unknown as ApplicationRef;
+
+    component = new PrayerTypesManagerComponent(
+      mockSupabaseService,
+      mockToastService,
+      mockPromptService,
+      mockChangeDetectorRef,
+      mockApplicationRef
+    );
   });
 
   afterEach(() => {
@@ -182,23 +193,25 @@ describe('PrayerTypesManagerComponent', () => {
     });
   });
 
-  describe('handleSubmit', () => {
+  describe('saveType', () => {
     it('should show error if name is empty', async () => {
       const event = new Event('submit');
       component.name = '';
 
-      await component.handleSubmit(event);
+      await component.saveType(event);
 
       expect(component.error).toBe('Please enter a type name');
+      expect(mockToastService.warning).toHaveBeenCalledWith('Please enter a type name.');
     });
 
     it('should show error if name is only whitespace', async () => {
       const event = new Event('submit');
       component.name = '   ';
 
-      await component.handleSubmit(event);
+      await component.saveType(event);
 
       expect(component.error).toBe('Please enter a type name');
+      expect(mockToastService.warning).toHaveBeenCalledWith('Please enter a type name.');
     });
 
     it('should add new prayer type successfully', async () => {
@@ -213,12 +226,13 @@ describe('PrayerTypesManagerComponent', () => {
 
       mockSupabaseService.directQuery = vi.fn(() => Promise.resolve({ data: [], error: null }));
 
-      await component.handleSubmit(event);
+      await component.saveType(event);
 
       expect(component.success).toBe('Prayer type added successfully!');
       expect(component.showAddForm).toBe(false);
       expect(component.name).toBe('');
       expect(mockPromptService.loadPrompts).toHaveBeenCalled();
+      expect(mockToastService.success).toHaveBeenCalledWith('Prayer type added.');
     });
 
     it('should update existing prayer type successfully', async () => {
@@ -236,16 +250,18 @@ describe('PrayerTypesManagerComponent', () => {
 
       mockSupabaseService.directQuery = vi.fn(() => Promise.resolve({ data: [], error: null }));
 
-      await component.handleSubmit(event);
+      await component.saveType(event);
 
       expect(component.success).toBe('Prayer type updated successfully!');
       expect(component.showAddForm).toBe(false);
       expect(component.editingId).toBeNull();
       expect(mockPromptService.loadPrompts).toHaveBeenCalled();
+      expect(mockToastService.success).toHaveBeenCalledWith('Prayer type updated.');
     });
 
     it('should handle insert error', async () => {
       const event = new Event('submit');
+      component.showAddForm = true;
       component.name = 'New Type';
       const error = new Error('Insert failed');
 
@@ -253,15 +269,16 @@ describe('PrayerTypesManagerComponent', () => {
         insert: vi.fn(() => Promise.resolve({ error }))
       }));
 
-      await component.handleSubmit(event);
+      await component.saveType(event);
 
       expect(component.error).toBe('Failed to save prayer type: Insert failed');
-      // Form is reset even on error per the component's finally block
-      expect(component.showAddForm).toBe(false);
+      expect(component.showAddForm).toBe(true);
+      expect(mockToastService.error).toHaveBeenCalled();
     });
 
     it('should handle update error', async () => {
       const event = new Event('submit');
+      component.showAddForm = true;
       component.editingId = 'type-1';
       component.name = 'Updated Type';
       const error = new Error('Update failed');
@@ -272,9 +289,10 @@ describe('PrayerTypesManagerComponent', () => {
         }))
       }));
 
-      await component.handleSubmit(event);
+      await component.saveType(event);
 
       expect(component.error).toBe('Failed to save prayer type: Update failed');
+      expect(mockToastService.error).toHaveBeenCalled();
     });
 
     it('should trim whitespace from name', async () => {
@@ -288,7 +306,7 @@ describe('PrayerTypesManagerComponent', () => {
 
       mockSupabaseService.directQuery = vi.fn(() => Promise.resolve({ data: [], error: null }));
 
-      await component.handleSubmit(event);
+      await component.saveType(event);
 
       expect(insertSpy).toHaveBeenCalledWith({
         name: 'Trimmed Name',
@@ -308,7 +326,7 @@ describe('PrayerTypesManagerComponent', () => {
 
       mockSupabaseService.directQuery = vi.fn(() => Promise.resolve({ data: [], error: null }));
 
-      await component.handleSubmit(event);
+      await component.saveType(event);
 
       expect(emitSpy).toHaveBeenCalled();
     });

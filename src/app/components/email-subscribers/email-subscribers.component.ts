@@ -1,4 +1,13 @@
-import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
+import {
+  ApplicationRef,
+  Component,
+  OnInit,
+  OnDestroy,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  ViewChild,
+  ElementRef,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BreakpointObserver } from '@angular/cdk/layout';
@@ -282,7 +291,7 @@ function escapeForIlikePattern(value: string): string {
         <!-- Manual Entry Tab -->
         @if (!pcSearchTab) {
         <div id="tour-email-manual-entry-form">
-        <form (ngSubmit)="handleAddSubscriber()" class="space-y-3">
+        <form novalidate class="space-y-3">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
@@ -290,6 +299,7 @@ function escapeForIlikePattern(value: string): string {
                 type="text"
                 [(ngModel)]="newName"
                 name="newName"
+                (keydown.enter)="onManualAddFieldEnter($event)"
                 placeholder="John Doe"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
@@ -301,25 +311,41 @@ function escapeForIlikePattern(value: string): string {
                 type="email"
                 [(ngModel)]="newEmail"
                 name="newEmail"
+                (keydown.enter)="onManualAddFieldEnter($event)"
                 placeholder="john@example.com"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
             </div>
           </div>
+          @if (submitting) {
+          <div
+            class="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300"
+            role="status"
+            aria-live="polite"
+          >
+            <span
+              class="inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-blue-600 border-t-transparent dark:border-blue-400 dark:border-t-transparent"
+              aria-hidden="true"
+            ></span>
+            <span>Adding…</span>
+          </div>
+          }
           <div class="flex gap-2">
             <button
               id="tour-email-manual-add-subscriber-btn"
-              type="submit"
+              type="button"
+              (click)="handleAddSubscriber()"
               [disabled]="submitting"
               class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 transition-colors text-sm cursor-pointer"
             >
-              {{ submitting ? 'Adding...' : 'Add Subscriber' }}
+              {{ submitting ? 'Adding…' : 'Add Subscriber' }}
             </button>
             <button
               type="button"
               (click)="toggleAddForm()"
-              class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm cursor-pointer"
+              [disabled]="submitting"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:pointer-events-none transition-colors text-sm cursor-pointer"
             >
               Cancel
             </button>
@@ -933,6 +959,7 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
     private supabase: SupabaseService,
     private toast: ToastService,
     private cdr: ChangeDetectorRef,
+    private appRef: ApplicationRef,
     private adminDataService: AdminDataService,
     private breakpointObserver: BreakpointObserver
   ) {}
@@ -1323,11 +1350,13 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
     }
   }
 
-  async handleSearch() {
+  async handleSearch(options?: { preserveCsvSuccess?: boolean }) {
     try {
       this.searching = true;
       this.error = null;
-      this.csvSuccess = null;
+      if (!options?.preserveCsvSuccess) {
+        this.csvSuccess = null;
+      }
       this.currentPage = 1; // Reset to first page on new search
       this.cdr.markForCheck();
 
@@ -1524,16 +1553,28 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
 
   readonly Math = Math;
 
+  /** Enter in manual name/email fields submits (same as Add Subscriber). */
+  onManualAddFieldEnter(event: Event): void {
+    const ke = event as KeyboardEvent;
+    if (ke.key !== 'Enter') return;
+    ke.preventDefault();
+    void this.handleAddSubscriber();
+  }
+
   async handleAddSubscriber() {
     if (!this.newName.trim() || !this.newEmail.trim()) {
       this.error = 'Name and email are required';
       this.cdr.markForCheck();
+      this.cdr.detectChanges();
+      this.appRef.tick();
       return;
     }
 
     if (this.pcSearchTourDemoBlockManualSubmit) {
       this.toast.info('Tour preview: close and reopen Add Subscriber, or refresh the page, to add a real subscriber.');
       this.cdr.markForCheck();
+      this.cdr.detectChanges();
+      this.appRef.tick();
       return;
     }
 
@@ -1542,6 +1583,9 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
       this.error = null;
       this.csvSuccess = null;
       this.cdr.markForCheck();
+      this.cdr.detectChanges();
+      this.appRef.tick();
+      await Promise.resolve();
 
       const { data: existing } = await this.supabase.client
         .from('email_subscribers')
@@ -1553,6 +1597,8 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
         this.error = 'This email address is already subscribed';
         this.submitting = false;
         this.cdr.markForCheck();
+        this.cdr.detectChanges();
+        this.appRef.tick();
         return;
       }
 
@@ -1596,8 +1642,8 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
       // Show the send welcome email dialog
       this.showSendWelcomeEmailDialog = true;
       this.cdr.markForCheck();
-      // Refresh the list in background
-      await this.handleSearch();
+      // Refresh the list without clearing csvSuccess (banner + welcome dialog should stay visible).
+      await this.handleSearch({ preserveCsvSuccess: true });
     } catch (err: any) {
       console.error('Error adding subscriber:', err);
       this.error = err.message || 'Failed to add subscriber';
@@ -1605,6 +1651,8 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
     } finally {
       this.submitting = false;
       this.cdr.markForCheck();
+      this.cdr.detectChanges();
+      this.appRef.tick();
     }
   }
 
@@ -2019,7 +2067,7 @@ export class EmailSubscribersComponent implements OnInit, OnDestroy {
       this.csvData = [];
       this.showCSVUpload = false;
 
-      await this.handleSearch();
+      await this.handleSearch({ preserveCsvSuccess: true });
       this.cdr.markForCheck();
     } catch (err: any) {
       console.error('Error uploading CSV:', err);

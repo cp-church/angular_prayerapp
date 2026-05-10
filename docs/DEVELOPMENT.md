@@ -4,7 +4,7 @@ For developers working on the Prayer App codebase.
 
 ## Table of Contents
 
-1. [Architecture](#architecture) (includes [Public Routes](#public-routes) and [Info Page](#info-page))
+1. [Architecture](#architecture) (includes [Public Routes](#public-routes), [Info Page](#info-page), and [Admin portal: nested settings](#admin-portal-nested-settings-cards-and-change-detection))
 2. [Testing](#testing)
 3. [Code Quality](#code-quality)
 4. [Performance](#performance)
@@ -80,6 +80,30 @@ The **info page** (`/info`) is a public landing/overview. It is used to introduc
 - **Feature overview**: Interactive preview of the main app (mock header, filter tabs, sample cards). Users can tap filter tabs (Current, Answered, Total, Prompts, Personal) and open modals (Help, Settings, badges, prompt categories, personal actions) to see how the app works
 - **Theme**: Supports light/dark mode via theme toggle
 - **Implementation**: `src/app/pages/info/info.component.ts` (standalone). Lazy-loaded in `app.routes.ts`. Uses `BrandingService` (via `BRANDING_SERVICE_TOKEN`) for optional logo; no auth required.
+
+### Admin portal: nested settings cards and change detection
+
+The admin route (`src/app/pages/admin/admin.component.ts`) uses **`ChangeDetectionStrategy.OnPush`**. Collapsible **Settings** tabs embed many standalone components as siblings (Analytics, Email, Content, Tools, Security).
+
+**Pattern that caused missed UI updates**: A **child** component uses **OnPush** (or sits under the OnPush admin tree), relies on **native `(submit)`** or **`type="submit"`** without also wiring **`type="button"` `(click)="..."`**, and updates state in **`async`** handlers without **`ChangeDetectorRef.detectChanges()`** / **`ApplicationRef.tick()`** before the first **`await`**. Symptoms: save runs but success/error/spinners do not show until something else triggers change detection.
+
+**CD order for saves / spinners (Content tab + Email manual add)**: After mutating state, call **`markForCheck()`** first (marks this OnPush branch dirty for the next cycle), then **`detectChanges()`** on this component (runs CD immediately so the spinner row appears before the first **`await`**), then **`ApplicationRef.tick()`** so the **OnPush admin parent** picks up the update. Use the same **`markForCheck` → `detectChanges` → `tick`** order in **`finally`** after **`submitting = false`**. Synchronous flows that only flip flags (e.g. **`handleEdit` / `cancelEdit`** on prompts) still call **`markForCheck()`** after updating state.
+
+**Aligned in code (Content tab)**:
+
+- [`prompt-manager.component.ts`](src/app/components/prompt-manager/prompt-manager.component.ts) — click-driven save, `novalidate`, `tick`/`detectChanges`, optional toasts.
+- [`prayer-types-manager.component.ts`](src/app/components/prayer-types-manager/prayer-types-manager.component.ts) — same.
+
+**Similar surface (watch if reports appear)**:
+
+- [`email-subscribers.component.ts`](src/app/components/email-subscribers/email-subscribers.component.ts) — same pattern for **Manual Entry** → **Add Subscriber** (click-driven, `novalidate`, `tick` / `detectChanges`, inline **Adding…**).
+
+**Lower concern**:
+
+- **Prayer Editor** ([`prayer-search.component.ts`](src/app/components/prayer-search/prayer-search.component.ts)): default change detection; **Create Prayer** primary control is already **`type="button"`** `(click)="createPrayer($event)"`. The form’s **`(submit)`** is mainly for Enter-key behaviour.
+- **GitHub / Prayer Encouragement / Rich Text editors** ([`github-settings`](src/app/components/github-settings/github-settings.component.ts), [`prayer-encouragement-settings`](src/app/components/prayer-encouragement-settings/prayer-encouragement-settings.component.ts), [`rich-text-editors-settings`](src/app/components/rich-text-editors-settings/rich-text-editors-settings.component.ts)): **default** change detection, **`(ngSubmit)`** — normal Angular template-driven pattern.
+- [**`app-branding`**](src/app/components/app-branding/app-branding.component.ts): OnPush but save is already **`(click)="save()"`** with **`markForCheck()`** in **`save()`**.
+- [**`planning-center-list-mapper`**](src/app/components/planning-center-list-mapper/planning-center-list-mapper.component.ts), [**`security-policy-settings`**](src/app/components/security-policy-settings/security-policy-settings.component.ts), [**`test-account-settings`**](src/app/components/test-account-settings/test-account-settings.component.ts), [**`email-verification-settings`**](src/app/components/email-verification-settings/email-verification-settings.component.ts): OnPush; **no `<form>` submit** flows surfaced in template grep — toggles/controls rather than add-form submits.
 
 ### Core Services
 
@@ -206,7 +230,7 @@ interface BrandingData {
 - generatePersonalPrayersPrintableHTML() // Generate HTML for personal prayers
 ```
 
-**Saddle-stitch booklet (admin)**: **Admin** → **Settings** → **Tools** → **Saddle-stitch prayer booklet** — HTML from [`padToMultipleOfFourWithBackCoverLast`](src/app/lib/print-booklet-imposition.ts) + [`saddleStitchImpose`](src/app/lib/print-booklet-imposition.ts). **Front / back**: as in [CHANGELOG](CHANGELOG.md) (**`/info` QR**, optional bottom logo). **Inner pages**: **`.booklet-panel`** inset (edges + gutter) tuned for denser packing; **13px** scaled copy; `splitBookletMarkdownIntoPanelParts` (**~1750 chars** per segment), **`estimateBookletUnitWeight`**, and **`packBookletUnitsIntoPageChunks`** (**`BOOKLET_PANEL_BOTTOM_SLACK`**) give a heuristic first paint; in a real browser, [`booklet-measure-inline.ts`](src/app/lib/booklet-measure-inline.ts) measures **`scrollHeight` vs `clientHeight`** with rounding + capped bottom-inset tolerance, then re-imposes — see [CHANGELOG](CHANGELOG.md). **“(continued)”** and **updates-on-last-segment** rules unchanged. Two **`booklet-panel`** columns per **`booklet-print-surface`** (**flex**, fixed height). **Padding** slots (only when imposition pads to a multiple of four) and the **outer back cover** use the same **Notes** header (pencil icon + bold **Notes:**) above ruled handwriting lines — see [CHANGELOG](CHANGELOG.md). Duplex **flip short edge**, fold, staple.
+**Saddle-stitch booklet (admin)**: **Admin** → **Settings** → **Tools** → **Saddle-stitch prayer booklet** — HTML from [`padToMultipleOfFourWithBackCoverLast`](src/app/lib/print-booklet-imposition.ts) + [`saddleStitchImpose`](src/app/lib/print-booklet-imposition.ts). **Front / back**: as in [CHANGELOG](CHANGELOG.md) (**`/info` QR**, cover **PWA icon**, and optional **back-cover branding logo** fetched and inlined as **`data:`** when possible so printing does not depend on loading **`api.qrserver.com`**, same-origin **`/icons`**, or the CDN/logo URL first). **Inner pages**: **`.booklet-panel`** inset (edges + gutter) tuned for denser packing; **13px** scaled copy; `splitBookletMarkdownIntoPanelParts` (**~1750 chars** per segment), **`estimateBookletUnitWeight`**, and **`packBookletUnitsIntoPageChunks`** (**`BOOKLET_PANEL_BOTTOM_SLACK`**) give a heuristic first paint; in a real browser, [`booklet-measure-inline.ts`](src/app/lib/booklet-measure-inline.ts) measures **`scrollHeight` vs `clientHeight`** with rounding + capped bottom-inset tolerance, then re-imposes — see [CHANGELOG](CHANGELOG.md). **“(continued)”** and **updates-on-last-segment** rules unchanged. Two **`booklet-panel`** columns per **`booklet-print-surface`** (**flex**, fixed height). **Padding** slots (only when imposition pads to a multiple of four) and the **outer back cover** use the same **Notes** header (pencil icon + bold **Notes:**) above ruled handwriting lines — see [CHANGELOG](CHANGELOG.md). Duplex **flip short edge**, fold, staple.
 
 **Personal Prayers Functionality**:
 

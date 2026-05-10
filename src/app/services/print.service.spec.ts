@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PrintService, Prayer, TimeRange } from './print.service';
+import type { EmailNotificationService } from './email-notification.service';
 import { SupabaseService } from './supabase.service';
 
 const mockEmailNotificationService = {
   getEmailBaseUrl: vi.fn().mockReturnValue('https://example.com')
-};
+} as unknown as EmailNotificationService;
 
 const mockBrandingService = {
   initialize: vi.fn().mockResolvedValue(undefined),
@@ -358,6 +359,104 @@ describe('PrintService', () => {
       expect(html).toContain('overflow room');
     });
 
+    it('should pass embedded QR and app icon as data URLs when embed helpers succeed', {
+      timeout: 10000
+    }, async () => {
+      const dataUrl =
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+      const qrEmbedSpy = vi
+        .spyOn(service as unknown as { tryEmbedInfoQrAsDataUrl: () => Promise<string | null> }, 'tryEmbedInfoQrAsDataUrl')
+        .mockResolvedValue(dataUrl);
+      const iconEmbedSpy = vi
+        .spyOn(
+          service as unknown as { tryEmbedBookletAppIconAsDataUrl: () => Promise<string | null> },
+          'tryEmbedBookletAppIconAsDataUrl'
+        )
+        .mockResolvedValue(dataUrl);
+      const backLogoEmbedSpy = vi
+        .spyOn(
+          service as unknown as {
+            tryEmbedBookletBackLogoAsDataUrl: (u: string) => Promise<string | null>;
+          },
+          'tryEmbedBookletBackLogoAsDataUrl'
+        )
+        .mockResolvedValue(null);
+
+      const mockWindow = {
+        document: { open: vi.fn(), write: vi.fn(), close: vi.fn() },
+        focus: vi.fn()
+      };
+      try {
+        await service.downloadPrintableBookletPrayerList('month', mockWindow as any);
+        const html = (mockWindow.document.write as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+        const beforeScript = bookletHtmlBeforePackScript(html);
+        expect(qrEmbedSpy).toHaveBeenCalled();
+        expect(iconEmbedSpy).toHaveBeenCalled();
+        expect(backLogoEmbedSpy).not.toHaveBeenCalled();
+        expect(beforeScript).toContain('data:image/png;base64,');
+        expect(beforeScript).toMatch(/class="booklet-front-qr"[^>]+src="data:image\/png;base64,/);
+        expect(beforeScript).toMatch(/class="booklet-app-icon"[^>]+src="data:image\/png;base64,/);
+      } finally {
+        qrEmbedSpy.mockRestore();
+        iconEmbedSpy.mockRestore();
+        backLogoEmbedSpy.mockRestore();
+      }
+    });
+
+    it('should embed back-cover branding logo as data URL when useLogo and embed succeeds', {
+      timeout: 10000
+    }, async () => {
+      const defaultBr = {
+        useLogo: false,
+        lightLogo: null,
+        darkLogo: null,
+        appTitle: 'Church Prayer Manager',
+        appSubtitle: 'Keeping our community connected in prayer',
+        churchWebsiteUrl: null,
+        lastModified: null
+      };
+      const brandingWithLogo = {
+        useLogo: true,
+        lightLogo: 'https://cdn.example.com/logo.png',
+        darkLogo: null,
+        appTitle: 'T',
+        appSubtitle: 'S',
+        churchWebsiteUrl: null,
+        lastModified: null
+      };
+      const dataUrl =
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+      const logoEmbedSpy = vi
+        .spyOn(
+          service as unknown as {
+            tryEmbedBookletBackLogoAsDataUrl: (u: string) => Promise<string | null>;
+          },
+          'tryEmbedBookletBackLogoAsDataUrl'
+        )
+        .mockResolvedValue(dataUrl);
+
+      vi.mocked(mockBrandingService.getBranding).mockReturnValue(brandingWithLogo);
+      const mockWindow = {
+        document: {
+          open: vi.fn(),
+          write: vi.fn(),
+          close: vi.fn()
+        },
+        focus: vi.fn()
+      };
+      try {
+        await service.downloadPrintableBookletPrayerList('month', mockWindow as any);
+        const html = (mockWindow.document.write as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+        const beforeScript = bookletHtmlBeforePackScript(html);
+        expect(logoEmbedSpy).toHaveBeenCalledWith('https://cdn.example.com/logo.png');
+        expect(beforeScript).toContain('booklet-back-cover-logo-bottom');
+        expect(beforeScript).toMatch(/class="booklet-logo"[^>]+src="data:image\/png;base64,/);
+      } finally {
+        logoEmbedSpy.mockRestore();
+        vi.mocked(mockBrandingService.getBranding).mockReturnValue(defaultBr);
+      }
+    });
+
     it('should emit (continued) booklet fragments when descriptions exceed panel budget', {
       timeout: 10000
     }, async () => {
@@ -588,6 +687,14 @@ describe('PrintService', () => {
         lastModified: null
       };
       vi.mocked(mockBrandingService.getBranding).mockReturnValue(brandingWithLogo);
+      const logoEmbedSpy = vi
+        .spyOn(
+          service as unknown as {
+            tryEmbedBookletBackLogoAsDataUrl: (u: string) => Promise<string | null>;
+          },
+          'tryEmbedBookletBackLogoAsDataUrl'
+        )
+        .mockResolvedValue(null);
       const mockWindow = {
         document: {
           open: vi.fn(),
@@ -599,9 +706,11 @@ describe('PrintService', () => {
       try {
         await service.downloadPrintableBookletPrayerList('month', mockWindow as any);
         const html = (mockWindow.document.write as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+        expect(logoEmbedSpy).toHaveBeenCalledWith('https://cdn.example.com/logo.png');
         expect(html).toContain('booklet-back-cover-logo-bottom');
         expect(html).toContain('https://cdn.example.com/logo.png');
       } finally {
+        logoEmbedSpy.mockRestore();
         vi.mocked(mockBrandingService.getBranding).mockReturnValue(defaultBr);
       }
     });
