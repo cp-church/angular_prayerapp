@@ -1,12 +1,13 @@
 import { Component, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { AdminSectionLoadingComponent } from '../admin-section-loading/admin-section-loading.component';
 import { SupabaseService } from '../../services/supabase.service';
 import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-test-account-settings',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, AdminSectionLoadingComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/40" [class.cursor-pointer]="!sectionExpanded" (click)="!sectionExpanded && onSectionToggle()">
@@ -50,9 +51,7 @@ import { ToastService } from '../../services/toast.service';
         class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
       >
       @if (loading) {
-      <div class="flex items-center justify-center py-8">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
+      <app-admin-section-loading message="Loading test account settings…" />
       }
 
       @if (!loading) {

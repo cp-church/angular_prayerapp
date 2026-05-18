@@ -1,13 +1,14 @@
 import { Component, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { AdminSectionLoadingComponent } from '../admin-section-loading/admin-section-loading.component';
 import { SupabaseService } from '../../services/supabase.service';
 import { PrayerEncouragementService } from '../../services/prayer-encouragement.service';
 
 @Component({
   selector: 'app-prayer-encouragement-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AdminSectionLoadingComponent],
   template: `
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/40" [class.cursor-pointer]="!sectionExpanded" (click)="!sectionExpanded && onSectionToggle()">
       <button
@@ -48,6 +49,9 @@ import { PrayerEncouragementService } from '../../services/prayer-encouragement.
         aria-labelledby="prayer-encouragement-settings-trigger"
         class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
       >
+      @if (isLoading) {
+        <app-admin-section-loading message="Loading prayer encouragement settings…" />
+      } @else {
       <p class="text-gray-600 dark:text-gray-400 text-sm mb-6">
         Allow users to click Pray For on prayers; requesters and admins see how many times a prayer was prayed for.
       </p>
@@ -141,6 +145,7 @@ import { PrayerEncouragementService } from '../../services/prayer-encouragement.
           </div>
         </div>
       }
+      }
       </div>
       }
     </div>
@@ -153,6 +158,7 @@ export class PrayerEncouragementSettingsComponent {
   prayerEncouragementEnabled = false;
   cooldownHours = 4;
   isSaving = false;
+  isLoading = false;
   successMessage = '';
   errorMessage = '';
 
@@ -172,6 +178,8 @@ export class PrayerEncouragementSettingsComponent {
   }
 
   async loadSettings(): Promise<void> {
+    this.isLoading = true;
+    this.cdr.markForCheck();
     try {
       const { data, error } = await this.supabase.client
         .from('admin_settings')
@@ -187,6 +195,9 @@ export class PrayerEncouragementSettingsComponent {
       console.error('[PrayerEncouragementSettings] Error loading:', err);
       this.errorMessage = 'Failed to load settings.';
       this.sectionExpanded = true;
+    } finally {
+      this.isLoading = false;
+      this.cdr.markForCheck();
     }
   }
 
@@ -216,6 +227,7 @@ export class PrayerEncouragementSettingsComponent {
       this.errorMessage = 'Failed to save settings. Please try again.';
     } finally {
       this.isSaving = false;
+      this.cdr.markForCheck();
     }
   }
 }

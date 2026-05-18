@@ -1,13 +1,14 @@
 import { Component, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { AdminSectionLoadingComponent } from '../admin-section-loading/admin-section-loading.component';
 import { SupabaseService } from '../../services/supabase.service';
 import { RichTextEditorsSettingsService } from '../../services/rich-text-editors-settings.service';
 
 @Component({
   selector: 'app-rich-text-editors-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AdminSectionLoadingComponent],
   template: `
     <div
       class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/40"
@@ -53,6 +54,9 @@ import { RichTextEditorsSettingsService } from '../../services/rich-text-editors
           class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
           (click)="$event.stopPropagation()"
         >
+          @if (isLoading) {
+            <app-admin-section-loading message="Loading rich text editor settings…" />
+          } @else {
           <p class="text-gray-600 dark:text-gray-400 text-sm mb-6">
             Control whether members see the formatted editor (bold, lists, quotes) on the main app when submitting or editing prayers and updates. When off, they get a plain text box; existing markdown still displays correctly when viewing.
           </p>
@@ -106,6 +110,7 @@ import { RichTextEditorsSettingsService } from '../../services/rich-text-editors
               <p class="text-sm text-red-800 dark:text-red-200">{{ errorMessage }}</p>
             </div>
           }
+          }
         </div>
       }
     </div>
@@ -117,6 +122,7 @@ export class RichTextEditorsSettingsComponent {
   private sectionInitialLoadDone = false;
   richTextEditorsEnabled = true;
   isSaving = false;
+  isLoading = false;
   successMessage = '';
   errorMessage = '';
 
@@ -136,6 +142,8 @@ export class RichTextEditorsSettingsComponent {
   }
 
   async loadSettings(): Promise<void> {
+    this.isLoading = true;
+    this.cdr.markForCheck();
     try {
       const { data, error } = await this.supabase.client
         .from('admin_settings')
@@ -148,6 +156,9 @@ export class RichTextEditorsSettingsComponent {
     } catch (err) {
       console.error('[RichTextEditorsSettings] Error loading:', err);
       this.errorMessage = 'Failed to load settings.';
+    } finally {
+      this.isLoading = false;
+      this.cdr.markForCheck();
     }
   }
 

@@ -1,13 +1,14 @@
 import { Component, Output, EventEmitter, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { AdminSectionLoadingComponent } from '../admin-section-loading/admin-section-loading.component';
 import { GitHubFeedbackService, GitHubIssueConfig } from '../../services/github-feedback.service';
 import { Subject, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'app-github-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AdminSectionLoadingComponent],
   template: `
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/40" [class.cursor-pointer]="!sectionExpanded" (click)="!sectionExpanded && onSectionToggle()">
       <button
@@ -48,6 +49,9 @@ import { Subject, takeUntil } from 'rxjs';
         aria-labelledby="github-settings-trigger"
         class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
       >
+      @if (isLoading) {
+        <app-admin-section-loading message="Loading GitHub feedback settings…" />
+      } @else {
       <p class="text-gray-600 dark:text-gray-400 text-sm mb-6">
         Configure GitHub repository settings for user feedback integration
       </p>
@@ -223,6 +227,7 @@ import { Subject, takeUntil } from 'rxjs';
         </div>
       </div>
       }
+      }
       </div>
       }
     </div>
@@ -247,6 +252,7 @@ export class GitHubSettingsComponent implements OnDestroy {
 
   showToken: boolean = false;
   isSaving: boolean = false;
+  isLoading = false;
   isTestingConnection: boolean = false;
   successMessage: string = '';
   errorMessage: string = '';
@@ -275,6 +281,8 @@ export class GitHubSettingsComponent implements OnDestroy {
   }
 
   async loadConfiguration(): Promise<void> {
+    this.isLoading = true;
+    this.cdr.markForCheck();
     try {
       const savedConfig = await this.githubFeedbackService.getGitHubConfig();
       if (savedConfig) {
@@ -282,6 +290,9 @@ export class GitHubSettingsComponent implements OnDestroy {
       }
     } catch (err) {
       console.error('[GitHubSettings] Error loading configuration:', err);
+    } finally {
+      this.isLoading = false;
+      this.cdr.markForCheck();
     }
   }
 

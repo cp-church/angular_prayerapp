@@ -4,6 +4,10 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Admin — settings loading feedback ✅
+- **Behavior**: Collapsible settings cards that load data on first expand (and the **Site Analytics** activity chart) show a **shared** centered spinner and short status message while data is in flight, instead of an empty panel.
+- **Implementation**: [`admin-section-loading.component.ts`](src/app/components/admin-section-loading/admin-section-loading.component.ts); used from **Prayer Encouragement**, **Rich text editors**, **GitHub Feedback**, **App Branding**, **Email** → **Prayer Update Reminders**, **Security** (policies, email verification, test account), and [`site-analytics-activity-chart.component.ts`](src/app/components/site-analytics-activity-chart/site-analytics-activity-chart.component.ts).
+
 ### Admin — Prayer Prompts (Update / Add save) ✅
 - **Fix**: **Update Prompt** / **Add Prompt** use **`type="button"`** with **`(click)="savePrompt()"`** so saves do not depend on native form **`submit`** / **`ngSubmit`** (which could fail to run). Title fields use **Enter** to save via **`onPromptTitleEnter`**. Forms use **`novalidate`**. **`ApplicationRef.tick()`** runs after key state changes so the **OnPush** admin tree repaints. **`ToastService`** shows a **single** toast on completion: **Prompt updated.** / **Prompt added.** or **Could not save prompt:** on failure (inline spinner still covers in-flight saving).
 - **Fix (validation CD)**: Required-field validation and save **`try` / `finally`** blocks run **`markForCheck` → `detectChanges` → `tick`** so OnPush parents see spinner and completion state; **`handleEdit` / `cancelEdit`** call **`markForCheck`** after updating form state.

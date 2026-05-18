@@ -13,6 +13,7 @@ import { ToastService } from '../../services/toast.service';
 import { EmailTemplatesManagerComponent } from '../email-templates-manager/email-templates-manager.component';
 import { EmailSubscribersComponent } from '../email-subscribers/email-subscribers.component';
 import { AdminSubscriberEmailBroadcastComponent } from '../admin-subscriber-email-broadcast/admin-subscriber-email-broadcast.component';
+import { AdminSectionLoadingComponent } from '../admin-section-loading/admin-section-loading.component';
 
 @Component({
   selector: 'app-email-settings',
@@ -22,6 +23,7 @@ import { AdminSubscriberEmailBroadcastComponent } from '../admin-subscriber-emai
     EmailTemplatesManagerComponent,
     EmailSubscribersComponent,
     AdminSubscriberEmailBroadcastComponent,
+    AdminSectionLoadingComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -86,10 +88,7 @@ import { AdminSubscriberEmailBroadcastComponent } from '../admin-subscriber-emai
           class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
         >
         @if (loading) {
-        <div class="text-center py-8">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-          <p class="text-sm text-gray-600 dark:text-gray-400">Loading reminder settings...</p>
-        </div>
+        <app-admin-section-loading message="Loading reminder settings…" />
         }
 
         @if (!loading) {

@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Chart } from 'chart.js/auto';
+import { AdminSectionLoadingComponent } from '../admin-section-loading/admin-section-loading.component';
 import {
   AnalyticsService,
   PageViewTimeSeriesPoint,
@@ -21,7 +22,7 @@ type ChartDisplayMode = 'bar' | 'line';
 @Component({
   selector: 'app-site-analytics-activity-chart',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, AdminSectionLoadingComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div
@@ -82,9 +83,7 @@ type ChartDisplayMode = 'bar' | 'line';
       </div>
 
       @if (loading) {
-        <div class="flex justify-center py-12">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
+        <app-admin-section-loading message="Loading activity chart…" />
       }
 
       @if (!loading && series.length > 0) {
