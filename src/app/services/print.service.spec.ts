@@ -35,7 +35,9 @@ function bookletHtmlBeforePackScript(html: string): string {
 }
 
 /** Decode `#booklet-pack-b64` JSON (Vitest runs in Node). */
-function parseBookletPackSections(html: string): { h2: string; fragments: string[] }[] {
+function parseBookletPackSections(
+  html: string
+): { h2: string; fragments: string[]; packMode?: string }[] {
   const m = html.match(/id="booklet-pack-b64">([^<]+)<\/script>/);
   const b64 = m?.[1]?.trim();
   if (!b64) return [];
@@ -57,6 +59,12 @@ function mockSupabaseBookletAuxiliaryTables(table: string): any | null {
     return {
       select: vi.fn().mockReturnThis(),
       in: vi.fn().mockReturnThis(),
+      order: vi.fn().mockResolvedValue({ data: [], error: null }),
+    };
+  }
+  if (table === 'booklet_insert_pages') {
+    return {
+      select: vi.fn().mockReturnThis(),
       order: vi.fn().mockResolvedValue({ data: [], error: null }),
     };
   }
@@ -144,6 +152,12 @@ describe('PrintService', () => {
         return {
           select: vi.fn().mockReturnThis(),
           in: vi.fn().mockReturnThis(),
+          order: vi.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
+      if (table === 'booklet_insert_pages') {
+        return {
+          select: vi.fn().mockReturnThis(),
           order: vi.fn().mockResolvedValue({ data: [], error: null }),
         };
       }
@@ -403,11 +417,114 @@ describe('PrintService', () => {
       expect(html).toContain('overflow room');
     });
 
+    it('buildBookletInsertPageHtml wraps image in booklet-insert-page', () => {
+      const html = service.buildBookletInsertPageHtml('data:image/png;base64,abc');
+      expect(html).toContain('booklet-insert-page');
+      expect(html).toContain('booklet-insert-img');
+      expect(html).toContain('data:image/png;base64,abc');
+    });
+
+    it('should place custom insert pages after answered prayers and before prompts', {
+      timeout: 10000
+    }, async () => {
+      const origFrom = mockSupabaseClient.from;
+      mockSupabaseClient.from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'booklet_insert_pages') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({
+              data: [
+                {
+                  id: 'ins-1',
+                  sort_order: 0,
+                  label: 'Flyer.png',
+                  mime_type: 'image/png',
+                  image_data: 'data:image/png;base64,INSERTMARKER'
+                }
+              ],
+              error: null
+            })
+          };
+        }
+        if (table === 'prayer_types') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({
+              data: [{ name: 'Thanksgiving', display_order: 0 }],
+              error: null
+            })
+          };
+        }
+        if (table === 'prayer_prompts') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            in: vi.fn().mockReturnThis(),
+            order: vi.fn().mockResolvedValue({
+              data: [
+                {
+                  id: 'p1',
+                  type: 'Thanksgiving',
+                  title: 'Grateful',
+                  description: 'd',
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                }
+              ],
+              error: null
+            })
+          };
+        }
+        if (table === 'prayer_updates') {
+          return {
+            select: vi.fn().mockResolvedValue({ data: [], error: null })
+          };
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          neq: vi.fn().mockReturnThis(),
+          gte: vi.fn().mockReturnThis(),
+          order: vi.fn().mockResolvedValue({ data: mockPrayers, error: null })
+        };
+      }) as typeof mockSupabaseClient.from;
+
+      const mockWindow = {
+        document: { open: vi.fn(), write: vi.fn(), close: vi.fn() },
+        focus: vi.fn(),
+        close: vi.fn()
+      };
+      try {
+        await service.downloadPrintableBookletPrayerList('month', mockWindow as any);
+        const html = (mockWindow.document.write as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+        const body = bookletHtmlBeforePackScript(html);
+        const idxAnswered = body.indexOf('Answered Prayers');
+        const idxInsert = body.indexOf('INSERTMARKER');
+        const idxPrompt = body.indexOf('Thanksgiving Prompts');
+        expect(idxAnswered).toBeGreaterThan(-1);
+        expect(idxInsert).toBeGreaterThan(-1);
+        expect(idxPrompt).toBeGreaterThan(-1);
+        expect(idxInsert).toBeGreaterThan(idxAnswered);
+        expect(idxPrompt).toBeGreaterThan(idxInsert);
+
+        const sections = parseBookletPackSections(html);
+        const insertSection = sections.find(s => s.packMode === 'onePerPage');
+        expect(insertSection).toBeDefined();
+        expect(insertSection?.fragments.some(f => f.includes('INSERTMARKER'))).toBe(true);
+      } finally {
+        mockSupabaseClient.from = origFrom;
+      }
+    });
+
     it('should append prayer prompt sections after answered prayers when types are marked for booklet', {
       timeout: 10000
     }, async () => {
       const origFrom = mockSupabaseClient.from;
       mockSupabaseClient.from = vi.fn().mockImplementation((table: string) => {
+        const aux = mockSupabaseBookletAuxiliaryTables(table);
+        if (table === 'booklet_insert_pages' && aux) {
+          return aux;
+        }
         if (table === 'prayer_types') {
           return {
             select: vi.fn().mockReturnThis(),
@@ -483,6 +600,10 @@ describe('PrintService', () => {
     }, async () => {
       const origFrom = mockSupabaseClient.from;
       mockSupabaseClient.from = vi.fn().mockImplementation((table: string) => {
+        const aux = mockSupabaseBookletAuxiliaryTables(table);
+        if (table === 'booklet_insert_pages' && aux) {
+          return aux;
+        }
         if (table === 'prayer_types') {
           return {
             select: vi.fn().mockReturnThis(),

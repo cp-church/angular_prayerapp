@@ -158,6 +158,12 @@ export function buildBookletMeasurePackScript(): string {
       var sec = data.sections[si];
       var h2 = sec.h2 || '';
       var fr = sec.fragments || [];
+      if (sec.packMode === 'onePerPage') {
+        for (var fi = 0; fi < fr.length; fi++) {
+          allChunks.push(wrapChunk(false, '', [fr[fi]]));
+        }
+        continue;
+      }
       var part = packSectionFragments(meas, h2, fr, eps, sec.promptBatchMeta || null);
       for (var pi = 0; pi < part.length; pi++) allChunks.push(part[pi]);
     }

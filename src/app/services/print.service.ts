@@ -8,6 +8,7 @@ import { padToMultipleOfFourWithBackCoverLast, saddleStitchImpose } from '../lib
 import { buildBookletMeasurePackScript } from '../lib/booklet-measure-inline';
 import { BrandingService } from './branding.service';
 import { ToastService } from './toast.service';
+import type { BookletInsertPage } from '../types/booklet-insert-page';
 
 export interface Prayer {
   id: string;
@@ -383,9 +384,16 @@ export class PrintService {
         return;
       }
 
-      const bookletPromptSections = await this.loadBookletPromptSectionsOrdered();
+      const [bookletPromptSections, bookletInsertPages] = await Promise.all([
+        this.loadBookletPromptSectionsOrdered(),
+        this.loadBookletInsertPagesOrdered(),
+      ]);
 
-      if (prayers.length === 0 && bookletPromptSections.length === 0) {
+      if (
+        prayers.length === 0 &&
+        bookletPromptSections.length === 0 &&
+        bookletInsertPages.length === 0
+      ) {
         /* Booklet Tools flow only: avoid blocking browser dialogs for empty range / download / errors. */
         this.toast.warning(this.getEmptyRangeUserMessage(timeRange));
         if (newWindow) {
@@ -410,7 +418,8 @@ export class PrintService {
         embeddedQr,
         embeddedAppIcon,
         embeddedBackLogo,
-        bookletPromptSections
+        bookletPromptSections,
+        bookletInsertPages
       );
 
       if (this.isNativeApp()) {
@@ -741,6 +750,25 @@ export class PrintService {
       }
     }
     return ordered;
+  }
+
+  /** Custom image pages after answered prayers, before booklet prompts. */
+  async loadBookletInsertPagesOrdered(): Promise<BookletInsertPage[]> {
+    const { data, error } = await this.supabase.client
+      .from('booklet_insert_pages')
+      .select('id, sort_order, label, mime_type, image_data')
+      .order('sort_order', { ascending: true });
+
+    if (error) {
+      console.error('[PrintService] Booklet insert pages:', error);
+      return [];
+    }
+    return (data ?? []) as BookletInsertPage[];
+  }
+
+  buildBookletInsertPageHtml(dataUrl: string): string {
+    const src = this.escapeHtml(dataUrl.trim());
+    return `<div class="booklet-insert-page"><img class="booklet-insert-img" src="${src}" alt="" loading="eager" decoding="sync" /></div>`;
   }
 
   /** QR image URL for the public `/info` page (same target as the Info page and other print footers). */
@@ -1299,7 +1327,8 @@ export class PrintService {
     embeddedQrDataUrl: string | null = null,
     embeddedAppIconDataUrl: string | null = null,
     embeddedBackLogoDataUrl: string | null = null,
-    bookletPromptSections: Array<{ typeName: string; prompts: any[] }> = []
+    bookletPromptSections: Array<{ typeName: string; prompts: any[] }> = [],
+    bookletInsertPages: BookletInsertPage[] = []
   ): string {
     const now = new Date();
     const today = now.toLocaleDateString('en-US', {
@@ -1343,6 +1372,7 @@ export class PrintService {
       fragments: string[];
       /** Booklet prompt batches only: parallel to fragments for inline measure script (`buildBookletMeasurePackScript`). */
       promptBatchMeta?: Array<{ t: string; b: number } | null>;
+      packMode?: 'default' | 'onePerPage';
     }> = [];
 
     (['current', 'answered'] as const).forEach(status => {
@@ -1395,6 +1425,20 @@ export class PrintService {
       );
       contentPageInners.push(...packed);
     });
+
+    if (bookletInsertPages.length > 0) {
+      const insertFragments = bookletInsertPages.map(p =>
+        this.buildBookletInsertPageHtml(p.image_data)
+      );
+      sectionsForMeasure.push({
+        h2: '',
+        fragments: insertFragments,
+        packMode: 'onePerPage',
+      });
+      for (const html of insertFragments) {
+        contentPageInners.push(`<div class="booklet-chunk">${html}</div>`);
+      }
+    }
 
     /** One fragment per prompt type (display_order); scroll-height packing splits panels — no server-side batching within a type. */
     const bookletPromptUnits: BookletPackUnit[] = [];
@@ -1561,6 +1605,24 @@ export class PrintService {
       break-after: avoid;
     }
     .booklet-chunk { display: flex; flex-direction: column; gap: 11px; }
+    .booklet-insert-page {
+      display: flex;
+      flex: 1 1 auto;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 7.5in;
+      box-sizing: border-box;
+    }
+    .booklet-insert-img {
+      max-width: 100%;
+      max-height: 7.5in;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
     /* Prayer cards: match generatePrintableHTML(); long prayers continue via extra reader slots, not CSS break */
     .prayer-item {
       background: transparent;

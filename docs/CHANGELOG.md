@@ -4,6 +4,11 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Admin — booklet custom insert pages ✅
+- **Behavior**: **Tools → Saddle-stitch prayer booklet** includes **Custom insert pages**: upload PNG/JPEG (one image = one half-letter page), thumbnails, drag-to-reorder, and remove. Pages print **after answered prayers** and **before** booklet prompt sections.
+- **Data**: [`booklet_insert_pages`](supabase/migrations/20260521120000_booklet_insert_pages.sql) table; images stored as data URLs (same pattern as branding logos).
+- **Print**: [`print.service.ts`](src/app/services/print.service.ts) and [`booklet-measure-inline.ts`](src/app/lib/booklet-measure-inline.ts) (`packMode: 'onePerPage'`).
+
 ### Admin — settings loading feedback ✅
 - **Behavior**: Collapsible settings cards that load data on first expand (and the **Site Analytics** activity chart) show a **shared** centered spinner and short status message while data is in flight, instead of an empty panel.
 - **Implementation**: [`admin-section-loading.component.ts`](src/app/components/admin-section-loading/admin-section-loading.component.ts); used from **Prayer Encouragement**, **Rich text editors**, **GitHub Feedback**, **App Branding**, **Email** → **Prayer Update Reminders**, **Security** (policies, email verification, test account), and [`site-analytics-activity-chart.component.ts`](src/app/components/site-analytics-activity-chart/site-analytics-activity-chart.component.ts).

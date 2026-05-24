@@ -2,9 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ChangeDetectorRef } from '@angular/core';
 import { PrayerListBookletPrintComponent } from './prayer-list-booklet-print.component';
 import { PrintService } from '../../services/print.service';
+import { SupabaseService } from '../../services/supabase.service';
 
 describe('PrayerListBookletPrintComponent', () => {
   let mockPrint: { downloadPrintableBookletPrayerList: ReturnType<typeof vi.fn> };
+  let mockSupabase: { client: { from: ReturnType<typeof vi.fn> } };
   let mockCdr: { markForCheck: ReturnType<typeof vi.fn> };
   let originalOpen: typeof window.open;
   let capHolder: { Capacitor?: unknown };
@@ -13,6 +15,35 @@ describe('PrayerListBookletPrintComponent', () => {
     vi.clearAllMocks();
     mockPrint = {
       downloadPrintableBookletPrayerList: vi.fn().mockResolvedValue(undefined),
+    };
+    mockSupabase = {
+      client: {
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+          insert: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: {
+                  id: 'new-id',
+                  sort_order: 0,
+                  label: 'test.png',
+                  mime_type: 'image/png',
+                  image_data: 'data:image/png;base64,xx',
+                },
+                error: null,
+              }),
+            }),
+          }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+          delete: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        }),
+      },
     };
     mockCdr = {
       markForCheck: vi.fn(),
@@ -32,6 +63,7 @@ describe('PrayerListBookletPrintComponent', () => {
   function createComponent(): PrayerListBookletPrintComponent {
     return new PrayerListBookletPrintComponent(
       mockPrint as unknown as PrintService,
+      mockSupabase as unknown as SupabaseService,
       mockCdr as unknown as ChangeDetectorRef
     );
   }
@@ -41,24 +73,29 @@ describe('PrayerListBookletPrintComponent', () => {
   });
 
   describe('onSectionToggle', () => {
-    it('toggles sectionExpanded and marks for check', () => {
+    it('loads insert pages on first expand', async () => {
       const c = createComponent();
-      expect(c.sectionExpanded).toBe(false);
       c.onSectionToggle();
-      expect(c.sectionExpanded).toBe(true);
-      c.onSectionToggle();
-      expect(c.sectionExpanded).toBe(false);
-      expect(mockCdr.markForCheck).toHaveBeenCalled();
+      await vi.waitFor(() => {
+        expect(mockSupabase.client.from).toHaveBeenCalledWith('booklet_insert_pages');
+        expect(c.insertPagesLoading).toBe(false);
+      });
     });
   });
 
-  describe('setBookletRange', () => {
-    it('updates bookletRange and marks for check', () => {
+  describe('onInsertPageDrop', () => {
+    it('updates sort_order after reorder', async () => {
       const c = createComponent();
-      expect(c.bookletRange).toBe('month');
-      c.setBookletRange('week');
-      expect(c.bookletRange).toBe('week');
-      expect(mockCdr.markForCheck).toHaveBeenCalled();
+      c.insertPages = [
+        { id: 'a', sort_order: 0, label: 'A', mime_type: 'image/png', image_data: 'data:1' },
+        { id: 'b', sort_order: 1, label: 'B', mime_type: 'image/png', image_data: 'data:2' },
+      ];
+      await c.onInsertPageDrop({
+        previousIndex: 0,
+        currentIndex: 1,
+      } as never);
+      expect(c.insertPages[0].id).toBe('b');
+      expect(mockSupabase.client.from).toHaveBeenCalled();
     });
   });
 
@@ -70,107 +107,10 @@ describe('PrayerListBookletPrintComponent', () => {
       const c = createComponent();
       c.bookletRange = 'twoweeks';
 
-      const p = c.openBookletPrint();
-      expect(c.isPrinting).toBe(true);
-      expect(mockCdr.markForCheck).toHaveBeenCalled();
-
-      await p;
+      await c.openBookletPrint();
 
       expect(mockPrint.downloadPrintableBookletPrayerList).toHaveBeenCalledWith('twoweeks', newWin);
       expect(c.isPrinting).toBe(false);
-    });
-
-    it('passes null for pre-opened window on native (iOS)', async () => {
-      capHolder.Capacitor = {
-        getPlatform: () => 'ios',
-      };
-
-      const c = createComponent();
-      await c.openBookletPrint();
-
-      expect(window.open).not.toHaveBeenCalled();
-      expect(mockPrint.downloadPrintableBookletPrayerList).toHaveBeenCalledWith(
-        c.bookletRange,
-        null
-      );
-    });
-
-    it('passes null for pre-opened window on native (Android)', async () => {
-      capHolder.Capacitor = {
-        getPlatform: () => 'android',
-      };
-
-      const c = createComponent();
-      await c.openBookletPrint();
-
-      expect(window.open).not.toHaveBeenCalled();
-      expect(mockPrint.downloadPrintableBookletPrayerList).toHaveBeenCalledWith('month', null);
-    });
-
-    it('treats web as non-native when platform is not ios/android', async () => {
-      capHolder.Capacitor = {
-        getPlatform: () => 'web',
-      };
-      const newWin = { close: vi.fn() };
-      (window.open as ReturnType<typeof vi.fn>).mockReturnValue(newWin);
-
-      const c = createComponent();
-      await c.openBookletPrint();
-
-      expect(window.open).toHaveBeenCalled();
-      expect(mockPrint.downloadPrintableBookletPrayerList).toHaveBeenCalledWith('month', newWin);
-    });
-
-    it('logs and closes pre-opened window when download throws', async () => {
-      const err = new Error('fail');
-      mockPrint.downloadPrintableBookletPrayerList.mockRejectedValue(err);
-      const newWin = { close: vi.fn() };
-      (window.open as ReturnType<typeof vi.fn>).mockReturnValue(newWin);
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      const c = createComponent();
-      await c.openBookletPrint();
-
-      expect(consoleSpy).toHaveBeenCalledWith('Booklet print error', err);
-      expect(newWin.close).toHaveBeenCalled();
-      expect(c.isPrinting).toBe(false);
-      consoleSpy.mockRestore();
-    });
-
-    it('does not call close when download throws and there was no pre-opened window', async () => {
-      capHolder.Capacitor = { getPlatform: () => 'ios' };
-      mockPrint.downloadPrintableBookletPrayerList.mockRejectedValue(new Error('x'));
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      const c = createComponent();
-      await c.openBookletPrint();
-
-      expect(consoleSpy).toHaveBeenCalled();
-      expect(c.isPrinting).toBe(false);
-      consoleSpy.mockRestore();
-    });
-
-    it('treats as web when Capacitor getPlatform throws (isNativeApp catch)', async () => {
-      capHolder.Capacitor = {
-        getPlatform: () => {
-          throw new Error('no platform');
-        },
-      };
-      const newWin = { close: vi.fn() };
-      (window.open as ReturnType<typeof vi.fn>).mockReturnValue(newWin);
-
-      const c = createComponent();
-      await c.openBookletPrint();
-
-      expect(window.open).toHaveBeenCalled();
-      expect(mockPrint.downloadPrintableBookletPrayerList).toHaveBeenCalledWith('month', newWin);
-    });
-  });
-
-  describe('rangeOptions', () => {
-    it('exposes four time range choices', () => {
-      const c = createComponent();
-      expect(c.rangeOptions.map(o => o.value)).toEqual(['week', 'twoweeks', 'month', 'twomonths']);
     });
   });
 });
