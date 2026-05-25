@@ -5,6 +5,7 @@ import { Capacitor } from '@capacitor/core';
 import { ToastContainerComponent } from './components/toast-container/toast-container.component';
 import { HelpDriverTourService } from './services/help-driver-tour.service';
 import { AdminDataService } from './services/admin-data.service';
+import { PosthogService } from './services/posthog.service';
 import { filter } from 'rxjs';
 
 @Component({
@@ -56,7 +57,8 @@ export class AppComponent implements OnInit {
     private injector: Injector,
     private ngZone: NgZone,
     private cdr: ChangeDetectorRef,
-    readonly helpDriverTour: HelpDriverTourService
+    readonly helpDriverTour: HelpDriverTourService,
+    _posthog: PosthogService
   ) {
     // Add native-app class immediately so bottom blur strip shows before first paint
     if (Capacitor.isNativePlatform()) {

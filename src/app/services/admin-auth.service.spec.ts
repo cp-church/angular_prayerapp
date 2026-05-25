@@ -15,11 +15,6 @@ vi.mock('../../environments/environment', () => ({
   }
 }));
 
-// Mock Sentry
-vi.mock('@sentry/angular', () => ({
-  captureException: vi.fn()
-}));
-
 // Mock @supabase/supabase-js
 vi.mock('@supabase/supabase-js', () => ({
   createClient: vi.fn((url, key) => ({

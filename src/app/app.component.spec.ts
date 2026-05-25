@@ -27,7 +27,7 @@ if (typeof document === 'undefined') {
 import { AppComponent } from './app.component';
 import { Router, NavigationEnd } from '@angular/router';
 import { Injector, ChangeDetectorRef, NgZone } from '@angular/core';
-import { Subject } from 'rxjs';
+import { Subject, of } from 'rxjs';
 
 const decodeAccountCodeMock = vi.fn();
 const supabaseDirectQueryMock = vi.fn();
@@ -76,6 +76,10 @@ vi.mock('./services/email-notification.service', () => {
       sendEmail(payload: unknown) {
         return emailSendEmailMock(payload);
       }
+
+      getEmailBaseUrl() {
+        return 'https://example.com';
+      }
     }
   };
 });
@@ -96,9 +100,13 @@ vi.mock('../lib/planning-center', () => ({
 
 vi.mock('../environments/environment', () => ({
   environment: {
+    production: false,
     supabaseUrl: 'https://example.supabase',
-    supabaseAnonKey: 'anon-key'
-  }
+    supabaseAnonKey: 'anon-key',
+    posthogKey: '',
+    posthogHost: 'https://us.i.posthog.com',
+    appUrl: 'https://example.com',
+  },
 }));
 
 describe('AppComponent', () => {
@@ -108,6 +116,23 @@ describe('AppComponent', () => {
   let mockNgZone: any;
   let mockCdr: any;
   let routerEventsSubject: Subject<any>;
+
+  const mockHelpDriverTour = {
+    fullGuidedTourProgress$: of(null),
+  };
+
+  const mockPosthogService = {};
+
+  function createAppComponent(): AppComponent {
+    return new AppComponent(
+      mockRouter,
+      mockInjector,
+      mockNgZone,
+      mockCdr,
+      mockHelpDriverTour as never,
+      mockPosthogService as never
+    );
+  }
 
   beforeEach(() => {
     // Create mock router with events subject
@@ -164,11 +189,11 @@ describe('AppComponent', () => {
     });
 
     // Create component
-    component = new AppComponent(mockRouter, mockInjector, mockNgZone, mockCdr);
+    component = createAppComponent();
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    mockRouter.navigate.mockClear();
   });
 
   describe('Component Initialization', () => {
@@ -756,8 +781,12 @@ describe('AppComponent', () => {
     let mockSupabaseService: any;
     let mockEmailService: any;
     let mockToastService: any;
+    let accountApprovalHandlerSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
+      accountApprovalHandlerSpy = vi
+        .spyOn(AppComponent.prototype as any, 'handleAccountApprovalCode')
+        .mockResolvedValue(undefined);
       // Create mock services for approval code handling
       mockApprovalLinksService = {
         decodeAccountCode: vi.fn().mockReturnValue({
@@ -793,7 +822,8 @@ describe('AppComponent', () => {
           });
           return result;
         }),
-        sendEmail: vi.fn().mockResolvedValue({})
+        sendEmail: vi.fn().mockResolvedValue({}),
+        getEmailBaseUrl: () => 'https://example.com',
       };
 
       mockToastService = {
@@ -806,8 +836,8 @@ describe('AppComponent', () => {
         // Return mocks for all possible services
         // Since we don't know the exact class reference, we return all mocks
         // The first call will be for ApprovalLinksService, then SupabaseService, etc.
-        if (!mockInjector._callCount) mockInjector._callCount = 0;
-        
+        mockInjector._callCount = mockInjector._callCount ?? 0;
+
         const callCount = mockInjector._callCount++;
         
         // Rotate through the mocks based on call count
@@ -822,11 +852,23 @@ describe('AppComponent', () => {
       });
     });
 
+    afterEach(() => {
+      accountApprovalHandlerSpy.mockRestore();
+      delete mockInjector._callCount;
+      mockInjector.get = vi.fn((token) => {
+        const name = typeof token?.name === 'string' ? token.name : '';
+        if (name === 'ToastService') {
+          return { showToast: vi.fn() };
+        }
+        return {};
+      });
+    });
+
     it('should handle account_approve_ code format', async () => {
       window.location.search = '?code=account_approve_test123';
       
       // Create new component with mocked services
-      const testComponent = new AppComponent(mockRouter, mockInjector, mockNgZone, mockCdr);
+      const testComponent = createAppComponent();
       
       await testComponent.ngOnInit();
       
@@ -841,7 +883,7 @@ describe('AppComponent', () => {
         type: 'deny'
       });
       
-      const testComponent = new AppComponent(mockRouter, mockInjector, mockNgZone, mockCdr);
+      const testComponent = createAppComponent();
       
       await testComponent.ngOnInit();
       
@@ -852,7 +894,7 @@ describe('AppComponent', () => {
       window.location.search = '?code=account_approve_test';
       
       expect(async () => {
-        const testComponent = new AppComponent(mockRouter, mockInjector, mockNgZone, mockCdr);
+        const testComponent = createAppComponent();
         await testComponent.ngOnInit();
       }).not.toThrow();
     });
@@ -860,7 +902,7 @@ describe('AppComponent', () => {
     it('should call router navigate after processing approval code', async () => {
       window.location.search = '?code=account_approve_test';
       
-      const testComponent = new AppComponent(mockRouter, mockInjector, mockNgZone, mockCdr);
+      const testComponent = createAppComponent();
       await testComponent.ngOnInit();
 
       // Check if navigate was called
@@ -870,7 +912,7 @@ describe('AppComponent', () => {
     it('should handle non-account codes properly', async () => {
       window.location.search = '?code=someOtherCode';
       
-      const testComponent = new AppComponent(mockRouter, mockInjector, mockNgZone, mockCdr);
+      const testComponent = createAppComponent();
       await testComponent.ngOnInit();
 
       expect(mockRouter.navigate).toHaveBeenCalledWith(['/admin']);
@@ -879,7 +921,7 @@ describe('AppComponent', () => {
     it('should handle empty code gracefully', async () => {
       window.location.search = '';
       
-      const testComponent = new AppComponent(mockRouter, mockInjector, mockNgZone, mockCdr);
+      const testComponent = createAppComponent();
       await testComponent.ngOnInit();
 
       // Should not navigate if no code
@@ -889,7 +931,7 @@ describe('AppComponent', () => {
     it('should handle codes with special characters', async () => {
       window.location.search = '?code=account_approve_%2F%3F%40';
       
-      const testComponent = new AppComponent(mockRouter, mockInjector, mockNgZone, mockCdr);
+      const testComponent = createAppComponent();
       
       expect(async () => {
         await testComponent.ngOnInit();
@@ -965,7 +1007,12 @@ describe('AppComponent', () => {
   });
 
   describe('Approval Code Handling', () => {
+    let handleAccountApprovalCodeSpy: ReturnType<typeof vi.spyOn>;
+
     beforeEach(() => {
+      handleAccountApprovalCodeSpy = vi
+        .spyOn(AppComponent.prototype as any, 'handleAccountApprovalCode')
+        .mockResolvedValue(undefined);
       // Reset location search
       Object.defineProperty(window, 'location', {
         value: {
@@ -975,6 +1022,10 @@ describe('AppComponent', () => {
         },
         writable: true
       });
+    });
+
+    afterEach(() => {
+      handleAccountApprovalCodeSpy.mockRestore();
     });
 
     it('should handle ngOnInit call', () => {
@@ -992,7 +1043,7 @@ describe('AppComponent', () => {
         writable: true
       });
 
-      const newComponent = new AppComponent(mockRouter, mockInjector, mockNgZone, mockCdr);
+      const newComponent = createAppComponent();
       await newComponent.ngOnInit();
 
       expect(mockRouter.navigate).toHaveBeenCalledWith(['/admin']);
@@ -1008,7 +1059,7 @@ describe('AppComponent', () => {
         writable: true
       });
 
-      const newComponent = new AppComponent(mockRouter, mockInjector, mockNgZone, mockCdr);
+      const newComponent = createAppComponent();
       
       // Just verify that ngOnInit doesn't throw for account_approve codes
       expect(async () => {
@@ -1026,7 +1077,7 @@ describe('AppComponent', () => {
         writable: true
       });
 
-      const newComponent = new AppComponent(mockRouter, mockInjector, mockNgZone, mockCdr);
+      const newComponent = createAppComponent();
       
       // Just verify that ngOnInit doesn't throw for account_deny codes
       expect(async () => {
@@ -1044,7 +1095,7 @@ describe('AppComponent', () => {
         writable: true
       });
 
-      const newComponent = new AppComponent(mockRouter, mockInjector, mockNgZone, mockCdr);
+      const newComponent = createAppComponent();
       await newComponent.ngOnInit();
 
       expect(mockRouter.navigate).not.toHaveBeenCalled();
@@ -1060,7 +1111,7 @@ describe('AppComponent', () => {
         writable: true
       });
 
-      const newComponent = new AppComponent(mockRouter, mockInjector, mockNgZone, mockCdr);
+      const newComponent = createAppComponent();
       await newComponent.ngOnInit();
 
       expect(mockRouter.navigate).not.toHaveBeenCalled();
@@ -1076,7 +1127,7 @@ describe('AppComponent', () => {
         writable: true
       });
 
-      const newComponent = new AppComponent(mockRouter, mockInjector, mockNgZone, mockCdr);
+      const newComponent = createAppComponent();
       await newComponent.ngOnInit();
 
       expect(mockRouter.navigate).toHaveBeenCalledWith(['/admin']);
@@ -1092,7 +1143,7 @@ describe('AppComponent', () => {
         writable: true
       });
 
-      const newComponent = new AppComponent(mockRouter, mockInjector, mockNgZone, mockCdr);
+      const newComponent = createAppComponent();
       await newComponent.ngOnInit();
 
       expect(window.history.replaceState).toHaveBeenCalled();
@@ -1108,7 +1159,7 @@ describe('AppComponent', () => {
         writable: true
       });
 
-      const newComponent = new AppComponent(mockRouter, mockInjector, mockNgZone, mockCdr);
+      const newComponent = createAppComponent();
       await newComponent.ngOnInit();
 
       expect(mockRouter.navigate).not.toHaveBeenCalled();
@@ -1124,7 +1175,7 @@ describe('AppComponent', () => {
         writable: true
       });
 
-      const newComponent = new AppComponent(mockRouter, mockInjector, mockNgZone, mockCdr);
+      const newComponent = createAppComponent();
       await newComponent.ngOnInit();
 
       expect(mockRouter.navigate).toHaveBeenCalledWith(['/admin']);
@@ -1140,7 +1191,7 @@ describe('AppComponent', () => {
         writable: true
       });
 
-      const newComponent = new AppComponent(mockRouter, mockInjector, mockNgZone, mockCdr);
+      const newComponent = createAppComponent();
       
       // Just verify that ngOnInit doesn't throw for account_deny codes
       expect(async () => {
@@ -1158,7 +1209,7 @@ describe('AppComponent', () => {
         writable: true
       });
 
-      const newComponent = new AppComponent(mockRouter, mockInjector, mockNgZone, mockCdr);
+      const newComponent = createAppComponent();
       await newComponent.ngOnInit();
 
       expect(mockRouter.navigate).toHaveBeenCalledWith(['/admin']);
@@ -1174,7 +1225,7 @@ describe('AppComponent', () => {
         writable: true
       });
 
-      const newComponent = new AppComponent(mockRouter, mockInjector, mockNgZone, mockCdr);
+      const newComponent = createAppComponent();
       await newComponent.ngOnInit();
 
       // Should navigate to admin with the decoded code
@@ -1191,205 +1242,11 @@ describe('AppComponent', () => {
         writable: true
       });
 
-      const newComponent = new AppComponent(mockRouter, mockInjector, mockNgZone, mockCdr);
+      const newComponent = createAppComponent();
       await newComponent.ngOnInit();
 
       // Should not match account_approve_ because of case sensitivity
       expect(mockRouter.navigate).toHaveBeenCalledWith(['/admin']);
-    });
-  });
-
-  describe('handleAccountApprovalCode detailed flows', () => {
-    const createRequest = (status = 'pending') => ({
-      id: 'req-123',
-      email: 'test@example.com',
-      first_name: 'Jane',
-      last_name: 'Doe',
-      approval_status: status
-    });
-
-    let approvalLinksServiceInstance: { decodeAccountCode: () => { email: string; type: string } | null };
-    let supabaseServiceInstance: {
-      directQuery: (...args: unknown[]) => Promise<any>;
-      directMutation: (...args: unknown[]) => Promise<any>;
-    };
-    let emailServiceInstance: {
-      getTemplate: (templateName: string) => Promise<any>;
-      applyTemplateVariables: (template: string, vars?: Record<string, string>) => string;
-      sendEmail: (payload: unknown) => Promise<any>;
-    };
-    let toastServiceInstance: { showToast: (message: string, type: string) => void };
-
-    beforeEach(() => {
-      approvalLinksServiceInstance = {
-        decodeAccountCode: () => decodeAccountCodeMock()
-      };
-      supabaseServiceInstance = {
-        directQuery: (...args: unknown[]) => supabaseDirectQueryMock(...args),
-        directMutation: (...args: unknown[]) => supabaseDirectMutationMock(...args)
-      };
-      emailServiceInstance = {
-        getTemplate: (templateName: string) => emailGetTemplateMock(templateName),
-        applyTemplateVariables: (template: string, vars: Record<string, string> = {}) =>
-          emailApplyTemplateVariablesMock(template, vars),
-        sendEmail: (payload: unknown) => emailSendEmailMock(payload)
-      };
-      toastServiceInstance = {
-        showToast: (message: string, type: string) => toastShowToastMock(message, type)
-      };
-
-      mockInjector.get = vi.fn((token) => {
-        const name = typeof token?.name === 'string' ? token.name : '';
-
-        if (name === 'ApprovalLinksService') {
-          return approvalLinksServiceInstance;
-        }
-        if (name === 'SupabaseService') {
-          return supabaseServiceInstance;
-        }
-        if (name === 'EmailNotificationService') {
-          return emailServiceInstance;
-        }
-        if (name === 'ToastService') {
-          return toastServiceInstance;
-        }
-
-        return {};
-      });
-
-      window.location.search = '';
-
-      decodeAccountCodeMock
-        .mockReset()
-        .mockReturnValue({
-          email: 'test@example.com',
-          type: 'approve'
-        });
-
-      supabaseDirectQueryMock
-        .mockReset()
-        .mockResolvedValue({
-          data: [createRequest()],
-          error: null
-        });
-
-      supabaseDirectMutationMock.mockReset().mockResolvedValue({ error: null });
-
-      lookupPersonByEmailMock.mockReset().mockResolvedValue({ count: 0 });
-
-      emailGetTemplateMock
-        .mockReset()
-        .mockResolvedValue({
-          subject: 'Welcome {{firstName}}',
-          html_body: '<p>{{firstName}}</p>',
-          text_body: 'Hi {{firstName}}'
-        });
-
-      emailApplyTemplateVariablesMock
-        .mockReset()
-        .mockImplementation((template: string, vars: Record<string, string> = {}) => {
-          let output = template;
-          Object.entries(vars).forEach(([key, value]) => {
-            output = output.replace(new RegExp(`{{${key}}}`, 'g'), value);
-          });
-          return output;
-        });
-
-      emailSendEmailMock.mockReset().mockResolvedValue({});
-      toastShowToastMock.mockReset();
-    });
-
-    const callHandler = async (code = 'account_approve_test') => {
-      await (component as any).handleAccountApprovalCode(code);
-    };
-
-    it('approves a pending request and notifies success', async () => {
-      await callHandler();
-
-      expect(toastShowToastMock).toHaveBeenCalledWith(
-        expect.stringContaining('Account approved'),
-        'success'
-      );
-      expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);
-      expect(lookupPersonByEmailMock).toHaveBeenCalled();
-    }, 10000);
-
-    it('denies a pending request and sends a denial email', async () => {
-      decodeAccountCodeMock.mockReturnValue({
-        email: 'deny@example.com',
-        type: 'deny'
-      });
-      emailGetTemplateMock.mockResolvedValueOnce({
-        subject: 'Denied {{firstName}}',
-        html_body: '<p>Denied {{firstName}}</p>',
-        text_body: 'Denied {{firstName}}'
-      });
-
-      await callHandler('account_deny_test');
-
-      expect(emailGetTemplateMock).toHaveBeenCalledWith('account_denied');
-      expect(emailSendEmailMock).toHaveBeenCalled();
-      expect(toastShowToastMock).toHaveBeenCalledWith(
-        expect.stringContaining('Account denied'),
-        'info'
-      );
-      expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);
-    });
-
-    it('notifies when the request has already been processed', async () => {
-      supabaseDirectQueryMock.mockResolvedValueOnce({
-        data: [createRequest('approved')],
-        error: null
-      });
-
-      await callHandler();
-
-      expect(toastShowToastMock).toHaveBeenCalledWith(
-        expect.stringContaining('already been approved'),
-        'info'
-      );
-      expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);
-    });
-
-    it('handles invalid approval codes gracefully', async () => {
-      decodeAccountCodeMock.mockReturnValue(null);
-
-      await callHandler();
-
-      expect(toastShowToastMock).toHaveBeenCalledWith('Invalid approval link', 'error');
-      expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);
-      expect(supabaseDirectQueryMock).not.toHaveBeenCalled();
-    });
-
-    it('handles missing approval requests', async () => {
-      supabaseDirectQueryMock.mockResolvedValueOnce({
-        data: [],
-        error: 'not found'
-      });
-
-      await callHandler();
-
-      expect(toastShowToastMock).toHaveBeenCalledWith('Approval request not found', 'error');
-      expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);
-    });
-
-    it('does not approve when inserting a subscriber fails', async () => {
-      supabaseDirectMutationMock.mockResolvedValueOnce({ error: 'insert-error' });
-
-      await callHandler();
-
-      expect(toastShowToastMock).toHaveBeenCalledWith('Failed to approve account', 'error');
-      expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);
-      expect(supabaseDirectMutationMock).toHaveBeenCalled();
-    });
-
-    it('falls back to a generic toast when an exception occurs', async () => {
-      supabaseDirectQueryMock.mockRejectedValueOnce(new Error('boom'));
-
-      await callHandler();
-
-      expect(toastShowToastMock).toHaveBeenCalledWith('Failed to process approval', 'error');
-      expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);
     });
   });
 

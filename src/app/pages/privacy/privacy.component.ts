@@ -69,7 +69,7 @@ import { RouterModule } from '@angular/router';
               <li><strong>Hosting and database:</strong> Data is stored and processed by our hosting and database provider (e.g., Supabase) in accordance with their privacy and security practices.</li>
               <li><strong>Email:</strong> Email notifications are sent via a trusted email provider (e.g., Microsoft 365).</li>
               <li><strong>Push notifications:</strong> Delivered via Apple (APNs) and Google (FCM) when you use the mobile app.</li>
-              <li><strong>Error and analytics:</strong> We may use Sentry for error reporting and Microsoft Clarity or similar tools for usage analytics (e.g., session replay, page usage). These may collect identifiers and usage data to help us fix bugs and improve the app.</li>
+              <li><strong>Error and analytics:</strong> We may use PostHog for error reporting, product analytics, and session replay (e.g., page usage). These may collect identifiers and usage data to help us fix bugs and improve the app.</li>
             </ul>
             <p class="mt-2">
               Each of these providers has its own privacy policy. We choose providers that are committed to

@@ -132,7 +132,7 @@ The in-app **Help & Guidance** modal includes **Prayer Encouragement (Pray For)*
 | **Email** | Microsoft 365 Graph API |
 | **Testing** | Vitest, Playwright (E2E) |
 | **Hosting** | Vercel |
-| **Monitoring** | Clarity Analytics, Error logging |
+| **Monitoring** | PostHog (analytics, session replay, error tracking) |
 
 ---
 

@@ -4,6 +4,12 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Monitoring — PostHog replaces Sentry and Clarity ✅
+- **Behavior**: Client analytics, session replay, and error tracking use **PostHog** (`posthog-js`) instead of Sentry and Microsoft Clarity. Vercel Analytics and Speed Insights are unchanged.
+- **Implementation**: [`src/lib/posthog.ts`](src/lib/posthog.ts), [`PosthogService`](src/app/services/posthog.service.ts), [`providePostHogErrorHandler`](src/app/posthog-error-handler.ts); environment `posthogKey` / `posthogHost` (see [`docs/SETUP.md`](docs/SETUP.md)).
+- **Fix**: Local `ng serve` now sends events when `posthogKey` is set (removed dev `opt_out_capturing`); initial route emits `$pageview`; filter Live events by `app_environment` if needed.
+- **Privacy**: [`privacy.component.ts`](src/app/pages/privacy/privacy.component.ts) copy updated for PostHog.
+
 ### Admin — booklet custom insert pages ✅
 - **Behavior**: **Tools → Saddle-stitch prayer booklet** includes **Custom insert pages**: upload PNG/JPEG (one image = one half-letter page), thumbnails, drag-to-reorder, and remove. Pages print **after answered prayers** and **before** booklet prompt sections.
 - **Data**: [`booklet_insert_pages`](supabase/migrations/20260521120000_booklet_insert_pages.sql) table; images stored as data URLs (same pattern as branding logos).

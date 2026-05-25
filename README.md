@@ -21,8 +21,7 @@ Quick links:
 - **Backend**: Supabase (PostgreSQL + Edge Functions + RLS)
 - **Real-time**: RxJS observables and Supabase real-time subscriptions
 - **Testing**: Vitest with V8 coverage
-- **Error Tracking**: Sentry
-- **Analytics**: Microsoft Clarity
+- **Analytics & errors**: PostHog (product analytics, session replay, error tracking)
 - **Deployment**: Vercel
 
 ## Features

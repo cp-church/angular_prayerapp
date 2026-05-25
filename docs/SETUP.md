@@ -99,11 +99,9 @@ VITE_AZURE_CLIENT_ID=your-client-id
 # Planning Center (optional)
 VITE_PLANNING_CENTER_API_TOKEN=your-token
 
-# Analytics
-VITE_CLARITY_PROJECT_ID=your-clarity-id
-
-# Production only
-VITE_SENTRY_DSN=https://...
+# Analytics (PostHog — session replay, product analytics, error tracking)
+VITE_POSTHOG_KEY=phc_your_project_api_key
+VITE_POSTHOG_HOST=https://us.i.posthog.com
 ```
 
 ### GitHub Secrets
@@ -434,8 +432,7 @@ Vercel automatically provides free SSL. No additional setup needed.
 
 ### Monitoring
 
-- **Clarity**: View analytics at [clarity.microsoft.com](https://clarity.microsoft.com)
-- **Sentry**: View errors at [sentry.io](https://sentry.io) (if configured)
+- **PostHog**: Product analytics, session replay, and error tracking at [posthog.com](https://posthog.com) (set `posthogKey` / `VITE_POSTHOG_KEY` in environment)
 - **Supabase**: Monitor database at project dashboard
 
 ### Backups
