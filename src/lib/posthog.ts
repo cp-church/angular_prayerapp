@@ -28,6 +28,7 @@ export function initializePostHog(): void {
   try {
     posthog.init(environment.posthogKey.trim(), {
       api_host: environment.posthogHost,
+      ui_host: environment.posthogUiHost,
       person_profiles: 'identified_only',
       capture_pageview: false,
       autocapture: true,

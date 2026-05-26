@@ -101,7 +101,10 @@ VITE_PLANNING_CENTER_API_TOKEN=your-token
 
 # Analytics (PostHog — session replay, product analytics, error tracking)
 VITE_POSTHOG_KEY=phc_your_project_api_key
-VITE_POSTHOG_HOST=https://us.i.posthog.com
+# First-party reverse proxy (ingestion); must forward to us.i.posthog.com with Host header set
+VITE_POSTHOG_HOST=https://t.cp-church.org
+# PostHog app UI (toolbar, replay player in dashboard) — not proxied
+VITE_POSTHOG_UI_HOST=https://us.posthog.com
 ```
 
 ### GitHub Secrets
@@ -432,7 +435,7 @@ Vercel automatically provides free SSL. No additional setup needed.
 
 ### Monitoring
 
-- **PostHog**: Product analytics, session replay, and error tracking at [posthog.com](https://posthog.com) (set `posthogKey` / `VITE_POSTHOG_KEY` in environment)
+- **PostHog**: Product analytics, session replay, and error tracking at [posthog.com](https://posthog.com). Set `posthogKey`, `posthogHost` (first-party proxy, e.g. `https://t.cp-church.org`), and `posthogUiHost` (`https://us.posthog.com` for US Cloud). See [`src/lib/posthog.ts`](../src/lib/posthog.ts).
 - **Supabase**: Monitor database at project dashboard
 
 ### Backups

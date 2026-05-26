@@ -31,7 +31,13 @@ describe('environment.prod', () => {
   it('should have posthogHost defined', () => {
     expect(environment.posthogHost).toBeDefined();
     expect(typeof environment.posthogHost).toBe('string');
-    expect(environment.posthogHost).toBe('https://us.i.posthog.com');
+    expect(environment.posthogHost).toBe('https://t.cp-church.org');
+  });
+
+  it('should have posthogUiHost defined', () => {
+    expect(environment.posthogUiHost).toBeDefined();
+    expect(typeof environment.posthogUiHost).toBe('string');
+    expect(environment.posthogUiHost).toBe('https://us.posthog.com');
   });
 
   it('should have all required properties', () => {
@@ -40,14 +46,19 @@ describe('environment.prod', () => {
     expect(environment).toHaveProperty('supabaseAnonKey');
     expect(environment).toHaveProperty('posthogKey');
     expect(environment).toHaveProperty('posthogHost');
+    expect(environment).toHaveProperty('posthogUiHost');
   });
 
   it('should have valid Supabase URL format', () => {
     expect(environment.supabaseUrl).toMatch(/^https:\/\/.+\.supabase\.co$/);
   });
 
-  it('should have valid PostHog host format', () => {
-    expect(environment.posthogHost).toMatch(/^https:\/\/.+\.posthog\.com$/);
+  it('should have valid PostHog API host format', () => {
+    expect(environment.posthogHost).toMatch(/^https:\/\/.+/);
+  });
+
+  it('should have valid PostHog UI host format', () => {
+    expect(environment.posthogUiHost).toMatch(/^https:\/\/.+\.posthog\.com$/);
   });
 
   it('should use different Supabase configuration from development', () => {

@@ -6,7 +6,8 @@ export const environment = {
   supabaseUrl: import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co',
   supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key',
   posthogKey: import.meta.env.VITE_POSTHOG_KEY || '',
-  posthogHost: import.meta.env.VITE_POSTHOG_HOST || 'https://us.i.posthog.com',
+  posthogHost: import.meta.env.VITE_POSTHOG_HOST || 'https://t.cp-church.org',
+  posthogUiHost: import.meta.env.VITE_POSTHOG_UI_HOST || 'https://us.posthog.com',
   /** Public URL for links in emails (e.g. https://yourdomain.com). Leave empty to use current origin. Set for native/Capacitor builds so links are not capacitor://localhost. */
   appUrl: ''
 };

@@ -21,6 +21,8 @@ vi.mock('../environments/environment', async (importOriginal) => {
     environment: {
       ...mod.environment,
       posthogKey: 'phc_test_key',
+      posthogHost: 'https://t.cp-church.org',
+      posthogUiHost: 'https://us.posthog.com',
     },
   };
 });
@@ -33,7 +35,7 @@ describe('posthog', () => {
     vi.mocked(posthog.init).mockClear();
     vi.mocked(posthog.capture).mockClear();
     vi.mocked(posthog.captureException).mockClear();
-    vi.mocked(posthog.init).mockImplementation(() => undefined);
+    vi.mocked(posthog.init).mockReturnValue(posthog);
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
@@ -49,7 +51,8 @@ describe('posthog', () => {
       expect(posthog.init).toHaveBeenCalledWith(
         'phc_test_key',
         expect.objectContaining({
-          api_host: 'https://us.i.posthog.com',
+          api_host: 'https://t.cp-church.org',
+          ui_host: 'https://us.posthog.com',
           capture_pageview: false,
         })
       );
