@@ -435,8 +435,8 @@ Vercel automatically provides free SSL. No additional setup needed.
 
 ### Monitoring
 
-- **PostHog**: Product analytics, session replay, and error tracking at [posthog.com](https://posthog.com). Set `posthogKey`, `posthogHost` (first-party proxy, e.g. `https://t.cp-church.org`), and `posthogUiHost` (`https://us.posthog.com` for US Cloud). See [`src/lib/posthog.ts`](../src/lib/posthog.ts).
-- **Supabase**: Monitor database at project dashboard
+- **PostHog**: Product analytics, session replay, web vitals, and error tracking at [posthog.com](https://posthog.com). Set `posthogKey`, `posthogHost` (first-party proxy, e.g. `https://t.cp-church.org`), and `posthogUiHost` (`https://us.posthog.com` for US Cloud). See [`src/lib/posthog.ts`](../src/lib/posthog.ts). Vercel Analytics / Speed Insights are not used.
+- **Supabase**: Monitor database at project dashboard; admin **Site Analytics** uses first-party page-view data in Postgres.
 
 ### Backups
 

@@ -4,8 +4,12 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Monitoring — remove Vercel Analytics and Speed Insights ✅
+- **Behavior**: Dropped `@vercel/analytics` and `@vercel/speed-insights`; web vitals and product analytics use **PostHog** only (plus admin Site Analytics in Supabase). Vercel remains the hosting platform.
+- **Implementation**: Removed init blocks from [`src/main.ts`](src/main.ts); dependencies removed from [`package.json`](package.json).
+
 ### Monitoring — PostHog replaces Sentry and Clarity ✅
-- **Behavior**: Client analytics, session replay, and error tracking use **PostHog** (`posthog-js`) instead of Sentry and Microsoft Clarity. Vercel Analytics and Speed Insights are unchanged.
+- **Behavior**: Client analytics, session replay, and error tracking use **PostHog** (`posthog-js`) instead of Sentry and Microsoft Clarity.
 - **Implementation**: [`src/lib/posthog.ts`](src/lib/posthog.ts), [`PosthogService`](src/app/services/posthog.service.ts), [`providePostHogErrorHandler`](src/app/posthog-error-handler.ts); environment `posthogKey`, `posthogHost` (first-party proxy `https://t.cp-church.org`), and `posthogUiHost` (`https://us.posthog.com`) — see [`docs/SETUP.md`](docs/SETUP.md).
 - **Fix**: Local `ng serve` now sends events when `posthogKey` is set (removed dev `opt_out_capturing`); initial route emits `$pageview`; filter Live events by `app_environment` if needed.
 - **Privacy**: [`privacy.component.ts`](src/app/pages/privacy/privacy.component.ts) copy updated for PostHog.

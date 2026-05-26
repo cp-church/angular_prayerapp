@@ -13,30 +13,6 @@ import { BRANDING_SERVICE_TOKEN } from './app/components/app-logo/app-logo.compo
 
 import { providePostHogErrorHandler } from './app/posthog-error-handler';
 
-// Initialize Vercel Analytics
-const initVercelAnalytics = async () => {
-  try {
-    const { inject } = await import('@vercel/analytics');
-    inject();
-  } catch (error) {
-    console.error('Failed to initialize Vercel Analytics:', error);
-  }
-};
-
-initVercelAnalytics();
-
-// Initialize Vercel Speed Insights
-const initVercelSpeedInsights = async () => {
-  try {
-    const { injectSpeedInsights } = await import('@vercel/speed-insights');
-    injectSpeedInsights();
-  } catch (error) {
-    console.error('Failed to initialize Vercel Speed Insights:', error);
-  }
-};
-
-initVercelSpeedInsights();
-
 // Add a global visibility check to ensure content stays visible during background refresh
 const setupVisibilityRecovery = () => {
   const handleVisibilityChange = () => {

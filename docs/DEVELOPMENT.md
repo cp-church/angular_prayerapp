@@ -987,7 +987,7 @@ The BrandingService implements a multi-tier caching strategy to eliminate logo f
 
 ### Monitoring
 
-- PostHog dashboard (live events, session replay, error tracking) — [`src/lib/posthog.ts`](../src/lib/posthog.ts), [`PosthogService`](../src/app/services/posthog.service.ts); set `posthogKey`, `posthogHost` (ingestion via first-party proxy `https://t.cp-church.org`), and `posthogUiHost` (`https://us.posthog.com`). Events send whenever the key is set (including `ng serve`); events are tagged with `app_environment` (`development` vs `production`). If Live events stay empty after a code change, clear site data / `posthog` keys in localStorage (a prior dev build may have opted out).
+- PostHog dashboard (live events, session replay, web vitals, error tracking) — [`src/lib/posthog.ts`](../src/lib/posthog.ts), [`PosthogService`](../src/app/services/posthog.service.ts); set `posthogKey`, `posthogHost` (ingestion via first-party proxy `https://t.cp-church.org`), and `posthogUiHost` (`https://us.posthog.com`). Events send whenever the key is set (including `ng serve`); events are tagged with `app_environment` (`development` vs `production`). If Live events stay empty after a code change, clear site data / `posthog` keys in localStorage (a prior dev build may have opted out). Vercel Analytics / Speed Insights are not bundled.
 - Monitor Core Web Vitals
 - Check Vercel deployment logs
 - Supabase query performance
