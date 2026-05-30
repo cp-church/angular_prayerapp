@@ -332,7 +332,7 @@ const HELP_SECTION_ID_PRESENTATION = 'help_presentation';
           (filtersChange)="onFiltersChange($event)"
         ></app-prayer-filters>
         <!-- Stats Cards -->
-        <div [class]="'grid gap-4 mb-6 ' + (planningCenterListMembers.length > 0 ? 'grid-cols-3 sm:grid-cols-6' : 'grid-cols-3 sm:grid-cols-5')">
+        <div [class]="'grid gap-4 mb-6 ' + (showPlanningCenterMembersFilter ? 'grid-cols-3 sm:grid-cols-6' : 'grid-cols-3 sm:grid-cols-5')">
           <button
             id="tour-filter-current"
             (click)="setFilter('current')"
@@ -424,15 +424,16 @@ const HELP_SECTION_ID_PRESENTATION = 'help_presentation';
             <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Personal</div>
           </button>
 
-          <!-- Planning Center List Members Filter -->
-          @if (planningCenterListMembers.length > 0) {
+          <!-- Planning Center List Members Filter (shown once list id is known; count fills in when members load) -->
+          @if (showPlanningCenterMembersFilter) {
             <button
               (click)="setFilter('planning_center_list')"
               title="Show prayers for Planning Center list members"
+              [attr.aria-busy]="loadingPlanningCenterList && planningCenterListMembers.length === 0"
               [class]="'rounded-lg shadow-md p-2 sm:p-4 text-center transition-all duration-200 cursor-pointer relative flex flex-col items-center justify-center ' + (activeFilter === 'planning_center_list' ? 'border !border-blue-600 dark:!border-blue-400 bg-slate-100 dark:bg-blue-900/40 ring ring-blue-600 dark:ring-blue-400 ring-offset-0' : 'bg-white dark:bg-gray-800 border-[2px] !border-gray-200 dark:!border-gray-700 hover:!border-blue-600 dark:hover:!border-blue-400 hover:shadow-lg')"
             >
-              <div class="text-sm sm:text-xl sm:sm:text-2xl font-bold text-gray-700 dark:text-gray-300 tabular-nums">
-                {{ planningCenterListMembers.length }}
+              <div class="text-sm sm:text-xl sm:sm:text-2xl font-bold text-gray-700 dark:text-gray-300 tabular-nums min-w-[1.25rem]">
+                {{ planningCenterMembersDisplayCount }}
               </div>
               <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Members</div>
             </button>
@@ -795,6 +796,19 @@ export class HomeComponent implements OnInit, OnDestroy {
   loadingPlanningCenterList = false;
   filteredPlanningCenterPrayers: PrayerRequest[] = [];
   loadingMemberPrayers = false;
+
+  /** True once we know the user has a mapped Planning Center list (before members finish loading). */
+  get showPlanningCenterMembersFilter(): boolean {
+    return !!this.planningCenterListId;
+  }
+
+  /** Count label for the Members stat card; placeholder while members are loading. */
+  get planningCenterMembersDisplayCount(): string {
+    if (this.loadingPlanningCenterList && this.planningCenterListMembers.length === 0) {
+      return '…';
+    }
+    return String(this.planningCenterListMembers.length);
+  }
   isRefreshing = false;
   private lastExplicitRefreshAt = 0;
   
@@ -1509,9 +1523,13 @@ export class HomeComponent implements OnInit, OnDestroy {
         .maybeSingle();
 
       if (error || !data?.planning_center_list_id) {
+        this.planningCenterListId = null;
+        this.loadingPlanningCenterList = false;
+        this.cdr.markForCheck();
         return; // User doesn't have a mapped list
       }
 
+      // Show Members filter immediately; member count and list content load next.
       this.planningCenterListId = data.planning_center_list_id;
       this.loadingPlanningCenterList = true;
       this.cdr.markForCheck();

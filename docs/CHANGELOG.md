@@ -4,6 +4,10 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Home — Planning Center Members filter appears immediately ✅
+- **Behavior**: The **Members** stat button shows as soon as the user’s Planning Center list id is known, with a **…** placeholder for the count while list members load in the background (avoids a late layout shift).
+- **Implementation**: [`home.component.ts`](src/app/pages/home/home.component.ts) — `showPlanningCenterMembersFilter`, `planningCenterMembersDisplayCount`.
+
 ### Monitoring — remove Vercel Analytics and Speed Insights ✅
 - **Behavior**: Dropped `@vercel/analytics` and `@vercel/speed-insights`; web vitals and product analytics use **PostHog** only (plus admin Site Analytics in Supabase). Vercel remains the hosting platform.
 - **Implementation**: Removed init blocks from [`src/main.ts`](src/main.ts); dependencies removed from [`package.json`](package.json).

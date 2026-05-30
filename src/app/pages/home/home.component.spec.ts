@@ -3853,5 +3853,58 @@ describe('HomeComponent', () => {
       // loadPlanningCenterListData should be called but independent of filter application
       expect(loadPlanningCenterSpy).toHaveBeenCalled();
     });
-  });;
+  });
+
+  describe('Planning Center members filter button', () => {
+    const newHome = (mocks: ReturnType<typeof makeMocks>) =>
+      new HomeComponent(
+        mocks.prayerService,
+        mocks.promptService,
+        mocks.adminAuthService,
+        mocks.userSessionService,
+        mocks.badgeService,
+        mocks.cacheService,
+        mocks.toastService,
+        mocks.analyticsService,
+        mocks.cdr,
+        mocks.router,
+        mocks.activatedRoute,
+        mocks.supabaseService,
+        mocks.helpDriverTourService,
+        mocks.helpContentService
+      );
+
+    it('shows filter when list id is set before members finish loading', () => {
+      const mocks = makeMocks();
+      const comp = newHome(mocks);
+      comp.planningCenterListId = 'list-abc';
+      comp.planningCenterListMembers = [];
+      comp.loadingPlanningCenterList = true;
+
+      expect(comp.showPlanningCenterMembersFilter).toBe(true);
+      expect(comp.planningCenterMembersDisplayCount).toBe('…');
+    });
+
+    it('shows member count after load completes', () => {
+      const mocks = makeMocks();
+      const comp = newHome(mocks);
+      comp.planningCenterListId = 'list-abc';
+      comp.planningCenterListMembers = [
+        { id: '1', name: 'A' },
+        { id: '2', name: 'B' },
+      ];
+      comp.loadingPlanningCenterList = false;
+
+      expect(comp.planningCenterMembersDisplayCount).toBe('2');
+    });
+
+    it('hides filter when user has no mapped list', () => {
+      const mocks = makeMocks();
+      const comp = newHome(mocks);
+      comp.planningCenterListId = null;
+      comp.planningCenterListMembers = [];
+
+      expect(comp.showPlanningCenterMembersFilter).toBe(false);
+    });
+  });
 });
