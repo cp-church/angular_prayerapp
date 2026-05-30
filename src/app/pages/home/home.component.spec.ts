@@ -55,6 +55,27 @@ const makeMocks = () => {
     getCurrentSession: vi.fn(() => null)
   };
 
+  const pcListIdSubject = new BehaviorSubject<string | null>(null);
+  const pcMembersSubject = new BehaviorSubject<Array<{ id: string; name: string }>>([]);
+  const pcListNameSubject = new BehaviorSubject<string | null>(null);
+  const pcLoadingSubject = new BehaviorSubject(false);
+
+  const planningCenterListService: any = {
+    listId$: pcListIdSubject.asObservable(),
+    members$: pcMembersSubject.asObservable(),
+    listName$: pcListNameSubject.asObservable(),
+    loading$: pcLoadingSubject.asObservable(),
+    loadForCurrentUser: vi.fn(() => Promise.resolve()),
+    loadForUser: vi.fn(() => Promise.resolve()),
+    getCurrentListId: vi.fn(() => pcListIdSubject.value),
+    getCurrentMembers: vi.fn(() => pcMembersSubject.value),
+    getCurrentListName: vi.fn(() => pcListNameSubject.value),
+    invalidateForUser: vi.fn(),
+    pcListIdSubject,
+    pcMembersSubject,
+    pcLoadingSubject
+  };
+
   const badgeService: any = {
     isPromptUnread: vi.fn(),
     getBadgeFunctionalityEnabled$: vi.fn().mockReturnValue(of(false)),
@@ -136,7 +157,7 @@ const makeMocks = () => {
     getSections: vi.fn().mockReturnValue(of([])),
   };
 
-  return { prayerService, promptService, adminAuthService, userSessionService, badgeService, cacheService, toastService, analyticsService, cdr, router, activatedRoute, supabaseService, prayersSubject, promptsSubject, userSessionSubject, allPersonalPrayersSubject, helpDriverTourService, helpContentService };
+  return { prayerService, promptService, adminAuthService, userSessionService, planningCenterListService, badgeService, cacheService, toastService, analyticsService, cdr, router, activatedRoute, supabaseService, prayersSubject, promptsSubject, userSessionSubject, allPersonalPrayersSubject, helpDriverTourService, helpContentService, pcListIdSubject, pcMembersSubject, pcLoadingSubject };
 };
 
 interface SupabaseEmailOptions {
@@ -206,6 +227,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -227,6 +249,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mockServiceWithEmail as any,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -248,6 +271,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -268,6 +292,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -289,6 +314,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -310,6 +336,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -332,6 +359,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -353,6 +381,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -394,12 +423,55 @@ describe('HomeComponent', () => {
     expect(comp.activeFilter).toBe('current');
   });
 
+  it('reloads Planning Center data after logout and login with the same email', async () => {
+    mocks.userSessionSubject.next(null);
+    mocks.planningCenterListService.loadForUser.mockClear();
+
+    const comp = new HomeComponent(
+      mocks.prayerService,
+      mocks.promptService,
+      mocks.adminAuthService,
+      mocks.userSessionService,
+      mocks.planningCenterListService,
+      mocks.badgeService,
+      mocks.cacheService,
+      mocks.toastService,
+      mocks.analyticsService,
+      mocks.cdr,
+      mocks.router,
+      mocks.activatedRoute,
+      mocks.supabaseService,
+      mocks.helpDriverTourService,
+      mocks.helpContentService
+    );
+
+    comp.ngOnInit();
+
+    const session = { email: 'user@example.com', fullName: 'User', isActive: true };
+    mocks.userSessionSubject.next(session);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(mocks.planningCenterListService.loadForUser).toHaveBeenCalledWith('user@example.com');
+
+    mocks.planningCenterListService.loadForUser.mockClear();
+    mocks.userSessionSubject.next(null);
+    mocks.userSessionSubject.next(session);
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(mocks.planningCenterListService.loadForUser).toHaveBeenCalledWith('user@example.com');
+
+    mocks.planningCenterListService.loadForUser.mockClear();
+    mocks.userSessionSubject.next({ ...session, fullName: 'User Updated' });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(mocks.planningCenterListService.loadForUser).not.toHaveBeenCalled();
+  });
+
   it.skip('onFiltersChange preserves status and calls applyFilters', () => {
     const comp = new HomeComponent(
       mocks.prayerService,
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -423,6 +495,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -445,6 +518,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -470,6 +544,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -493,6 +568,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -516,6 +592,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -539,6 +616,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -567,6 +645,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -593,6 +672,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -625,6 +705,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -646,6 +727,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -672,6 +754,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -719,6 +802,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -747,6 +831,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -772,6 +857,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -795,6 +881,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       adminServiceTrue,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -816,6 +903,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       adminServiceFalse,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -861,6 +949,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -901,6 +990,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -938,6 +1028,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -978,6 +1069,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -1021,6 +1113,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       mocks.userSessionService,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -1051,6 +1144,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       userSessionService as any,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -1082,6 +1176,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       userSessionService as any,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -1118,6 +1213,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       userSessionService as any,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -1156,6 +1252,7 @@ describe('HomeComponent', () => {
       mocks.promptService,
       mocks.adminAuthService,
       userSessionService as any,
+      mocks.planningCenterListService,
       mocks.badgeService,
       mocks.cacheService,
       mocks.toastService,
@@ -1180,6 +1277,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1209,6 +1307,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1242,6 +1341,7 @@ describe('HomeComponent', () => {
         customPromptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1275,6 +1375,7 @@ describe('HomeComponent', () => {
         customPromptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1303,6 +1404,7 @@ describe('HomeComponent', () => {
         customPromptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1343,6 +1445,7 @@ describe('HomeComponent', () => {
         customPromptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1367,6 +1470,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1391,6 +1495,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1416,6 +1521,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1440,6 +1546,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1471,6 +1578,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1497,6 +1605,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1526,6 +1635,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         { getCurrentSession: vi.fn().mockReturnValue({ fullName: 'John', email: 'john@example.com' }) } as any,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1558,6 +1668,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         { getCurrentSession: vi.fn().mockReturnValue({ fullName: 'John', email: 'john@example.com' }) } as any,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1588,6 +1699,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         { getCurrentSession: vi.fn().mockReturnValue({ fullName: 'John', email: 'john@example.com' }) } as any,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1618,6 +1730,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1644,6 +1757,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1672,6 +1786,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1702,6 +1817,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1755,6 +1871,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1786,6 +1903,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1812,6 +1930,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1835,6 +1954,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1858,6 +1978,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1883,6 +2004,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1910,6 +2032,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1945,6 +2068,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -1992,6 +2116,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2040,6 +2165,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2076,6 +2202,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2100,6 +2227,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2127,6 +2255,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2158,6 +2287,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2195,6 +2325,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2236,6 +2367,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2268,6 +2400,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2303,6 +2436,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2347,6 +2481,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2386,6 +2521,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2422,6 +2558,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2465,6 +2602,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2504,6 +2642,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2530,6 +2669,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2555,6 +2695,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2578,6 +2719,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2600,6 +2742,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2622,6 +2765,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2646,6 +2790,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2672,6 +2817,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2701,6 +2847,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2727,6 +2874,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2757,6 +2905,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2784,6 +2933,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2831,6 +2981,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2857,6 +3008,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2886,6 +3038,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2912,6 +3065,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2944,6 +3098,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -2983,6 +3138,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3028,6 +3184,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3060,6 +3217,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3087,6 +3245,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3119,6 +3278,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3149,6 +3309,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3180,6 +3341,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3209,6 +3371,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3252,6 +3415,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3281,6 +3445,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3310,6 +3475,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3339,6 +3505,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3370,6 +3537,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3398,6 +3566,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3423,6 +3592,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3450,6 +3620,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3476,6 +3647,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3502,6 +3674,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3529,6 +3702,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3578,6 +3752,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3603,6 +3778,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3640,6 +3816,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3675,6 +3852,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3716,6 +3894,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3754,6 +3933,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3791,6 +3971,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3817,7 +3998,7 @@ describe('HomeComponent', () => {
       expect(comp).toBeDefined();
     });
 
-    it('should call loadPlanningCenterListData independently', async () => {
+    it('loads Planning Center list via service independently of filter application', async () => {
       const mocks = makeMocks();
       mocks.prayerService.getPersonalPrayers.mockResolvedValue([]);
       mocks.prayerService.getUniqueCategoriesForUser.mockResolvedValue([]);
@@ -3827,6 +4008,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3839,19 +4021,15 @@ describe('HomeComponent', () => {
         mocks.helpContentService
       );
 
-      // Mock the loadPlanningCenterListData to track if it's called
-      const loadPlanningCenterSpy = vi.spyOn(comp as any, 'loadPlanningCenterListData').mockResolvedValue(undefined);
-
       comp.ngOnInit();
 
-      // Simulate user session emission
-      mocks.userSessionSubject.next({ defaultPrayerView: 'current' });
+      expect(mocks.planningCenterListService.loadForCurrentUser).toHaveBeenCalled();
 
-      // Allow async operations
+      mocks.userSessionSubject.next({ email: 'user@example.com', defaultPrayerView: 'current' });
+
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // loadPlanningCenterListData should be called but independent of filter application
-      expect(loadPlanningCenterSpy).toHaveBeenCalled();
+      expect(mocks.planningCenterListService.loadForUser).toHaveBeenCalledWith('user@example.com');
     });
   });
 
@@ -3862,6 +4040,7 @@ describe('HomeComponent', () => {
         mocks.promptService,
         mocks.adminAuthService,
         mocks.userSessionService,
+        mocks.planningCenterListService,
         mocks.badgeService,
         mocks.cacheService,
         mocks.toastService,
@@ -3905,6 +4084,18 @@ describe('HomeComponent', () => {
       comp.planningCenterListMembers = [];
 
       expect(comp.showPlanningCenterMembersFilter).toBe(false);
+    });
+
+    it('clears filtered Planning Center prayers when list id exists but members are empty', () => {
+      const mocks = makeMocks();
+      const comp = newHome(mocks);
+      comp.ngOnInit();
+      comp.filteredPlanningCenterPrayers = [{ id: 'pc-member-stale' }] as any;
+
+      mocks.pcListIdSubject.next('list-abc');
+      mocks.pcMembersSubject.next([]);
+
+      expect(comp.filteredPlanningCenterPrayers).toEqual([]);
     });
   });
 });

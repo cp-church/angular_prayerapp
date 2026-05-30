@@ -25,6 +25,7 @@ describe('PresentationComponent', () => {
   let mockThemeService: any;
   let mockPrayerService: any;
   let mockCacheService: any;
+  let mockPlanningCenterListService: any;
   let cdr: any;
   let ngZone: any;
 
@@ -34,6 +35,12 @@ describe('PresentationComponent', () => {
     mockThemeService = { getTheme: vi.fn() };
     mockPrayerService = { prayers$: { subscribe: vi.fn(), value: [] } };
     mockCacheService = { get: vi.fn(), set: vi.fn(), invalidate: vi.fn() };
+    mockPlanningCenterListService = {
+      loadForCurrentUser: vi.fn().mockResolvedValue(undefined),
+      loadForUser: vi.fn().mockResolvedValue(undefined),
+      getCurrentListId: vi.fn(() => null),
+      getCurrentMembers: vi.fn(() => [])
+    };
     cdr = { markForCheck: vi.fn(), detectChanges: vi.fn() };
     ngZone = { run: (cb: any) => cb() };
     const helpDriverTour = { destroy: vi.fn(), startPresentationModeTour: vi.fn() };
@@ -45,7 +52,8 @@ describe('PresentationComponent', () => {
       mockThemeService,
       cdr,
       ngZone as any,
-      helpDriverTour as any
+      helpDriverTour as any,
+      mockPlanningCenterListService
     );
   });
 
@@ -163,52 +171,38 @@ describe('PresentationComponent', () => {
   });
 
   describe('Members functionality', () => {
-    it('loadPlanningCenterMembers handles cache hit', async () => {
+    it('loadPlanningCenterMembers syncs hydrated list from PlanningCenterListService', async () => {
       const mockCachedMembers = [{ id: '1', name: 'John' }];
-      mockCacheService.get.mockReturnValue({ members: mockCachedMembers });
-      
+      mockPlanningCenterListService.getCurrentListId.mockReturnValue('list-1');
+      mockPlanningCenterListService.getCurrentMembers.mockReturnValue(mockCachedMembers);
+
       await component.loadPlanningCenterMembers();
-      
+
+      expect(mockPlanningCenterListService.loadForCurrentUser).toHaveBeenCalled();
       expect(component.planningCenterListMembers).toEqual(mockCachedMembers);
       expect(component.hasPlanningCenterList).toBe(true);
       expect(component.hasMembers).toBe(true);
     });
 
-    it('loadPlanningCenterMembers handles no user session', async () => {
-      // Mock getSession instead of getUser as per my updated code
-      mockSupabase.client.auth = { getSession: vi.fn().mockResolvedValue({ data: { session: null } }) };
-      mockCacheService.get.mockReturnValue(null);
-      
+    it('loadPlanningCenterMembers clears state when service has no list', async () => {
+      mockPlanningCenterListService.getCurrentListId.mockReturnValue(null);
+      mockPlanningCenterListService.getCurrentMembers.mockReturnValue([]);
+
       await component.loadPlanningCenterMembers();
-      
+
       expect(component.planningCenterListMembers).toEqual([]);
       expect(component.hasPlanningCenterList).toBe(false);
     });
 
-    it('loadPlanningCenterMembers fetches from API when no cache and list ID exists', async () => {
-      const user = { email: 'test@example.com' };
-      mockSupabase.client.auth = { 
-        getSession: vi.fn().mockResolvedValue({ data: { session: { user } } }),
-        getUser: vi.fn().mockResolvedValue({ data: { user } }) 
-      };
-      mockCacheService.get.mockReturnValue(null);
-      
-      const mockResult = { planning_center_list_id: 'list123' };
-      mockSupabase.client.from.mockReturnValue({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        maybeSingle: vi.fn().mockResolvedValue({ data: mockResult, error: null })
-      });
-
-      // Global window fetch mock for fetchListMembers
+    it('loadPlanningCenterMembers syncs members after service refresh', async () => {
       const mockMembers = [{ id: 'm1', name: 'Member 1', avatar: 'url' }];
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ members: mockMembers })
+      mockPlanningCenterListService.loadForCurrentUser.mockImplementation(async () => {
+        mockPlanningCenterListService.getCurrentListId.mockReturnValue('list123');
+        mockPlanningCenterListService.getCurrentMembers.mockReturnValue(mockMembers);
       });
 
       await component.loadPlanningCenterMembers();
-      
+
       expect(component.hasPlanningCenterList).toBe(true);
       expect(component.planningCenterListMembers).toEqual(mockMembers);
     });
@@ -382,6 +376,7 @@ describe('PresentationComponent', () => {
   let mockThemeService: any;
   let mockPrayerService: any;
   let mockCacheService: any;
+  let mockPlanningCenterListService: any;
   let mockCdr: any;
   let mockNgZone: any;
 
@@ -393,6 +388,12 @@ describe('PresentationComponent', () => {
     mockThemeService = {};
     mockPrayerService = { prayers$: { subscribe: vi.fn(), value: [] } };
     mockCacheService = { get: vi.fn(), set: vi.fn(), invalidate: vi.fn() };
+    mockPlanningCenterListService = {
+      loadForCurrentUser: vi.fn().mockResolvedValue(undefined),
+      loadForUser: vi.fn().mockResolvedValue(undefined),
+      getCurrentListId: vi.fn(() => null),
+      getCurrentMembers: vi.fn(() => [])
+    };
     mockCdr = { markForCheck: vi.fn(), detectChanges: vi.fn() };
     mockNgZone = { run: (fn: Function) => fn() } as unknown as NgZone;
     const helpDriverTour = { destroy: vi.fn(), startPresentationModeTour: vi.fn() };
@@ -405,7 +406,8 @@ describe('PresentationComponent', () => {
       mockThemeService as unknown as ThemeService,
       mockCdr as unknown as ChangeDetectorRef,
       mockNgZone as unknown as NgZone,
-      helpDriverTour as any
+      helpDriverTour as any,
+      mockPlanningCenterListService
     );
   });
 

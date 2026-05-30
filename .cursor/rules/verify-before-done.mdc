@@ -1,0 +1,50 @@
+---
+description: Before finishing any task, ensure TypeScript diagnostics are clean, unit tests pass, and common logic pitfalls are checked.
+alwaysApply: true
+---
+
+# Verify before done
+
+Do not mark a task complete until verification passes for every file you created or edited.
+
+**`npm run verify` proves the build and existing tests pass; it does not prove the change is correct.** After verify is green, run the **logic review** below for the kind of change you made.
+
+## Required steps (end of each round)
+
+Follow [`.cursor/skills/pre-handoff/SKILL.md`](../skills/pre-handoff/SKILL.md) (also [AGENTS.md](../../AGENTS.md)).
+
+1. **Automated gate** — Use the **Shell** tool to run **`npm run pre-handoff`** (lint + typecheck + full unit tests). Fix until exit 0. The project **stop hook** blocks agent completion until this passes when watched paths changed.
+2. **IDE diagnostics** — Call `ReadLints` on all touched paths. Fix every **error**; fix **warnings** you introduced.
+3. **Logic review** — Complete the table below (mandatory after step 1 passes).
+
+Individual commands when debugging: `npm run lint`, `npm run typecheck`, `npm test -- --run`.
+
+## Logic review (after verify is green)
+
+Skim changed code and explicitly answer **yes/no** for each item that applies. If any answer is “might be wrong,” add a test or fix before finishing.
+
+| Area | Ask |
+|------|-----|
+| **RxJS + session** | Does `filter` run *before* `distinctUntilChanged`? Logout (`null`) must be visible to dedupe so re-login with the same email still emits. |
+| **Cache** | Every write path has a matching **invalidate** (logout, admin map/unmap, account switch). Stale reads if invalidation depends only on in-memory arrays. |
+| **Async races** | In-flight requests: ignore or cancel when `loadedEmail` / route / session changes mid-flight. |
+| **Empty vs missing** | Distinguish “no list id” vs “list id but empty members / API error” — UI and filters must not show stale data from the other case. |
+| **Angular DI** | New service injections: no cycle (`providedIn: 'root'` services importing each other). Prefer lazy `Injector.get` on logout/edge paths if needed. |
+| **OnPush / signals** | State updated in subscribe/async paths calls `markForCheck()` or uses signals so UI updates. |
+| **Bug fixes** | Same round: **regression test** that fails without the fix (not only “method was called”). |
+
+## If verification fails
+
+- Do not summarize success or stop with known failures.
+- Fix or revert, then re-run until green.
+
+## Scope
+
+- Prefer `npm run verify` over ad-hoc partial test files unless the user asked for a single spec only.
+- New/changed behavior needs matching spec updates in the same round.
+- For non-trivial behavior changes, add a **regression test** for the reported bug class, not only happy-path coverage.
+
+## Optional: second pass before PR / review agent
+
+Ask the agent: **“Self-review this diff against verify-before-done logic review; list risks and add tests for any gap.”**  
+Or run your review agent on the branch after `npm run verify` is green — it catches logic issues CI cannot.

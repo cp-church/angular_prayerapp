@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, Subscription, interval, timer } from 'rxjs';
 import { SupabaseService } from './supabase.service';
 import { CacheService } from './cache.service';
+import { PlanningCenterListService } from './planning-center-list.service';
 import { PushNotificationService } from './push-notification.service';
 import { PrayerEncouragementService } from './prayer-encouragement.service';
 import type { User } from '@supabase/supabase-js';
@@ -34,7 +35,10 @@ export class AdminAuthService {
   private router = inject(Router);
   private injector = inject(Injector);
 
-  constructor(private supabase: SupabaseService, private cacheService: CacheService) {
+  constructor(
+    private supabase: SupabaseService,
+    private cacheService: CacheService
+  ) {
     this.initializeAuth().catch(error => {
       console.error('[AdminAuth] initializeAuth failed:', error);
       this.loadingSubject.next(false);
@@ -521,6 +525,13 @@ export class AdminAuthService {
       this.cacheService.invalidateCategory('prompts');
       this.cacheService.invalidateCategory('planningCenterListData');
       this.cacheService.invalidateCategory('memberPrayerUpdates');
+      if (userEmail) {
+        try {
+          this.injector.get(PlanningCenterListService).invalidateForUser(userEmail);
+        } catch {
+          // Ignore if service not yet available
+        }
+      }
       
       // Clear badge read tracking (which prayers/prompts user has read)
       localStorage.removeItem('read_prayers_data');

@@ -2,6 +2,7 @@ import { Component, Output, EventEmitter, ChangeDetectionStrategy, ChangeDetecto
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../services/supabase.service';
+import { PlanningCenterListService } from '../../services/planning-center-list.service';
 import { ToastService } from '../../services/toast.service';
 import { fetchPlanningCenterLists, type PlanningCenterList } from '../../../lib/planning-center';
 import { environment } from '../../../environments/environment';
@@ -235,6 +236,7 @@ export class PlanningCenterListMapperComponent {
   constructor(
     private supabaseService: SupabaseService,
     private toastService: ToastService,
+    private planningCenterListService: PlanningCenterListService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -357,6 +359,7 @@ export class PlanningCenterListMapperComponent {
 
       if (error) throw error;
 
+      this.planningCenterListService.invalidateForUser(this.selectedSubscriber.email);
       this.toastService.success(`Mapped "${this.selectedSubscriber.name}" to "${this.selectedList.name}"`);
       this.loadSubscribers();
       this.clearSelection();
@@ -374,14 +377,24 @@ export class PlanningCenterListMapperComponent {
     this.saving = true;
     this.cdr.markForCheck();
 
+    const emailHint =
+      this.mappings.find(m => m.id === subscriberId)?.email
+      ?? this.subscribers.find(s => s.id === subscriberId)?.email;
+
     try {
-      const { error } = await this.supabaseService.client
+      const { data, error } = await this.supabaseService.client
         .from('email_subscribers')
         .update({ planning_center_list_id: null })
-        .eq('id', subscriberId);
+        .eq('id', subscriberId)
+        .select('email')
+        .maybeSingle();
 
       if (error) throw error;
 
+      const email = data?.email ?? emailHint;
+      if (email) {
+        this.planningCenterListService.invalidateForUser(email);
+      }
       this.toastService.success('Mapping removed');
       this.loadSubscribers();
     } catch (error) {

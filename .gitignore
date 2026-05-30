@@ -16,6 +16,9 @@ dist-ssr
 .angular/
 .angular/*
 
+# Agent pre-handoff stamp (local only)
+.pre-handoff-stamp
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

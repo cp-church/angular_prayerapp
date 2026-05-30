@@ -16,6 +16,7 @@ describe('PlanningCenterListMapperComponent', () => {
   let component: PlanningCenterListMapperComponent;
   let mockSupabaseService: any;
   let mockToastService: any;
+  let mockPlanningCenterListService: any;
   let mockCdr: any;
 
   const createMockSupabaseClient = () => ({
@@ -30,9 +31,16 @@ describe('PlanningCenterListMapperComponent', () => {
             error: null
           })
         })),
-        update: vi.fn(() => ({
-          eq: vi.fn().mockResolvedValue({ error: null })
-        }))
+        update: vi.fn(() => {
+          const eqChain: any = Promise.resolve({ error: null });
+          eqChain.select = vi.fn(() => ({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: { email: 'jane@example.com' },
+              error: null
+            })
+          }));
+          return { eq: vi.fn(() => eqChain) };
+        })
       }))
     }
   });
@@ -45,6 +53,10 @@ describe('PlanningCenterListMapperComponent', () => {
       error: vi.fn()
     };
 
+    mockPlanningCenterListService = {
+      invalidateForUser: vi.fn()
+    };
+
     mockCdr = {
       markForCheck: vi.fn()
     };
@@ -52,6 +64,7 @@ describe('PlanningCenterListMapperComponent', () => {
     component = new PlanningCenterListMapperComponent(
       mockSupabaseService,
       mockToastService,
+      mockPlanningCenterListService,
       mockCdr as ChangeDetectorRef
     );
   });
@@ -434,6 +447,21 @@ describe('PlanningCenterListMapperComponent', () => {
       await component.removeMapping('1');
 
       expect(mockCdr.markForCheck).toHaveBeenCalled();
+    });
+
+    it('invalidates cache from mappings when subscribers array is stale', async () => {
+      component.subscribers = [];
+      component.mappings = [{
+        id: '2',
+        name: 'Jane Smith',
+        email: 'jane@example.com',
+        listName: 'Sunday Service',
+        planning_center_list_id: 'list-1'
+      }];
+
+      await component.removeMapping('2');
+
+      expect(mockPlanningCenterListService.invalidateForUser).toHaveBeenCalledWith('jane@example.com');
     });
   });
 });

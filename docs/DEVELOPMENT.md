@@ -663,7 +663,7 @@ prayers$ = this.prayersSubject.asObservable();
 - **Email**: Microsoft Graph API via backend edge function
 - **Planning Center**: REST API via Edge Functions (planning-center-lists, planning-center-lookup)
   - List fetching and member lookup
-  - Cached on client-side for performance
+  - **Home / Presentation list cache**: [`planning-center-list.service.ts`](src/app/services/planning-center-list.service.ts) stores each subscriber’s mapped list id and member roster in `localStorage` under `prayerapp_planning_center_list_<normalizedEmail>` (30‑minute TTL). `loadForUser` hydrates `listId$` / `members$` synchronously from cache, then refreshes from `email_subscribers.planning_center_list_id` and `fetchListMembers`. Invalidate on logout and when admins change mapping in [`planning-center-list-mapper.component.ts`](src/app/components/planning-center-list-mapper/planning-center-list-mapper.component.ts). Legacy shared key `planningCenterListData_cache` is migrated once on read.
   - Members sorted by last name (handles suffixes)
 - **Admin Auth**: check-admin-status Edge Function (verifies admin status using service role)
 - **Rate Limiting**: Email processor respects Microsoft Graph limits
@@ -714,6 +714,24 @@ prayers$ = this.prayersSubject.asObservable();
 ---
 
 ## Testing
+
+### Verify before merge or agent handoff
+
+```bash
+# Recommended before PR or agent handoff (lint + typecheck + unit tests + checklist output)
+npm run pre-handoff
+
+# Typecheck (ng build, development) + full unit test run
+npm run verify
+
+# Typecheck only
+npm run typecheck
+
+# ESLint errors only (warnings ignored via --quiet)
+npm run lint
+```
+
+Agents: see [AGENTS.md](../AGENTS.md) and [`.cursor/skills/pre-handoff/SKILL.md`](../.cursor/skills/pre-handoff/SKILL.md). Cursor **`stop` hook** ([`.cursor/hooks.json`](../.cursor/hooks.json)) auto-continues the agent until `npm run pre-handoff` has passed for the current diff under `src/app`, `src/lib`, or `supabase/migrations`. After `pre-handoff` passes, run **`ReadLints`** on touched files and complete the **logic review** in [`.cursor/rules/verify-before-done.mdc`](../.cursor/rules/verify-before-done.mdc). `npm run verify` alone does not catch session/cache/RxJS logic bugs.
 
 ### Running Tests
 

@@ -4,9 +4,19 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
-### Home — Planning Center Members filter appears immediately ✅
-- **Behavior**: The **Members** stat button shows as soon as the user’s Planning Center list id is known, with a **…** placeholder for the count while list members load in the background (avoids a late layout shift).
-- **Implementation**: [`home.component.ts`](src/app/pages/home/home.component.ts) — `showPlanningCenterMembersFilter`, `planningCenterMembersDisplayCount`.
+### Developer workflow — verify before done ✅
+- **Behavior**: Agents and contributors run **`npm run pre-handoff`** (lint + typecheck + unit tests + logic-review reminders) before finishing; [`scripts/pre-handoff.js`](scripts/pre-handoff.js), [AGENTS.md](../AGENTS.md), skill [`.cursor/skills/pre-handoff/SKILL.md`](.cursor/skills/pre-handoff/SKILL.md). Cursor **`stop` hook** [`.cursor/hooks.json`](.cursor/hooks.json) auto-continues the agent until pre-handoff passes when `src/app`, `src/lib`, or `supabase/migrations` changed. Rule [`.cursor/rules/verify-before-done.mdc`](.cursor/rules/verify-before-done.mdc) still requires **`ReadLints`** and manual logic review (session/cache/RxJS races, regression tests) — automated verify alone does not catch those bugs.
+- **CI**: GitHub Actions runs typecheck and lint (no longer `continue-on-error` on lint). See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#verify-before-merge-or-agent-handoff).
+
+### Home — Planning Center Members filter (cache-first) ✅
+- **Behavior**: The **Members** stat button and count hydrate from **per-user** `localStorage` on first paint (same pattern as prompts), then refresh in the background from Supabase (`planning_center_list_id`) and the Planning Center API. Count shows **…** while members load when the list id is already known.
+- **Implementation**: [`planning-center-list.service.ts`](src/app/services/planning-center-list.service.ts) (`listId$`, `members$`, `loading$`, key `prayerapp_planning_center_list_<email>`, 30‑minute TTL, one-time migration from legacy `planningCenterListData_cache`); [`home.component.ts`](src/app/pages/home/home.component.ts) subscribes and calls `loadForCurrentUser()` in `ngOnInit`; [`presentation.component.ts`](src/app/pages/presentation/presentation.component.ts) uses the same service. Cache invalidates on logout ([`admin-auth.service.ts`](src/app/services/admin-auth.service.ts), lazy `Injector.get`) and when an admin maps or clears a subscriber list ([`planning-center-list-mapper.component.ts`](src/app/components/planning-center-list-mapper/planning-center-list-mapper.component.ts)).
+- **Fix**: Logout no longer injects `PlanningCenterListService` in `AdminAuthService`’s constructor (broke bootstrap: circular DI with `UserSessionService`).
+- **Fix**: When `planning_center_list_id` changes, [`planning-center-list.service.ts`](src/app/services/planning-center-list.service.ts) clears members before emitting the new list id so Home’s `combineLatest` never loads member prayers for the wrong roster. If `fetchListMembers` fails, members are cleared and the per-user cache is updated so a new list id is not left paired with a stale roster.
+- **Fix**: [`home.component.ts`](src/app/pages/home/home.component.ts) clears `filteredPlanningCenterPrayers` whenever the member roster is empty, not only when there is no list id (avoids stale member cards after API failure or an empty list).
+- **Fix**: [`planning-center-list.service.ts`](src/app/services/planning-center-list.service.ts) ignores late `refreshFromServer` results when `loadedEmail` no longer matches (account switch while a prior load is in flight).
+- **Fix**: [`planning-center-list-mapper.component.ts`](src/app/components/planning-center-list-mapper/planning-center-list-mapper.component.ts) always invalidates a subscriber’s Planning Center cache on **Remove mapping** (email from DB `select`, `mappings`, or `subscribers`).
+- **Fix**: [`home.component.ts`](src/app/pages/home/home.component.ts) dedupes `userSession$` before filtering out logout so re-login with the same email still calls `loadForUser` (Planning Center data no longer stays stale when Home stays mounted).
 
 ### Monitoring — remove Vercel Analytics and Speed Insights ✅
 - **Behavior**: Dropped `@vercel/analytics` and `@vercel/speed-insights`; web vitals and product analytics use **PostHog** only (plus admin Site Analytics in Supabase). Vercel remains the hosting platform.

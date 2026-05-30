@@ -5,8 +5,7 @@ import { SupabaseService } from '../../services/supabase.service';
 import { PrayerService } from '../../services/prayer.service';
 import { CacheService } from '../../services/cache.service';
 import { ThemeService } from '../../services/theme.service';
-import { fetchListMembers } from '../../../lib/planning-center';
-import { environment } from '../../../environments/environment';
+import { PlanningCenterListService } from '../../services/planning-center-list.service';
 import { PresentationToolbarComponent } from '../../components/presentation-toolbar/presentation-toolbar.component';
 import { PrayerDisplayCardComponent } from '../../components/prayer-display-card/prayer-display-card.component';
 import { markdownToPlainText } from '../../../utils/markdown';
@@ -249,7 +248,8 @@ export class PresentationComponent implements OnInit, OnDestroy {
     private themeService: ThemeService,
     private cdr: ChangeDetectorRef,
     private ngZone: NgZone,
-    private helpDriverTourService: HelpDriverTourService
+    private helpDriverTourService: HelpDriverTourService,
+    private planningCenterListService: PlanningCenterListService
   ) {}
 
   ngOnInit(): void {
@@ -394,75 +394,17 @@ export class PresentationComponent implements OnInit, OnDestroy {
 
   async loadPlanningCenterMembers(): Promise<void> {
     try {
-      // Check cache first for immediate UI feedback
-      const cached = this.cacheService.get<{
-        members: Array<{id: string, name: string, avatar?: string | null}>;
-      }>('planningCenterListData');
-      
-      if (cached?.members?.length) {
-        console.log('[Presentation] DEBUG: Using cached Planning Center members');
-        this.planningCenterListMembers = cached.members;
-        this.hasPlanningCenterList = true;
-        this.cdr.markForCheck();
-      }
-
-      const { data: authData } = await this.supabase.client.auth.getUser();
-      const user = authData?.user;
-      
-      if (!user?.email) {
-        console.warn('[Presentation] DEBUG: No user email found for Planning Center member lookup');
-        if (!this.hasPlanningCenterList) {
-          this.planningCenterListMembers = [];
-          this.hasPlanningCenterList = false;
-        }
-        return;
-      }
-
-      console.log('[Presentation] DEBUG: Looking up subscriber for:', user.email);
-
-      // Get user's email subscriber record with their planning_center_list_id
-      const { data: subscriber, error: subError } = await this.supabase.client
-        .from('email_subscribers')
-        .select('planning_center_list_id')
-        .eq('email', user.email)
-        .maybeSingle();
-
-      if (subError) {
-        console.error('[Presentation] DEBUG: Error fetching subscriber:', subError);
-        return;
-      }
-
-      if (!subscriber?.planning_center_list_id) {
-        console.log('[Presentation] DEBUG: No Planning Center list ID found for user');
-        this.hasPlanningCenterList = false;
-        this.planningCenterListMembers = [];
-        this.cdr.markForCheck();
-        return;
-      }
-
-      console.log('[Presentation] DEBUG: Found list ID:', subscriber.planning_center_list_id);
-      this.hasPlanningCenterList = true;
-      this.cdr.markForCheck();
-
-      // Only fetch if members aren't already loaded from cache
-      if (!this.planningCenterListMembers.length) {
-        const result = await fetchListMembers(
-          subscriber.planning_center_list_id,
-          environment.supabaseUrl,
-          environment.supabaseAnonKey
-        );
-        
-        if (!result.error && result.members) {
-          this.planningCenterListMembers = result.members;
-          console.log(`[Presentation] DEBUG: Loaded ${this.planningCenterListMembers.length} members from API`);
-          this.cdr.markForCheck();
-        } else if (result.error) {
-          console.error('[Presentation] DEBUG: API Error:', result.error);
-        }
-      }
+      await this.planningCenterListService.loadForCurrentUser();
+      this.syncPlanningCenterFromService();
     } catch (error) {
-      console.error('[Presentation] DEBUG: Unexpected error:', error);
+      console.error('[Presentation] Error loading Planning Center members:', error);
     }
+  }
+
+  private syncPlanningCenterFromService(): void {
+    this.planningCenterListMembers = this.planningCenterListService.getCurrentMembers();
+    this.hasPlanningCenterList = !!this.planningCenterListService.getCurrentListId();
+    this.cdr.markForCheck();
   }
 
   async loadContent(): Promise<void> {

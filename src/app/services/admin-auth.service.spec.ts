@@ -59,7 +59,6 @@ describe('AdminAuthService', () => {
   let service: any; // AdminAuthService - imported dynamically
   let mockSupabaseClient: any;
   let mockCacheService: any;
-
   beforeEach(async () => {
     localStorage.clear();
     vi.useFakeTimers();
@@ -561,7 +560,7 @@ describe('AdminAuthService', () => {
       });
 
       const { AdminAuthService } = await import('./admin-auth.service');
-      service = new AdminAuthService(mockSupabaseService);
+      service = new AdminAuthService(mockSupabaseService, mockCacheService);
       await vi.advanceTimersByTimeAsync(100);
 
       // Now check blocked status and user should be blocked
@@ -1466,7 +1465,7 @@ describe('AdminAuthService', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const { AdminAuthService } = await import('./admin-auth.service');
-      const newService = new AdminAuthService(mockSupabaseServiceError as any);
+      const newService = new AdminAuthService(mockSupabaseServiceError as any, mockCacheService);
       
       await vi.advanceTimersByTimeAsync(100);
 

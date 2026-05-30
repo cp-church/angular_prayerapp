@@ -21,14 +21,13 @@ import { AdminAuthService } from '../../services/admin-auth.service';
 import { UserSessionService } from '../../services/user-session.service';
 import { SupabaseService } from '../../services/supabase.service';
 import { BadgeService } from '../../services/badge.service';
-import { Observable, take, Subject, takeUntil, filter, firstValueFrom } from 'rxjs';
+import { Observable, take, Subject, takeUntil, filter, firstValueFrom, combineLatest, distinctUntilChanged } from 'rxjs';
+import { PlanningCenterListService } from '../../services/planning-center-list.service';
 import { ToastService } from '../../services/toast.service';
 import { AnalyticsService } from '../../services/analytics.service';
 import { PullToRefreshDirective } from '../../directives/pull-to-refresh.directive';
 import { HelpContentService } from '../../services/help-content.service';
 import type { User } from '@supabase/supabase-js';
-import { fetchListMembers } from '../../../lib/planning-center';
-import { environment } from '../../../environments/environment';
 import {
   FULL_GUIDED_TOUR_QUEUE_KEY,
   HelpDriverTourService,
@@ -838,6 +837,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     public promptService: PromptService,
     public adminAuthService: AdminAuthService,
     public userSessionService: UserSessionService,
+    public planningCenterListService: PlanningCenterListService,
     public badgeService: BadgeService,
     private cacheService: CacheService,
     private toastService: ToastService,
@@ -906,8 +906,50 @@ export class HomeComponent implements OnInit, OnDestroy {
     // logout invalidates prompts_cache, but PromptService does not re-run loadPrompts() until
     // next full page load; calling loadPrompts() here repopulates cache so badge counts are correct.
     this.promptService.loadPrompts();
+    void this.planningCenterListService.loadForCurrentUser();
     this.badgeService.refreshBadgeCounts();
     this.cdr.markForCheck();
+
+    combineLatest([
+      this.planningCenterListService.listId$,
+      this.planningCenterListService.members$,
+      this.planningCenterListService.listName$
+    ])
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(([listId, members, listName]) => {
+        this.planningCenterListId = listId;
+        this.planningCenterListMembers = members;
+        this.planningCenterListName = listName;
+        if (listId && members.length > 0) {
+          void this.loadPlanningCenterMemberPrayers();
+        } else {
+          this.filteredPlanningCenterPrayers = [];
+        }
+        this.cdr.markForCheck();
+      });
+
+    this.planningCenterListService.loading$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(loading => {
+        this.loadingPlanningCenterList = loading;
+        this.cdr.markForCheck();
+      });
+
+    this.userSessionService.userSession$
+      .pipe(
+        // Run before filter so logout (null) resets dedupe; re-login with the same email still reloads.
+        distinctUntilChanged((prev, curr) => {
+          if (!prev?.email || !curr?.email) {
+            return prev?.email === curr?.email;
+          }
+          return prev.email === curr.email;
+        }),
+        filter((session): session is NonNullable<typeof session> & { email: string } => !!session?.email),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(session => {
+        void this.planningCenterListService.loadForUser(session.email);
+      });
 
     // Subscribe to prayers for filtering
     this.prayers$
@@ -983,11 +1025,6 @@ export class HomeComponent implements OnInit, OnDestroy {
         }
         this.viewReady = true;
         this.cdr.markForCheck();
-
-        // Load planning center data in the background (don't wait for it)
-        this.loadPlanningCenterListData().catch(error => {
-          console.error('Error loading planning center list data:', error);
-        });
       });
   }
 
@@ -1507,96 +1544,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     }, 280);
   }
 
-  private async loadPlanningCenterListData(forceReload = false): Promise<void> {
-    try {
-      // Get current user from session
-      const userSession = this.userSessionService.getCurrentSession();
-      if (!userSession?.email) {
-        return;
-      }
-
-      // Fetch the user's planning center list ID from email_subscribers
-      const { data, error } = await this.supabaseService.client
-        .from('email_subscribers')
-        .select('planning_center_list_id')
-        .eq('email', userSession.email)
-        .maybeSingle();
-
-      if (error || !data?.planning_center_list_id) {
-        this.planningCenterListId = null;
-        this.loadingPlanningCenterList = false;
-        this.cdr.markForCheck();
-        return; // User doesn't have a mapped list
-      }
-
-      // Show Members filter immediately; member count and list content load next.
-      this.planningCenterListId = data.planning_center_list_id;
-      this.loadingPlanningCenterList = true;
-      this.cdr.markForCheck();
-
-      // Check consolidated cache for members and list name
-      // Key format: planningCenterListData_cache (handled by cache service)
-      const cacheKey = `planningCenterListData`;
-
-      if (!forceReload) {
-        const cached = this.cacheService.get<{
-          members: Array<{id: string, name: string}>;
-          listName?: string;
-        }>(cacheKey);
-        
-        if (cached) {
-          console.log(`[Planning Center] Using cached list data`);
-          this.planningCenterListMembers = cached.members || [];
-          if (cached.listName) {
-            this.planningCenterListName = cached.listName;
-          }
-          this.cdr.markForCheck();
-          // Load member prayers with their updates (updates loaded separately via memberPrayerUpdates_cache)
-          await this.loadPlanningCenterMemberPrayers();
-          this.loadingPlanningCenterList = false;
-          this.cdr.markForCheck();
-          return;
-        }
-      }
-
-      // Cache miss - fetch members from API
-      const result = await fetchListMembers(
-        this.planningCenterListId!,
-        environment.supabaseUrl,
-        environment.supabaseAnonKey
-      );
-
-      if (result.error) {
-        console.error('Error fetching planning center list members:', result.error);
-        this.loadingPlanningCenterList = false;
-        this.cdr.markForCheck();
-        return;
-      }
-
-      // result.members now returns Array<{id: string, name: string}>
-      this.planningCenterListMembers = result.members;
-      this.cdr.markForCheck();
-      
-      // Store only members and list name in cache (updates are cached separately)
-      this.cacheService.set(cacheKey, {
-        members: result.members,
-        listName: this.planningCenterListName
-      });
-
-      console.log(`[Planning Center] Loaded ${result.members.length} members from list ${this.planningCenterListId}:`, result.members);
-
-      // Load planning center member prayers (updates will be loaded from memberPrayerUpdates_cache)
-      await this.loadPlanningCenterMemberPrayers();
-      
-      this.loadingPlanningCenterList = false;
-      this.cdr.markForCheck();
-    } catch (error) {
-      console.error('Error loading planning center list data:', error);
-      this.loadingPlanningCenterList = false;
-      this.cdr.markForCheck();
-    }
-  }
-
   private async loadPlanningCenterMemberPrayers(): Promise<void> {
     try {
       this.loadingMemberPrayers = true;
@@ -1670,7 +1617,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
       // If Planning Center list tab is active, reload member prayers (uses its own caching)
       if (this.activeFilter === 'planning_center_list' && this.planningCenterListId) {
-        tasks.push(this.loadPlanningCenterListData(true));
+        tasks.push(this.planningCenterListService.loadForCurrentUser(true));
       }
 
       await Promise.all(tasks);

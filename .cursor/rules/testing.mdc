@@ -35,3 +35,9 @@ describe('MyComponent', () => {
 ## Coverage
 
 - Run `npm run test:coverage` for coverage; report script is `scripts/coverage-report.js`.
+
+## Before finishing a change
+
+- Run **`npm run pre-handoff`** (lint + verify) and follow [pre-handoff/SKILL.md](../skills/pre-handoff/SKILL.md).
+- Add **regression tests** for bug fixes (must fail without the fix).
+- Use **`ReadLints`** on touched files; complete logic review in [verify-before-done.mdc](verify-before-done.mdc).
