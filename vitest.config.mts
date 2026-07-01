@@ -9,6 +9,8 @@ export default defineConfig({
     // Forks avoid Vitest worker teardown flakes (onUserConsoleLog) on full-suite CI runs.
     pool: 'forks',
     sequence: { concurrent: false },
+    // Ubuntu + coverage: console.error after async teardown races Vitest's onUserConsoleLog RPC.
+    disableConsoleIntercept: !!process.env.CI,
     setupFiles: ['./src/test-setup.ts'],
     include: ['src/**/*.spec.ts'],
     exclude: ['e2e/**', 'node_modules/**'],
