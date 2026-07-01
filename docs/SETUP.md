@@ -390,6 +390,8 @@ AZURE_TENANT_ID=...
 
 #### Step 3: Configure Build
 
+Node.js: use **`24.x`** on Vercel (`engines.node` in [`package.json`](../package.json)). Vercel’s **`22.x`** runtime was **22.22.2**, which is below Angular 22’s minimum (**22.22.3**). Local dev can stay on **22.22.3** via [`.nvmrc`](../.nvmrc).
+
 ```bash
 # Build command
 npm run build
