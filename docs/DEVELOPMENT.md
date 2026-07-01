@@ -23,7 +23,7 @@ For developers working on the Prayer App codebase.
 |------|---------|
 | Angular | 22.x (standalone components, application builder) |
 | TypeScript | 6.x |
-| Node (local + CI) | **22.22.3+** minimum for Angular 22 |
+| Node (local + CI) | **22.22.3+** minimum for Angular 22 (`engines.node`: **`22.x`** for Vercel) |
 | Capacitor | 8.4.x (iOS/Android) |
 | Tailwind | 4.3.x |
 | Unit tests | Vitest 4.1 + @testing-library/angular |

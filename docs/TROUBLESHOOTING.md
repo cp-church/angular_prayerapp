@@ -454,16 +454,16 @@ supabase secrets list # Verify
 **Error**: Build succeeds locally but fails on hosting
 
 **Solutions**:
-1. Match Node versions:
+1. Match Node versions — Angular 22 needs **22.22.3+** locally/CI ([`.nvmrc`](../.nvmrc)); Vercel uses **`engines.node`: `22.x`** (major only):
 ```json
-// package.json
 "engines": {
-  "node": "18.x"
+  "node": "22.x"
 }
 ```
-2. Check environment variables set in hosting dashboard
-3. Clear build cache
-4. Check for dev dependencies in production code
+2. **`npm install` ERESOLVE (lucide-angular)**: Upstream peers cap at Angular 21. Repo [`.npmrc`](../.npmrc) sets `legacy-peer-deps=true` for Vercel and fresh installs.
+3. Check environment variables set in hosting dashboard
+4. Clear build cache
+5. Check for dev dependencies in production code
 
 ### 404 on Routes
 
