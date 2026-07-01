@@ -46,6 +46,24 @@ function parseBookletPackSections(
   return data.sections ?? [];
 }
 
+/** Mock only `<a>` for download fallbacks; real jsdom elements for `div` (escapeHtml, markdown post-process). */
+function spyCreateElementAnchorOnly(mockLink?: { href: string; download: string; click: ReturnType<typeof vi.fn> }) {
+  const link =
+    mockLink ??
+    ({
+      href: '',
+      download: '',
+      click: vi.fn(),
+    } as { href: string; download: string; click: ReturnType<typeof vi.fn> });
+  const nativeCreateElement = Document.prototype.createElement.bind(document);
+  return vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+    if (tag === 'a') {
+      return link as any;
+    }
+    return nativeCreateElement(tag);
+  });
+}
+
 /** Booklet download also queries `prayer_types` / `prayer_prompts`; tests that override `from` for prayers must stub these. */
 function mockSupabaseBookletAuxiliaryTables(table: string): any | null {
   if (table === 'prayer_types') {
@@ -172,31 +190,7 @@ describe('PrintService', () => {
       getPersonalPrayers: vi.fn()
     };
 
-    // Mock document.createElement for escapeHtml (each div must keep its own buffer — shared state breaks long HTML)
-    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
-      if (tag === 'div') {
-        let escaped = '';
-        return {
-          set textContent(value: string) {
-            const s = value == null ? '' : String(value);
-            escaped = s
-              .replace(/&/g, '&amp;')
-              .replace(/</g, '&lt;')
-              .replace(/>/g, '&gt;')
-              .replace(/"/g, '&quot;')
-              .replace(/'/g, '&#039;');
-          },
-          get innerHTML() {
-            return escaped;
-          }
-        } as any;
-      }
-      return {
-        href: '',
-        download: '',
-        click: vi.fn()
-      } as any;
-    });
+    spyCreateElementAnchorOnly();
 
     service = new PrintService(
       mockSupabaseService,
@@ -230,13 +224,13 @@ describe('PrintService', () => {
       global.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
       global.URL.revokeObjectURL = vi.fn();
       
-      // Mock document methods
+      // Mock document methods (anchor-only — markdown/escapeHtml need real div elements)
       const mockLink = {
         href: '',
         download: '',
         click: vi.fn()
       };
-      global.document.createElement = vi.fn(() => mockLink as any);
+      spyCreateElementAnchorOnly(mockLink);
       global.document.body.appendChild = vi.fn();
       global.document.body.removeChild = vi.fn();
     });
@@ -1059,7 +1053,7 @@ describe('PrintService', () => {
         download: '',
         click: vi.fn()
       };
-      (global.document.createElement as any).mockReturnValue(mockLink);
+      spyCreateElementAnchorOnly(mockLink);
 
       await service.downloadPrintablePrayerList('month', null);
 
@@ -2669,11 +2663,7 @@ describe('PrintService - Advanced Coverage Tests', () => {
 
         global.window.open = vi.fn(() => null);
 
-        global.document.createElement = vi.fn(() => ({
-          href: '',
-          download: '',
-          click: vi.fn()
-        })) as any;
+        spyCreateElementAnchorOnly();
 
         global.document.body.appendChild = vi.fn();
         global.document.body.removeChild = vi.fn();
@@ -3096,7 +3086,7 @@ describe('PrintService - Advanced Coverage Tests', () => {
         download: '',
         click: vi.fn()
       };
-      (global.document.createElement as any).mockReturnValue(mockLink);
+      spyCreateElementAnchorOnly(mockLink);
       global.document.body.appendChild = vi.fn();
       global.document.body.removeChild = vi.fn();
       global.Blob = class MockBlob {
@@ -3724,7 +3714,7 @@ describe('PrintService - Advanced Coverage Tests', () => {
         download: '',
         click: vi.fn()
       };
-      (global.document.createElement as any).mockReturnValue(mockLink);
+      spyCreateElementAnchorOnly(mockLink);
       global.document.body.appendChild = vi.fn();
       global.document.body.removeChild = vi.fn();
       global.Blob = class MockBlob {

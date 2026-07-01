@@ -1,10 +1,5 @@
-import DOMPurify from 'dompurify';
-import { marked } from 'marked';
-
-marked.setOptions({
-  gfm: true,
-  breaks: true,
-});
+import domPurifyImport from 'dompurify';
+import { Marked } from 'marked';
 
 const ALLOWED_TAGS = [
   'p',
@@ -25,7 +20,16 @@ const ALLOWED_TAGS = [
   'hr',
 ];
 
-const ALLOWED_ATTR = ['href', 'title', 'target', 'rel'];
+const ALLOWED_ATTR = ['href', 'title', 'target', 'rel', 'style'];
+
+const SANITIZE_CONFIG = {
+  ALLOWED_TAGS,
+  ALLOWED_ATTR,
+  FORBID_ATTR: ['class', 'id'],
+  KEEP_CONTENT: true,
+};
+
+const ALLOWED_TAG_SET = new Set(ALLOWED_TAGS.map((tag) => tag.toUpperCase()));
 
 function isSafeHref(value: string): boolean {
   const trimmed = value.trim().toLowerCase();
@@ -47,6 +51,80 @@ const INLINE_STYLES: Record<string, string> = {
   U: 'text-decoration: underline;',
 };
 
+type DomPurifyInstance = {
+  sanitize: (dirty: string, config?: Record<string, unknown>) => string;
+  isSupported?: boolean;
+};
+
+function isPassthroughPurify(purify: DomPurifyInstance): boolean {
+  const probe = purify.sanitize('<script>alert(1)</script><p>ok</p>', {
+    ALLOWED_TAGS: ['p'],
+    KEEP_CONTENT: true,
+  });
+  return probe.includes('<script');
+}
+
+/** Some DOM implementations (e.g. happy-dom in Vitest) drop allowlisted parents but keep children. */
+function sanitizeLostStructuralTags(rawHtml: string, sanitized: string): boolean {
+  const raw = rawHtml.toLowerCase();
+  const out = sanitized.toLowerCase();
+  const markers = ['<ul', '<ol', '<blockquote'];
+  return markers.some((marker) => raw.includes(marker) && !out.includes(marker));
+}
+
+function createWindowBoundPurify(win: Window): DomPurifyInstance {
+  const boundWindow = win as unknown as typeof globalThis;
+  const mod = domPurifyImport as unknown as
+    | DomPurifyInstance
+    | ((root: typeof globalThis) => DomPurifyInstance);
+
+  if (typeof mod === 'function') {
+    return mod(boundWindow);
+  }
+
+  if (mod.isSupported === false) {
+    const recreate = domPurifyImport as unknown as (root: typeof globalThis) => DomPurifyInstance;
+    return recreate(boundWindow);
+  }
+
+  if (isPassthroughPurify(mod)) {
+    const recreate = domPurifyImport as unknown as (root: typeof globalThis) => DomPurifyInstance;
+    if (typeof recreate === 'function') {
+      return recreate(boundWindow);
+    }
+  }
+
+  return mod;
+}
+
+function getDomPurify(): DomPurifyInstance {
+  const win = typeof window !== 'undefined' ? window : undefined;
+  if (!win) {
+    throw new Error('markdownToSafeHtml requires a DOM (browser or jsdom)');
+  }
+
+  const purify = createWindowBoundPurify(win);
+  if (!isPassthroughPurify(purify)) {
+    return purify;
+  }
+
+  const retry = createWindowBoundPurify(win);
+  if (!isPassthroughPurify(retry)) {
+    return retry;
+  }
+
+  return retry;
+}
+
+let markedParser: Marked | null = null;
+
+function getMarked(): Marked {
+  if (!markedParser) {
+    markedParser = new Marked({ gfm: true, breaks: true });
+  }
+  return markedParser;
+}
+
 /**
  * TipTap's Underline mark serializes as ++text++. Common Markdown parsers do not
  * treat that as underline, so we expand to &lt;u&gt; before `marked` (skipping
@@ -64,39 +142,125 @@ function expandTiptapUnderlineForMarked(markdown: string): string {
     .join('');
 }
 
-let hookInstalled = false;
-function ensureDomPurifyHook(): void {
-  if (hookInstalled) return;
-  if (typeof DOMPurify.addHook !== 'function') return;
-  DOMPurify.addHook('afterSanitizeAttributes', (node: Element) => {
-    if (node.tagName === 'A') {
-      const href = node.getAttribute('href') || '';
-      if (!isSafeHref(href)) {
-        node.removeAttribute('href');
-      } else {
-        node.setAttribute('target', '_blank');
-        node.setAttribute('rel', 'noopener noreferrer');
-      }
-    }
-    const inline = INLINE_STYLES[node.tagName];
-    if (inline && !node.getAttribute('style')) {
-      node.setAttribute('style', inline);
+function applyRichHtmlEnhancements(root: ParentNode | null | undefined): void {
+  if (!root || typeof root.querySelectorAll !== 'function') {
+    return;
+  }
+
+  root.querySelectorAll('a').forEach((anchor) => {
+    const href = anchor.getAttribute('href') || '';
+    if (!isSafeHref(href)) {
+      anchor.removeAttribute('href');
+    } else {
+      anchor.setAttribute('target', '_blank');
+      anchor.setAttribute('rel', 'noopener noreferrer');
     }
   });
-  hookInstalled = true;
+
+  root.querySelectorAll('u').forEach((node) => {
+    if (!node.getAttribute('style')) {
+      node.setAttribute('style', INLINE_STYLES['U']);
+    }
+  });
+
+  root.querySelectorAll('blockquote').forEach((node) => {
+    if (!node.getAttribute('style')) {
+      node.setAttribute('style', INLINE_STYLES['BLOCKQUOTE']);
+    }
+  });
+}
+
+function stripToAllowlistedHtml(html: string, doc: Document): string {
+  if (typeof doc.createElement !== 'function') {
+    return html;
+  }
+
+  const template = doc.createElement('template');
+  template.innerHTML = html;
+  const source = template.content ?? template;
+
+  const cloneCleanTree = (node: Node): Node | DocumentFragment | null => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return doc.createTextNode(node.textContent ?? '');
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+      return null;
+    }
+
+    const el = node as Element;
+    const tag = el.tagName;
+    if (!ALLOWED_TAG_SET.has(tag)) {
+      const fragment = doc.createDocumentFragment();
+      Array.from(el.childNodes).forEach((child) => {
+        const cleaned = cloneCleanTree(child);
+        if (cleaned) {
+          fragment.appendChild(cleaned);
+        }
+      });
+      return fragment;
+    }
+
+    const out = doc.createElement(tag.toLowerCase());
+    Array.from(el.attributes).forEach((attr) => {
+      if (!ALLOWED_ATTR.includes(attr.name)) {
+        return;
+      }
+      if (attr.name === 'href' && !isSafeHref(attr.value)) {
+        return;
+      }
+      out.setAttribute(attr.name, attr.value);
+    });
+    Array.from(el.childNodes).forEach((child) => {
+      const cleaned = cloneCleanTree(child);
+      if (cleaned) {
+        out.appendChild(cleaned);
+      }
+    });
+    return out;
+  };
+
+  const container = doc.createElement('div');
+  Array.from(source.childNodes).forEach((child) => {
+    const cleaned = cloneCleanTree(child);
+    if (cleaned) {
+      container.appendChild(cleaned);
+    }
+  });
+  applyRichHtmlEnhancements(container);
+  return container.innerHTML;
+}
+
+function postProcessHtml(html: string): string {
+  if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
+    return html;
+  }
+
+  const container = document.createElement('div');
+  container.innerHTML = html;
+  applyRichHtmlEnhancements(container);
+  return container.innerHTML;
 }
 
 export function markdownToSafeHtml(markdown: string | null | undefined): string {
   if (!markdown) return '';
-  ensureDomPurifyHook();
   const preprocessed = expandTiptapUnderlineForMarked(markdown);
-  const rawHtml = marked.parse(preprocessed, { async: false }) as string;
-  return DOMPurify.sanitize(rawHtml, {
-    ALLOWED_TAGS,
-    ALLOWED_ATTR,
-    FORBID_ATTR: ['style', 'class', 'id'],
-    KEEP_CONTENT: true,
-  });
+  const parsed = getMarked().parse(preprocessed, { async: false });
+  const rawHtml = typeof parsed === 'string' ? parsed : String(parsed);
+
+  const purify = getDomPurify();
+  let html = purify.sanitize(rawHtml, SANITIZE_CONFIG);
+
+  const useAllowlistFallback =
+    typeof document !== 'undefined' &&
+    (isPassthroughPurify(purify) || sanitizeLostStructuralTags(rawHtml, html));
+
+  if (useAllowlistFallback) {
+    html = stripToAllowlistedHtml(rawHtml, document);
+  } else {
+    html = postProcessHtml(html);
+  }
+
+  return html;
 }
 
 /**

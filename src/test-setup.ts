@@ -10,9 +10,8 @@ try {
   TestBed.initTestEnvironment(BrowserDynamicTestingModule, platformBrowserDynamicTesting(), {
     teardown: { destroyAfterEach: true }
   });
-} catch (e: any) {
+} catch {
   // TestBed already initialized, which is fine
-  console.log('TestBed already initialized');
 }
 
 // Only reset after test completes to avoid leaving TestBed in bad state
