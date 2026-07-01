@@ -3,8 +3,7 @@
  * Replaces Resend and Mailchimp functionality
  */
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0'
 
 // Environment variables
 const AZURE_TENANT_ID = Deno.env.get('AZURE_TENANT_ID')
@@ -223,7 +222,7 @@ async function sendBulkEmails(
 /**
  * Main request handler
  */
-serve(async (req) => {
+Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, {

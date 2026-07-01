@@ -17,8 +17,7 @@
  * });
  */
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
 import { getToken } from 'https://deno.land/x/google_jwt_sa@v0.2.5/mod.ts';
 import { createAppleNotificationJwt } from 'jsr:@narumincho/apple-notification-jwt@0.1.0';
 
@@ -144,7 +143,7 @@ async function sendViaApns(
   return { ok: false, errorData };
 }
 
-serve(async (req) => {
+Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
   }

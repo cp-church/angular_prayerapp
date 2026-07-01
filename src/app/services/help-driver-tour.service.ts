@@ -697,7 +697,7 @@ export class HelpDriverTourService {
             title: 'Welcome',
             description:
               'This <strong>full guided tour</strong> walks through each Help topic on the real app, one after another. <strong>Close</strong>, the dimmed overlay, or <strong>Escape</strong> ends the <em>entire</em> tour at any time. Within each topic you can still use <strong>Previous</strong>.<br><br>Tap <strong>Begin</strong> when you’re ready to start.',
-            side: 'over',
+            side: 'bottom',
             align: 'center',
             nextBtnText: 'Begin',
             onNextClick: (_element, _step, opts) => {
@@ -744,7 +744,7 @@ export class HelpDriverTourService {
               'You’ve reached the end of the full tour. We hope this helps you pray with your church and grow in faith.<br><br>' +
               'Remember: each topic in <strong>Help &amp; Guidance</strong> has its own <strong>Start guided tour</strong> if you ever want to revisit just that part of the app.<br><br>' +
               '<strong>Thank you and God bless.</strong>',
-            side: 'over',
+            side: 'bottom',
             align: 'center',
           },
         },
@@ -1240,7 +1240,7 @@ export class HelpDriverTourService {
         title: 'Prayer updates',
         description:
           'Tap <strong>Next</strong> to <strong>close the form</strong> and switch to <strong>Current</strong> prayers when needed. Then we highlight <strong>Add Update</strong> on a prayer card when one is available.',
-        side: 'over',
+        side: 'bottom',
         align: 'center',
         onNextClick: (_element, _step, { driver: drv }) => {
           hooks.closePrayerForm();
@@ -1356,7 +1356,7 @@ export class HelpDriverTourService {
         popover: {
           title: escapeHtml(section.title),
           description: escapeHtml(section.description),
-          side: 'over',
+          side: 'bottom',
           align: 'center',
         },
       },
@@ -1614,7 +1614,7 @@ export class HelpDriverTourService {
         title: 'What is Pray For?',
         description:
           'When Prayer Encouragement is enabled, <strong>Pray For</strong> lets you record that you prayed for a community request. The requester only sees a <strong>total count</strong>—your tap is anonymous. It does not appear on personal prayers or Planning Center member cards.<br><br>You can turn the button or the praying count off for yourself in <strong>Settings</strong> under prayer encouragement on cards. After you tap Pray For, a <strong>cooldown</strong> applies before you can tap again for the same request.',
-        side: 'over',
+        side: 'bottom',
         align: 'center',
         onNextClick: this.popoverNextKillsTour(),
       },
@@ -1664,7 +1664,7 @@ export class HelpDriverTourService {
           title: 'Search tips',
           description:
             'Shorter, broader words usually return more results; narrower terms focus the list. When you have text in the field, use <strong>Clear Search</strong> to reset. Exact phrases may work with quotes depending on how your church data is stored.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
           onNextClick: this.popoverNextKillsTour(),
         },
@@ -1781,7 +1781,7 @@ export class HelpDriverTourService {
           title: 'Before you print',
           description:
             'Adjust <strong>filters and search</strong> on the main page first if you want a narrower community print. Printing opens a preview you can send to your printer or save as PDF from the browser.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
         },
       },
@@ -1789,7 +1789,7 @@ export class HelpDriverTourService {
         popover: {
           title: 'Done',
           description: 'Tap <strong>Next</strong> to close Settings.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
           onNextClick: (_e, _s) => {
             hooks.closeSettings();
@@ -1873,7 +1873,7 @@ export class HelpDriverTourService {
           title: 'What stays separate',
           description:
             '<strong>Push notifications</strong> are a separate switch below (when available). Some <strong>direct</strong> emails—such as when a prayer you submitted is approved or needs attention—may still be sent when the app must reach you about your own content.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
         },
       },
@@ -1881,7 +1881,7 @@ export class HelpDriverTourService {
         popover: {
           title: 'Done',
           description: 'Tap <strong>Next</strong> to close Settings.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
           onNextClick: (_e, _s) => {
             hooks.closeSettings();
@@ -1977,7 +1977,7 @@ export class HelpDriverTourService {
           title: 'Tips',
           description:
             'You need a saved <strong>email</strong> on your account to add reminders. Reminders don’t replace community updates—they’re a personal rhythm to pause and pray.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
         },
       },
@@ -1985,7 +1985,7 @@ export class HelpDriverTourService {
         popover: {
           title: 'Done',
           description: 'Tap <strong>Next</strong> to close Settings.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
           onNextClick: (_e, _s) => {
             hooks.closeSettings();
@@ -2093,7 +2093,7 @@ export class HelpDriverTourService {
           title: 'Tips',
           description:
             'Your feedback is sent to the <strong>development team</strong> and will be <strong>reviewed</strong>. You’ll see a confirmation or error message under the form after sending.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
         },
       },
@@ -2101,7 +2101,7 @@ export class HelpDriverTourService {
         popover: {
           title: 'Done',
           description: 'Tap <strong>Next</strong> to close Settings.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
           onNextClick: (_e, _s) => {
             hooks.closeSettings();
@@ -2293,7 +2293,7 @@ export class HelpDriverTourService {
           title: 'Footer & account',
           description:
             'At the bottom: <strong>Logout</strong> and <strong>Close</strong>. You can also sign out from your email badge in the header (with confirmation). <strong>Delete your account</strong> is below feedback when you need it.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
         },
       },
@@ -2301,7 +2301,7 @@ export class HelpDriverTourService {
         popover: {
           title: 'Done',
           description: 'Tap <strong>Next</strong> to close Settings.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
           onNextClick: (_e, _s) => {
             hooks.closeSettings();
@@ -2378,7 +2378,7 @@ export class HelpDriverTourService {
         popover: {
           title: title0,
           description: `${desc0}<br><br>We’ll walk through creating a <strong>sample personal prayer</strong> (filled in for you), then remove it at the end.`,
-          side: 'over',
+          side: 'bottom',
           align: 'center',
         },
       },
@@ -2483,7 +2483,7 @@ export class HelpDriverTourService {
         popover: {
           title: 'Edit form',
           description: 'Same fields as when you created the prayer. Close when you’re ready to continue.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
           onNextClick: advance(() => hooks.closeWalkthroughPersonalEdit(), 220),
         },
@@ -2610,7 +2610,7 @@ export class HelpDriverTourService {
           popover: {
             title: title0,
             description: `${desc0 ? `${desc0}<br><br>` : ''}Use the <strong>Pray</strong> button in the header to open <strong>presentation mode</strong>. Tap <strong>Next</strong> to open it now and continue the tour.`,
-            side: 'over',
+            side: 'bottom',
             align: 'center',
             onNextClick: (_e, _s) => {
               hooks.continueToPresentation();
@@ -2723,7 +2723,7 @@ export class HelpDriverTourService {
           title: 'Touch & keyboard',
           description:
             '<strong>Swipe</strong> left/right to change slides. <strong>Escape</strong> exits presentation mode. On desktop without touch, use the toolbar or arrow keys as above.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
         },
       },
@@ -2743,7 +2743,7 @@ export class HelpDriverTourService {
           title: 'Presentation settings',
           description:
             'Choose how content looks, how long each slide stays, what to include, and optional <strong>Prayer Timer</strong> blocks for focused prayer.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
         },
       },
@@ -2839,7 +2839,7 @@ export class HelpDriverTourService {
           title: 'Close settings',
           description:
             'Use the <strong>X</strong> in the header to close, or tap <strong>Next</strong> here and we’ll close the panel for you.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
           onNextClick: advance(() => hooks.closeSettings(), 280),
         },

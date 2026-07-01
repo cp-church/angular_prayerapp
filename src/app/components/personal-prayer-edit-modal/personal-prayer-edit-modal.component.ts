@@ -8,18 +8,19 @@ import {
   HostListener,
   ViewChild,
   DestroyRef,
-} from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { PrayerRequest } from '../../services/prayer.service';
-import { PrayerService } from '../../services/prayer.service';
-import { ToastService } from '../../services/toast.service';
-import { RichTextEditorsSettingsService } from '../../services/rich-text-editors-settings.service';
-import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
+  ChangeDetectionStrategy,
+} from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { CommonModule } from "@angular/common";
+import { FormsModule } from "@angular/forms";
+import { PrayerRequest } from "../../services/prayer.service";
+import { PrayerService } from "../../services/prayer.service";
+import { ToastService } from "../../services/toast.service";
+import { RichTextEditorsSettingsService } from "../../services/rich-text-editors-settings.service";
+import { RichTextEditorComponent } from "../rich-text-editor/rich-text-editor.component";
 
 @Component({
-  selector: 'app-personal-prayer-edit-modal',
+  selector: "app-personal-prayer-edit-modal",
   standalone: true,
   imports: [CommonModule, FormsModule, RichTextEditorComponent],
   template: `
@@ -35,8 +36,13 @@ import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.co
         aria-labelledby="edit-prayer-title"
       >
         <!-- Header -->
-        <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 id="edit-prayer-title" class="text-xl font-semibold text-gray-800 dark:text-gray-200">
+        <div
+          class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700"
+        >
+          <h2
+            id="edit-prayer-title"
+            class="text-xl font-semibold text-gray-800 dark:text-gray-200"
+          >
             Edit Prayer
           </h2>
           <button
@@ -44,17 +50,34 @@ import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.co
             aria-label="Close edit dialog"
             class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-1"
           >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              ></path>
             </svg>
           </button>
         </div>
 
         <!-- Form -->
-        <form #editForm="ngForm" (ngSubmit)="editForm.valid && handleSubmit()" class="p-6 space-y-4">
+        <form
+          #editForm="ngForm"
+          (ngSubmit)="editForm.valid && handleSubmit()"
+          class="p-6 space-y-4"
+        >
           <!-- Title -->
           <div>
-            <label for="prayer_title" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label
+              for="prayer_title"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
               Prayer For <span aria-label="required">*</span>
             </label>
             <input
@@ -71,8 +94,12 @@ import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.co
 
           <!-- Description -->
           <div>
-            <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Prayer Request Details <span class="text-gray-500 dark:text-gray-400">(optional)</span>
+            <label
+              for="description"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
+              Prayer Request Details
+              <span class="text-gray-500 dark:text-gray-400">(optional)</span>
             </label>
             @if (richTextEditorsEnabled) {
             <app-rich-text-editor
@@ -99,8 +126,15 @@ import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.co
 
           <!-- Category -->
           <div class="relative">
-            <label for="category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Category <span class="text-gray-500 dark:text-gray-400">(optional, {{ formData.category.length }}/50 characters max)</span>
+            <label
+              for="category"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
+              Category
+              <span class="text-gray-500 dark:text-gray-400"
+                >(optional, {{ formData.category.length }}/50 characters
+                max)</span
+              >
             </label>
             <input
               type="text"
@@ -118,8 +152,11 @@ import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.co
             />
             <!-- Category Dropdown -->
             @if (showCategoryDropdown && filteredCategories.length > 0) {
-            <div class="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg z-10 max-h-48 overflow-y-auto">
-              @for (category of filteredCategories; track category; let i = $index) {
+            <div
+              class="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg z-10 max-h-48 overflow-y-auto"
+            >
+              @for (category of filteredCategories; track category; let i =
+              $index) {
               <button
                 type="button"
                 (click)="selectCategory(category)"
@@ -142,7 +179,7 @@ import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.co
               class="flex-1 bg-blue-600 dark:bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               aria-label="Save changes"
             >
-              {{ isSubmitting ? 'Saving...' : 'Save Changes' }}
+              {{ isSubmitting ? "Saving..." : "Save Changes" }}
             </button>
             <button
               type="button"
@@ -159,10 +196,11 @@ import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.co
     </div>
     }
   `,
-  styles: []
+  changeDetection: ChangeDetectionStrategy.Eager,
+  styles: [],
 })
 export class PersonalPrayerEditModalComponent implements OnInit {
-  @ViewChild('descriptionEditor') descriptionEditor?: RichTextEditorComponent;
+  @ViewChild("descriptionEditor") descriptionEditor?: RichTextEditorComponent;
 
   @Input() isOpen = false;
   @Input() prayer: PrayerRequest | null = null;
@@ -170,9 +208,9 @@ export class PersonalPrayerEditModalComponent implements OnInit {
   @Output() save = new EventEmitter<Partial<PrayerRequest>>();
 
   formData = {
-    prayer_for: '',
-    description: '',
-    category: ''
+    prayer_for: "",
+    description: "",
+    category: "",
   };
 
   availableCategories: string[] = [];
@@ -192,7 +230,7 @@ export class PersonalPrayerEditModalComponent implements OnInit {
     richTextEditorsSettings
       .getRichTextEditorsEnabled$()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(v => {
+      .subscribe((v) => {
         this.richTextEditorsEnabled = v;
         this.cdr.markForCheck();
       });
@@ -207,14 +245,14 @@ export class PersonalPrayerEditModalComponent implements OnInit {
       this.formData = {
         prayer_for: this.prayer.prayer_for,
         description: this.prayer.description,
-        category: this.prayer.category || ''
+        category: this.prayer.category || "",
       };
       this.loadAvailableCategories();
     }
   }
 
   private loadAvailableCategories(): void {
-    this.prayerService.getUniqueCategoriesForUser().then(cats => {
+    this.prayerService.getUniqueCategoriesForUser().then((cats) => {
       this.availableCategories = cats;
       this.updateFilteredCategories();
     });
@@ -232,10 +270,10 @@ export class PersonalPrayerEditModalComponent implements OnInit {
 
   private updateFilteredCategories(): void {
     const searchTerm = this.formData.category.toLowerCase().trim();
-    if (searchTerm === '') {
+    if (searchTerm === "") {
       this.filteredCategories = [];
     } else {
-      this.filteredCategories = this.availableCategories.filter(cat =>
+      this.filteredCategories = this.availableCategories.filter((cat) =>
         cat.toLowerCase().includes(searchTerm)
       );
     }
@@ -252,31 +290,36 @@ export class PersonalPrayerEditModalComponent implements OnInit {
 
   onCategoryKeyDown(event: KeyboardEvent): void {
     if (!this.showCategoryDropdown || this.filteredCategories.length === 0) {
-      if (event.key === 'Enter') {
+      if (event.key === "Enter") {
         event.preventDefault();
       }
       return;
     }
 
     switch (event.key) {
-      case 'ArrowDown':
+      case "ArrowDown":
         event.preventDefault();
         this.selectedCategoryIndex = Math.min(
           this.selectedCategoryIndex + 1,
           this.filteredCategories.length - 1
         );
         break;
-      case 'ArrowUp':
+      case "ArrowUp":
         event.preventDefault();
-        this.selectedCategoryIndex = Math.max(this.selectedCategoryIndex - 1, -1);
+        this.selectedCategoryIndex = Math.max(
+          this.selectedCategoryIndex - 1,
+          -1
+        );
         break;
-      case 'Enter':
+      case "Enter":
         event.preventDefault();
         if (this.selectedCategoryIndex >= 0) {
-          this.selectCategory(this.filteredCategories[this.selectedCategoryIndex]);
+          this.selectCategory(
+            this.filteredCategories[this.selectedCategoryIndex]
+          );
         }
         break;
-      case 'Escape':
+      case "Escape":
         event.preventDefault();
         this.showCategoryDropdown = false;
         this.selectedCategoryIndex = -1;
@@ -297,7 +340,8 @@ export class PersonalPrayerEditModalComponent implements OnInit {
       const updates: Partial<PrayerRequest> = {
         prayer_for: this.formData.prayer_for,
         description: this.formData.description,
-        category: this.formData.category.trim() === '' ? null : this.formData.category
+        category:
+          this.formData.category.trim() === "" ? null : this.formData.category,
       };
 
       const success = await this.prayerService.updatePersonalPrayer(
@@ -310,8 +354,8 @@ export class PersonalPrayerEditModalComponent implements OnInit {
         this.close.emit();
       }
     } catch (error) {
-      console.error('Error updating prayer:', error);
-      this.toast.error('Failed to update prayer. Please try again.');
+      console.error("Error updating prayer:", error);
+      this.toast.error("Failed to update prayer. Please try again.");
     } finally {
       this.isSubmitting = false;
       this.cdr.markForCheck();
@@ -320,20 +364,23 @@ export class PersonalPrayerEditModalComponent implements OnInit {
 
   cancel(): void {
     this.formData = {
-      prayer_for: '',
-      description: '',
-      category: ''
+      prayer_for: "",
+      description: "",
+      category: "",
     };
     this.showCategoryDropdown = false;
     this.close.emit();
   }
 
-  @HostListener('document:click', ['$event'])
+  @HostListener("document:click", ["$event"])
   onDocumentClick(event: MouseEvent): void {
     if (this.showCategoryDropdown) {
       const target = event.target as HTMLElement;
       // Close dropdown if click is outside the category input area
-      if (!target.closest('#category') && !target.closest('[class*="dropdown"]')) {
+      if (
+        !target.closest("#category") &&
+        !target.closest('[class*="dropdown"]')
+      ) {
         this.showCategoryDropdown = false;
         this.cdr.markForCheck();
       }

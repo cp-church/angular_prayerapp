@@ -18,7 +18,7 @@ Complete guide to setting up, configuring, and deploying the Prayer App.
 
 ### Prerequisites
 
-- Node.js 18+ and npm 9+
+- Node.js **22.22.3+** (Angular 22 minimum; Node 20 is not supported) and npm 9+
 - Git
 - Supabase account (free tier available)
 - Microsoft 365 account (for email)
@@ -31,7 +31,7 @@ Complete guide to setting up, configuring, and deploying the Prayer App.
 git clone https://github.com/cp-church/angular_prayerapp.git
 cd angular_prayerapp
 
-# Install dependencies
+# Install dependencies (use Node 22.22.3+ — `nvm use` reads `.nvmrc`; see nvm/fnm if `ng` reports a Node version error)
 npm install
 
 # Start development server

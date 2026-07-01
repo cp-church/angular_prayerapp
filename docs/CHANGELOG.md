@@ -4,6 +4,14 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Toolchain — dependency upgrades (Angular 22, ecosystem) ✅
+- **Angular 22** (`@angular/*` **22.0.4**), **TypeScript 6** (`~6.0.3`), **angular-eslint 22**. CLI migrations: **`ChangeDetectionStrategy.Eager`** on components that did not set a strategy (preserves pre-v22 default behavior); **`withXhr()`** on [`provideHttpClient`](src/main.ts) so HttpClient keeps the XHR backend; extended diagnostics for nullish coalescing / optional chain suppressed in [`tsconfig.app.json`](tsconfig.app.json).
+- **Ecosystem minors**: Capacitor **8.4.1**, `@capacitor/push-notifications` **8.1.1**, `@capgo/capacitor-printer` **8.1.0** (upstream includes Android `runOnUiThread`; removed obsolete patch-package patch), `@supabase/supabase-js` **^2.110.0**, Vitest **4.1.9**, Playwright **1.61.1**, Tailwind **4.3.2**, TipTap **3.27.1**, and related patch bumps. **driver.js 1.6** dropped `side: 'over'` — tour steps use **`side: 'bottom'`** in help driver services.
+- **Node**: Angular 22 requires **Node ≥ 22.22.3** (or 24.15+). CI [`.github/workflows/test.yml`](.github/workflows/test.yml) pins **`22.22.3`**; local dev should match (e.g. `nvm install` with [`.nvmrc`](../.nvmrc)). See [docs/SETUP.md](docs/SETUP.md).
+- **Edge Functions**: Migrated from deprecated `std@0.168.0/http/server.ts` **`serve`** to **`Deno.serve`**; pinned **`@supabase/supabase-js@2.110.0`** in [`supabase/functions/deno.json`](supabase/functions/deno.json) and function imports; `deno check` on representative functions.
+- **Verify**: `npm run pre-handoff` (5417+ unit tests); `npm run cap:sync` after Capacitor bumps.
+- **Deferred**: lucide-angular v1 (breaking icon API), zoneless change detection, Signal Forms rewrite.
+
 ### Developer workflow — verify before done ✅
 - **Behavior**: Agents and contributors run **`npm run pre-handoff`** (lint + typecheck + unit tests + logic-review reminders) before finishing; [`scripts/pre-handoff.js`](scripts/pre-handoff.js), [AGENTS.md](../AGENTS.md), skill [`.cursor/skills/pre-handoff/SKILL.md`](.cursor/skills/pre-handoff/SKILL.md). Cursor **`stop` hook** [`.cursor/hooks.json`](.cursor/hooks.json) auto-continues the agent until pre-handoff passes when `src/app`, `src/lib`, or `supabase/migrations` changed. Rule [`.cursor/rules/verify-before-done.mdc`](.cursor/rules/verify-before-done.mdc) still requires **`ReadLints`** and manual logic review (session/cache/RxJS races, regression tests) — automated verify alone does not catch those bugs.
 - **CI**: GitHub Actions runs typecheck and lint (no longer `continue-on-error` on lint). See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#verify-before-merge-or-agent-handoff).

@@ -14,8 +14,7 @@
  * If APP_URL is host-only (no https://), it is prefixed with https:// so mail clients do not rewrite links to x-webdoc://…
  * Auth matches send-prayer-reminders: Supabase Edge JWT verification only.
  */
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -146,7 +145,7 @@ function pickSpotlightCandidate(
   return pool[idx] ?? null;
 }
 
-serve(async (req) => {
+Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
   }

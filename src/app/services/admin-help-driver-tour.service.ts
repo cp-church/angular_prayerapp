@@ -64,7 +64,7 @@ export class AdminHelpDriverTourService {
           title: 'Email subscribers tutorial',
           description:
             'This tour uses the real Admin Portal: <strong>Settings</strong> → <strong>Email</strong> → <strong>Email Subscribers</strong>, then <strong>Add Subscriber</strong>. You can add someone <strong>either</strong> by typing name and email manually <strong>or</strong> by searching Planning Center—both are covered here.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
         },
       },
@@ -241,7 +241,7 @@ export class AdminHelpDriverTourService {
           title: 'Tour demo complete',
           description:
             'This tour did <strong>not</strong> add anyone; the demo fields were cleared. Remember: add subscribers <strong>manually</strong> or via <strong>Planning Center</strong> search—whichever fits the situation. Close the add form if you like, or use <strong>Search subscribers</strong> on the list anytime to filter by name or email.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
           nextBtnText: 'Done',
           onNextClick: (_e, _s, { driver: drv }) => {
@@ -419,7 +419,7 @@ export class AdminHelpDriverTourService {
           title: 'Email Subscribers — overview',
           description:
             'This tour walks the subscriber list: toolbar, search (pre-filled with <strong>app-test</strong> for a sample row), then each column. It does <strong>not</strong> open <strong>Add Subscriber</strong>—use <strong>Email subscribers &amp; Planning Center</strong> for that.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
         },
       },
@@ -470,7 +470,7 @@ export class AdminHelpDriverTourService {
           title: 'Next steps',
           description:
             'For a guided tour that opens <strong>Add Subscriber</strong> and walks Planning Center search, open <strong>Admin help</strong> again and start <strong>Email subscribers &amp; Planning Center</strong>.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
           nextBtnText: 'Done',
           onNextClick: (_e, _s, { driver: drv }) => {
@@ -512,7 +512,7 @@ export class AdminHelpDriverTourService {
           title: 'Prayer Editor — create a prayer',
           description:
             'This tour uses <strong>Admin Settings</strong> → <strong>Tools</strong> → <strong>Prayer Editor</strong>, then walks through the <strong>Create New Prayer</strong> form.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
         },
       },
@@ -639,7 +639,7 @@ export class AdminHelpDriverTourService {
           title: 'Tour complete',
           description:
             'You did not submit a prayer in this tour. Use <strong>Create New Prayer</strong> anytime from Tools when you need to add one for real.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
           nextBtnText: 'Done',
           onNextClick: (_e, _s, { driver: drv }) => {
@@ -683,7 +683,7 @@ export class AdminHelpDriverTourService {
           title: 'Prayer Editor — edit & add update',
           description:
             'This tour uses the <strong>first prayer</strong> in your list. It will <strong>open</strong> the edit form and Add Update form, walk through the fields, then <strong>Cancel</strong> each—nothing is saved.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
         },
       },
@@ -872,7 +872,7 @@ export class AdminHelpDriverTourService {
               title: 'No prayers in this list',
               description:
                 'There are no prayers on the current page. Choose a <strong>status</strong> or <strong>approval</strong> filter, run a <strong>search</strong>, or create a prayer, then open this tour again.',
-              side: 'over',
+              side: 'bottom',
               align: 'center',
             },
           },
@@ -885,7 +885,7 @@ export class AdminHelpDriverTourService {
           hasPrayerRow
             ? 'No changes were saved in this tour. When you <strong>Save</strong> edited prayer details or <strong>Save Update</strong> for real, you’ll be <strong>prompted to send an email to subscribers</strong> (broadcast)—you can confirm or skip.'
             : 'When prayers appear in the list, run this tour again.',
-        side: 'over',
+        side: 'bottom',
         align: 'center',
         nextBtnText: 'Done',
         onNextClick: (_e, _s, { driver: drv }) => {
@@ -931,7 +931,7 @@ export class AdminHelpDriverTourService {
           title: 'Prayer Prompts & Prayer Types',
           description:
             'This tour walks the <strong>Content</strong> tab: <strong>Prayer Prompts</strong> (ideas people can use when posting) and <strong>Prayer Types</strong> (categories that prompts and filters use). It does <strong>not</strong> open add forms—just the layout and actions.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
         },
       },
@@ -1040,7 +1040,7 @@ export class AdminHelpDriverTourService {
           title: 'Done',
           description:
             'Edits here affect the main app after save. Use <strong>Prayer Editor</strong> help tours under Admin help if you need to walk creating or editing prayers.',
-          side: 'over',
+          side: 'bottom',
           align: 'center',
           nextBtnText: 'Done',
           onNextClick: (_e, _s, { driver: drv }) => {

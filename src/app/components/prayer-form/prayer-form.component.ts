@@ -10,27 +10,28 @@ import {
   HostListener,
   ViewChild,
   DestroyRef,
-} from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormsModule } from '@angular/forms';
-import { NgClass } from '@angular/common';
-import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
-import { Observable } from 'rxjs';
-import type { User } from '@supabase/supabase-js';
-import { PrayerService } from '../../services/prayer.service';
-import { AdminAuthService } from '../../services/admin-auth.service';
-import { UserSessionService } from '../../services/user-session.service';
-import { SupabaseService } from '../../services/supabase.service';
-import { ToastService } from '../../services/toast.service';
-import { RichTextEditorsSettingsService } from '../../services/rich-text-editors-settings.service';
+  ChangeDetectionStrategy,
+} from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { FormsModule } from "@angular/forms";
+import { NgClass } from "@angular/common";
+import { RichTextEditorComponent } from "../rich-text-editor/rich-text-editor.component";
+import { Observable } from "rxjs";
+import type { User } from "@supabase/supabase-js";
+import { PrayerService } from "../../services/prayer.service";
+import { AdminAuthService } from "../../services/admin-auth.service";
+import { UserSessionService } from "../../services/user-session.service";
+import { SupabaseService } from "../../services/supabase.service";
+import { ToastService } from "../../services/toast.service";
+import { RichTextEditorsSettingsService } from "../../services/rich-text-editors-settings.service";
 import {
   PERSONAL_PRAYER_WALKTHROUGH_CATEGORY,
   PERSONAL_PRAYER_WALKTHROUGH_DESCRIPTION,
   PERSONAL_PRAYER_WALKTHROUGH_PRAYER_FOR,
-} from '../../services/help-driver-tour.service';
+} from "../../services/help-driver-tour.service";
 
 @Component({
-  selector: 'app-prayer-form',
+  selector: "app-prayer-form",
   standalone: true,
   imports: [FormsModule, NgClass, RichTextEditorComponent],
   template: `
@@ -47,8 +48,13 @@ import {
         aria-labelledby="prayer-form-title"
       >
         <!-- Header -->
-        <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 id="prayer-form-title" class="text-xl font-semibold text-gray-800 dark:text-gray-200">
+        <div
+          class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700"
+        >
+          <h2
+            id="prayer-form-title"
+            class="text-xl font-semibold text-gray-800 dark:text-gray-200"
+          >
             New Prayer Request
           </h2>
           <button
@@ -56,14 +62,28 @@ import {
             aria-label="Close prayer form dialog"
             class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-1 cursor-pointer"
           >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              ></path>
             </svg>
           </button>
         </div>
 
         <!-- Form -->
-        <form #prayerForm="ngForm" (ngSubmit)="prayerForm.valid && handleSubmit()" class="p-6 space-y-4">
+        <form
+          #prayerForm="ngForm"
+          (ngSubmit)="prayerForm.valid && handleSubmit()"
+          class="p-6 space-y-4"
+        >
           <!-- Success Message -->
           @if (showSuccessMessage) {
           <div
@@ -72,13 +92,22 @@ import {
             aria-live="polite"
             aria-atomic="true"
           >
-            <div class="flex items-center gap-2 text-green-800 dark:text-green-200">
-              <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+            <div
+              class="flex items-center gap-2 text-green-800 dark:text-green-200"
+            >
+              <div
+                class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0"
+              >
                 <div class="w-2 h-2 bg-white rounded-full"></div>
               </div>
               <div>
-                <p class="font-medium">Prayer request submitted successfully!</p>
-                <p class="text-sm text-green-600 dark:text-green-300">Your request is pending admin approval and will appear in the list once reviewed.</p>
+                <p class="font-medium">
+                  Prayer request submitted successfully!
+                </p>
+                <p class="text-sm text-green-600 dark:text-green-300">
+                  Your request is pending admin approval and will appear in the
+                  list once reviewed.
+                </p>
               </div>
             </div>
           </div>
@@ -86,7 +115,10 @@ import {
 
           <!-- Prayer For -->
           <div>
-            <label for="prayer_for" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label
+              for="prayer_for"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
               Prayer For <span aria-label="required">*</span>
             </label>
             <input
@@ -104,7 +136,10 @@ import {
 
           <!-- Description -->
           <div>
-            <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label
+              for="description"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
               Prayer Request Details <span aria-label="required">*</span>
             </label>
             @if (richTextEditorsEnabled) {
@@ -134,7 +169,9 @@ import {
 
           <!-- Prayer Visibility Toggle Buttons -->
           <div id="tour-prayer-visibility" class="space-y-2">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
               Prayer Visibility
             </label>
             <div class="grid grid-cols-2 gap-3">
@@ -153,11 +190,24 @@ import {
                 aria-label="Select public prayer - requires admin approval"
               >
                 <div class="flex items-center justify-center gap-2 text-left">
-                  <svg class="hidden sm:block w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                  <svg
+                    class="hidden sm:block w-6 h-6 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                    />
                   </svg>
                   <div class="text-left min-w-0">
-                    <div class="text-sm sm:text-base font-semibold">Public Prayer</div>
+                    <div class="text-sm sm:text-base font-semibold">
+                      Public Prayer
+                    </div>
                     <div class="text-xs opacity-75">Pending admin approval</div>
                   </div>
                 </div>
@@ -179,11 +229,24 @@ import {
                 aria-label="Select personal prayer - private, no approval needed"
               >
                 <div class="flex items-center justify-center gap-2 text-left">
-                  <svg class="hidden sm:block w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                  <svg
+                    class="hidden sm:block w-6 h-6 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    />
                   </svg>
                   <div class="text-left min-w-0">
-                    <div class="text-sm sm:text-base font-semibold">Personal Prayer</div>
+                    <div class="text-sm sm:text-base font-semibold">
+                      Personal Prayer
+                    </div>
                     <div class="text-xs opacity-75">Private, no approval</div>
                   </div>
                 </div>
@@ -193,7 +256,10 @@ import {
 
           <!-- Anonymous Checkbox - only show for public prayers -->
           @if (!formData.is_personal) {
-          <div id="tour-prayer-anonymous" class="flex items-center cursor-pointer">
+          <div
+            id="tour-prayer-anonymous"
+            class="flex items-center cursor-pointer"
+          >
             <input
               type="checkbox"
               [(ngModel)]="formData.is_anonymous"
@@ -201,7 +267,10 @@ import {
               id="is_anonymous"
               class="w-4 h-4 text-blue-600 border-gray-900 dark:border-white rounded focus:ring-blue-500 bg-white dark:bg-gray-800"
             />
-            <label for="is_anonymous" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+            <label
+              for="is_anonymous"
+              class="ml-2 text-sm text-gray-700 dark:text-gray-300"
+            >
               Make this prayer anonymous (your name will not be shown publicly)
             </label>
           </div>
@@ -210,8 +279,15 @@ import {
           <!-- Category Field - only show for personal prayers -->
           @if (formData.is_personal) {
           <div class="relative">
-            <label for="category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Category <span class="text-gray-500 dark:text-gray-400">(optional, {{ formData.category.length }}/50 characters max)</span>
+            <label
+              for="category"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
+              Category
+              <span class="text-gray-500 dark:text-gray-400"
+                >(optional, {{ formData.category.length }}/50 characters
+                max)</span
+              >
             </label>
             <input
               type="text"
@@ -229,8 +305,11 @@ import {
             />
             <!-- Category Dropdown -->
             @if (showCategoryDropdown && filteredCategories.length > 0) {
-            <div class="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg z-10 max-h-48 overflow-y-auto">
-              @for (category of filteredCategories; track category; let i = $index) {
+            <div
+              class="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg z-10 max-h-48 overflow-y-auto"
+            >
+              @for (category of filteredCategories; track category; let i =
+              $index) {
               <button
                 type="button"
                 (click)="selectCategory(category)"
@@ -251,11 +330,22 @@ import {
             <button
               type="submit"
               id="tour-prayer-submit-request"
-              [disabled]="!prayerForm.valid || !isFormValid() || isSubmitting || showSuccessMessage"
+              [disabled]="
+                !prayerForm.valid ||
+                !isFormValid() ||
+                isSubmitting ||
+                showSuccessMessage
+              "
               class="flex-1 bg-blue-600 dark:bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
               aria-label="Submit prayer request"
             >
-              {{ isSubmitting ? 'Submitting...' : (showSuccessMessage ? 'Submitted' : 'Submit Prayer Request') }}
+              {{
+                isSubmitting
+                  ? "Submitting..."
+                  : showSuccessMessage
+                  ? "Submitted"
+                  : "Submit Prayer Request"
+              }}
             </button>
             <button
               type="button"
@@ -264,7 +354,7 @@ import {
               class="flex-1 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 py-2 px-4 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
               aria-label="Cancel and close form"
             >
-              {{ showSuccessMessage ? 'Closing...' : 'Close' }}
+              {{ showSuccessMessage ? "Closing..." : "Close" }}
             </button>
           </div>
         </form>
@@ -272,15 +362,16 @@ import {
     </div>
     }
   `,
-  styles: []
+  changeDetection: ChangeDetectionStrategy.Eager,
+  styles: [],
 })
 export class PrayerFormComponent implements OnInit, OnChanges {
-  @ViewChild('descriptionEditor') descriptionEditor?: RichTextEditorComponent;
+  @ViewChild("descriptionEditor") descriptionEditor?: RichTextEditorComponent;
 
   @Input() isOpen = false;
   /** When true and the modal opens, default to Personal Prayer (matches Request while Personal filter is active). */
   @Input() defaultPersonalPrayer = false;
-  @Output() close = new EventEmitter<{isPersonal?: boolean}>();
+  @Output() close = new EventEmitter<{ isPersonal?: boolean }>();
 
   formData: {
     title: string;
@@ -290,12 +381,12 @@ export class PrayerFormComponent implements OnInit, OnChanges {
     is_personal: boolean;
     category: string;
   } = {
-    title: '',
-    description: '',
-    prayer_for: '',
+    title: "",
+    description: "",
+    prayer_for: "",
     is_anonymous: false,
     is_personal: false,
-    category: ''
+    category: "",
   };
 
   richTextEditorsEnabled = true;
@@ -303,7 +394,7 @@ export class PrayerFormComponent implements OnInit, OnChanges {
   isSubmitting = false;
   showSuccessMessage = false;
   isAdmin = false;
-  currentUserEmail = '';
+  currentUserEmail = "";
   availableCategories: string[] = [];
   filteredCategories: string[] = [];
   selectedCategoryIndex = -1;
@@ -323,7 +414,7 @@ export class PrayerFormComponent implements OnInit, OnChanges {
     richTextEditorsSettings
       .getRichTextEditorsEnabled$()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(v => {
+      .subscribe((v) => {
         this.richTextEditorsEnabled = v;
         this.cdr.markForCheck();
       });
@@ -332,22 +423,22 @@ export class PrayerFormComponent implements OnInit, OnChanges {
   ngOnInit(): void {
     this.loadUserInfo();
     this.user$ = this.adminAuthService.user$;
-    this.adminAuthService.isAdmin$.subscribe(isAdmin => {
+    this.adminAuthService.isAdmin$.subscribe((isAdmin) => {
       this.isAdmin = isAdmin;
     });
     // Load available categories for personal prayers
-    this.prayerService.getUniqueCategoriesForUser().then(cats => {
+    this.prayerService.getUniqueCategoriesForUser().then((cats) => {
       this.availableCategories = cats;
     });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['isOpen']?.currentValue === true) {
+    if (changes["isOpen"]?.currentValue === true) {
       this.formData.is_personal = this.defaultPersonalPrayer;
     }
     if (this.isOpen) {
       this.loadUserInfo();
-      this.prayerService.getUniqueCategoriesForUser().then(cats => {
+      this.prayerService.getUniqueCategoriesForUser().then((cats) => {
         this.availableCategories = cats;
       });
     }
@@ -356,13 +447,13 @@ export class PrayerFormComponent implements OnInit, OnChanges {
   private loadUserInfo(): void {
     try {
       // Get current user's email from UserSessionService (cached from database)
-      this.userSessionService.userSession$.subscribe(session => {
+      this.userSessionService.userSession$.subscribe((session) => {
         if (session?.email) {
           this.currentUserEmail = session.email;
         }
       });
     } catch (error) {
-      console.error('Error loading user info:', error);
+      console.error("Error loading user info:", error);
     }
   }
 
@@ -371,8 +462,8 @@ export class PrayerFormComponent implements OnInit, OnChanges {
   }
 
   private getCurrentUserName(): string {
-    const firstName = localStorage.getItem('prayerapp_user_first_name') || '';
-    const lastName = localStorage.getItem('prayerapp_user_last_name') || '';
+    const firstName = localStorage.getItem("prayerapp_user_first_name") || "";
+    const lastName = localStorage.getItem("prayerapp_user_last_name") || "";
     return `${firstName} ${lastName}`.trim();
   }
 
@@ -396,10 +487,10 @@ export class PrayerFormComponent implements OnInit, OnChanges {
 
   private updateFilteredCategories(): void {
     const searchTerm = this.formData.category.toLowerCase().trim();
-    if (searchTerm === '') {
+    if (searchTerm === "") {
       this.filteredCategories = [];
     } else {
-      this.filteredCategories = this.availableCategories.filter(cat =>
+      this.filteredCategories = this.availableCategories.filter((cat) =>
         cat.toLowerCase().includes(searchTerm)
       );
     }
@@ -416,31 +507,36 @@ export class PrayerFormComponent implements OnInit, OnChanges {
 
   onCategoryKeyDown(event: KeyboardEvent): void {
     if (!this.showCategoryDropdown || this.filteredCategories.length === 0) {
-      if (event.key === 'Enter') {
+      if (event.key === "Enter") {
         event.preventDefault();
       }
       return;
     }
 
     switch (event.key) {
-      case 'ArrowDown':
+      case "ArrowDown":
         event.preventDefault();
         this.selectedCategoryIndex = Math.min(
           this.selectedCategoryIndex + 1,
           this.filteredCategories.length - 1
         );
         break;
-      case 'ArrowUp':
+      case "ArrowUp":
         event.preventDefault();
-        this.selectedCategoryIndex = Math.max(this.selectedCategoryIndex - 1, -1);
+        this.selectedCategoryIndex = Math.max(
+          this.selectedCategoryIndex - 1,
+          -1
+        );
         break;
-      case 'Enter':
+      case "Enter":
         event.preventDefault();
         if (this.selectedCategoryIndex >= 0) {
-          this.selectCategory(this.filteredCategories[this.selectedCategoryIndex]);
+          this.selectCategory(
+            this.filteredCategories[this.selectedCategoryIndex]
+          );
         }
         break;
-      case 'Escape':
+      case "Escape":
         event.preventDefault();
         this.showCategoryDropdown = false;
         this.selectedCategoryIndex = -1;
@@ -470,16 +566,16 @@ export class PrayerFormComponent implements OnInit, OnChanges {
         email: this.currentUserEmail,
         is_anonymous: this.formData.is_anonymous,
         category: this.formData.category || undefined,
-        status: 'current' as const
+        status: "current" as const,
       };
 
       // User is logged in - submit directly without verification
       await this.submitPrayer(prayerData);
     } catch (error) {
-      console.error('Failed to initiate prayer submission:', error);
+      console.error("Failed to initiate prayer submission:", error);
       this.isSubmitting = false;
       this.cdr.markForCheck();
-      this.toast.error('Failed to submit prayer request. Please try again.');
+      this.toast.error("Failed to submit prayer request. Please try again.");
     }
   }
 
@@ -493,18 +589,18 @@ export class PrayerFormComponent implements OnInit, OnChanges {
       if (success) {
         this.showSuccessMessage = true;
         this.cdr.markForCheck();
-        
+
         // Emit close immediately so personal prayers list refreshes right away
         this.close.emit({ isPersonal });
-        
+
         // Reset form
         this.formData = {
-          title: '',
-          description: '',
-          prayer_for: '',
+          title: "",
+          description: "",
+          prayer_for: "",
           is_anonymous: false,
           is_personal: false,
-          category: ''
+          category: "",
         };
 
         // Auto-close after 5 seconds
@@ -514,17 +610,13 @@ export class PrayerFormComponent implements OnInit, OnChanges {
         }, 5000);
       }
     } catch (error) {
-      console.error('Failed to add prayer:', error);
+      console.error("Failed to add prayer:", error);
       throw error;
     } finally {
       this.isSubmitting = false;
       this.cdr.markForCheck();
     }
   }
-
-
-
-
 
   /** Hands-on Personal Prayers help tour — fills “Prayer for”. */
   fillWalkthroughPrayerFor(): void {
@@ -562,12 +654,12 @@ export class PrayerFormComponent implements OnInit, OnChanges {
 
   cancel(): void {
     this.formData = {
-      title: '',
-      description: '',
-      prayer_for: '',
+      title: "",
+      description: "",
+      prayer_for: "",
       is_anonymous: false,
       is_personal: false,
-      category: ''
+      category: "",
     };
     this.showSuccessMessage = false;
     this.isSubmitting = false;
@@ -576,17 +668,20 @@ export class PrayerFormComponent implements OnInit, OnChanges {
   }
 
   onBackdropClick(event: MouseEvent): void {
-    if ((event.target as HTMLElement).classList.contains('fixed')) {
+    if ((event.target as HTMLElement).classList.contains("fixed")) {
       this.cancel();
     }
   }
 
-  @HostListener('document:click', ['$event'])
+  @HostListener("document:click", ["$event"])
   onDocumentClick(event: MouseEvent): void {
     if (this.showCategoryDropdown) {
       const target = event.target as HTMLElement;
       // Close dropdown if click is outside the category input area
-      if (!target.closest('#category') && !target.closest('[class*="dropdown"]')) {
+      if (
+        !target.closest("#category") &&
+        !target.closest('[class*="dropdown"]')
+      ) {
         this.showCategoryDropdown = false;
         this.cdr.markForCheck();
       }
