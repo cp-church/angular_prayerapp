@@ -1,0 +1,115 @@
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/angular';
+import { userEvent } from '@testing-library/user-event';
+import { MemorizedVerseCardComponent } from './memorized-verse-card.component';
+import type { MemorizedItem } from '../../types/memorization';
+
+describe('MemorizedVerseCardComponent', () => {
+  const verseItem: MemorizedItem = {
+    id: 'v1',
+    reference: 'John 3:16',
+    text: 'For God so loved the world',
+    translation: 'esv',
+    dateAdded: Date.now(),
+    lastPracticedAt: new Date('2026-03-15').getTime(),
+    practiceSessions: [
+      { date: 1, wrongAttempts: 0, correctKeystrokes: 10, completed: true },
+      { date: 2, wrongAttempts: 1, correctKeystrokes: 8, completed: false },
+    ],
+    kind: 'verse',
+  };
+
+  const bibleBooksItem: MemorizedItem = {
+    id: 'bb1',
+    reference: 'Bible Books (OT)',
+    text: 'Genesis Exodus',
+    translation: 'esv',
+    dateAdded: Date.now(),
+    lastPracticedAt: null,
+    practiceSessions: [],
+    kind: 'bibleBooks',
+    bibleBooksScope: 'ot',
+  };
+
+  it('renders verse reference, translation, and session stats', async () => {
+    await render(MemorizedVerseCardComponent, {
+      componentInputs: { item: verseItem },
+    });
+    expect(screen.getByText('John 3:16')).toBeTruthy();
+    expect(screen.getByText(/ESV/i)).toBeTruthy();
+    expect(screen.getByText(/Sessions: 1 completed/i)).toBeTruthy();
+    expect(screen.getByText(/Last:/)).toBeTruthy();
+  });
+
+  it('renders bible books count label instead of translation', async () => {
+    await render(MemorizedVerseCardComponent, {
+      componentInputs: { item: bibleBooksItem },
+    });
+    expect(screen.getByText('Bible Books (OT)')).toBeTruthy();
+    expect(screen.getByText(/39 books/i)).toBeTruthy();
+    expect(screen.queryByText(/ESV/i)).toBeNull();
+  });
+
+  it('emits practice when main button is clicked', async () => {
+    const user = userEvent.setup();
+    const practice = vi.fn();
+    const { fixture } = await render(MemorizedVerseCardComponent, {
+      componentInputs: { item: verseItem },
+    });
+    fixture.componentInstance.practice.subscribe(practice);
+
+    const [practiceBtn] = screen.getAllByRole('button');
+    await user.click(practiceBtn);
+    expect(practice).toHaveBeenCalledWith(verseItem);
+  });
+
+  it('emits remove when remove button is clicked', async () => {
+    const user = userEvent.setup();
+    const remove = vi.fn();
+    const { fixture } = await render(MemorizedVerseCardComponent, {
+      componentInputs: { item: verseItem },
+    });
+    fixture.componentInstance.remove.subscribe(remove);
+
+    await user.click(screen.getByRole('button', { name: 'Remove John 3:16' }));
+    expect(remove).toHaveBeenCalledWith(verseItem);
+  });
+
+  it('formatDate formats valid timestamps', () => {
+    const component = new MemorizedVerseCardComponent();
+    expect(component.formatDate(new Date('2026-01-15').getTime())).toMatch(/Jan/);
+  });
+
+  it('formatDate returns em dash when Date throws', () => {
+    const component = new MemorizedVerseCardComponent();
+    vi.spyOn(Date.prototype, 'toLocaleDateString').mockImplementation(() => {
+      throw new Error('bad date');
+    });
+    expect(component.formatDate(1)).toBe('—');
+  });
+
+  it('masterLabel reflects practicing and mastered levels', () => {
+    const component = new MemorizedVerseCardComponent();
+    component.item = {
+      ...verseItem,
+      practiceSessions: Array.from({ length: 5 }, (_, i) => ({
+        date: i,
+        wrongAttempts: 0,
+        correctKeystrokes: 10,
+        completed: true,
+      })),
+    };
+    expect(component.masterLabel).toBe('Practicing');
+
+    component.item = {
+      ...verseItem,
+      practiceSessions: Array.from({ length: 12 }, (_, i) => ({
+        date: i,
+        wrongAttempts: 0,
+        correctKeystrokes: 10,
+        completed: true,
+      })),
+    };
+    expect(component.masterLabel).toBe('Mastered');
+  });
+});

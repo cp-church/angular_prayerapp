@@ -362,6 +362,29 @@ If you don't use Planning Center, set token to empty string. App will work witho
 
 ---
 
+## ESV API (Memorize tab)
+
+The **Memorize** home tab loads passage text and listen audio from the [Crossway ESV API](https://api.esv.org/). Register for a non-commercial API token, then add it as a Supabase Edge Function secret:
+
+```bash
+supabase secrets set ESV_API_TOKEN=your_token_here
+supabase functions deploy scripture
+supabase functions deploy scripture-audio
+```
+
+Each function’s [`deno.json`](../supabase/functions/scripture/deno.json) sets **`verify_jwt": false`** so MFA/localStorage logins (anon key only) can fetch passages. Re-deploy after changing that file.
+
+Apply migration [`20260707120000_memorization_esv.sql`](../supabase/migrations/20260707120000_memorization_esv.sql) before testing (`supabase db push`). Optional Edge Function secrets:
+
+| Secret | Default | Purpose |
+|--------|---------|---------|
+| `ESV_CACHE_TTL_DAYS` | **7** | Drop stale `scripture_cache` rows older than this many days |
+| `ESV_CACHE_MAX_VERSES` | **500** | LRU verse budget across cached passages (oldest `cached_at` evicted first) |
+
+Without `ESV_API_TOKEN`, users can still manage memorization lists, but adding verses by reference and listen mode will fail until the secret is set.
+
+---
+
 ## Deployment
 
 ### Vercel Deployment

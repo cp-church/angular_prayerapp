@@ -79,7 +79,7 @@ src/
 
 | Path | Guard | Purpose |
 |------|--------|--------|
-| `/` | siteAuthGuard | Home – prayer list, filters, prompts, personal |
+| `/` | siteAuthGuard | Home – prayer list, filters, prompts, personal, memorize |
 | `/info` | none | Info/landing page – app overview, CTAs, feature preview |
 | `/login` | none | Login / MFA verification |
 | `/privacy` | none | Privacy policy |
@@ -96,6 +96,17 @@ The **info page** (`/info`) is a public landing/overview. It is used to introduc
 - **Feature overview**: Interactive preview of the main app (mock header, filter tabs, sample cards). Users can tap filter tabs (Current, Answered, Total, Prompts, Personal) and open modals (Help, Settings, badges, prompt categories, personal actions) to see how the app works
 - **Theme**: Supports light/dark mode via theme toggle
 - **Implementation**: `src/app/pages/info/info.component.ts` (standalone). Lazy-loaded in `app.routes.ts`. Uses `BrandingService` (via `BRANDING_SERVICE_TOKEN`) for optional logo; no auth required.
+
+### Memorize (ESV)
+
+The **Memorize** tab on [`home.component.ts`](src/app/pages/home/home.component.ts) is a personal scripture memorization module (ported from [Kelemek/Prayer_App](https://github.com/Kelemek/Prayer_App), adapted for single-tenant email scope and **ESV-only** text/audio).
+
+- **Data**: [`memorized_items`](../supabase/migrations/20260707120000_memorization_esv.sql) stores verse **references** per `user_email` (`text` is empty for `kind = 'verse'`; Bible-books lists keep book names in `text`). RLS: JWT ownership for `authenticated` sessions and **`anon`** access for MFA/localStorage logins (same pattern as `user_prayer_hour_reminders`). [`scripture_cache`](../supabase/migrations/20260707120000_memorization_esv.sql) is the **only** place ESV passage text is persisted — `verse_count` per row and `prune_scripture_cache` (~**500**-verse LRU via `cached_at`, refreshed on cache hits; default TTL **7** days via `ESV_CACHE_TTL_DAYS`; cap **`ESV_CACHE_MAX_VERSES`** default **500**). Practice and add-verse flows fetch text through the `scripture` Edge Function (cache hit or ESV API).
+- **Services**: [`MemorizationService`](src/app/services/memorization.service.ts) (CRUD, practice stats, in-progress sessions); [`ScriptureService`](src/app/services/scripture.service.ts) calls Edge Functions `scripture` and `scripture-audio`.
+- **UI**: `memorization-action-bar`, `memorized-verse-card`, `add-memorized-verse-modal`, `add-memorized-bible-books-modal`, `memorization-practice-session`, `bible-passage-picker-modal`, `scripture-attribution`. Mastery groups (`learning` / `practicing` / `mastered`) via [`memorization-mastery.ts`](src/app/lib/memorization/memorization-mastery.ts). Visual palette matches [Prayer_App](https://github.com/Kelemek/Prayer_App): soft blue primary actions (`bg-blue-100` / `text-blue-800`), solid `blue-600` grid selections, `#0047AB` active Memorize filter ring. Passage picker keeps gospel_presentation scroll behavior (single inner scroller, inline verses, `scrollIntoView` on expand/chapter).
+- **Filter layout**: Button order ends with **Memorize** then **Members** when the Planning Center list filter is shown. Below `sm`, two rows: **`grid-cols-3`** (Current, Answered, Total) then **`grid-cols-4`** (Prompts, Personal, Memorize, Members) when Members is visible, or **`grid-cols-3`** on the second row without Members. `sm:contents` merges into one row on larger screens.
+- **Ops**: Set Supabase secret `ESV_API_TOKEN` and deploy `scripture` + `scripture-audio` — see [docs/SETUP.md](SETUP.md#esv-api-memorize-tab).
+- **Copyright**: Standard ESV API notice ([`esv-copyright.ts`](src/app/lib/memorization/esv-copyright.ts)) on practice screens via `scripture-attribution` and on the public [`/privacy`](src/app/pages/privacy/privacy.component.ts) page (**Scripture Copyright (ESV)**), including the 500-verse / half-book limitation text required by [Crossway](https://api.esv.org).
 
 ### Admin portal: nested settings cards and change detection
 

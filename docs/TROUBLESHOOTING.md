@@ -69,6 +69,23 @@ sudo sysctl -p
 
 ## Database Issues
 
+### Memorize tab: "Failed to load memorization list"
+
+**Error**: Toast on Home → **Memorize**; console shows `permission denied for table memorized_items` or `relation "memorized_items" does not exist`.
+
+**Causes**:
+
+1. **Migration not applied** — run `supabase db push` (or apply [`20260707120000_memorization_esv.sql`](../supabase/migrations/20260707120000_memorization_esv.sql) in the SQL editor). That migration includes **`anon`** grants/policies for MFA logins.
+
+**Verify**:
+
+```sql
+SELECT tablename FROM pg_tables WHERE tablename = 'memorized_items';
+SELECT policyname, roles FROM pg_policies WHERE tablename = 'memorized_items';
+```
+
+You should see `anon_memorized_items_mfa_access` on role `{anon}`.
+
 ### Can't Read Table Data
 
 **Error**: Empty array when querying
