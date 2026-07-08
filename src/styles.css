@@ -502,6 +502,7 @@ html, body {
   }
   .native-app .bottom-safe-bar {
     display: block;
+    flex-shrink: 0;
     min-height: max(env(safe-area-inset-bottom, 0px), 34px);
     -webkit-transform: translateZ(0);
     transform: translateZ(0);
@@ -526,9 +527,13 @@ html, body {
     top: 0;
   }
 
-  /* Native app: full viewport so sticky footer can stick at bottom; content scrolls behind header & footer */
+  /* Native app: full viewport so sticky footer can stick at bottom; content scrolls behind header & footer.
+     Flex column + flex-grow main keeps the bottom safe bar at the viewport bottom when content is short
+     (e.g. Memorize with few items); sticky alone only pins while scrolling past the footer. */
   .native-app .safe-area-viewport {
     height: 100vh;
+    display: flex;
+    flex-direction: column;
   }
   .native-app .main-page-shell {
     min-height: 0;
@@ -536,6 +541,12 @@ html, body {
   }
   .native-app .main-page-shell .safe-area-viewport {
     height: 100%;
+  }
+  .native-app .safe-area-viewport > header {
+    flex-shrink: 0;
+  }
+  .native-app .safe-area-viewport > main {
+    flex: 1 0 auto;
   }
 
   /* Web: no bottom safe zone on main page - match admin portal (content extends to bottom) */
