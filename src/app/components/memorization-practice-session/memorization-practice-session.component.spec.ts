@@ -1199,6 +1199,33 @@ describe('MemorizationPracticeSessionComponent', () => {
       expect(component.phase).toBe('done');
     });
 
+    it('does not reload passage when parent refreshes item stats after final round', async () => {
+      const { component } = await renderSession();
+      await vi.waitFor(() => expect(mockScriptureService.getPassage).toHaveBeenCalled());
+      const callsAfterOpen = mockScriptureService.getPassage.mock.calls.length;
+
+      component.startRoundChoice = MEMORIZATION_FULL_HIDE_ROUND;
+      component.beginPracticeWithMode('type');
+      revealAllHiddenViaTyping(component);
+      expect(component.phase).toBe('done');
+
+      const updatedItem: MemorizedItem = {
+        ...verseItem,
+        lastPracticedAt: Date.now(),
+        practiceSessions: [{ at: Date.now(), wrongAttempts: 0, correctKeystrokes: 5 }],
+        inProgressPractice: null,
+      };
+      component.item = updatedItem;
+      component.ngOnChanges({
+        item: new SimpleChange(verseItem, updatedItem, false),
+      });
+      await vi.waitFor(() => expect(component.passageLoading).toBe(false));
+
+      expect(mockScriptureService.getPassage.mock.calls.length).toBe(callsAfterOpen);
+      expect(component.passageLoading).toBe(false);
+      expect(component.phase).toBe('done');
+    });
+
     it('onPassageAudioEnded handles failed repeat play', async () => {
       const { component } = await renderSession();
       vi.useFakeTimers();

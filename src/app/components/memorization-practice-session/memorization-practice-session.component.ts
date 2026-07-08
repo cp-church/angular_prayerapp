@@ -386,9 +386,21 @@ export class MemorizationPracticeSessionComponent
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['item']) {
+      const prev = changes['item'].previousValue as MemorizedItem | undefined;
+      const passageSourceChanged =
+        !prev ||
+        prev.id !== this.item.id ||
+        prev.reference !== this.item.reference ||
+        prev.translation !== this.item.translation;
+
       this.recomputeDerivedFromItem();
       this.handleItemIdChange();
-      if (this.isOpen && !this.isBibleBooks && !changes['item'].firstChange) {
+      if (
+        this.isOpen &&
+        !this.isBibleBooks &&
+        !changes['item'].firstChange &&
+        passageSourceChanged
+      ) {
         this.passageHydratedForOpen = false;
         void this.loadPassageText();
       }
