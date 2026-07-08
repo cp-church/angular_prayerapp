@@ -5,6 +5,7 @@ import {
   HostListener,
   Input,
   OnChanges,
+  OnDestroy,
   Output,
   SimpleChanges,
   ViewChild,
@@ -22,21 +23,34 @@ const TESTAMENT_KEY = 'prayer_app_memorize_add_testament';
   selector: 'app-bible-passage-picker-modal',
   standalone: true,
   imports: [CommonModule],
+  styles: [
+    `
+      .picker-book-list {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      .picker-book-list::-webkit-scrollbar {
+        display: none;
+      }
+    `,
+  ],
   template: `
     @if (isOpen) {
     <div
-      class="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-gray-900/50 p-0 sm:p-4 safe-area-overlay"
+      class="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-gray-900/50 p-0 sm:p-4 safe-area-overlay overscroll-none touch-none"
       style="padding-top: max(8px, env(safe-area-inset-top)); padding-bottom: max(8px, env(safe-area-inset-bottom));"
       role="dialog"
       aria-modal="true"
       aria-labelledby="bible-passage-picker-title"
       (click)="close.emit()"
+      (touchmove)="onModalTouchMove($event)"
     >
       <div
-        class="w-full sm:max-w-lg max-h-[min(92vh,720px)] flex flex-col bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+        class="w-full sm:max-w-lg max-h-[min(92vh,720px)] flex flex-col bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden touch-none"
         (click)="$event.stopPropagation()"
+        (touchmove)="onModalTouchMove($event)"
       >
-        <div class="shrink-0 flex items-center justify-between px-4 sm:px-6 py-3 border-b border-gray-200 dark:border-gray-700">
+        <div class="shrink-0 flex items-center justify-between px-4 sm:px-6 py-3 border-b border-gray-200 dark:border-gray-700 touch-none">
           <h2 id="bible-passage-picker-title" class="text-lg font-semibold text-gray-800 dark:text-gray-200">
             {{ selectedChapterId ? 'Pick Verse Range' : 'Pick Chapter' }}
           </h2>
@@ -53,7 +67,7 @@ const TESTAMENT_KEY = 'prayer_app_memorize_add_testament';
         </div>
 
         <div class="flex-1 min-h-0 flex flex-col overflow-hidden">
-          <div class="shrink-0 px-4 sm:px-6 pt-3">
+          <div class="shrink-0 px-4 sm:px-6 pt-3 touch-none">
             <p class="mb-3 text-xs text-gray-600 dark:text-gray-400">
               Passages are loaded from the English Standard Version (ESV).
             </p>
@@ -92,7 +106,7 @@ const TESTAMENT_KEY = 'prayer_app_memorize_add_testament';
 
           <div
             #bookListScroller
-            class="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pb-3"
+            class="picker-book-list flex-1 min-h-0 overflow-y-auto overscroll-y-contain touch-pan-y px-4 sm:px-6 pb-3"
           >
             <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
               @for (book of filteredBooks; track book.id) {
@@ -164,8 +178,10 @@ const TESTAMENT_KEY = 'prayer_app_memorize_add_testament';
             </div>
           </div>
 
-          <div class="shrink-0 border-t border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 bg-gray-50 dark:bg-gray-900/40"
+          <div
+            class="shrink-0 border-t border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 bg-gray-50 dark:bg-gray-900/40 touch-none"
             style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));"
+            (touchmove)="onModalTouchMove($event)"
           >
             <button
               type="button"
@@ -182,7 +198,23 @@ const TESTAMENT_KEY = 'prayer_app_memorize_add_testament';
     }
   `,
 })
-export class BiblePassagePickerModalComponent implements OnChanges {
+export class BiblePassagePickerModalComponent implements OnChanges, OnDestroy {
+  private static readonly TOUCH_GUARD_OPTIONS: AddEventListenerOptions = {
+    passive: false,
+    capture: true,
+  };
+
+  private scrollLockEl: HTMLElement | null = null;
+  private scrollLockPreviousOverflow = '';
+  private scrollLockPreviousTouchAction = '';
+  private bodyPreviousOverflow = '';
+  private htmlPreviousOverflow = '';
+
+  private readonly blockModalTouchMove = (event: TouchEvent): void => {
+    if (!this.isOpen || this.isBookListTouch(event)) return;
+    event.preventDefault();
+  };
+
   @Input() isOpen = false;
   @Input() confirmLabel = 'Add';
   /** Parent sets true while saving (e.g. scripture fetch + DB insert). */
@@ -204,11 +236,41 @@ export class BiblePassagePickerModalComponent implements OnChanges {
   verseEnd: number | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
+    if ('isOpen' in changes) {
+      if (this.isOpen) {
+        this.lockBackgroundScroll();
+        document.addEventListener(
+          'touchmove',
+          this.blockModalTouchMove,
+          BiblePassagePickerModalComponent.TOUCH_GUARD_OPTIONS
+        );
+      } else {
+        document.removeEventListener(
+          'touchmove',
+          this.blockModalTouchMove,
+          BiblePassagePickerModalComponent.TOUCH_GUARD_OPTIONS
+        );
+        this.unlockBackgroundScroll();
+      }
+    }
     if (changes['isOpen']?.currentValue === true) {
       this.testament = this.readTestament();
       this.resetSelection();
       this.expandedBookId = null;
     }
+  }
+
+  ngOnDestroy(): void {
+    document.removeEventListener(
+      'touchmove',
+      this.blockModalTouchMove,
+      BiblePassagePickerModalComponent.TOUCH_GUARD_OPTIONS
+    );
+    this.unlockBackgroundScroll();
+  }
+
+  onModalTouchMove(event: TouchEvent): void {
+    this.blockModalTouchMove(event);
   }
 
   get filteredBooks(): BibleBookPublic[] {
@@ -371,5 +433,51 @@ export class BiblePassagePickerModalComponent implements OnChanges {
       /* ignore */
     }
     return 'ot';
+  }
+
+  private lockBackgroundScroll(): void {
+    this.scrollLockEl = this.findPageScrollContainer();
+    this.scrollLockPreviousOverflow = this.scrollLockEl.style.overflow;
+    this.scrollLockPreviousTouchAction = this.scrollLockEl.style.touchAction;
+    this.scrollLockEl.style.overflow = 'hidden';
+    this.scrollLockEl.style.touchAction = 'none';
+
+    this.bodyPreviousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    this.htmlPreviousOverflow = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+  }
+
+  private unlockBackgroundScroll(): void {
+    if (this.scrollLockEl) {
+      this.scrollLockEl.style.overflow = this.scrollLockPreviousOverflow;
+      this.scrollLockEl.style.touchAction = this.scrollLockPreviousTouchAction;
+      this.scrollLockEl = null;
+    }
+    document.body.style.overflow = this.bodyPreviousOverflow;
+    document.documentElement.style.overflow = this.htmlPreviousOverflow;
+  }
+
+  private isBookListTouch(event: TouchEvent): boolean {
+    const scroller = this.bookListScroller?.nativeElement;
+    return !!(
+      scroller &&
+      event.target instanceof Node &&
+      scroller.contains(event.target)
+    );
+  }
+
+  private findPageScrollContainer(): HTMLElement {
+    const viewport = document.querySelector('.safe-area-viewport');
+    if (viewport instanceof HTMLElement) return viewport;
+
+    const scroller = this.bookListScroller?.nativeElement;
+    let node: HTMLElement | null = scroller?.parentElement ?? null;
+    while (node && node !== document.body) {
+      const overflowY = window.getComputedStyle(node).overflowY;
+      if (overflowY === 'auto' || overflowY === 'scroll') return node;
+      node = node.parentElement;
+    }
+    return document.documentElement;
   }
 }

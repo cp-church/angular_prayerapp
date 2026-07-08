@@ -10,10 +10,19 @@ describe('BiblePassagePickerModalComponent', () => {
 
   beforeEach(() => {
     localStorage.clear();
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
     component = new BiblePassagePickerModalComponent();
   });
 
   afterEach(() => {
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+    document.querySelectorAll('.safe-area-viewport').forEach((el) => {
+      const html = el as HTMLElement;
+      html.style.overflow = '';
+      html.style.touchAction = '';
+    });
     vi.restoreAllMocks();
   });
 
@@ -207,6 +216,66 @@ describe('BiblePassagePickerModalComponent', () => {
     expect(component.expandedBookId).toBe('exo');
     expect(component.selectedChapterId).toBeNull();
     expect(component.verseCount).toBeNull();
+  });
+
+  it('locks page scroll while open and restores on close', async () => {
+    const viewport = document.createElement('div');
+    viewport.className = 'safe-area-viewport';
+    viewport.style.overflow = 'auto';
+    viewport.style.touchAction = 'auto';
+    document.body.appendChild(viewport);
+
+    const { fixture } = await render(BiblePassagePickerModalComponent, {
+      componentInputs: { isOpen: true },
+      container: viewport,
+    });
+
+    expect(viewport.style.overflow).toBe('hidden');
+    expect(viewport.style.touchAction).toBe('none');
+    expect(document.body.style.overflow).toBe('hidden');
+
+    fixture.componentRef.setInput('isOpen', false);
+    fixture.detectChanges();
+
+    expect(viewport.style.overflow).toBe('auto');
+    expect(viewport.style.touchAction).toBe('auto');
+    expect(document.body.style.overflow).toBe('');
+
+    viewport.remove();
+  });
+
+  it('blocks touchmove on footer chrome (e.g. Add button) while open', async () => {
+    const { fixture } = await render(BiblePassagePickerModalComponent, {
+      componentInputs: { isOpen: true, confirmLabel: 'Add' },
+    });
+    const addButton = screen.getByRole('button', { name: 'Add' });
+    const event = new TouchEvent('touchmove', { bubbles: true, cancelable: true });
+    Object.defineProperty(event, 'target', { value: addButton, writable: false });
+    const preventSpy = vi.spyOn(event, 'preventDefault');
+
+    fixture.componentInstance.onModalTouchMove(event);
+
+    expect(preventSpy).toHaveBeenCalled();
+  });
+
+  it('registers capture-phase touchmove guard while open', () => {
+    const addSpy = vi.spyOn(document, 'addEventListener');
+    component.isOpen = true;
+    component.ngOnChanges({
+      isOpen: {
+        currentValue: true,
+        previousValue: false,
+        firstChange: true,
+        isFirstChange: () => true,
+      },
+    });
+
+    expect(addSpy).toHaveBeenCalledWith('touchmove', expect.any(Function), {
+      passive: false,
+      capture: true,
+    });
+
+    addSpy.mockRestore();
   });
 
   it('renders dialog when isOpen', async () => {

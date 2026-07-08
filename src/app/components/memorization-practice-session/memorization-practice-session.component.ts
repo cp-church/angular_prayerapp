@@ -844,15 +844,16 @@ export class MemorizationPracticeSessionComponent
       if (seq !== this.passageLoadSeq) return;
       this.passageLoadError = e instanceof Error ? e.message : 'Failed to load passage.';
     } finally {
-      if (seq !== this.passageLoadSeq) return;
-      this.passageLoading = false;
-      this.recomputeDerivedFromItem();
-      if (this.isOpen && !this.passageHydratedForOpen) {
-        this.hydrateInProgressOnce();
-        this.passageHydratedForOpen = true;
-        this.schedulePracticeEffects();
+      if (seq === this.passageLoadSeq) {
+        this.passageLoading = false;
+        this.recomputeDerivedFromItem();
+        if (this.isOpen && !this.passageHydratedForOpen) {
+          this.hydrateInProgressOnce();
+          this.passageHydratedForOpen = true;
+          this.schedulePracticeEffects();
+        }
+        this.cdr.markForCheck();
       }
-      this.cdr.markForCheck();
     }
   }
 
