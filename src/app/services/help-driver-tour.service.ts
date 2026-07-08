@@ -10,6 +10,11 @@ export const TOUR_FILTER_CURRENT_ID = 'tour-filter-current';
 export const TOUR_FILTER_TOTAL_ID = 'tour-filter-total';
 export const TOUR_FILTER_ANSWERED_ID = 'tour-filter-answered';
 export const TOUR_FILTER_PROMPTS_ID = 'tour-filter-prompts';
+export const TOUR_FILTER_MEMORIZE_ID = 'tour-filter-memorize';
+export const TOUR_MEMORIZE_ACTION_BAR_ID = 'tour-memorize-action-bar';
+export const TOUR_MEMORIZE_ADD_VERSES_ID = 'tour-memorize-add-verses';
+export const TOUR_MEMORIZE_SAMPLE_CARD_ID = 'tour-memorize-sample-card';
+export const TOUR_MEMORIZE_EMPTY_STATE_ID = 'tour-memorize-empty-state';
 export const TOUR_PROMPT_TYPE_FILTERS_ID = 'tour-prompt-type-filters';
 export const TOUR_PROMPT_EMPTY_ID = 'tour-prompt-empty-state';
 export const TOUR_PROMPT_CARD_SAMPLE_ID = 'tour-prompt-card-sample';
@@ -240,6 +245,34 @@ function getPromptsFilterEl(): HTMLElement | null {
   return document.getElementById(TOUR_FILTER_PROMPTS_ID);
 }
 
+function getMemorizeFilterEl(): HTMLElement | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+  return document.getElementById(TOUR_FILTER_MEMORIZE_ID);
+}
+
+function getMemorizeActionBarEl(): HTMLElement | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+  return document.getElementById(TOUR_MEMORIZE_ACTION_BAR_ID);
+}
+
+function getMemorizeEmptyStateEl(): HTMLElement | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+  return document.getElementById(TOUR_MEMORIZE_EMPTY_STATE_ID);
+}
+
+function getMemorizeSampleCardEl(): HTMLElement | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+  return document.getElementById(TOUR_MEMORIZE_SAMPLE_CARD_ID);
+}
+
 function getPromptTypeFiltersEl(): HTMLElement | null {
   if (typeof document === 'undefined') {
     return null;
@@ -390,6 +423,15 @@ export interface PrayerPromptsTourHooks {
 export interface PrayerPromptsTourOptions {
   /** When false, the tour skips type chips and sample card (empty prompts list). */
   hasPrompts: boolean;
+}
+
+export interface MemorizeHelpSectionTourHooks {
+  switchToMemorize: () => void;
+}
+
+export interface MemorizeHelpSectionTourOptions {
+  /** When false, the tour highlights the empty state instead of a passage card. */
+  hasMemorizedItems: boolean;
 }
 
 export interface PrayerEncouragementTourHooks {
@@ -1561,6 +1603,100 @@ export class HelpDriverTourService {
   }
 
   /**
+   * **Memorize** (`help_memorize`): Memorize filter → action bar → sample card or empty state → practice tips.
+   */
+  startMemorizeHelpSectionTour(
+    section: { title: string; description: string },
+    options: MemorizeHelpSectionTourOptions,
+    hooks: MemorizeHelpSectionTourHooks
+  ): void {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    if (!getMemorizeFilterEl()) {
+      return;
+    }
+
+    this.killActiveDriver();
+
+    const title0 = escapeHtml(section.title);
+    const desc0 = escapeHtml(section.description);
+
+    const step0: DriveStep = {
+      element: () => getMemorizeFilterEl()!,
+      popover: {
+        title: title0,
+        description: `${desc0}<br><br>Tap <strong>Memorize</strong> to open your personal scripture list (or tap the tile yourself).`,
+        side: 'bottom',
+        align: 'start',
+        nextBtnText: 'Show Memorize &rarr;',
+        onNextClick: this.advanceAfterOrKill(hooks.switchToMemorize),
+      },
+    };
+
+    const steps: DriveStep[] = [
+      step0,
+      {
+        element: () => getMemorizeActionBarEl()!,
+        popover: {
+          title: 'Add passages',
+          description:
+            'Use <strong>Add Verses</strong> to pick a Bible reference, or <strong>Bible Books</strong> to memorize whole books in order. Your list is private to your account.',
+          side: 'bottom',
+          align: 'start',
+        },
+      },
+    ];
+
+    if (options.hasMemorizedItems) {
+      steps.push({
+        element: () => getMemorizeSampleCardEl()!,
+        popover: {
+          title: 'Passage cards',
+          description:
+            'Tap a card to practice. Cards are grouped as <strong>Learning</strong>, <strong>Practicing</strong>, or <strong>Mastered</strong> based on completed sessions.',
+          side: 'top',
+          align: 'start',
+        },
+      });
+    } else {
+      steps.push({
+        element: () => getMemorizeEmptyStateEl()!,
+        popover: {
+          title: 'No passages yet',
+          description:
+            'When you add a verse or Bible books list, it appears here. Use <strong>Add Verses</strong> or <strong>Bible Books</strong> above to get started.',
+          side: 'top',
+          align: 'start',
+        },
+      });
+    }
+
+    steps.push({
+      popover: {
+        title: 'Practice modes',
+        description:
+          'Each session offers modes such as <strong>Type</strong>, <strong>Word</strong>, <strong>Reorder</strong>, and <strong>First letters</strong>. You can also <strong>Listen</strong> to ESV audio while you practice. Progress saves automatically.',
+        side: 'bottom',
+        align: 'center',
+        onNextClick: this.popoverNextKillsTour(),
+      },
+    });
+
+    const d = this.startTourDriver({
+      showProgress: true,
+      showButtons: ['next', 'previous', 'close'],
+      smoothScroll: true,
+      allowClose: true,
+      popoverClass: 'help-driver-popover',
+      steps,
+    });
+
+    d.drive(0);
+  }
+
+  /**
    * **Pray For** / Prayer Encouragement: **Current** filter → **Pray For** button on first community card (when visible)
    * → popover-only step with fuller explanation.
    */
@@ -1741,7 +1877,7 @@ export class HelpDriverTourService {
         popover: {
           title: 'Print options',
           description:
-            'Three green actions: <strong>Print Prayers</strong> (community list), <strong>Print Prompts</strong>, and <strong>Print Personal</strong>. Each row has a <strong>chevron</strong> to narrow what gets included (time range, prompt types, or personal categories).',
+            'Three print actions—<strong>Prayers</strong> (community list), <strong>Prompts</strong>, and <strong>Personal</strong>—in soft blue bordered cards (Prayer_App style). Each has a <strong>chevron</strong> to narrow what gets included (time range, prompt types, or personal categories).',
           side: 'bottom',
           align: 'center',
         },
@@ -1863,7 +1999,7 @@ export class HelpDriverTourService {
         popover: {
           title: 'Email subscription',
           description:
-            'This toggle controls <strong>mass email</strong> about new prayers and updates from your community. Turn it <strong>off</strong> to stop those blasts while still using the app. Changes save automatically.',
+            'Choose <strong>Enabled</strong> or <strong>Disabled</strong> for <strong>mass email</strong> about new prayers and updates from your community. Turn it <strong>off</strong> to stop those blasts while still using the app. Changes save automatically.',
           side: 'bottom',
           align: 'start',
         },
@@ -2223,7 +2359,7 @@ export class HelpDriverTourService {
         popover: {
           title: 'Email subscription',
           description:
-            'Toggle mass <strong>email</strong> about new prayers and community updates. Direct emails about your own submissions may still be sent when needed.',
+            'Choose <strong>Enabled</strong> or <strong>Disabled</strong> for mass <strong>email</strong> about new prayers and community updates. Direct emails about your own submissions may still be sent when needed.',
           side: 'bottom',
           align: 'start',
         },
@@ -2243,7 +2379,7 @@ export class HelpDriverTourService {
         popover: {
           title: 'Notification badges',
           description:
-            'Turn <strong>Badge functionality</strong> on to show unread counts on filters and cards; dismiss from the badge or filter as described in Help.',
+            'Choose <strong>Enabled</strong> or <strong>Disabled</strong> for badge counts on filters and cards; dismiss from the badge or filter as described in Help.',
           side: 'bottom',
           align: 'start',
         },
@@ -2253,7 +2389,7 @@ export class HelpDriverTourService {
         popover: {
           title: 'Prayer encouragement on cards',
           description:
-            'Show or hide <strong>Pray For</strong> and <strong>Praying #</strong> on community cards for <em>your</em> view only—others are unaffected.',
+            'Use <strong>Show</strong> or <strong>Hide</strong> for <strong>Pray For</strong> and <strong>Praying #</strong> on community cards for <em>your</em> view only—others are unaffected.',
           side: 'bottom',
           align: 'start',
         },
@@ -2263,7 +2399,7 @@ export class HelpDriverTourService {
         popover: {
           title: 'Default prayer view',
           description:
-            'Start on <strong>Current Prayers</strong> or <strong>Personal Prayers</strong> when you open the app—saved to your account.',
+            'Pick <strong>Current Prayers</strong> or <strong>Personal Prayers</strong> as your default when you open the app—saved to your account.',
           side: 'bottom',
           align: 'start',
         },

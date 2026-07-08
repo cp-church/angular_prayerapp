@@ -12,6 +12,7 @@ import {
   TOUR_FILTER_TOTAL_ID,
   TOUR_FILTER_ANSWERED_ID,
   TOUR_FILTER_PROMPTS_ID,
+  TOUR_FILTER_MEMORIZE_ID,
   TOUR_PRAYER_MODE_DESKTOP_ID,
   TOUR_PRAYER_MODE_MOBILE_ID,
   TOUR_PRAYER_SEARCH_ID,
@@ -599,6 +600,86 @@ describe('HelpDriverTourService', () => {
       expect(moveNext).toHaveBeenCalled();
       vi.useRealTimers();
       vi.unstubAllGlobals();
+    });
+  });
+
+  describe('startMemorizeHelpSectionTour', () => {
+    const sampleMemorizeSection = {
+      title: 'Memorize Scripture',
+      description: 'Memorize Bible verses',
+    };
+
+    it('does not call driver when Memorize filter tile is missing', () => {
+      service.startMemorizeHelpSectionTour(
+        sampleMemorizeSection,
+        { hasMemorizedItems: false },
+        { switchToMemorize: vi.fn() }
+      );
+      expect(driver).not.toHaveBeenCalled();
+    });
+
+    it('starts without action bar in DOM (before switching filter)', () => {
+      const mf = document.createElement('button');
+      mf.id = TOUR_FILTER_MEMORIZE_ID;
+      document.body.appendChild(mf);
+      service.startMemorizeHelpSectionTour(
+        sampleMemorizeSection,
+        { hasMemorizedItems: false },
+        { switchToMemorize: vi.fn() }
+      );
+      expect(driver).toHaveBeenCalledTimes(1);
+      const config = vi.mocked(driver).mock.calls[0][0];
+      expect(config?.steps?.length).toBe(4);
+    });
+
+    it('starts with 4 steps when hasMemorizedItems is true', () => {
+      const mf = document.createElement('button');
+      mf.id = TOUR_FILTER_MEMORIZE_ID;
+      document.body.appendChild(mf);
+      service.startMemorizeHelpSectionTour(
+        sampleMemorizeSection,
+        { hasMemorizedItems: true },
+        { switchToMemorize: vi.fn() }
+      );
+      expect(driver).toHaveBeenCalledTimes(1);
+      const config = vi.mocked(driver).mock.calls[0][0];
+      expect(config?.steps?.length).toBe(4);
+    });
+
+    it('step 0 onNext runs switchToMemorize then refresh and moveNext', () => {
+      const mf = document.createElement('button');
+      mf.id = TOUR_FILTER_MEMORIZE_ID;
+      document.body.appendChild(mf);
+      const switchToMemorize = vi.fn();
+      const refresh = vi.fn();
+      const moveNext = vi.fn();
+      vi.mocked(driver).mockImplementation(
+        () =>
+          ({
+            drive: vi.fn(),
+            destroy: vi.fn(),
+            refresh,
+            moveNext,
+          }) as ReturnType<typeof driver>
+      );
+      vi.useFakeTimers();
+      service.startMemorizeHelpSectionTour(
+        sampleMemorizeSection,
+        { hasMemorizedItems: false },
+        { switchToMemorize }
+      );
+      const config = vi.mocked(driver).mock.calls[0][0];
+      const hook = config?.steps?.[0]?.popover?.onNextClick;
+      hook?.(document.body, config!.steps![0]!, {
+        config: config!,
+        state: {} as any,
+        driver: { refresh, moveNext } as any,
+      });
+      expect(switchToMemorize).toHaveBeenCalledTimes(1);
+      vi.advanceTimersByTime(250);
+      expect(refresh).toHaveBeenCalled();
+      expect(moveNext).toHaveBeenCalled();
+      vi.useRealTimers();
     });
   });
 

@@ -1975,6 +1975,26 @@ describe('HelpModalComponent - Angular Integration Tests', () => {
       expect(tourSpy).toHaveBeenCalledWith(section);
     });
 
+    it('should emit startMemorizeHelpSectionUiTour when starting Memorize help section tour', () => {
+      const tourSpy = vi.spyOn(component.startMemorizeHelpSectionUiTour, 'emit');
+      const section = {
+        id: 'help_memorize',
+        title: 'Memorize Scripture',
+        description: 'Memorize Bible verses',
+        icon: '<svg></svg>',
+        content: [{ subtitle: 'What', text: 'body', examples: [] }],
+        order: 6,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 'system',
+      };
+      const ev = new MouseEvent('click');
+      component.onStartMemorizeHelpSectionTour(ev, section as any);
+      expect(helpDriverTourService.interruptGuidedTours).toHaveBeenCalled();
+      expect(tourSpy).toHaveBeenCalledWith(section);
+    });
+
     it('should emit startFilteringHelpSectionUiTour when starting Filtering Prayers help section tour', () => {
       const tourSpy = vi.spyOn(component.startFilteringHelpSectionUiTour, 'emit');
       const section = {

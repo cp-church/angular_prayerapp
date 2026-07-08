@@ -420,6 +420,9 @@ const HELP_SECTION_ID_PRESENTATION = "help_presentation";
             (startPersonalPrayersHelpSectionUiTour)="
               onPersonalPrayersHelpSectionUiTourFromHelp($event)
             "
+            (startMemorizeHelpSectionUiTour)="
+              onMemorizeHelpSectionUiTourFromHelp($event)
+            "
             (startPresentationModeHelpSectionUiTour)="
               onPresentationModeHelpSectionUiTourFromHelp($event)
             "
@@ -1079,6 +1082,7 @@ const HELP_SECTION_ID_PRESENTATION = "help_presentation";
             @if (!(memorizationService.loading$ | async) && memorizedItems.length
             === 0) {
             <div
+              id="tour-memorize-empty-state"
               class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center border border-gray-200 dark:border-gray-700"
             >
               <h3 class="text-lg font-medium text-gray-700 dark:text-gray-200 mb-2">
@@ -1097,6 +1101,7 @@ const HELP_SECTION_ID_PRESENTATION = "help_presentation";
             @for (item of memorizedLearning; track item.id) {
             <app-memorized-verse-card
               [item]="item"
+              [tourMemorizeAnchors]="item.id === memorizedItems[0]?.id"
               (practice)="openMemorizationPractice($event)"
               (remove)="confirmRemoveMemorizedItem($event)"
             />
@@ -1109,6 +1114,7 @@ const HELP_SECTION_ID_PRESENTATION = "help_presentation";
             @for (item of memorizedPracticing; track item.id) {
             <app-memorized-verse-card
               [item]="item"
+              [tourMemorizeAnchors]="item.id === memorizedItems[0]?.id"
               (practice)="openMemorizationPractice($event)"
               (remove)="confirmRemoveMemorizedItem($event)"
             />
@@ -1121,6 +1127,7 @@ const HELP_SECTION_ID_PRESENTATION = "help_presentation";
             @for (item of memorizedMastered; track item.id) {
             <app-memorized-verse-card
               [item]="item"
+              [tourMemorizeAnchors]="item.id === memorizedItems[0]?.id"
               (practice)="openMemorizationPractice($event)"
               (remove)="confirmRemoveMemorizedItem($event)"
             />
@@ -1683,6 +1690,24 @@ export class HomeComponent implements OnInit, OnDestroy {
     }, 280);
   }
 
+  /** **Memorize Scripture** (`help_memorize`) — Memorize filter, action bar, cards, practice tips. */
+  onMemorizeHelpSectionUiTourFromHelp(section: HelpSection): void {
+    this.showHelp = false;
+    this.cdr.markForCheck();
+    window.setTimeout(() => {
+      this.helpDriverTourService.startMemorizeHelpSectionTour(
+        { title: section.title, description: section.description },
+        { hasMemorizedItems: this.memorizedItemsCount > 0 },
+        {
+          switchToMemorize: () => {
+            this.setFilter("memorize");
+            this.cdr.markForCheck();
+          },
+        }
+      );
+    }, 280);
+  }
+
   /** “Searching Prayers” — home search field, then popover-only tips. */
   onSearchPrayersUiTourFromHelp(section: HelpSection): void {
     this.showHelp = false;
@@ -1972,6 +1997,9 @@ export class HomeComponent implements OnInit, OnDestroy {
         break;
       case "help_personal_prayers":
         this.onPersonalPrayersHelpSectionUiTourFromHelp(section);
+        break;
+      case "help_memorize":
+        this.onMemorizeHelpSectionUiTourFromHelp(section);
         break;
       case "help_printing":
         this.onPrintingHelpSectionUiTourFromHelp(section);

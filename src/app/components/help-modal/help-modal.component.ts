@@ -33,6 +33,8 @@ const HELP_SECTION_ID_ENCOURAGEMENT = "help_prayer_encouragement";
 const HELP_SECTION_ID_SEARCH = "help_search";
 /** Stable id for Personal Prayers accordion (must match `HelpContentService`). */
 const HELP_SECTION_ID_PERSONAL_PRAYERS = "help_personal_prayers";
+/** Stable id for Memorize Scripture accordion (must match `HelpContentService`). */
+const HELP_SECTION_ID_MEMORIZE = "help_memorize";
 /** Stable id for Prayer Presentation Mode accordion (must match `HelpContentService`). */
 const HELP_SECTION_ID_PRESENTATION = "help_presentation";
 /** Stable id for Printing accordion (must match `HelpContentService`). */
@@ -347,6 +349,18 @@ const HELP_SECTION_ID_FILTERING = "help_filtering";
                       Start guided tour
                     </button>
                   </div>
+                  } @if (section.id === helpSectionIdMemorize) {
+                  <div
+                    class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
+                  >
+                    <button
+                      type="button"
+                      (click)="onStartMemorizeHelpSectionTour($event, section)"
+                      class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded cursor-pointer"
+                    >
+                      Start guided tour
+                    </button>
+                  </div>
                   } @if (section.id === helpSectionIdFiltering) {
                   <div
                     class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
@@ -502,6 +516,8 @@ export class HelpModalComponent implements OnInit {
   /** One live UI tour for the **Personal Prayers** help accordion (`help_personal_prayers`). */
   @Output() startPersonalPrayersHelpSectionUiTour =
     new EventEmitter<HelpSection>();
+  /** Live UI tour for **Memorize Scripture** (`help_memorize`). */
+  @Output() startMemorizeHelpSectionUiTour = new EventEmitter<HelpSection>();
   /** Live UI tour for **Prayer Presentation Mode** — Home navigates to `/presentation` and starts driver.js there. */
   @Output() startPresentationModeHelpSectionUiTour =
     new EventEmitter<HelpSection>();
@@ -527,6 +543,7 @@ export class HelpModalComponent implements OnInit {
   readonly helpSectionIdEncouragement = HELP_SECTION_ID_ENCOURAGEMENT;
   readonly helpSectionIdSearch = HELP_SECTION_ID_SEARCH;
   readonly helpSectionIdPersonalPrayers = HELP_SECTION_ID_PERSONAL_PRAYERS;
+  readonly helpSectionIdMemorize = HELP_SECTION_ID_MEMORIZE;
   readonly helpSectionIdFiltering = HELP_SECTION_ID_FILTERING;
   readonly helpSectionIdPresentation = HELP_SECTION_ID_PRESENTATION;
   readonly helpSectionIdPrinting = HELP_SECTION_ID_PRINTING;
@@ -691,6 +708,15 @@ export class HelpModalComponent implements OnInit {
     }
     this.helpDriverTourService.interruptGuidedTours();
     this.startPersonalPrayersHelpSectionUiTour.emit(section);
+  }
+
+  onStartMemorizeHelpSectionTour(event: Event, section: HelpSection): void {
+    event.stopPropagation();
+    if (section.id !== HELP_SECTION_ID_MEMORIZE) {
+      return;
+    }
+    this.helpDriverTourService.interruptGuidedTours();
+    this.startMemorizeHelpSectionUiTour.emit(section);
   }
 
   onStartFilteringHelpSectionTour(event: Event, section: HelpSection): void {

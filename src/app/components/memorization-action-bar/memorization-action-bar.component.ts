@@ -6,9 +6,10 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="mb-4 flex w-full gap-2">
+    <div id="tour-memorize-action-bar" class="mb-4 flex w-full gap-2">
       <button
         type="button"
+        id="tour-memorize-add-verses"
         (click)="addVerses.emit()"
         class="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer sm:flex-none"
       >

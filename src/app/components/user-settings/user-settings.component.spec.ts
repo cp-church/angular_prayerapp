@@ -2503,6 +2503,43 @@ describe('UserSettingsComponent', () => {
     });
   });
 
+  describe('selectDefaultPrayerView', () => {
+    beforeEach(() => {
+      component.email = 'test@example.com';
+      component.defaultViewPreferencesLoaded = true;
+      component.defaultPrayerView = 'current';
+    });
+
+    it('updates defaultPrayerView synchronously before async save completes', () => {
+      const changeSpy = vi
+        .spyOn(component, 'onDefaultViewChange')
+        .mockImplementation(() => new Promise(() => {}));
+
+      component.selectDefaultPrayerView('personal');
+
+      expect(component.defaultPrayerView).toBe('personal');
+      expect(changeSpy).toHaveBeenCalledWith('personal');
+    });
+
+    it('ignores selecting the already active view', () => {
+      const changeSpy = vi.spyOn(component, 'onDefaultViewChange');
+
+      component.selectDefaultPrayerView('current');
+
+      expect(changeSpy).not.toHaveBeenCalled();
+    });
+
+    it('ignores clicks while a save is in progress', () => {
+      component.savingDefaultView = true;
+      const changeSpy = vi.spyOn(component, 'onDefaultViewChange');
+
+      component.selectDefaultPrayerView('personal');
+
+      expect(changeSpy).not.toHaveBeenCalled();
+      expect(component.defaultPrayerView).toBe('current');
+    });
+  });
+
   describe('onBadgeFunctionalityToggle - markAllItemsAsRead', () => {
     it('should call markAllItemsAsRead when enabling badge functionality', async () => {
       component.email = 'test@example.com';

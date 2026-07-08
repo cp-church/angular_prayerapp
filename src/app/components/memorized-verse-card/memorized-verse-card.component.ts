@@ -13,6 +13,7 @@ import type { MemorizedItem } from '../../types/memorization';
   imports: [CommonModule],
   template: `
     <div
+      [id]="tourMemorizeAnchors ? 'tour-memorize-sample-card' : null"
       class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 mb-3 overflow-hidden"
       role="listitem"
     >
@@ -56,6 +57,7 @@ import type { MemorizedItem } from '../../types/memorization';
 })
 export class MemorizedVerseCardComponent {
   @Input({ required: true }) item!: MemorizedItem;
+  @Input() tourMemorizeAnchors = false;
   @Output() practice = new EventEmitter<MemorizedItem>();
   @Output() remove = new EventEmitter<MemorizedItem>();
 

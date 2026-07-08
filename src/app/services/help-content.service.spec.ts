@@ -75,6 +75,7 @@ describe('HelpContentService', () => {
         'help_prayer_encouragement',
         'help_search',
         'help_personal_prayers',
+        'help_memorize',
         'help_filtering',
         'help_presentation',
         'help_printing',
