@@ -118,6 +118,35 @@ function hiddenTypingTokenIndices(
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './memorization-practice-session.component.html',
+  styles: [
+    `
+      /* Off-screen capture input: avoid Safari iOS focus ring as a 1px blue line at scroll top. */
+      .memorize-practice-input-hidden {
+        position: fixed;
+        left: 50%;
+        top: 25vh;
+        width: min(12rem, 45vw);
+        height: 2.5rem;
+        transform: translateX(-50%);
+        pointer-events: none;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        opacity: 0;
+        color: transparent;
+        caret-color: transparent;
+        outline: none;
+        box-shadow: none;
+        -webkit-appearance: none;
+        appearance: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .memorize-practice-input-hidden:focus {
+        outline: none;
+        box-shadow: none;
+      }
+    `,
+  ],
 })
 export class MemorizationPracticeSessionComponent
   implements OnChanges, OnDestroy, AfterViewInit

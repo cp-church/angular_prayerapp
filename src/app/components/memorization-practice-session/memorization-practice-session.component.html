@@ -145,7 +145,7 @@
         </div>
 
         <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
-          @if (phase === 'practicing' && isKeyboardPracticeMode(practiceMode) && memorizeAndroidHost) {
+          @if (phase === 'practicing' && isKeyboardPracticeMode(practiceMode)) {
             <input
               #practiceInput
               [id]="practiceInputId"
@@ -160,7 +160,7 @@
               aria-label="Type the first letter of each blank word, or each digit for number blanks."
               data-testid="memorize-practice-input"
               [tabIndex]="awaitingRoundAdvance ? -1 : 0"
-              class="pointer-events-none fixed top-[25vh] left-1/2 z-[110] h-10 w-32 max-w-[min(12rem,45vw)] -translate-x-1/2 border-0 bg-transparent p-0 opacity-[0.02] text-transparent caret-transparent"
+              class="memorize-practice-input-hidden z-[110]"
               (keydown)="onPracticeInputKeyDown($event)"
               (input)="onPracticeInput($event)"
             />
@@ -256,27 +256,6 @@
               [class.overflow-y-auto]="phase !== 'done'"
               [style.paddingBottom]="keyboardInsetPx > 0 ? 'calc(' + keyboardInsetPx + 'px + 0.5rem)' : null"
             >
-              @if (phase === 'practicing' && isKeyboardPracticeMode(practiceMode) && !memorizeAndroidHost) {
-                <input
-                  #practiceInput
-                  [id]="practiceInputId"
-                  type="text"
-                  [attr.inputmode]="currentTargetToken?.kind === 'digit' ? 'numeric' : 'text'"
-                  autocomplete="off"
-                  autocorrect="off"
-                  autocapitalize="off"
-                  spellcheck="false"
-                  enterkeyhint="done"
-                  [disabled]="awaitingRoundAdvance"
-                  aria-label="Type the first letter of each blank word, or each digit for number blanks."
-                  data-testid="memorize-practice-input"
-                  [tabIndex]="awaitingRoundAdvance ? -1 : 0"
-                  class="absolute left-0 top-0 z-0 h-px w-full max-w-full border-0 bg-transparent p-0 opacity-[0.02] text-transparent caret-transparent"
-                  (keydown)="onPracticeInputKeyDown($event)"
-                  (input)="onPracticeInput($event)"
-                />
-              }
-
               @if (phase === 'practicing') {
                 <div>
                   <div
