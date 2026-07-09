@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  memorizeStickyHeaderVisibleTop,
   memorizeWordModeVisibleBottom,
   scrollMemorizeBlankNearestInPracticeColumn,
   scrollMemorizeBlankIntoPracticeColumn,
@@ -42,6 +43,20 @@ function mockTarget(rect: { top: number; bottom: number; height?: number }) {
     }),
   } as HTMLElement;
 }
+
+describe('memorizeStickyHeaderVisibleTop', () => {
+  it('uses scroll top when sticky header is absent', () => {
+    expect(memorizeStickyHeaderVisibleTop(100, null, 12)).toBe(112);
+  });
+
+  it('keeps the blank below a sticky first-letters header', () => {
+    expect(memorizeStickyHeaderVisibleTop(100, 220, 12)).toBe(232);
+  });
+
+  it('does not raise the top when the sticky header is above the scroll top', () => {
+    expect(memorizeStickyHeaderVisibleTop(100, 80, 12)).toBe(112);
+  });
+});
 
 describe('memorizeWordModeVisibleBottom', () => {
   it('uses scroll bottom when word-choice footer is absent', () => {

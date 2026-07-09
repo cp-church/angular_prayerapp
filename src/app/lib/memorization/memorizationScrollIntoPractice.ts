@@ -15,6 +15,19 @@ export function memorizeWordModeVisibleBottom(
 }
 
 /**
+ * Visible top edge when a sticky practice header (e.g. first-letters cues) covers the
+ * top of the scroll column — keep the blank below that header.
+ */
+export function memorizeStickyHeaderVisibleTop(
+  scrollTop: number,
+  stickyHeaderBottom: number | null,
+  edgeMargin: number
+): number {
+  if (stickyHeaderBottom == null) return scrollTop + edgeMargin;
+  return Math.max(scrollTop, stickyHeaderBottom) + edgeMargin;
+}
+
+/**
  * Scroll the practice column only as much as needed so the blank stays in view.
  * On Android (with IME) this avoids centering math clamping to `maxScroll` and jumping to the verse bottom.
  */

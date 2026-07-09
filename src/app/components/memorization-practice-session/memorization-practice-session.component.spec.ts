@@ -237,12 +237,33 @@ describe('MemorizationPracticeSessionComponent', () => {
     });
 
     it('starts firstLetters mode in practicing phase', async () => {
-      const { component } = await renderSession();
+      const { component, getByTestId, cdr } = await renderSession();
       component.beginPracticeWithMode('firstLetters');
 
       expect(component.phase).toBe('practicing');
       expect(component.practiceMode).toBe('firstLetters');
       expect(component.hiddenIndices.size).toBe(component.typableIndices.length);
+      cdr.detectChanges();
+      const cues = getByTestId('memorize-first-letter-cues');
+      const glyphSpans = cues.querySelectorAll('[data-memorize-cue-slot] > span');
+      expect(glyphSpans.length).toBeGreaterThan(0);
+      for (const span of Array.from(glyphSpans)) {
+        expect(span.classList.contains('px-1')).toBe(true);
+        expect(span.classList.contains('inline-block')).toBe(true);
+      }
+      expect(cues.querySelector('.ring-2')).toBeTruthy();
+    });
+
+    it('configures the practice input to discourage Safari contact AutoFill', async () => {
+      const { component, getByTestId, cdr } = await renderSession();
+      component.beginPracticeWithMode('type');
+      cdr.detectChanges();
+
+      const input = getByTestId('memorize-practice-input') as HTMLInputElement;
+      expect(input.getAttribute('name')).toBe('search');
+      expect(input.getAttribute('autocomplete')).toBe('off');
+      expect(input.closest('form')?.getAttribute('autocomplete')).toBe('off');
+      expect(input.getAttribute('aria-label')).not.toMatch(/name|email|contact/i);
     });
 
     it('respects startRoundChoice for later rounds', async () => {
@@ -321,6 +342,27 @@ describe('MemorizationPracticeSessionComponent', () => {
       component.onPracticeInputKeyDown(makeKeyEvent(key));
 
       expect(component.isTokenRevealed(idx)).toBe(true);
+    });
+
+    it('clears the red error ring after the flash and on a correct keystroke', async () => {
+      const { component } = await renderSession();
+      vi.useFakeTimers();
+      component.beginPracticeWithMode('type');
+
+      component.onPracticeInputKeyDown(makeKeyEvent('z'));
+      expect(component.flashError).toBe(true);
+
+      vi.advanceTimersByTime(220);
+      expect(component.flashError).toBe(false);
+
+      component.onPracticeInputKeyDown(makeKeyEvent('z'));
+      expect(component.flashError).toBe(true);
+      const idx = component.currentTargetIndex!;
+      const token = component.tokens[idx]!;
+      const key = token.kind === 'digit' ? token.text : token.text[0]!;
+      component.onPracticeInputKeyDown(makeKeyEvent(key));
+      expect(component.flashError).toBe(false);
+      vi.useRealTimers();
     });
 
     it('onPracticeInputKeyDown ignores modifier keys and non-character keys', async () => {
@@ -980,6 +1022,72 @@ describe('MemorizationPracticeSessionComponent', () => {
       expect(token).toBeTruthy();
       component.processWordGuess(token!.text);
       expect(scheduleSpy).toHaveBeenCalled();
+    });
+
+    it('scrolls the verse blank in firstLetters mode, not only the cue strip', async () => {
+      const { component } = await renderSession();
+      component.beginPracticeWithMode('firstLetters');
+      const blankSpy = vi.spyOn(
+        component as unknown as { scrollCurrentBlankIntoView: () => void },
+        'scrollCurrentBlankIntoView'
+      );
+      const cueSpy = vi.spyOn(
+        component as unknown as { scrollActiveFirstLetterCueIntoView: () => void },
+        'scrollActiveFirstLetterCueIntoView'
+      );
+      vi.useFakeTimers();
+      component['hasTypedInRound'] = true;
+      (
+        component as unknown as { scheduleScrollToBlank: (opts?: { force?: boolean }) => void }
+      ).scheduleScrollToBlank();
+      vi.runAllTimers();
+      vi.useRealTimers();
+      expect(cueSpy).toHaveBeenCalled();
+      expect(blankSpy).toHaveBeenCalled();
+    });
+
+    it('nudge blank into view with instant scrollTop (no smooth bounce)', async () => {
+      const { component, container } = await renderSession();
+      component.beginPracticeWithMode('type');
+      component['hasTypedInRound'] = true;
+      const scrollEl = container.querySelector('#practiceScroll') as HTMLElement;
+      expect(scrollEl).toBeTruthy();
+      Object.defineProperty(scrollEl, 'clientHeight', { configurable: true, value: 200 });
+      Object.defineProperty(scrollEl, 'scrollHeight', { configurable: true, value: 2000 });
+      scrollEl.scrollTop = 0;
+      const blank = container.querySelector(
+        '[data-memorize-current-blank="true"]'
+      ) as HTMLElement | null;
+      expect(blank).toBeTruthy();
+      vi.spyOn(blank!, 'getBoundingClientRect').mockReturnValue({
+        top: 500,
+        bottom: 530,
+        left: 0,
+        right: 40,
+        width: 40,
+        height: 30,
+        x: 0,
+        y: 500,
+        toJSON: () => ({}),
+      });
+      vi.spyOn(scrollEl, 'getBoundingClientRect').mockReturnValue({
+        top: 100,
+        bottom: 300,
+        left: 0,
+        right: 360,
+        width: 360,
+        height: 200,
+        x: 0,
+        y: 100,
+        toJSON: () => ({}),
+      });
+      const scrollToSpy = vi.spyOn(scrollEl, 'scrollTo');
+      (
+        component as unknown as { scrollCurrentBlankIntoView: () => void }
+      ).scrollCurrentBlankIntoView();
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      expect(scrollEl.scrollTop).toBeGreaterThan(0);
+      expect(scrollToSpy).not.toHaveBeenCalled();
     });
 
     it('firstLetterCueHiddenSlots returns slots in later firstLetters rounds', async () => {

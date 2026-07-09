@@ -7,6 +7,7 @@ import {
   EventEmitter,
   HostListener,
   Input,
+  NgZone,
   OnChanges,
   OnDestroy,
   Output,
@@ -27,7 +28,10 @@ import {
   pickRandomAllDoneMessage,
   pickRandomRoundAffirmation,
 } from '../../lib/memorization/memorizationEncouragementMessages';
-import { memorizeWordModeVisibleBottom, scrollMemorizeBlankNearestInPracticeColumn } from '../../lib/memorization/memorizationScrollIntoPractice';
+import {
+  memorizeStickyHeaderVisibleTop,
+  memorizeWordModeVisibleBottom,
+} from '../../lib/memorization/memorizationScrollIntoPractice';
 import {
   isMemorizeAndroidWebHost,
   isMemorizeIosWebHost,
@@ -146,6 +150,16 @@ function hiddenTypingTokenIndices(
         outline: none;
         box-shadow: none;
       }
+      /* Hide Safari contact/credential autofill controls on the off-screen practice input. */
+      .memorize-practice-input-hidden::-webkit-contacts-auto-fill-button,
+      .memorize-practice-input-hidden::-webkit-credentials-auto-fill-button {
+        visibility: hidden;
+        display: none !important;
+        pointer-events: none;
+        position: absolute;
+        right: 0;
+        opacity: 0;
+      }
     `,
   ],
 })
@@ -154,6 +168,7 @@ export class MemorizationPracticeSessionComponent
 {
   private readonly document = inject(DOCUMENT);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly ngZone = inject(NgZone);
   private readonly scripture = inject(ScriptureService);
 
   @Input({ required: true }) item!: MemorizedItem;
@@ -242,6 +257,7 @@ export class MemorizationPracticeSessionComponent
   private listenPlaybackRateRef: MemorizeListenSpeed = 1;
   private repeatListenOnRef = false;
   private listenRepeatGapTimer: ReturnType<typeof setTimeout> | null = null;
+  private scrollBlankTimer: ReturnType<typeof setTimeout> | null = null;
   private hintIntervalId: ReturnType<typeof setInterval> | null = null;
   private flashErrorTimer: ReturnType<typeof setTimeout> | null = null;
   private viewportListenersAttached = false;
@@ -573,6 +589,7 @@ export class MemorizationPracticeSessionComponent
     this.hasTypedInRound = true;
     const correct = label === token.text;
     if (correct) {
+      this.clearFlashError();
       const idx = this.currentTargetIndex;
       const next = new Set(this.revealed);
       next.add(idx);
@@ -1116,6 +1133,7 @@ export class MemorizationPracticeSessionComponent
     if (token.kind === 'digit') {
       if (!/^[0-9]$/.test(key)) return;
       if (key === token.text) {
+        this.clearFlashError();
         const idx = this.currentTargetIndex;
         this.revealFirstLetterCueForToken(idx);
         const next = new Set(this.revealed);
@@ -1132,6 +1150,7 @@ export class MemorizationPracticeSessionComponent
       const expected = firstLetterOfWord(token.text);
       if (!expected) return;
       if (key.toLowerCase() === expected) {
+        this.clearFlashError();
         const idx = this.currentTargetIndex;
         this.revealFirstLetterCueForToken(idx);
         const next = new Set(this.revealed);
@@ -1238,11 +1257,24 @@ export class MemorizationPracticeSessionComponent
     this.flashError = true;
     if (this.flashErrorTimer) clearTimeout(this.flashErrorTimer);
     this.syncFlashErrorView();
+    // Run clear inside NgZone so OnPush type-mode UI drops the red ring after the flash.
     this.flashErrorTimer = setTimeout(() => {
-      this.flashError = false;
-      this.flashErrorTimer = null;
-      this.syncFlashErrorView();
+      this.ngZone.run(() => {
+        this.flashError = false;
+        this.flashErrorTimer = null;
+        this.syncFlashErrorView();
+      });
     }, MemorizationPracticeSessionComponent.ERROR_FLASH_MS);
+  }
+
+  private clearFlashError(): void {
+    if (this.flashErrorTimer) {
+      clearTimeout(this.flashErrorTimer);
+      this.flashErrorTimer = null;
+    }
+    if (!this.flashError) return;
+    this.flashError = false;
+    this.syncFlashErrorView();
   }
 
   private syncFlashErrorView(): void {
@@ -1414,9 +1446,9 @@ export class MemorizationPracticeSessionComponent
       this.focusPracticeInput();
       if (this.practiceMode === 'firstLetters') {
         this.scrollActiveFirstLetterCueIntoView();
-      } else {
-        this.scrollCurrentBlankIntoView();
       }
+      // Keep the focused verse blank on screen (type, word, and firstLetters).
+      this.scrollCurrentBlankIntoView();
     };
 
     this.cdr.markForCheck();
@@ -1503,13 +1535,14 @@ export class MemorizationPracticeSessionComponent
 
   private scheduleScrollToBlank(options?: { force?: boolean }): void {
     if (!options?.force && !this.hasTypedInRound) return;
+    if (this.scrollBlankTimer) clearTimeout(this.scrollBlankTimer);
     const delayMs = isMemorizeAndroidWebHost() ? 120 : 80;
-    setTimeout(() => {
+    this.scrollBlankTimer = setTimeout(() => {
+      this.scrollBlankTimer = null;
       if (this.practiceMode === 'firstLetters') {
         this.scrollActiveFirstLetterCueIntoView();
-      } else {
-        this.scrollCurrentBlankIntoView();
       }
+      this.scrollCurrentBlankIntoView();
     }, delayMs);
   }
 
@@ -1525,58 +1558,56 @@ export class MemorizationPracticeSessionComponent
         scrollEl.scrollTop = 0;
         return;
       }
-      scrollMemorizeBlankNearestInPracticeColumn(scrollEl, el);
-      const vv = window.visualViewport;
-      const edgeMargin = 12;
-      const isWordMode = this.practiceModeRef === 'word';
-      const reduceMotion =
-        typeof window.matchMedia === 'function' &&
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const nudgeBehavior: ScrollBehavior =
-        reduceMotion || isMemorizeAndroidWebHost() || isMemorizeIosWebHost() ? 'auto' : 'smooth';
-      const resolveWordModeView = () => {
+
+      // One instant adjustment (no nearest + smooth combo — that reads as a bounce).
+      const applyVisibleNudge = () => {
+        const vv = window.visualViewport;
+        const edgeMargin = 12;
+        const isWordMode = this.practiceModeRef === 'word';
+        const isFirstLetters = this.practiceModeRef === 'firstLetters';
         const scrollRect = scrollEl.getBoundingClientRect();
-        const wordChoices = this.document.querySelector<HTMLElement>(
-          '[data-testid="memorize-word-choices"]'
-        );
-        const wordChoicesTop = wordChoices?.getBoundingClientRect().top ?? null;
-        return {
-          viewTop: scrollRect.top + edgeMargin,
-          viewBottom: memorizeWordModeVisibleBottom(
+        let viewTop = scrollRect.top + edgeMargin;
+        let viewBottom = scrollRect.bottom - edgeMargin;
+
+        if (isWordMode) {
+          const wordChoices = this.document.querySelector<HTMLElement>(
+            '[data-testid="memorize-word-choices"]'
+          );
+          const wordChoicesTop = wordChoices?.getBoundingClientRect().top ?? null;
+          viewBottom = memorizeWordModeVisibleBottom(
             scrollRect.bottom,
             wordChoicesTop,
             edgeMargin,
             MEMORIZE_EXTRA_GAP_ABOVE_WORD_CHOICES_PX
-          ),
-        };
-      };
-      const resolveKeyboardView = () => {
-        const scrollRect = scrollEl.getBoundingClientRect();
-        if (vv) {
-          return {
-            viewTop: vv.offsetTop + edgeMargin,
-            viewBottom: vv.offsetTop + vv.height - edgeMargin - MEMORIZE_EXTRA_GAP_ABOVE_KEYBOARD_PX,
-          };
+          );
+        } else {
+          const stickyHeader = isFirstLetters
+            ? this.document.querySelector<HTMLElement>(
+                '[data-testid="memorize-practice-round-header"]'
+              )
+            : null;
+          const stickyBottom = stickyHeader?.getBoundingClientRect().bottom ?? null;
+          if (vv) {
+            viewTop = memorizeStickyHeaderVisibleTop(vv.offsetTop, stickyBottom, edgeMargin);
+            viewBottom =
+              vv.offsetTop + vv.height - edgeMargin - MEMORIZE_EXTRA_GAP_ABOVE_KEYBOARD_PX;
+          } else {
+            viewTop = memorizeStickyHeaderVisibleTop(scrollRect.top, stickyBottom, edgeMargin);
+          }
         }
-        return {
-          viewTop: scrollRect.top + edgeMargin,
-          viewBottom: scrollRect.bottom - edgeMargin,
-        };
-      };
-      const nudgeIntoVisibleViewport = () => {
-        const { viewTop, viewBottom } = isWordMode ? resolveWordModeView() : resolveKeyboardView();
+
         const rect = el.getBoundingClientRect();
         let delta = 0;
         if (rect.bottom > viewBottom) delta += rect.bottom - viewBottom;
         if (rect.top < viewTop) delta -= viewTop - rect.top;
         if (Math.abs(delta) < 0.5) return;
-        const nextTop = Math.max(0, scrollEl.scrollTop + delta);
-        scrollEl.scrollTo({ top: nextTop, behavior: nudgeBehavior });
+        const maxScroll = Math.max(0, scrollEl.scrollHeight - scrollEl.clientHeight);
+        scrollEl.scrollTop = Math.max(0, Math.min(scrollEl.scrollTop + delta, maxScroll));
       };
-      nudgeIntoVisibleViewport();
-      if (nudgeBehavior === 'auto') {
-        requestAnimationFrame(nudgeIntoVisibleViewport);
-      }
+
+      applyVisibleNudge();
+      // Re-measure once after layout/keyboard inset settles (still instant, no animation).
+      requestAnimationFrame(applyVisibleNudge);
     });
   }
 
@@ -1589,15 +1620,17 @@ export class MemorizationPracticeSessionComponent
         : -1;
     const target =
       slot >= 0 ? root.querySelector<HTMLElement>(`[data-memorize-cue-slot="${slot}"]`) : null;
-    if (target) {
-      try {
-        target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'auto' });
-      } catch {
-        // jsdom
-      }
-    } else {
+    if (!target) {
       root.scrollTop = 0;
+      return;
     }
+    // Scroll only the cue strip — scrollIntoView can also move #practiceScroll and bounce.
+    const rootRect = root.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const targetCenter = targetRect.top + targetRect.height / 2;
+    const rootCenter = rootRect.top + rootRect.height / 2;
+    const maxScroll = Math.max(0, root.scrollHeight - root.clientHeight);
+    root.scrollTop = Math.max(0, Math.min(root.scrollTop + (targetCenter - rootCenter), maxScroll));
   }
 
   private attachViewportListeners(): void {
@@ -1713,6 +1746,7 @@ export class MemorizationPracticeSessionComponent
         raf = 0;
         if (!root.isConnected) return;
         this.scrollActiveFirstLetterCueIntoView();
+        this.scrollCurrentBlankIntoView();
       });
     });
     this.resizeObserver.observe(root);
@@ -1720,6 +1754,10 @@ export class MemorizationPracticeSessionComponent
 
   private detachAllListeners(): void {
     this.clearHintInterval();
+    if (this.scrollBlankTimer) {
+      clearTimeout(this.scrollBlankTimer);
+      this.scrollBlankTimer = null;
+    }
     const scrollEl = this.practiceScrollRef?.nativeElement;
     if (scrollEl && this.androidScrollListener) {
       scrollEl.removeEventListener('scroll', this.androidScrollListener);
