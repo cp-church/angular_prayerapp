@@ -248,6 +248,7 @@
           } @else {
             <div
               #practiceScroll
+              id="practiceScroll"
               class="relative isolate bg-white dark:bg-gray-800 px-4 pt-0 pb-4 flex-1 min-h-0 overscroll-y-contain touch-pan-y"
               [class.overflow-y-hidden]="phase === 'done'"
               [class.flex]="phase === 'done'"
@@ -469,6 +470,12 @@
                 </div>
               }
 
+              @if (phase === 'practicing' && !isBibleBooks) {
+                <div data-testid="memorize-practice-attribution">
+                  <app-scripture-attribution />
+                </div>
+              }
+
               @if (phase === 'done') {
                 <div class="text-center py-6">
                   <p
@@ -487,15 +494,6 @@
                 </div>
               }
             </div>
-
-            @if (phase === 'practicing' && !isBibleBooks) {
-              <div
-                class="shrink-0 px-4 pb-2 bg-white dark:bg-gray-800"
-                data-testid="memorize-practice-attribution"
-              >
-                <app-scripture-attribution />
-              </div>
-            }
 
             @if (phase === 'practicing' && practiceMode === 'word' && !awaitingRoundAdvance && wordChoiceLabels.length > 0) {
               <div

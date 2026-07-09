@@ -203,13 +203,17 @@ describe('MemorizationPracticeSessionComponent', () => {
       expect(persistInProgress).toHaveBeenCalled();
     });
 
-    it('shows ESV attribution outside the scroll area while practicing', async () => {
-      const { component, getByTestId, cdr } = await renderSession();
+    it('shows ESV attribution inside the scroll area at the bottom of the passage while practicing', async () => {
+      const { component, getByTestId, container, cdr } = await renderSession();
       component.beginPracticeWithMode('type');
       cdr.detectChanges();
 
-      expect(getByTestId('memorize-practice-attribution')).toBeTruthy();
+      const attribution = getByTestId('memorize-practice-attribution');
+      const practiceScroll = container.querySelector('#practiceScroll');
+      expect(attribution).toBeTruthy();
       expect(getByTestId('scripture-attribution')).toBeTruthy();
+      expect(practiceScroll).toBeTruthy();
+      expect(practiceScroll!.contains(attribution)).toBe(true);
       expect(component.isBibleBooks).toBe(false);
     });
 
