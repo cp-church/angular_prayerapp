@@ -4,6 +4,9 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Memorize — initials mode opens keyboard on start ✅
+- **Fix**: Starting **First letters** focuses the hidden practice input immediately after render (resolve by DOM id if `ViewChild` is not ready yet) so mobile Safari/Chrome can open the keyboard in the same user-gesture turn; focus is restored if scroll nudges steal it. [`memorization-practice-session.component.ts`](src/app/components/memorization-practice-session/memorization-practice-session.component.ts).
+
 ### Memorize — type-mode error ring clears ✅
 - **Fix**: Wrong-answer red ring clears after the brief flash via `NgZone.run` + `detectChanges`, and a correct keystroke/word guess clears any lingering flash immediately so the border does not stay on in type mode. [`memorization-practice-session.component.ts`](src/app/components/memorization-practice-session/memorization-practice-session.component.ts).
 

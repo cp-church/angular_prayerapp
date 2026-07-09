@@ -1428,27 +1428,49 @@ export class MemorizationPracticeSessionComponent
     this.cdr.markForCheck();
   }
 
-  private focusPracticeInput(): void {
-    const input = this.practiceInputRef?.nativeElement;
-    if (!input || input.disabled) return;
-    input.focus({ preventScroll: true });
+  private resolvePracticeInputEl(): HTMLInputElement | null {
+    const fromRef = this.practiceInputRef?.nativeElement ?? null;
+    if (fromRef?.isConnected) return fromRef;
+    // ViewChild can lag one tick after @if creates the input; query by id so iOS
+    // can still focus inside the same user-gesture turn (required to open the keyboard).
+    return this.document.getElementById(this.practiceInputId) as HTMLInputElement | null;
+  }
+
+  private focusPracticeInput(): boolean {
+    const input = this.resolvePracticeInputEl();
+    if (!input || input.disabled) return false;
+    try {
+      input.focus({ preventScroll: true });
+    } catch {
+      try {
+        input.focus();
+      } catch {
+        return false;
+      }
+    }
+    return this.document.activeElement === input;
   }
 
   /** Focus hidden input after practice UI renders (OnPush + @if). Opens keyboard on mobile. */
   private scheduleKeyboardPracticeFocus(): void {
     if (!isKeyboardPracticeMode(this.practiceModeRef)) return;
 
-    const focusWhenReady = () => {
-      if (!this.isOpen || this.phase !== 'practicing' || this.awaitingRoundAdvance) return;
-      if (!isKeyboardPracticeMode(this.practiceMode)) return;
+    const focusWhenReady = (): boolean => {
+      if (!this.isOpen || this.phase !== 'practicing' || this.awaitingRoundAdvance) return false;
+      if (!isKeyboardPracticeMode(this.practiceMode)) return false;
       this.ensureTypeModeCaptureAttached();
       this.ensureHintCaptureAttached();
-      this.focusPracticeInput();
+      const focused = this.focusPracticeInput();
       if (this.practiceMode === 'firstLetters') {
         this.scrollActiveFirstLetterCueIntoView();
       }
       // Keep the focused verse blank on screen (type, word, and firstLetters).
       this.scrollCurrentBlankIntoView();
+      // Scroll must not steal focus from the practice input (keyboard would dismiss).
+      if (focused && this.document.activeElement !== this.resolvePracticeInputEl()) {
+        this.focusPracticeInput();
+      }
+      return focused;
     };
 
     this.cdr.markForCheck();
@@ -1457,11 +1479,10 @@ export class MemorizationPracticeSessionComponent
     } catch {
       // jsdom / test environments may not support full CD
     }
-    if (this.practiceInputRef?.nativeElement) {
-      focusWhenReady();
-      return;
-    }
+    if (focusWhenReady()) return;
+    // Fallback if the input was not in the DOM yet (still try ASAP for mobile keyboards).
     requestAnimationFrame(() => {
+      if (focusWhenReady()) return;
       requestAnimationFrame(() => {
         focusWhenReady();
       });

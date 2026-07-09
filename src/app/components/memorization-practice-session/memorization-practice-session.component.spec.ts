@@ -266,6 +266,22 @@ describe('MemorizationPracticeSessionComponent', () => {
       expect(input.getAttribute('aria-label')).not.toMatch(/name|email|contact/i);
     });
 
+    it('focuses the practice input when starting firstLetters mode so the keyboard can open', async () => {
+      const { component, getByTestId, cdr } = await renderSession();
+      const focusSpy = vi.spyOn(HTMLElement.prototype, 'focus');
+      component.beginPracticeWithMode('firstLetters');
+      cdr.detectChanges();
+
+      const input = getByTestId('memorize-practice-input') as HTMLInputElement;
+      expect(input).toBeTruthy();
+      expect(focusSpy).toHaveBeenCalled();
+      const focusedInput = focusSpy.mock.instances.find(
+        (el) => el === input || (el as HTMLElement).getAttribute?.('data-testid') === 'memorize-practice-input'
+      );
+      expect(focusedInput).toBeTruthy();
+      focusSpy.mockRestore();
+    });
+
     it('respects startRoundChoice for later rounds', async () => {
       const { component } = await renderSession();
       component.startRoundChoice = MEMORIZATION_FULL_HIDE_ROUND;
@@ -849,11 +865,11 @@ describe('MemorizationPracticeSessionComponent', () => {
     });
 
     it('verse touch handlers focus input when not scrolling', async () => {
-      const { component } = await renderSession();
+      const { component, getByTestId, cdr } = await renderSession();
       component.beginPracticeWithMode('type');
-      const input = document.createElement('input');
+      cdr.detectChanges();
+      const input = getByTestId('memorize-practice-input') as HTMLInputElement;
       const focusSpy = vi.spyOn(input, 'focus');
-      component.practiceInputRef = { nativeElement: input } as ElementRef<HTMLInputElement>;
 
       const touch = { clientX: 10, clientY: 10 } as Touch;
       component.onVerseTouchStart({ touches: [touch] } as TouchEvent);
@@ -864,14 +880,15 @@ describe('MemorizationPracticeSessionComponent', () => {
       component.onVerseTouchEnd();
 
       expect(focusSpy).toHaveBeenCalled();
+      focusSpy.mockRestore();
     });
 
     it('verse touch move beyond threshold suppresses focus', async () => {
-      const { component } = await renderSession();
+      const { component, getByTestId, cdr } = await renderSession();
       component.beginPracticeWithMode('type');
-      const input = document.createElement('input');
+      cdr.detectChanges();
+      const input = getByTestId('memorize-practice-input') as HTMLInputElement;
       const focusSpy = vi.spyOn(input, 'focus');
-      component.practiceInputRef = { nativeElement: input } as ElementRef<HTMLInputElement>;
 
       component.onVerseTouchStart({ touches: [{ clientX: 0, clientY: 0 } as Touch] } as TouchEvent);
       component.onVerseTouchMove({
@@ -880,6 +897,7 @@ describe('MemorizationPracticeSessionComponent', () => {
       component.onVerseTouchEnd();
 
       expect(focusSpy).not.toHaveBeenCalled();
+      focusSpy.mockRestore();
     });
 
     it('listen getters reflect streaming audio state', async () => {
