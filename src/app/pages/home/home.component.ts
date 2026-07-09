@@ -3,6 +3,7 @@ import {
   OnInit,
   OnDestroy,
   ViewChild,
+  ElementRef,
   ChangeDetectorRef,
   ChangeDetectionStrategy,
 } from "@angular/core";
@@ -44,6 +45,7 @@ import { AddMemorizedVerseModalComponent } from "../../components/add-memorized-
 import { AddMemorizedBibleBooksModalComponent } from "../../components/add-memorized-bible-books-modal/add-memorized-bible-books-modal.component";
 import { MemorizationPracticeSessionComponent } from "../../components/memorization-practice-session/memorization-practice-session.component";
 import { groupItemsByMasterLevel } from "../../lib/memorization/memorization-mastery";
+import { memorizationNeedsKeyboardOnOpen } from "../../lib/memorization/memorizationKeyboardPractice";
 import type {
   MemorizedItem,
   MemorizationInProgressSavePayload,
@@ -115,10 +117,74 @@ const HELP_SECTION_ID_PRESENTATION = "help_presentation";
     PullToRefreshDirective,
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
+  styles: [
+    `
+      /*
+        Always-mounted bridge for resume keyboard open. WebKit only opens the software
+        keyboard when focus happens on an already-present field inside the user gesture;
+        newly created session inputs are too late after close→reopen.
+      */
+      .memorize-keyboard-bridge {
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        height: 1px;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: transparent;
+        caret-color: transparent;
+        outline: none;
+        box-shadow: none;
+        opacity: 0.01;
+        font-size: 16px;
+        overflow: hidden;
+        z-index: 0;
+        -webkit-appearance: none;
+        appearance: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .memorize-keyboard-bridge:focus {
+        outline: none;
+        box-shadow: none;
+      }
+      .memorize-keyboard-bridge::-webkit-contacts-auto-fill-button,
+      .memorize-keyboard-bridge::-webkit-credentials-auto-fill-button {
+        visibility: hidden;
+        display: none !important;
+        pointer-events: none;
+        position: absolute;
+        right: 0;
+        opacity: 0;
+      }
+    `,
+  ],
   template: `
     <div
       class="main-page-shell w-full min-h-screen bg-gray-50 dark:bg-gray-900"
     >
+      <!-- Pre-mounted so resume can focus inside the verse-card tap (iOS keyboard). -->
+      <form autocomplete="off" class="contents" (submit)="$event.preventDefault()">
+        <input
+          #memorizeKeyboardBridge
+          type="text"
+          name="search"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          enterkeyhint="done"
+          data-1p-ignore="true"
+          data-lpignore="true"
+          data-form-type="other"
+          aria-hidden="true"
+          tabindex="-1"
+          class="memorize-keyboard-bridge"
+          data-testid="memorize-keyboard-bridge"
+        />
+      </form>
       <!-- Scroll viewport below safe area: header sticky inside so content scrolls under header to top of header, never into safe area -->
       <div
         class="safe-area-viewport w-full bg-gray-50 dark:bg-gray-900"
@@ -1360,6 +1426,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   private fullGuidedTourTotalSteps = 0;
 
   @ViewChild("prayerFormComp") private prayerFormComp?: PrayerFormComponent;
+  @ViewChild("memorizeKeyboardBridge")
+  private memorizeKeyboardBridge?: ElementRef<HTMLInputElement>;
 
   /** Match hands-on Personal Prayers tour card (template + walkthrough hooks). */
   readonly personalWalkthroughPrayerFor =
@@ -2985,14 +3053,39 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   openMemorizationPractice(item: MemorizedItem): void {
+    // Focus a pre-mounted bridge input *before* creating the session. iOS only opens
+    // the keyboard when focus happens on an already-present field in the tap gesture;
+    // a newly mounted practice input after close→reopen is too late.
+    if (memorizationNeedsKeyboardOnOpen(item)) {
+      this.primeMemorizeKeyboardBridge();
+    }
     this.practiceMemorizedItem = item;
-    // Sync CD so the practice session mounts and focuses its input inside the same
-    // user-gesture turn as the verse-card tap (required for iOS/Android keyboards).
+    // Sync CD so the practice session mounts inside the same user-gesture turn.
     this.cdr.markForCheck();
     try {
       this.cdr.detectChanges();
     } catch {
       // Test doubles / detached views may not support full CD.
+    }
+  }
+
+  /** Keep the software keyboard open across close→reopen for type/initials resume. */
+  private primeMemorizeKeyboardBridge(): void {
+    const input = this.memorizeKeyboardBridge?.nativeElement;
+    if (!input) return;
+    try {
+      input.focus({ preventScroll: true });
+    } catch {
+      try {
+        input.focus();
+      } catch {
+        return;
+      }
+    }
+    try {
+      input.click();
+    } catch {
+      // ignore
     }
   }
 

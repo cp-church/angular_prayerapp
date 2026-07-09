@@ -42,6 +42,7 @@ import {
   booksForScope,
   isBibleBooksMemorizationItem,
 } from '../../lib/memorization/bibleBooksMemorization';
+import { isKeyboardPracticeMode } from '../../lib/memorization/memorizationKeyboardPractice';
 import {
   applyMemorizeListenPlaybackRateToMediaElement,
   MEMORIZE_LISTEN_REPEAT_GAP_MS,
@@ -95,10 +96,6 @@ const MEMORIZE_INTRO_START_ROUND_OPTIONS = Array.from(
   { length: MEMORIZATION_FULL_HIDE_ROUND },
   (_, i) => ({ value: i + 1, label: `Round ${i + 1}` })
 );
-
-function isKeyboardPracticeMode(mode: MemorizationPracticeMode | null): boolean {
-  return mode === 'type' || mode === 'firstLetters';
-}
 
 function hiddenTypingTokenIndices(
   mode: MemorizationPracticeMode | null | undefined,

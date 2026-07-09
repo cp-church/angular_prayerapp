@@ -2916,6 +2916,98 @@ describe('HomeComponent', () => {
       expect(mocks.cdr.detectChanges).toHaveBeenCalled();
     });
 
+    it('openMemorizationPractice primes the keyboard bridge before mounting an in-progress type session', () => {
+      const comp = new HomeComponent(
+        mocks.prayerService,
+        mocks.promptService,
+        mocks.adminAuthService,
+        mocks.userSessionService,
+        mocks.planningCenterListService,
+        mocks.badgeService,
+        mocks.memorizationService,
+        mocks.cacheService,
+        mocks.toastService,
+        mocks.analyticsService,
+        mocks.cdr,
+        mocks.router,
+        mocks.activatedRoute,
+        mocks.supabaseService,
+        mocks.helpDriverTourService,
+        mocks.helpContentService
+      );
+
+      const bridge = document.createElement('input');
+      const focusSpy = vi.spyOn(bridge, 'focus');
+      const clickSpy = vi.spyOn(bridge, 'click');
+      (comp as any).memorizeKeyboardBridge = { nativeElement: bridge };
+
+      const item = {
+        id: 'v1',
+        reference: 'John 3:16',
+        text: '',
+        translation: 'esv',
+        dateAdded: 1,
+        lastPracticedAt: null,
+        practiceSessions: [],
+        inProgressPractice: {
+          sessionSeed: 's',
+          wrongAttempts: 0,
+          correctKeystrokes: 1,
+          updatedAt: 1,
+          phase: { kind: 'inRound', roundIndex: 1 },
+          practiceMode: 'type',
+        },
+      } as any;
+
+      comp.openMemorizationPractice(item);
+
+      expect(focusSpy).toHaveBeenCalled();
+      expect(clickSpy).toHaveBeenCalled();
+      expect(comp.practiceMemorizedItem).toEqual(item);
+      focusSpy.mockRestore();
+      clickSpy.mockRestore();
+    });
+
+    it('openMemorizationPractice does not prime the keyboard bridge for a fresh verse', () => {
+      const comp = new HomeComponent(
+        mocks.prayerService,
+        mocks.promptService,
+        mocks.adminAuthService,
+        mocks.userSessionService,
+        mocks.planningCenterListService,
+        mocks.badgeService,
+        mocks.memorizationService,
+        mocks.cacheService,
+        mocks.toastService,
+        mocks.analyticsService,
+        mocks.cdr,
+        mocks.router,
+        mocks.activatedRoute,
+        mocks.supabaseService,
+        mocks.helpDriverTourService,
+        mocks.helpContentService
+      );
+
+      const bridge = document.createElement('input');
+      const focusSpy = vi.spyOn(bridge, 'focus');
+      (comp as any).memorizeKeyboardBridge = { nativeElement: bridge };
+
+      const item = {
+        id: 'v1',
+        reference: 'John 3:16',
+        text: '',
+        translation: 'esv',
+        dateAdded: 1,
+        lastPracticedAt: null,
+        practiceSessions: [],
+      } as any;
+
+      comp.openMemorizationPractice(item);
+
+      expect(focusSpy).not.toHaveBeenCalled();
+      focusSpy.mockRestore();
+    });
+
     it('openEditModal should set state and mark for check', () => {
       const comp = new HomeComponent(
         mocks.prayerService,
