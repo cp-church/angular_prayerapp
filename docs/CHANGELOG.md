@@ -4,6 +4,9 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Memorize — keyboard on resume of in-progress type/initials ✅
+- **Fix**: Reopening a verse with an in-progress type or first-letters round mounts and focuses the hidden practice input during `onOpen` (same user gesture as the tap), before the async passage fetch. Closing clears the hydrate-once guard so the next open can prime again. [`memorization-practice-session.component.ts`](src/app/components/memorization-practice-session/memorization-practice-session.component.ts).
+
 ### Memorize — initials mode opens keyboard on start ✅
 - **Fix**: Starting **First letters** focuses the hidden practice input immediately after render (resolve by DOM id if `ViewChild` is not ready yet) so mobile Safari/Chrome can open the keyboard in the same user-gesture turn; focus is restored if scroll nudges steal it. [`memorization-practice-session.component.ts`](src/app/components/memorization-practice-session/memorization-practice-session.component.ts).
 

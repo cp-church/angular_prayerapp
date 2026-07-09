@@ -666,6 +666,60 @@ describe('MemorizationPracticeSessionComponent', () => {
       expect(component.hiddenIndices.size).toBeGreaterThan(0);
       expect(component.wrongAttemptsTotal).toBe(3);
     });
+
+    it('focuses the practice input when reopening an in-progress type session', async () => {
+      const item: MemorizedItem = {
+        ...verseItem,
+        inProgressPractice: {
+          sessionSeed: 'resume-seed',
+          wrongAttempts: 1,
+          correctKeystrokes: 2,
+          updatedAt: Date.now(),
+          phase: { kind: 'inRound', roundIndex: 1 },
+          practiceMode: 'type',
+        },
+      };
+      const focusSpy = vi.spyOn(HTMLElement.prototype, 'focus');
+      const { getByTestId, cdr } = await renderSession({ item });
+      cdr.detectChanges();
+
+      const input = getByTestId('memorize-practice-input') as HTMLInputElement;
+      expect(input).toBeTruthy();
+      const focusedInput = focusSpy.mock.instances.find(
+        (el) =>
+          el === input ||
+          (el as HTMLElement).getAttribute?.('data-testid') === 'memorize-practice-input'
+      );
+      expect(focusedInput).toBeTruthy();
+      focusSpy.mockRestore();
+    });
+
+    it('focuses the practice input when reopening an in-progress firstLetters session', async () => {
+      const item: MemorizedItem = {
+        ...verseItem,
+        inProgressPractice: {
+          sessionSeed: 'resume-fl-seed',
+          wrongAttempts: 0,
+          correctKeystrokes: 1,
+          updatedAt: Date.now(),
+          phase: { kind: 'inRound', roundIndex: 1 },
+          practiceMode: 'firstLetters',
+        },
+      };
+      const focusSpy = vi.spyOn(HTMLElement.prototype, 'focus');
+      const { getByTestId, cdr } = await renderSession({ item });
+      cdr.detectChanges();
+
+      const input = getByTestId('memorize-practice-input') as HTMLInputElement;
+      expect(input).toBeTruthy();
+      const focusedInput = focusSpy.mock.instances.find(
+        (el) =>
+          el === input ||
+          (el as HTMLElement).getAttribute?.('data-testid') === 'memorize-practice-input'
+      );
+      expect(focusedInput).toBeTruthy();
+      focusSpy.mockRestore();
+    });
   });
 
   describe('handleItemIdChange', () => {

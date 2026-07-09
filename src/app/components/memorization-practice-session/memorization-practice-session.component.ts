@@ -217,6 +217,8 @@ export class MemorizationPracticeSessionComponent
   roundAffirmation = '';
   completionMessage = '';
   keyboardInsetPx = 0;
+  /** Mount hidden practice input early on resume so mobile keyboards can open in the open gesture. */
+  resumeKeyboardPrimeActive = false;
   listenPanelOpen = false;
   listenPlaybackRate: MemorizeListenSpeed = 1;
   repeatListenOn = false;
@@ -833,7 +835,12 @@ export class MemorizationPracticeSessionComponent
     this.document.body.style.overflow = 'hidden';
     this.document.documentElement.style.overflow = 'hidden';
     this.passageHydratedForOpen = false;
+    // Allow hydrate + keyboard focus on every open (including resume of the same verse).
+    this.openedLayoutOnceForVerseId = null;
     this.recomputeDerivedFromItem();
+    // Mobile keyboards only open if focus happens in the same user-gesture turn as the tap
+    // that opened the session — do this before any await (passage fetch).
+    this.primeKeyboardFocusForResume();
     if (this.isBibleBooks) {
       this.passageText = '';
       this.passageLoading = false;
@@ -851,6 +858,34 @@ export class MemorizationPracticeSessionComponent
     this.cdr.markForCheck();
   }
 
+  /**
+   * When reopening an in-progress type/initials round, mount the hidden input and focus it
+   * immediately so iOS/Android show the keyboard. Deferred focus after passage load is too late.
+   */
+  private primeKeyboardFocusForResume(): void {
+    const ip = this.item.inProgressPractice;
+    if (!ip || ip.phase.kind !== 'inRound') {
+      this.resumeKeyboardPrimeActive = false;
+      return;
+    }
+    const mode = ip.practiceMode ?? 'type';
+    if (!isKeyboardPracticeMode(mode)) {
+      this.resumeKeyboardPrimeActive = false;
+      return;
+    }
+
+    this.resumeKeyboardPrimeActive = true;
+    this.practiceMode = mode;
+    this.practiceModeRef = mode;
+    this.cdr.markForCheck();
+    try {
+      this.cdr.detectChanges();
+    } catch {
+      // jsdom / test environments may not support full CD
+    }
+    this.scheduleKeyboardPracticeFocus();
+  }
+
   private onCloseCleanup(): void {
     if (this.flashErrorTimer) {
       clearTimeout(this.flashErrorTimer);
@@ -860,6 +895,9 @@ export class MemorizationPracticeSessionComponent
     this.passageText = '';
     this.passageLoading = false;
     this.passageLoadError = null;
+    this.openedLayoutOnceForVerseId = null;
+    this.passageHydratedForOpen = false;
+    this.resumeKeyboardPrimeActive = false;
     this.stopPassageAudio();
     this.document.body.style.overflow = 'unset';
     this.document.documentElement.style.overflow = 'unset';
@@ -1065,12 +1103,20 @@ export class MemorizationPracticeSessionComponent
       this.phase = 'practicing';
     }
 
-    requestAnimationFrame(() => {
-      if (isMemorizeAndroidWebHost() && this.practiceScrollRef?.nativeElement) {
-        this.practiceScrollRef.nativeElement.scrollTop = 0;
-      }
+    this.resumeKeyboardPrimeActive = false;
+
+    // Prefer sync focus when the input is already in the DOM (resume after primeKeyboardFocusForResume).
+    // Fall back to rAF only for layout settle (Android scroll clamp); keyboard may not reopen then.
+    if (this.resolvePracticeInputEl()) {
       this.scheduleKeyboardPracticeFocus();
-    });
+    } else {
+      requestAnimationFrame(() => {
+        if (isMemorizeAndroidWebHost() && this.practiceScrollRef?.nativeElement) {
+          this.practiceScrollRef.nativeElement.scrollTop = 0;
+        }
+        this.scheduleKeyboardPracticeFocus();
+      });
+    }
   }
 
   private startRound(r: number): void {
@@ -1456,16 +1502,21 @@ export class MemorizationPracticeSessionComponent
     if (!isKeyboardPracticeMode(this.practiceModeRef)) return;
 
     const focusWhenReady = (): boolean => {
-      if (!this.isOpen || this.phase !== 'practicing' || this.awaitingRoundAdvance) return false;
-      if (!isKeyboardPracticeMode(this.practiceMode)) return false;
+      if (!this.isOpen || this.awaitingRoundAdvance) return false;
+      const canFocus =
+        (this.phase === 'practicing' && isKeyboardPracticeMode(this.practiceMode)) ||
+        this.resumeKeyboardPrimeActive;
+      if (!canFocus) return false;
       this.ensureTypeModeCaptureAttached();
       this.ensureHintCaptureAttached();
       const focused = this.focusPracticeInput();
-      if (this.practiceMode === 'firstLetters') {
+      if (this.practiceMode === 'firstLetters' && this.phase === 'practicing') {
         this.scrollActiveFirstLetterCueIntoView();
       }
-      // Keep the focused verse blank on screen (type, word, and firstLetters).
-      this.scrollCurrentBlankIntoView();
+      // Keep the focused verse blank on screen once practicing UI is ready.
+      if (this.phase === 'practicing') {
+        this.scrollCurrentBlankIntoView();
+      }
       // Scroll must not steal focus from the practice input (keyboard would dismiss).
       if (focused && this.document.activeElement !== this.resolvePracticeInputEl()) {
         this.focusPracticeInput();
