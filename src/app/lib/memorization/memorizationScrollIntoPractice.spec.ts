@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  memorizeWordModeVisibleBottom,
   scrollMemorizeBlankNearestInPracticeColumn,
   scrollMemorizeBlankIntoPracticeColumn,
 } from './memorizationScrollIntoPractice';
@@ -41,6 +42,21 @@ function mockTarget(rect: { top: number; bottom: number; height?: number }) {
     }),
   } as HTMLElement;
 }
+
+describe('memorizeWordModeVisibleBottom', () => {
+  it('uses scroll bottom when word-choice footer is absent', () => {
+    expect(memorizeWordModeVisibleBottom(400, null, 12, 16)).toBe(388);
+  });
+
+  it('keeps a gap above a taller multi-row word-choice footer', () => {
+    // Footer top sits at 280 while scroll bottom is 400 (footer grew into the column).
+    expect(memorizeWordModeVisibleBottom(400, 280, 12, 16)).toBe(252);
+  });
+
+  it('still reserves gap when footer top aligns with scroll bottom', () => {
+    expect(memorizeWordModeVisibleBottom(400, 400, 12, 16)).toBe(372);
+  });
+});
 
 describe('scrollMemorizeBlankNearestInPracticeColumn', () => {
   it('scrolls up when element is above viewport', () => {

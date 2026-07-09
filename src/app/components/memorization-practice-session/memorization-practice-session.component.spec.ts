@@ -969,6 +969,19 @@ describe('MemorizationPracticeSessionComponent', () => {
       expect(component.currentTargetToken).toBeTruthy();
     });
 
+    it('schedules scroll after a word guess so the blank stays above the choice footer', async () => {
+      const { component } = await renderSession();
+      component.beginPracticeWithMode('word');
+      const scheduleSpy = vi.spyOn(
+        component as unknown as { scheduleScrollToBlank: (opts?: { force?: boolean }) => void },
+        'scheduleScrollToBlank'
+      );
+      const token = component.currentTargetToken;
+      expect(token).toBeTruthy();
+      component.processWordGuess(token!.text);
+      expect(scheduleSpy).toHaveBeenCalled();
+    });
+
     it('firstLetterCueHiddenSlots returns slots in later firstLetters rounds', async () => {
       const { component } = await renderSession();
       component.startRoundChoice = MEMORIZATION_FULL_HIDE_ROUND;

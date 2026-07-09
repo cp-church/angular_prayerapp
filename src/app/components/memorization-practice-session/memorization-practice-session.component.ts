@@ -27,7 +27,7 @@ import {
   pickRandomAllDoneMessage,
   pickRandomRoundAffirmation,
 } from '../../lib/memorization/memorizationEncouragementMessages';
-import { scrollMemorizeBlankNearestInPracticeColumn } from '../../lib/memorization/memorizationScrollIntoPractice';
+import { memorizeWordModeVisibleBottom, scrollMemorizeBlankNearestInPracticeColumn } from '../../lib/memorization/memorizationScrollIntoPractice';
 import {
   isMemorizeAndroidWebHost,
   isMemorizeIosWebHost,
@@ -81,6 +81,7 @@ const MAX_WRONG_BEFORE_REVEAL = 3;
 const MEMORIZATION_WORD_CHOICE_COUNT_WORD = 8;
 const MEMORIZATION_WORD_CHOICE_COUNT_DIGIT = 4;
 const MEMORIZE_EXTRA_GAP_ABOVE_KEYBOARD_PX = 48;
+const MEMORIZE_EXTRA_GAP_ABOVE_WORD_CHOICES_PX = 16;
 const MEMORIZE_HINT_EXTRA_PEEK_INTERVAL_MS = 1000;
 const ANDROID_SCROLL_CLAMP_MS = 600;
 const MEMORIZE_LISTEN_CONTROLS_DIALOG_ID = 'memorize-listen-controls-dialog';
@@ -594,6 +595,7 @@ export class MemorizationPracticeSessionComponent
       this.flashErrorBriefly();
     }
     this.checkRoundCompletion();
+    this.scheduleScrollToBlank();
     this.cdr.markForCheck();
   }
 
@@ -1476,7 +1478,8 @@ export class MemorizationPracticeSessionComponent
       this.currentTargetIndex !== null &&
       this.practiceMode === 'word'
     ) {
-      this.scrollCurrentBlankIntoView();
+      // Defer until the word-choice footer has laid out (row wrap can change height).
+      this.scheduleScrollToBlank({ force: true });
     }
 
     if (
@@ -1498,8 +1501,8 @@ export class MemorizationPracticeSessionComponent
     }
   }
 
-  private scheduleScrollToBlank(): void {
-    if (!this.hasTypedInRound) return;
+  private scheduleScrollToBlank(options?: { force?: boolean }): void {
+    if (!options?.force && !this.hasTypedInRound) return;
     const delayMs = isMemorizeAndroidWebHost() ? 120 : 80;
     setTimeout(() => {
       if (this.practiceMode === 'firstLetters') {
@@ -1523,28 +1526,45 @@ export class MemorizationPracticeSessionComponent
         return;
       }
       scrollMemorizeBlankNearestInPracticeColumn(scrollEl, el);
-      const scrollRect = scrollEl.getBoundingClientRect();
       const vv = window.visualViewport;
       const edgeMargin = 12;
       const isWordMode = this.practiceModeRef === 'word';
-      let viewTop: number;
-      let viewBottom: number;
-      if (isWordMode) {
-        viewTop = scrollRect.top + edgeMargin;
-        viewBottom = scrollRect.bottom - edgeMargin;
-      } else if (vv) {
-        viewTop = vv.offsetTop + edgeMargin;
-        viewBottom = vv.offsetTop + vv.height - edgeMargin - MEMORIZE_EXTRA_GAP_ABOVE_KEYBOARD_PX;
-      } else {
-        viewTop = scrollRect.top + edgeMargin;
-        viewBottom = scrollRect.bottom - edgeMargin;
-      }
       const reduceMotion =
         typeof window.matchMedia === 'function' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const nudgeBehavior: ScrollBehavior =
         reduceMotion || isMemorizeAndroidWebHost() || isMemorizeIosWebHost() ? 'auto' : 'smooth';
+      const resolveWordModeView = () => {
+        const scrollRect = scrollEl.getBoundingClientRect();
+        const wordChoices = this.document.querySelector<HTMLElement>(
+          '[data-testid="memorize-word-choices"]'
+        );
+        const wordChoicesTop = wordChoices?.getBoundingClientRect().top ?? null;
+        return {
+          viewTop: scrollRect.top + edgeMargin,
+          viewBottom: memorizeWordModeVisibleBottom(
+            scrollRect.bottom,
+            wordChoicesTop,
+            edgeMargin,
+            MEMORIZE_EXTRA_GAP_ABOVE_WORD_CHOICES_PX
+          ),
+        };
+      };
+      const resolveKeyboardView = () => {
+        const scrollRect = scrollEl.getBoundingClientRect();
+        if (vv) {
+          return {
+            viewTop: vv.offsetTop + edgeMargin,
+            viewBottom: vv.offsetTop + vv.height - edgeMargin - MEMORIZE_EXTRA_GAP_ABOVE_KEYBOARD_PX,
+          };
+        }
+        return {
+          viewTop: scrollRect.top + edgeMargin,
+          viewBottom: scrollRect.bottom - edgeMargin,
+        };
+      };
       const nudgeIntoVisibleViewport = () => {
+        const { viewTop, viewBottom } = isWordMode ? resolveWordModeView() : resolveKeyboardView();
         const rect = el.getBoundingClientRect();
         let delta = 0;
         if (rect.bottom > viewBottom) delta += rect.bottom - viewBottom;

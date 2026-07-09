@@ -4,6 +4,9 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Memorize — word-mode scroll above choice footer ✅
+- **Fix**: Word-mode auto-scroll measures `[data-testid="memorize-word-choices"]` and keeps the current blank above that footer (with a small gap), including when choices wrap to multiple rows. Scroll is deferred until after layout and also runs after each word guess. [`memorization-practice-session.component.ts`](src/app/components/memorization-practice-session/memorization-practice-session.component.ts), [`memorizationScrollIntoPractice.ts`](src/app/lib/memorization/memorizationScrollIntoPractice.ts).
+
 ### Memorize — practice ESV attribution scrolls with passage ✅
 - **UI**: During practice, ESV attribution sits at the bottom of the passage inside `#practiceScroll` (same as intro) instead of a pinned footer above word-choice / round chrome. Auto-scroll that keeps the current blank above the keyboard is no longer blocked by a fixed attribution bar on long passages; users scroll to the end to see the notice. [`memorization-practice-session.component.html`](src/app/components/memorization-practice-session/memorization-practice-session.component.html).
 
