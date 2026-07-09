@@ -125,23 +125,28 @@ function hiddenTypingTokenIndices(
   templateUrl: './memorization-practice-session.component.html',
   styles: [
     `
-      /* Off-screen capture input: avoid Safari iOS focus ring as a 1px blue line at scroll top. */
+      /*
+        Capture input for type/initials. WebKit will not open the software keyboard for
+        opacity:0, visibility:hidden, display:none, or pointer-events:none fields — use a
+        1px near-invisible strip instead. font-size 16px avoids iOS focus zoom.
+      */
       .memorize-practice-input-hidden {
         position: fixed;
-        left: 50%;
-        top: 25vh;
-        width: min(12rem, 45vw);
-        height: 2.5rem;
-        transform: translateX(-50%);
-        pointer-events: none;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        height: 1px;
+        margin: 0;
         padding: 0;
         border: 0;
         background: transparent;
-        opacity: 0;
         color: transparent;
         caret-color: transparent;
         outline: none;
         box-shadow: none;
+        opacity: 0.01;
+        font-size: 16px;
+        overflow: hidden;
         -webkit-appearance: none;
         appearance: none;
         -webkit-tap-highlight-color: transparent;
@@ -1485,6 +1490,8 @@ export class MemorizationPracticeSessionComponent
   private focusPracticeInput(): boolean {
     const input = this.resolvePracticeInputEl();
     if (!input || input.disabled) return false;
+    // Some WebKit builds ignore focus on a fully clipped field until it can receive
+    // a soft click; click() after focus helps open the software keyboard.
     try {
       input.focus({ preventScroll: true });
     } catch {
@@ -1493,6 +1500,11 @@ export class MemorizationPracticeSessionComponent
       } catch {
         return false;
       }
+    }
+    try {
+      input.click();
+    } catch {
+      // ignore
     }
     return this.document.activeElement === input;
   }

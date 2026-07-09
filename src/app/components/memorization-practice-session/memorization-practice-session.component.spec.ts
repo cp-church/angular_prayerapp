@@ -720,6 +720,45 @@ describe('MemorizationPracticeSessionComponent', () => {
       expect(focusedInput).toBeTruthy();
       focusSpy.mockRestore();
     });
+
+    it('keeps the capture input WebKit-keyboard-eligible (not opacity 0 / pointer-events none)', () => {
+      const source = readFileSync(
+        join(componentDir, 'memorization-practice-session.component.ts'),
+        'utf-8'
+      );
+      const stylesMatch = source.match(/\.memorize-practice-input-hidden\s*\{([\s\S]*?)\n\s*\}/);
+      expect(stylesMatch?.[1]).toBeTruthy();
+      const rule = stylesMatch![1];
+      expect(rule).toMatch(/opacity:\s*0\.01/);
+      expect(rule).not.toMatch(/pointer-events:\s*none/);
+      expect(rule).not.toMatch(/opacity:\s*0\s*;/);
+    });
+
+    it('soft-clicks the practice input after focus so mobile keyboards open', async () => {
+      const focusSpy = vi.spyOn(HTMLElement.prototype, 'focus');
+      const clickSpy = vi.spyOn(HTMLElement.prototype, 'click');
+      const { getByTestId, component, cdr } = await renderSession();
+      component.beginPracticeWithMode('type');
+      cdr.detectChanges();
+
+      const input = getByTestId('memorize-practice-input') as HTMLInputElement;
+      expect(
+        focusSpy.mock.instances.some(
+          (el) =>
+            el === input ||
+            (el as HTMLElement).getAttribute?.('data-testid') === 'memorize-practice-input'
+        )
+      ).toBe(true);
+      expect(
+        clickSpy.mock.instances.some(
+          (el) =>
+            el === input ||
+            (el as HTMLElement).getAttribute?.('data-testid') === 'memorize-practice-input'
+        )
+      ).toBe(true);
+      focusSpy.mockRestore();
+      clickSpy.mockRestore();
+    });
   });
 
   describe('handleItemIdChange', () => {

@@ -2877,6 +2877,45 @@ describe('HomeComponent', () => {
   });
 
   describe('Modal and editing methods', () => {
+    it('openMemorizationPractice sync-detects so keyboard focus stays in the tap gesture', () => {
+      const comp = new HomeComponent(
+        mocks.prayerService,
+        mocks.promptService,
+        mocks.adminAuthService,
+        mocks.userSessionService,
+        mocks.planningCenterListService,
+        mocks.badgeService,
+        mocks.memorizationService,
+        mocks.cacheService,
+        mocks.toastService,
+        mocks.analyticsService,
+        mocks.cdr,
+        mocks.router,
+        mocks.activatedRoute,
+        mocks.supabaseService,
+        mocks.helpDriverTourService,
+        mocks.helpContentService
+      );
+
+      const item = {
+        id: 'v1',
+        reference: 'John 3:16',
+        text: '',
+        translation: 'esv',
+        dateAdded: 1,
+        lastPracticedAt: null,
+        practiceSessions: [],
+      } as any;
+      mocks.cdr.markForCheck.mockClear();
+      mocks.cdr.detectChanges.mockClear();
+
+      comp.openMemorizationPractice(item);
+
+      expect(comp.practiceMemorizedItem).toEqual(item);
+      expect(mocks.cdr.markForCheck).toHaveBeenCalled();
+      expect(mocks.cdr.detectChanges).toHaveBeenCalled();
+    });
+
     it('openEditModal should set state and mark for check', () => {
       const comp = new HomeComponent(
         mocks.prayerService,

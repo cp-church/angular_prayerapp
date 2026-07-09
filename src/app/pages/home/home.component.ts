@@ -2986,7 +2986,14 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   openMemorizationPractice(item: MemorizedItem): void {
     this.practiceMemorizedItem = item;
+    // Sync CD so the practice session mounts and focuses its input inside the same
+    // user-gesture turn as the verse-card tap (required for iOS/Android keyboards).
     this.cdr.markForCheck();
+    try {
+      this.cdr.detectChanges();
+    } catch {
+      // Test doubles / detached views may not support full CD.
+    }
   }
 
   closeMemorizationPractice(): void {
