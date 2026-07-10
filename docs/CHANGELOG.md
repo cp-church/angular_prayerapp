@@ -4,6 +4,16 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Admin Analytics — Memorize mastery counts ✅
+- **UI**: Admin → Settings → Analytics shows three metric cards (**Learning**, **Practicing**, **Mastered**) with site-wide counts of `memorized_items`, using the same completed-session thresholds as the Memorize tab (`< 3` / `3–8` / `9+`). Subtitles say **memorized verses**. [`analytics.service.ts`](src/app/services/analytics.service.ts), [`admin.component.ts`](src/app/pages/admin/admin.component.ts), [`memorization-mastery.ts`](src/app/lib/memorization/memorization-mastery.ts).
+- **UI**: Removed the **Active Email Subscribers** metric card from Site Analytics (total **Email Subscribers** remains).
+- **UI**: Site Analytics metric tiles are more compact (tighter grid, smaller padding/type/icons) so the chart sits higher on the page.
+- **UI**: Analytics tiles use a shared cream/neutral shell with brand left-border accents by group: church blue (page views), church green (prayers), gold (subscribers), slate (memorize).
+- **UI**: Admin Portal header no longer shows the email / logout chip (Help and Main Site remain).
+
+### Email templates — Outlook desktop–safe HTML ✅
+- **Data**: Migration [`20260710120000_email_templates_outlook_desktop_safe.sql`](supabase/migrations/20260710120000_email_templates_outlook_desktop_safe.sql) updates all live `email_templates.html_body` rows for Outlook desktop (Word HTML engine): solid `bgcolor` / `background-color` under optional gradients, nested `table role="presentation"` shells (~600px), inline styles only (no `<style>` / class reliance), and CTA cells with `bgcolor`. Subjects, `text_body`, names, and descriptions are unchanged; all `{{variables}}` are preserved. **Apply to a test Supabase project first**, then production — see [SETUP.md](SETUP.md#email-templates).
+
 ### Memorize — keyboard on resume of in-progress type/initials ✅
 - **Fix**: Reopening a verse with an in-progress type or first-letters round mounts and focuses the hidden practice input during `onOpen` (same user gesture as the tap), before the async passage fetch. Closing clears the hydrate-once guard so the next open can prime again. [`memorization-practice-session.component.ts`](src/app/components/memorization-practice-session/memorization-practice-session.component.ts).
 - **Fix**: Home runs **`detectChanges()`** when opening practice so the session mounts inside the verse-card tap turn (not on a later CD cycle). The capture input no longer uses `opacity: 0` / `pointer-events: none` (WebKit focuses those without opening the keyboard); it is a 1px near-invisible strip with `font-size: 16px`, and focus is followed by `click()` to coax the software keyboard. [`home.component.ts`](src/app/pages/home/home.component.ts), [`memorization-practice-session.component.ts`](src/app/components/memorization-practice-session/memorization-practice-session.component.ts).

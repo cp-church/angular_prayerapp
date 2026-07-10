@@ -13,7 +13,6 @@ import { Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { AdminDataService } from '../../services/admin-data.service';
 import { AdminAuthService } from '../../services/admin-auth.service';
-import { UserSessionService } from '../../services/user-session.service';
 import { AnalyticsService, AnalyticsStats } from '../../services/analytics.service';
 import { AdminPrayerApprovalComponent } from '../../components/admin-prayer-approval/admin-prayer-approval.component';
 import { AdminUpdateApprovalComponent } from '../../components/admin-update-approval/admin-update-approval.component';
@@ -38,7 +37,6 @@ import { GitHubSettingsComponent } from '../../components/github-settings/github
 import { PrayerEncouragementSettingsComponent } from '../../components/prayer-encouragement-settings/prayer-encouragement-settings.component';
 import { RichTextEditorsSettingsComponent } from '../../components/rich-text-editors-settings/rich-text-editors-settings.component';
 import { PlanningCenterListMapperComponent } from '../../components/planning-center-list-mapper/planning-center-list-mapper.component';
-import { ConfirmationDialogComponent } from '../../components/confirmation-dialog/confirmation-dialog.component';
 import { SiteAnalyticsActivityChartComponent } from '../../components/site-analytics-activity-chart/site-analytics-activity-chart.component';
 import { AdminHelpModalComponent } from '../../components/admin-help-modal/admin-help-modal.component';
 import { AdminHelpDriverTourService } from '../../services/admin-help-driver-tour.service';
@@ -73,7 +71,6 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
     PrayerEncouragementSettingsComponent,
     RichTextEditorsSettingsComponent,
     PlanningCenterListMapperComponent,
-    ConfirmationDialogComponent,
     SiteAnalyticsActivityChartComponent,
     AdminHelpModalComponent
   ],
@@ -106,7 +103,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
       <!-- Header -->
       <header class="w-full bg-white dark:bg-gray-800 shadow-md border-b border-gray-200 dark:border-gray-700">
         <div class="max-w-6xl mx-auto w-full safe-area-header py-6">
-          <div class="flex items-start justify-between gap-4">
+          <div class="flex items-center justify-between gap-4">
             <!-- Left side: Logo and title -->
             <div class="flex items-center gap-3">
               <svg class="text-red-600 dark:text-red-400" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -114,57 +111,34 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
               </svg>
               <div>
                 <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Admin Portal</h1>
-                <p class="text-gray-600 dark:text-gray-300">Manage prayer requests and updates</p>
               </div>
             </div>
             
-            <!-- Right side: Email indicator and navigation controls -->
-            <div class="flex flex-col items-end gap-2">
-              <!-- Email Indicator -->
-              @if ((userSessionService.userSession$ | async); as session) {
-                <button
-                  (click)="showLogoutConfirmation = true"
-                  class="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer"
-                  title="Click to log out"
-                >
-                  {{ session.email }}
-                </button>
-              } @else {
-                <button
-                  (click)="showLogoutConfirmation = true"
-                  class="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-2 py-1 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer"
-                  title="Click to log out"
-                >
-                  {{ getAdminEmail() }}
-                </button>
-              }
-              
-              <!-- Navigation Controls: Help (left), Main Site -->
-              <div class="flex flex-row items-center gap-2">
-                <button
-                  type="button"
-                  (click)="showAdminHelp = true"
-                  class="flex items-center justify-center h-12 gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors cursor-pointer"
-                  title="Help & Guidance"
-                  aria-label="Open admin help"
-                >
-                  <svg class="w-6 h-6 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"></circle>
-                    <text x="12" y="16" text-anchor="middle" fill="currentColor" font-size="14" font-weight="bold">?</text>
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  (click)="goToHome()"
-                  class="flex items-center justify-center h-12 gap-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-900 transition-colors text-sm cursor-pointer"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="19" y1="12" x2="5" y2="12"></line>
-                    <polyline points="12 19 5 12 12 5"></polyline>
-                  </svg>
-                  Main Site
-                </button>
-              </div>
+            <!-- Right side: navigation controls (h-10 — slightly smaller than main site h-12) -->
+            <div class="flex flex-row items-center gap-2">
+              <button
+                type="button"
+                (click)="showAdminHelp = true"
+                class="flex items-center justify-center h-10 gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2.5 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors cursor-pointer"
+                title="Help & Guidance"
+                aria-label="Open admin help"
+              >
+                <svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"></circle>
+                  <text x="12" y="16" text-anchor="middle" fill="currentColor" font-size="14" font-weight="bold">?</text>
+                </svg>
+              </button>
+              <button
+                type="button"
+                (click)="goToHome()"
+                class="flex items-center justify-center h-10 gap-1 px-3 bg-blue-600 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-sm cursor-pointer"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="19" y1="12" x2="5" y2="12"></line>
+                  <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Main Site
+              </button>
             </div>
           </div>
         </div>
@@ -381,10 +355,6 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
           <!-- Settings Tab -->
           @if (activeTab === 'settings') {
             <div>
-              <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-6">
-                Admin Settings
-              </h2>
-              
               <!-- Settings Sub-Navigation -->
             <div class="flex flex-wrap gap-2 mb-6 border-b border-gray-200 dark:border-gray-700">
               <button
@@ -463,174 +433,192 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
                   }
 
                   @if (!analyticsStats.loading) {
-                    <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-2">
                   <!-- Today -->
-                  <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
-                    <div class="flex items-center gap-2 mb-2">
-                      <svg class="text-blue-600 dark:text-blue-400" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <div class="bg-[#F8F7F5] dark:bg-gray-800/60 rounded-md p-2.5 border border-[#D1CCC4] dark:border-gray-600 border-l-[3px] border-l-[#0047AB]">
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <svg class="text-[#0047AB] dark:text-[#7BA3D9]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                         <circle cx="12" cy="12" r="3"></circle>
                       </svg>
-                      <div class="text-sm font-medium text-blue-900 dark:text-blue-100">Today</div>
+                      <div class="text-xs font-medium text-gray-700 dark:text-gray-200">Today</div>
                     </div>
-                    <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                    <div class="text-xl font-bold leading-tight text-[#0047AB] dark:text-[#7BA3D9]">
                       {{ analyticsStats.todayPageViews.toLocaleString() }}
                     </div>
-                    <div class="text-xs text-blue-600/70 dark:text-blue-400/70 mt-1">page views</div>
+                    <div class="text-[10px] leading-tight text-gray-500 dark:text-gray-400 mt-0.5">page views</div>
                   </div>
-
                   <!-- This Week -->
-                  <div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
-                    <div class="flex items-center gap-2 mb-2">
-                      <svg class="text-purple-600 dark:text-purple-400" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <div class="bg-[#F8F7F5] dark:bg-gray-800/60 rounded-md p-2.5 border border-[#D1CCC4] dark:border-gray-600 border-l-[3px] border-l-[#0047AB]">
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <svg class="text-[#0047AB] dark:text-[#7BA3D9]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                         <line x1="16" y1="2" x2="16" y2="6"></line>
                         <line x1="8" y1="2" x2="8" y2="6"></line>
                         <line x1="3" y1="10" x2="21" y2="10"></line>
                       </svg>
-                      <div class="text-sm font-medium text-purple-900 dark:text-purple-100">This Week</div>
+                      <div class="text-xs font-medium text-gray-700 dark:text-gray-200">This Week</div>
                     </div>
-                    <div class="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                    <div class="text-xl font-bold leading-tight text-[#0047AB] dark:text-[#7BA3D9]">
                       {{ analyticsStats.weekPageViews.toLocaleString() }}
                     </div>
-                    <div class="text-xs text-purple-600/70 dark:text-purple-400/70 mt-1">page views</div>
+                    <div class="text-[10px] leading-tight text-gray-500 dark:text-gray-400 mt-0.5">page views</div>
                   </div>
-
                   <!-- This Month -->
-                  <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-700">
-                    <div class="flex items-center gap-2 mb-2">
-                      <svg class="text-green-600 dark:text-green-400" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <div class="bg-[#F8F7F5] dark:bg-gray-800/60 rounded-md p-2.5 border border-[#D1CCC4] dark:border-gray-600 border-l-[3px] border-l-[#0047AB]">
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <svg class="text-[#0047AB] dark:text-[#7BA3D9]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
                         <polyline points="17 6 23 6 23 12"></polyline>
                       </svg>
-                      <div class="text-sm font-medium text-green-900 dark:text-green-100">This Month</div>
+                      <div class="text-xs font-medium text-gray-700 dark:text-gray-200">This Month</div>
                     </div>
-                    <div class="text-3xl font-bold text-green-600 dark:text-green-400">
+                    <div class="text-xl font-bold leading-tight text-[#0047AB] dark:text-[#7BA3D9]">
                       {{ analyticsStats.monthPageViews.toLocaleString() }}
                     </div>
-                    <div class="text-xs text-green-600/70 dark:text-green-400/70 mt-1">page views</div>
+                    <div class="text-[10px] leading-tight text-gray-500 dark:text-gray-400 mt-0.5">page views</div>
                   </div>
-
                   <!-- This Year -->
-                  <div class="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-4 border border-indigo-200 dark:border-indigo-700">
-                    <div class="flex items-center gap-2 mb-2">
-                      <svg class="text-indigo-600 dark:text-indigo-400" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <div class="bg-[#F8F7F5] dark:bg-gray-800/60 rounded-md p-2.5 border border-[#D1CCC4] dark:border-gray-600 border-l-[3px] border-l-[#0047AB]">
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <svg class="text-[#0047AB] dark:text-[#7BA3D9]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="9"></circle>
                         <polyline points="12 7 12 12 16 14"></polyline>
                       </svg>
-                      <div class="text-sm font-medium text-indigo-900 dark:text-indigo-100">This Year</div>
+                      <div class="text-xs font-medium text-gray-700 dark:text-gray-200">This Year</div>
                     </div>
-                    <div class="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+                    <div class="text-xl font-bold leading-tight text-[#0047AB] dark:text-[#7BA3D9]">
                       {{ analyticsStats.yearPageViews.toLocaleString() }}
                     </div>
-                    <div class="text-xs text-indigo-600/70 dark:text-indigo-400/70 mt-1">page views</div>
+                    <div class="text-[10px] leading-tight text-gray-500 dark:text-gray-400 mt-0.5">page views</div>
                   </div>
-
                   <!-- All Time -->
-                  <div class="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4 border border-orange-200 dark:border-orange-700">
-                    <div class="flex items-center gap-2 mb-2">
-                      <svg class="text-orange-600 dark:text-orange-400" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <div class="bg-[#F8F7F5] dark:bg-gray-800/60 rounded-md p-2.5 border border-[#D1CCC4] dark:border-gray-600 border-l-[3px] border-l-[#0047AB]">
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <svg class="text-[#0047AB] dark:text-[#7BA3D9]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                         <circle cx="9" cy="7" r="4"></circle>
                         <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                         <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                       </svg>
-                      <div class="text-sm font-medium text-orange-900 dark:text-orange-100">All Time</div>
+                      <div class="text-xs font-medium text-gray-700 dark:text-gray-200">All Time</div>
                     </div>
-                    <div class="text-3xl font-bold text-orange-600 dark:text-orange-400">
+                    <div class="text-xl font-bold leading-tight text-[#0047AB] dark:text-[#7BA3D9]">
                       {{ analyticsStats.totalPageViews.toLocaleString() }}
                     </div>
-                    <div class="text-xs text-orange-600/70 dark:text-orange-400/70 mt-1">total page views</div>
+                    <div class="text-[10px] leading-tight text-gray-500 dark:text-gray-400 mt-0.5">total page views</div>
                   </div>
-
                   <!-- Total Prayers -->
-                  <div class="bg-rose-50 dark:bg-rose-900/20 rounded-lg p-4 border border-rose-200 dark:border-rose-700">
-                    <div class="flex items-center gap-2 mb-2">
-                      <svg class="text-rose-600 dark:text-rose-400" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <div class="bg-[#F8F7F5] dark:bg-gray-800/60 rounded-md p-2.5 border border-[#D1CCC4] dark:border-gray-600 border-l-[3px] border-l-[#2F5F54]">
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <svg class="text-[#2F5F54] dark:text-[#8FB9A8]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                       </svg>
-                      <div class="text-sm font-medium text-rose-900 dark:text-rose-100">Total Prayers</div>
+                      <div class="text-xs font-medium text-gray-700 dark:text-gray-200">Total Prayers</div>
                     </div>
-                    <div class="text-3xl font-bold text-rose-600 dark:text-rose-400">
+                    <div class="text-xl font-bold leading-tight text-[#2F5F54] dark:text-[#8FB9A8]">
                       {{ analyticsStats.totalPrayers.toLocaleString() }}
                     </div>
-                    <div class="text-xs text-rose-600/70 dark:text-rose-400/70 mt-1">in database</div>
+                    <div class="text-[10px] leading-tight text-gray-500 dark:text-gray-400 mt-0.5">in database</div>
                   </div>
-
                   <!-- Current Prayers -->
-                  <div class="bg-teal-50 dark:bg-teal-900/20 rounded-lg p-4 border border-teal-200 dark:border-teal-700">
-                    <div class="flex items-center gap-2 mb-2">
-                      <svg class="text-teal-600 dark:text-teal-400" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <div class="bg-[#F8F7F5] dark:bg-gray-800/60 rounded-md p-2.5 border border-[#D1CCC4] dark:border-gray-600 border-l-[3px] border-l-[#2F5F54]">
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <svg class="text-[#2F5F54] dark:text-[#8FB9A8]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M9 11l3 3L22 4"></path>
                         <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                       </svg>
-                      <div class="text-sm font-medium text-teal-900 dark:text-teal-100">Current</div>
+                      <div class="text-xs font-medium text-gray-700 dark:text-gray-200">Current</div>
                     </div>
-                    <div class="text-3xl font-bold text-teal-600 dark:text-teal-400">
+                    <div class="text-xl font-bold leading-tight text-[#2F5F54] dark:text-[#8FB9A8]">
                       {{ analyticsStats.currentPrayers.toLocaleString() }}
                     </div>
-                    <div class="text-xs text-teal-600/70 dark:text-teal-400/70 mt-1">active prayers</div>
+                    <div class="text-[10px] leading-tight text-gray-500 dark:text-gray-400 mt-0.5">active prayers</div>
                   </div>
-
                   <!-- Answered Prayers -->
-                  <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-4 border border-emerald-200 dark:border-emerald-700">
-                    <div class="flex items-center gap-2 mb-2">
-                      <svg class="text-emerald-600 dark:text-emerald-400" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <div class="bg-[#F8F7F5] dark:bg-gray-800/60 rounded-md p-2.5 border border-[#D1CCC4] dark:border-gray-600 border-l-[3px] border-l-[#2F5F54]">
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <svg class="text-[#2F5F54] dark:text-[#8FB9A8]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="20 6 9 17 4 12"></polyline>
                       </svg>
-                      <div class="text-sm font-medium text-emerald-900 dark:text-emerald-100">Answered</div>
+                      <div class="text-xs font-medium text-gray-700 dark:text-gray-200">Answered</div>
                     </div>
-                    <div class="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+                    <div class="text-xl font-bold leading-tight text-[#2F5F54] dark:text-[#8FB9A8]">
                       {{ analyticsStats.answeredPrayers.toLocaleString() }}
                     </div>
-                    <div class="text-xs text-emerald-600/70 dark:text-emerald-400/70 mt-1">answered prayers</div>
+                    <div class="text-[10px] leading-tight text-gray-500 dark:text-gray-400 mt-0.5">answered prayers</div>
                   </div>
-
                   <!-- Archived Prayers -->
-                  <div class="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4 border border-[#C9A961] dark:border-[#C9A961]">
-                    <div class="flex items-center gap-2 mb-2">
-                      <svg class="text-[#6B5D45] dark:text-[#D4AF85]" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <div class="bg-[#F8F7F5] dark:bg-gray-800/60 rounded-md p-2.5 border border-[#D1CCC4] dark:border-gray-600 border-l-[3px] border-l-[#2F5F54]">
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <svg class="text-[#2F5F54] dark:text-[#8FB9A8]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="3" y="5" width="18" height="16" rx="2"></rect>
                         <path d="M7 15h10"></path>
                         <path d="M7 7h10"></path>
                       </svg>
-                      <div class="text-sm font-medium text-[#6B5D45] dark:text-[#D4AF85]">Archived</div>
+                      <div class="text-xs font-medium text-gray-700 dark:text-gray-200">Archived</div>
                     </div>
-                    <div class="text-3xl font-bold text-[#6B5D45] dark:text-[#D4AF85]">
+                    <div class="text-xl font-bold leading-tight text-[#2F5F54] dark:text-[#8FB9A8]">
                       {{ analyticsStats.archivedPrayers.toLocaleString() }}
                     </div>
-                    <div class="text-xs text-[#6B5D45] dark:text-[#D4AF85] mt-1 opacity-70">archived prayers</div>
+                    <div class="text-[10px] leading-tight text-gray-500 dark:text-gray-400 mt-0.5">archived prayers</div>
                   </div>
-
-                  <!-- Email Subscribers -->
-                  <div class="bg-cyan-50 dark:bg-cyan-900/20 rounded-lg p-4 border border-cyan-200 dark:border-cyan-700">
-                    <div class="flex items-center gap-2 mb-2">
-                      <svg class="text-cyan-600 dark:text-cyan-400" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <!-- Subscribers -->
+                  <div class="bg-[#F8F7F5] dark:bg-gray-800/60 rounded-md p-2.5 border border-[#D1CCC4] dark:border-gray-600 border-l-[3px] border-l-[#C9A961]">
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <svg class="text-[#6B6256] dark:text-[#D4AF85]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                         <circle cx="8.5" cy="7" r="4"></circle>
                         <polyline points="17 11 19 13 23 9"></polyline>
                       </svg>
-                      <div class="text-sm font-medium text-cyan-900 dark:text-cyan-100">Email Subscribers</div>
+                      <div class="text-xs font-medium text-gray-700 dark:text-gray-200">Subscribers</div>
                     </div>
-                    <div class="text-3xl font-bold text-cyan-600 dark:text-cyan-400">
+                    <div class="text-xl font-bold leading-tight text-[#6B6256] dark:text-[#D4AF85]">
                       {{ analyticsStats.totalSubscribers.toLocaleString() }}
                     </div>
-                    <div class="text-xs text-cyan-600/70 dark:text-cyan-400/70 mt-1">total email subscribers</div>
+                    <div class="text-[10px] leading-tight text-gray-500 dark:text-gray-400 mt-0.5">total subscribers</div>
                   </div>
-
-                  <!-- Active Email Subscribers -->
-                  <div class="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4 border border-amber-200 dark:border-amber-700">
-                    <div class="flex items-center gap-2 mb-2">
-                      <svg class="text-amber-600 dark:text-amber-400" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                  <!-- Memorize Learning -->
+                  <div class="bg-[#F8F7F5] dark:bg-gray-800/60 rounded-md p-2.5 border border-[#D1CCC4] dark:border-gray-600 border-l-[3px] border-l-[#3E5266]">
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <svg class="text-[#3E5266] dark:text-[#A8B8C8]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                       </svg>
-                      <div class="text-sm font-medium text-amber-900 dark:text-amber-100">Active Email Subscribers</div>
+                      <div class="text-xs font-medium text-gray-700 dark:text-gray-200">Learning</div>
                     </div>
-                    <div class="text-3xl font-bold text-amber-600 dark:text-amber-400">
-                      {{ analyticsStats.activeEmailSubscribers.toLocaleString() }}
+                    <div class="text-xl font-bold leading-tight text-[#3E5266] dark:text-[#A8B8C8]">
+                      {{ analyticsStats.memorizationLearning.toLocaleString() }}
                     </div>
-                    <div class="text-xs text-amber-600/70 dark:text-amber-400/70 mt-1">active email subscribers</div>
+                    <div class="text-[10px] leading-tight text-gray-500 dark:text-gray-400 mt-0.5">memorized verses</div>
+                  </div>
+                  <!-- Memorize Practicing -->
+                  <div class="bg-[#F8F7F5] dark:bg-gray-800/60 rounded-md p-2.5 border border-[#D1CCC4] dark:border-gray-600 border-l-[3px] border-l-[#3E5266]">
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <svg class="text-[#3E5266] dark:text-[#A8B8C8]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                      </svg>
+                      <div class="text-xs font-medium text-gray-700 dark:text-gray-200">Practicing</div>
+                    </div>
+                    <div class="text-xl font-bold leading-tight text-[#3E5266] dark:text-[#A8B8C8]">
+                      {{ analyticsStats.memorizationPracticing.toLocaleString() }}
+                    </div>
+                    <div class="text-[10px] leading-tight text-gray-500 dark:text-gray-400 mt-0.5">memorized verses</div>
+                  </div>
+                  <!-- Memorize Mastered -->
+                  <div class="bg-[#F8F7F5] dark:bg-gray-800/60 rounded-md p-2.5 border border-[#D1CCC4] dark:border-gray-600 border-l-[3px] border-l-[#3E5266]">
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <svg class="text-[#3E5266] dark:text-[#A8B8C8]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                      </svg>
+                      <div class="text-xs font-medium text-gray-700 dark:text-gray-200">Mastered</div>
+                    </div>
+                    <div class="text-xl font-bold leading-tight text-[#3E5266] dark:text-[#A8B8C8]">
+                      {{ analyticsStats.memorizationMastered.toLocaleString() }}
+                    </div>
+                    <div class="text-[10px] leading-tight text-gray-500 dark:text-gray-400 mt-0.5">memorized verses</div>
                   </div>
                 </div>
                 <app-site-analytics-activity-chart></app-site-analytics-activity-chart>
@@ -745,18 +733,6 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
         (startPrayerEditorManageTour)="onPrayerEditorManageTourFromHelp()"
         (startPrayerPromptsTypesTour)="onPrayerPromptsTypesTourFromHelp()"
       ></app-admin-help-modal>
-
-      @if (showLogoutConfirmation) {
-        <app-confirmation-dialog
-          title="Log Out?"
-          message="Are you sure you want to log out?"
-          confirmText="Log Out"
-          cancelText="Cancel"
-          [isDangerous]="false"
-          (confirm)="handleLogout()"
-          (cancel)="showLogoutConfirmation = false"
-        ></app-confirmation-dialog>
-      }
     </div>
   `
 })
@@ -781,13 +757,14 @@ export class AdminComponent implements OnInit, OnDestroy {
     answeredPrayers: 0,
     archivedPrayers: 0,
     totalSubscribers: 0,
-    activeEmailSubscribers: 0,
+    memorizationLearning: 0,
+    memorizationPracticing: 0,
+    memorizationMastered: 0,
     loading: false
   };
 
   // Dialog state for send notification
   showSendNotificationDialog = false;
-  showLogoutConfirmation = false;
   showAdminHelp = false;
   sendDialogType: NotificationType = 'prayer';
   sendDialogPrayerTitle?: string;
@@ -802,7 +779,6 @@ export class AdminComponent implements OnInit, OnDestroy {
     private adminDataService: AdminDataService,
     private analyticsService: AnalyticsService,
     public adminAuthService: AdminAuthService,
-    public userSessionService: UserSessionService,
     private ngZone: NgZone,
     public cdr: ChangeDetectorRef,
     private adminHelpDriverTour: AdminHelpDriverTourService
@@ -1090,12 +1066,6 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.router.navigate(['/']);
   }
 
-  async handleLogout(): Promise<void> {
-    this.showLogoutConfirmation = false;
-    await this.adminAuthService.logout();
-    this.router.navigate(['/login']);
-  }
-
   refresh() {
     this.adminDataService.refresh();
   }
@@ -1367,11 +1337,5 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.sendDialogUpdateId = undefined;
     this.sendDialogPrayerTitle = undefined;
     this.cdr.markForCheck();
-  }
-
-  getAdminEmail(): string {
-    // Get email from UserSessionService (cached from database)
-    const session = this.userSessionService.getCurrentSession();
-    return session?.email || '';
   }
 }

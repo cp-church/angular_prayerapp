@@ -277,6 +277,15 @@ WHERE email = 'user@example.com'
 3. Test in multiple clients
 4. Use email-safe HTML (tables for layout)
 
+**Problem**: Outlook **desktop** looks broken (missing header color, unstyled buttons) while Outlook **web** / Gmail look fine
+
+**Cause**: Desktop Outlook uses the Word HTML engine — it ignores CSS gradients and often strips `<style>` / class-based CSS.
+
+**Solutions**:
+1. Prefer solid `bgcolor` / `background-color` with optional `background-image: linear-gradient(...)` for modern clients
+2. Use nested `table role="presentation"` layout and inline styles only
+3. Apply migration [`20260710120000_email_templates_outlook_desktop_safe.sql`](../supabase/migrations/20260710120000_email_templates_outlook_desktop_safe.sql) to a **test** DB first, then production (see [SETUP.md](SETUP.md#email-templates))
+
 ## Authentication
 
 ### Can't Access Admin Portal

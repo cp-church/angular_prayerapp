@@ -7,7 +7,6 @@ describe('AdminComponent', () => {
   let adminDataService: any;
   let analyticsService: any;
   let adminAuthService: any;
-  let userSessionService: any;
   let router: any;
   let ngZone: any;
   let cdr: any;
@@ -51,7 +50,9 @@ describe('AdminComponent', () => {
         answeredPrayers: 8,
         archivedPrayers: 9,
         totalSubscribers: 10,
-        activeEmailSubscribers: 11,
+        memorizationLearning: 12,
+        memorizationPracticing: 13,
+        memorizationMastered: 14,
         loading: false
       }),
       trackPageView: vi.fn().mockResolvedValue(undefined)
@@ -60,11 +61,6 @@ describe('AdminComponent', () => {
     adminAuthService = {
       user$: of({ email: 'admin@example.com' }),
       recordActivity: vi.fn()
-    };
-
-    userSessionService = {
-      userSession$: of({ email: 'admin@example.com', fullName: 'Admin User' }),
-      getCurrentSession: vi.fn().mockReturnValue({ email: 'admin@example.com', fullName: 'Admin User' })
     };
 
     router = { navigate: vi.fn() };
@@ -84,7 +80,6 @@ describe('AdminComponent', () => {
       adminDataService,
       analyticsService,
       adminAuthService,
-      userSessionService,
       ngZone,
       cdr,
       adminHelpDriverTour as never
@@ -276,11 +271,6 @@ describe('AdminComponent', () => {
     expect(cdr.markForCheck).toHaveBeenCalled();
   });
 
-  it('getAdminEmail returns email from userSessionService', () => {
-    userSessionService.getCurrentSession = vi.fn().mockReturnValue({ email: 'session@x.com' });
-    expect(component.getAdminEmail()).toBe('session@x.com');
-  });
-
   it('ngOnDestroy calls next and complete on destroy$', () => {
     const next = vi.fn();
     const complete = vi.fn();
@@ -374,11 +364,6 @@ describe('AdminComponent', () => {
     expect(loadSpy).toHaveBeenCalled();
   });
 
-
-  it('getAdminEmail returns empty string when no session', () => {
-    userSessionService.getCurrentSession = vi.fn().mockReturnValue(null);
-    expect(component.getAdminEmail()).toBe('');
-  });
 
   it('autoProgressTabs returns early when no adminData', () => {
     (component as any).adminData = null;
@@ -534,20 +519,6 @@ describe('AdminComponent', () => {
     await component.denyUpdateDeletionRequest('ud2', 'r');
     expect(adminDataService.denyUpdateDeletionRequest).toHaveBeenCalledWith('ud2', 'r');
     expect(autoSpy).toHaveBeenCalled();
-  });
-
-  describe('getAdminEmail', () => {
-    it('should return admin email from userSessionService', () => {
-      userSessionService.getCurrentSession = vi.fn().mockReturnValue({ email: 'admin@test.com' });
-      const email = component.getAdminEmail();
-      expect(email).toBe('admin@test.com');
-    });
-
-    it('should return empty string when no session from userSessionService', () => {
-      userSessionService.getCurrentSession = vi.fn().mockReturnValue(null);
-      const email = component.getAdminEmail();
-      expect(email).toBe('');
-    });
   });
 
   describe('denyPrayer', () => {

@@ -32,6 +32,10 @@ describe('AnalyticsService', () => {
           return createDefaultSimpleChain();
         } else if (table === 'email_subscribers') {
           return createDefaultSimpleChain();
+        } else if (table === 'memorized_items') {
+          return {
+            select: vi.fn(() => Promise.resolve({ data: [], error: null }))
+          };
         }
         return {
           insert: vi.fn(() => Promise.resolve({ data: null, error: null }))
@@ -317,7 +321,9 @@ describe('AnalyticsService', () => {
         answeredPrayers: 0,
         archivedPrayers: 0,
         totalSubscribers: 0,
-        activeEmailSubscribers: 0,
+        memorizationLearning: 0,
+        memorizationPracticing: 0,
+        memorizationMastered: 0,
         loading: false
       });
     });
@@ -337,7 +343,9 @@ describe('AnalyticsService', () => {
         answeredPrayers: expect.any(Number),
         archivedPrayers: expect.any(Number),
         totalSubscribers: expect.any(Number),
-        activeEmailSubscribers: expect.any(Number),
+        memorizationLearning: expect.any(Number),
+        memorizationPracticing: expect.any(Number),
+        memorizationMastered: expect.any(Number),
         loading: false
       }));
     });
@@ -365,6 +373,10 @@ describe('AnalyticsService', () => {
           return createErrorSimpleChain();
         } else if (table === 'email_subscribers') {
           return createErrorSimpleChain();
+        } else if (table === 'memorized_items') {
+          return {
+            select: vi.fn(() => Promise.resolve({ data: null, error }))
+          };
         }
         return createErrorSimpleChain();
       });
@@ -375,6 +387,9 @@ describe('AnalyticsService', () => {
       expect(stats.totalPageViews).toBe(0);
       expect(stats.totalPrayers).toBe(0);
       expect(stats.totalSubscribers).toBe(0);
+      expect(stats.memorizationLearning).toBe(0);
+      expect(stats.memorizationPracticing).toBe(0);
+      expect(stats.memorizationMastered).toBe(0);
       
       expect(consoleErrorSpy).toHaveBeenCalled();
       consoleErrorSpy.mockRestore();
@@ -426,7 +441,6 @@ describe('AnalyticsService', () => {
     it('should return stats with positive values', async () => {
       let eqCallCount = 0;
       let prayersSelectCount = 0;
-      let subscribersSelectCount = 0;
 
       mockSupabaseClient.from = vi.fn((table: string) => {
         if (table === 'analytics') {
@@ -472,20 +486,28 @@ describe('AnalyticsService', () => {
           };
         } else if (table === 'email_subscribers') {
           return {
-            select: vi.fn(() => {
-              subscribersSelectCount++;
-              if (subscribersSelectCount === 1) {
-                // First select = total subscribers (no eq)
-                return Promise.resolve({ count: 25, error: null });
-              }
-              // Second select has eq for is_active
-              return {
-                eq: vi.fn(function(column: string, value: any) {
-                  if (value === true) return Promise.resolve({ count: 20, error: null });
-                  return Promise.resolve({ count: 25, error: null });
-                })
-              };
-            })
+            select: vi.fn(() => Promise.resolve({ count: 25, error: null })),
+          };
+        } else if (table === 'memorized_items') {
+          const completed = (n: number) =>
+            Array.from({ length: n }, (_, i) => ({
+              date: i,
+              wrongAttempts: 0,
+              correctKeystrokes: 1,
+              completed: true,
+            }));
+          return {
+            select: vi.fn(() =>
+              Promise.resolve({
+                data: [
+                  { practice_sessions: completed(1) },
+                  { practice_sessions: completed(5) },
+                  { practice_sessions: completed(10) },
+                  { practice_sessions: null },
+                ],
+                error: null,
+              })
+            ),
           };
         }
         return { select: vi.fn(() => Promise.resolve({ count: 0, error: null })) };
@@ -503,7 +525,9 @@ describe('AnalyticsService', () => {
       expect(stats.answeredPrayers).toBe(15);
       expect(stats.archivedPrayers).toBe(5);
       expect(stats.totalSubscribers).toBe(25);
-      expect(stats.activeEmailSubscribers).toBe(20);
+      expect(stats.memorizationLearning).toBe(2);
+      expect(stats.memorizationPracticing).toBe(1);
+      expect(stats.memorizationMastered).toBe(1);
       expect(stats.loading).toBe(false);
     });
 
@@ -600,12 +624,11 @@ describe('AnalyticsService', () => {
           };
         } else if (table === 'email_subscribers') {
           return {
-            select: vi.fn(() => ({
-              eq: vi.fn(function(column: string, value: any) {
-                if (value === true) return Promise.resolve({ count: null, error });
-                return Promise.resolve({ count: 25, error: null });
-              })
-            }))
+            select: vi.fn(() => Promise.resolve({ count: 25, error: null })),
+          };
+        } else if (table === 'memorized_items') {
+          return {
+            select: vi.fn(() => Promise.resolve({ data: null, error }))
           };
         }
         return { select: vi.fn(() => Promise.resolve({ count: 0, error: null })) };
@@ -616,7 +639,7 @@ describe('AnalyticsService', () => {
       expect(stats.yearPageViews).toBe(0);
       expect(stats.currentPrayers).toBe(0);
       expect(stats.archivedPrayers).toBe(0);
-      expect(stats.activeEmailSubscribers).toBe(0);
+      expect(stats.memorizationLearning).toBe(0);
       expect(stats.loading).toBe(false);
       expect(consoleErrorSpy).toHaveBeenCalledTimes(7); // All error branches logged
       consoleErrorSpy.mockRestore();

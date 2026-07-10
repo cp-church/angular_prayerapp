@@ -1,4 +1,6 @@
 import { Injectable } from '@angular/core';
+import { countByMasterLevel } from '../lib/memorization/memorization-mastery';
+import type { MemorizationPracticeSessionRecord } from '../types/memorization';
 import { SupabaseService } from './supabase.service';
 import { UserSessionService } from './user-session.service';
 
@@ -13,7 +15,9 @@ export interface AnalyticsStats {
   answeredPrayers: number;
   archivedPrayers: number;
   totalSubscribers: number;
-  activeEmailSubscribers: number;
+  memorizationLearning: number;
+  memorizationPracticing: number;
+  memorizationMastered: number;
   loading: boolean;
 }
 
@@ -161,7 +165,9 @@ export class AnalyticsService {
       answeredPrayers: 0,
       archivedPrayers: 0,
       totalSubscribers: 0,
-      activeEmailSubscribers: 0,
+      memorizationLearning: 0,
+      memorizationPracticing: 0,
+      memorizationMastered: 0,
       loading: true
     };
 
@@ -208,7 +214,7 @@ export class AnalyticsService {
         answeredPrayersResult,
         archivedPrayersResult,
         subscribersResult,
-        activeSubscribersResult
+        memorizedItemsResult
       ] = await Promise.all([
         // Total page views
         this.supabase.client
@@ -272,11 +278,8 @@ export class AnalyticsService {
           .from('email_subscribers')
           .select('*', { count: 'exact', head: true }),
 
-        // Active email subscribers (is_active = true)
-        this.supabase.client
-          .from('email_subscribers')
-          .select('*', { count: 'exact', head: true })
-          .eq('is_active', true)
+        // Memorization mastery (site-wide; levels derived from practice_sessions)
+        this.supabase.client.from('memorized_items').select('practice_sessions')
       ]);
 
       // Process results
@@ -340,10 +343,22 @@ export class AnalyticsService {
         stats.totalSubscribers = subscribersResult.count || 0;
       }
 
-      if (activeSubscribersResult.error) {
-        console.error('Error fetching active subscribers count:', activeSubscribersResult.error);
+      if (memorizedItemsResult.error) {
+        console.error('Error fetching memorization mastery counts:', memorizedItemsResult.error);
       } else {
-        stats.activeEmailSubscribers = activeSubscribersResult.count || 0;
+        const rows = (memorizedItemsResult.data ?? []) as Array<{
+          practice_sessions?: MemorizationPracticeSessionRecord[] | null;
+        }>;
+        const mastery = countByMasterLevel(
+          rows.map((row) => ({
+            practiceSessions: Array.isArray(row.practice_sessions)
+              ? row.practice_sessions
+              : [],
+          }))
+        );
+        stats.memorizationLearning = mastery.learning;
+        stats.memorizationPracticing = mastery.practicing;
+        stats.memorizationMastered = mastery.mastered;
       }
 
     } catch (error) {

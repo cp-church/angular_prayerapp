@@ -285,14 +285,16 @@ Key tables created by migrations:
 
 ### Email Templates
 
-Templates are stored in Supabase `email_templates` table:
+Templates are stored in Supabase `email_templates` table (keys such as `approved_prayer`, `denied_prayer`, `prayer_answered`, `subscriber_welcome`, `verification_code`, hourly reminder keys, admin notifications, and account-access templates). Edit them in **Admin → Settings → Email Templates**, or via SQL migrations that `UPDATE` `html_body`.
 
-- `prayer_submitted` - Confirmation when prayer submitted
-- `prayer_approved` - Notification when admin approves prayer
-- `prayer_denied` - Notification when admin denies prayer
-- `prayer_answered` - Notification when prayer marked answered
-- `update_approved` - Notification for approved updates
-- `subscriber_welcome` - Welcome to email list
+**Outlook desktop (Windows)**: The Word HTML engine ignores CSS gradients and often strips `<style>` blocks, so headers and buttons can look broken in desktop Outlook while Outlook on the web looks fine. Migration [`20260710120000_email_templates_outlook_desktop_safe.sql`](../supabase/migrations/20260710120000_email_templates_outlook_desktop_safe.sql) rewrites `html_body` for all current template keys with solid colors + nested tables + inline styles. Subjects and plain-text bodies are unchanged.
+
+**Apply order (required):**
+1. Apply the migration to a **test** Supabase project (or restore a DB backup into a scratch project).
+2. Send sample emails for a few keys (`verification_code`, `approved_prayer`, `admin_invitation`, `subscriber_welcome`) and open them in **Outlook desktop**, Outlook web, and Gmail/Apple Mail.
+3. Only then apply the same migration to **production**.
+
+Do not rely on Admin UI paste alone for a full rollout — the migration is the source of truth for the Outlook-safe shells.
 
 ### Email Queue Processing
 
