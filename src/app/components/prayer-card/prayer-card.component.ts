@@ -36,7 +36,7 @@ const PRAY_FOR_MODAL_DO_NOT_SHOW_KEY = 'prayer_encouragement_modal_do_not_show';
   template: `
     <div
       [attr.id]="tourPersonalWalkthroughAnchors ? 'tour-walkthrough-personal-prayer-card' : null"
-      [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md border-[2px] p-6 mb-4 transition-colors relative ' + (dragHandle && isPersonal ? ' pl-10 ' : '') + getBorderClass()"
+      [class]="'bg-white dark:bg-gray-800 rounded-lg shadow-md border-[2px] px-6 pt-6 pb-4 mb-4 transition-colors relative ' + (dragHandle && isPersonal ? ' pl-10 ' : '') + getBorderClass()"
     >
       <!-- Drag Handle: rendered as first child so absolute left-3 top-1/2 is relative to card root (not header) -->
       @if (dragHandle && isPersonal) {
@@ -153,7 +153,7 @@ const PRAY_FOR_MODAL_DO_NOT_SHOW_KEY = 'prayer_encouragement_modal_do_not_show';
 
       <!-- Action buttons - flex-nowrap, reduced padding so row fits without wrap or scroll -->
       @if (showAddUpdateButton()) {
-      <div class="flex flex-nowrap gap-1 mb-4 items-center min-w-0">
+      <div class="flex flex-nowrap gap-1 items-center min-w-0">
         <button
           type="button"
           (click)="toggleAddUpdate()"
@@ -205,7 +205,7 @@ const PRAY_FOR_MODAL_DO_NOT_SHOW_KEY = 'prayer_encouragement_modal_do_not_show';
 
       <!-- Add Update Form -->
       @if (showAddUpdateForm) {
-      <form #updateForm="ngForm" (ngSubmit)="updateForm.valid && handleAddUpdate()" class="mb-4 p-4 bg-green-50 dark:bg-green-900/20 border border-[#39704D] dark:border-[#39704D] rounded-lg" role="region" [attr.aria-labelledby]="'addUpdateTitle-' + prayer.id">
+      <form #updateForm="ngForm" (ngSubmit)="updateForm.valid && handleAddUpdate()" class="mt-4 mb-0 p-4 bg-green-50 dark:bg-green-900/20 border border-[#39704D] dark:border-[#39704D] rounded-lg" role="region" [attr.aria-labelledby]="'addUpdateTitle-' + prayer.id">
         <h4 [id]="'addUpdateTitle-' + prayer.id" class="text-sm font-medium text-[#39704D] dark:text-[#5FB876] mb-3">Add Prayer Update</h4>
         <div class="space-y-2">
           <div
@@ -303,7 +303,7 @@ const PRAY_FOR_MODAL_DO_NOT_SHOW_KEY = 'prayer_encouragement_modal_do_not_show';
 
       <!-- Delete Request Form -->
       @if (showDeleteRequestForm) {
-      <form #deleteForm="ngForm" (ngSubmit)="deleteForm.valid && handleDeleteRequest()" class="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-600 rounded-lg" role="region" [attr.aria-labelledby]="'deleteFormTitle-' + prayer.id">
+      <form #deleteForm="ngForm" (ngSubmit)="deleteForm.valid && handleDeleteRequest()" class="mt-4 mb-0 p-4 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-600 rounded-lg" role="region" [attr.aria-labelledby]="'deleteFormTitle-' + prayer.id">
         <h4 [id]="'deleteFormTitle-' + prayer.id" class="text-sm font-medium text-red-700 dark:text-red-400 mb-3">Request Prayer Deletion</h4>
         <div class="space-y-2">
           <textarea
@@ -339,7 +339,7 @@ const PRAY_FOR_MODAL_DO_NOT_SHOW_KEY = 'prayer_encouragement_modal_do_not_show';
 
       <!-- Recent Updates -->
       @if (prayer.updates && prayer.updates.length > 0) {
-      <div class=>
+      <div [class.mt-4]="recentUpdatesNeedsTopMargin()">
         <div class="flex items-center justify-between mb-2">
           <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">
             Recent Updates @if (!showAllUpdates && getDisplayedUpdates().length < prayer.updates.length) {<span>({{ getDisplayedUpdates().length }} of {{ prayer.updates.length }})</span>}
@@ -847,6 +847,11 @@ export class PrayerCardComponent implements OnInit, OnChanges, OnDestroy {
       return this.isCurrentUserTheRequester();
     }
     return true; // 'everyone'
+  }
+
+  /** Top margin before Recent Updates when action buttons or an open form sit above. */
+  recentUpdatesNeedsTopMargin(): boolean {
+    return this.showAddUpdateButton() || this.showDeleteRequestForm || this.showAddUpdateForm;
   }
 
   showPrayedForBadge(): boolean {

@@ -895,8 +895,8 @@ describe('PrayerCardComponent', () => {
     });
 
     it('should have responsive padding', () => {
-      const paddingClass = 'p-6';
-      expect(paddingClass).toContain('p-');
+      const paddingClass = 'px-6 pt-6 pb-4';
+      expect(paddingClass).toContain('p');
     });
 
     it('should have dark mode text color', () => {
@@ -1564,6 +1564,23 @@ describe('PrayerCardComponent', () => {
         component.isAdmin = false;
         component.updatesAllowed = 'everyone';
         expect(component.showAddUpdateButton()).toBe(true);
+      });
+
+      it('recentUpdatesNeedsTopMargin: true when delete form open without add-update button', () => {
+        component.isAdmin = false;
+        component.updatesAllowed = 'admin-only';
+        component.showDeleteRequestForm = true;
+        component.showAddUpdateForm = false;
+        expect(component.showAddUpdateButton()).toBe(false);
+        expect(component.recentUpdatesNeedsTopMargin()).toBe(true);
+      });
+
+      it('recentUpdatesNeedsTopMargin: false when no buttons or forms above', () => {
+        component.isAdmin = false;
+        component.updatesAllowed = 'admin-only';
+        component.showDeleteRequestForm = false;
+        component.showAddUpdateForm = false;
+        expect(component.recentUpdatesNeedsTopMargin()).toBe(false);
       });
 
       it('showUpdateDeleteButton: admin always sees button', () => {
