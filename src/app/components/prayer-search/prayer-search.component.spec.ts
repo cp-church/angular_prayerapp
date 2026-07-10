@@ -2427,4 +2427,114 @@ describe('PrayerSearchComponent', () => {
       expect(component.showConfirmationDialog).toBe(true);
     });
   });
+
+  describe('search debounce, lifecycle, and notifications', () => {
+    let mockAdminDataService: {
+      sendBroadcastNotificationForNewPrayer: ReturnType<typeof vi.fn>;
+      sendBroadcastNotificationForNewUpdate: ReturnType<typeof vi.fn>;
+    };
+
+    beforeEach(() => {
+      mockAdminDataService = {
+        sendBroadcastNotificationForNewPrayer: vi
+          .fn()
+          .mockResolvedValue(undefined),
+        sendBroadcastNotificationForNewUpdate: vi
+          .fn()
+          .mockResolvedValue(undefined),
+      };
+      component = new PrayerSearchComponent(
+        mockSupabaseService,
+        mockToastService,
+        mockChangeDetectorRef,
+        mockPrayerService,
+        mockAdminDataService as any
+      );
+    });
+
+    it('ngOnDestroy clears pending debounce timers without throwing', () => {
+      vi.useFakeTimers();
+      component.onMainSearchTermChange('ab');
+      component.onUserSearchQueryChange('xy');
+      expect(() => component.ngOnDestroy()).not.toThrow();
+      vi.useRealTimers();
+    });
+
+    it('onMainSearchTermChange debounces handleSearch for empty trimmed term', async () => {
+      vi.useFakeTimers();
+      const searchSpy = vi
+        .spyOn(component, 'handleSearch')
+        .mockResolvedValue(undefined);
+      component.onMainSearchTermChange('  ');
+      vi.advanceTimersByTime(350);
+      expect(searchSpy).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it('onMainSearchTermChange debounces handleSearch when term meets min length', async () => {
+      vi.useFakeTimers();
+      const searchSpy = vi
+        .spyOn(component, 'handleSearch')
+        .mockResolvedValue(undefined);
+      component.onMainSearchTermChange('needle');
+      vi.advanceTimersByTime(350);
+      expect(searchSpy).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it('onUserSearchQueryChange clears results when below min chars', () => {
+      component.userSearchResults = [
+        { email: 'a@b.com', first_name: 'A', last_name: 'B' },
+      ];
+      component.onUserSearchQueryChange('a');
+      expect(component.userSearchResults).toEqual([]);
+      expect(component.userSearchHasSearched).toBe(false);
+      expect(component.showUserSearchDropdown).toBe(false);
+    });
+
+    it('onUserSearchFocus shows dropdown when results exist', () => {
+      component.userSearchResults = [
+        { email: 'a@b.com', first_name: 'A', last_name: 'B' },
+      ];
+      component.onUserSearchFocus();
+      expect(component.showUserSearchDropdown).toBe(true);
+    });
+
+    it('onUserSearchBlur hides dropdown after delay', () => {
+      vi.useFakeTimers();
+      component.showUserSearchDropdown = true;
+      component.onUserSearchBlur();
+      vi.advanceTimersByTime(180);
+      expect(component.showUserSearchDropdown).toBe(false);
+      vi.useRealTimers();
+    });
+
+    it('onConfirmSendNotification sends prayer broadcast and closes dialog', async () => {
+      component.showSendNotificationDialog = true;
+      component.sendDialogType = 'prayer';
+      component.sendDialogPrayerId = 'p-1';
+
+      await component.onConfirmSendNotification();
+
+      expect(
+        mockAdminDataService.sendBroadcastNotificationForNewPrayer
+      ).toHaveBeenCalledWith('p-1');
+      expect(mockToastService.success).toHaveBeenCalledWith(
+        'Notification emails sent to subscribers'
+      );
+      expect(component.showSendNotificationDialog).toBe(false);
+    });
+
+    it('onDeclineSendNotification resets dialog state', () => {
+      component.showSendNotificationDialog = true;
+      component.sendDialogPrayerId = 'p-1';
+      component.sendDialogPrayerTitle = 'Title';
+
+      component.onDeclineSendNotification();
+
+      expect(component.showSendNotificationDialog).toBe(false);
+      expect(component.sendDialogPrayerId).toBeUndefined();
+      expect(component.sendDialogPrayerTitle).toBeUndefined();
+    });
+  });
 });

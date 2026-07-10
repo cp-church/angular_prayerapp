@@ -31,7 +31,11 @@ const makeMocks = () => {
     updatePersonalPrayerOrder: vi.fn(),
     getUniqueCategoriesForUser: vi.fn().mockResolvedValue([]),
     swapCategoryRanges: vi.fn(),
-    reorderCategories: vi.fn()
+    reorderCategories: vi.fn(),
+    loadPrayers: vi.fn().mockResolvedValue(undefined),
+    loadPersonalPrayers: vi.fn().mockResolvedValue(undefined),
+    updateMemberPrayerUpdate: vi.fn().mockResolvedValue(true),
+    getMemberPrayerUpdates: vi.fn().mockResolvedValue([])
   };
 
   const promptService: any = {
@@ -485,7 +489,7 @@ describe('HomeComponent', () => {
     expect(mocks.planningCenterListService.loadForUser).not.toHaveBeenCalled();
   });
 
-  it.skip('onFiltersChange preserves status and calls applyFilters', () => {
+  it('onFiltersChange preserves status and calls applyFilters', () => {
     const comp = new HomeComponent(
       mocks.prayerService,
       mocks.promptService,
@@ -4359,6 +4363,173 @@ describe('HomeComponent', () => {
       mocks.pcMembersSubject.next([]);
 
       expect(comp.filteredPlanningCenterPrayers).toEqual([]);
+    });
+  });
+
+  describe('pull-to-refresh, logout, and memorization handlers', () => {
+    const newHome = (m: ReturnType<typeof makeMocks>) =>
+      new HomeComponent(
+        m.prayerService,
+        m.promptService,
+        m.adminAuthService,
+        m.userSessionService,
+        m.planningCenterListService,
+        m.badgeService,
+        m.memorizationService,
+        m.cacheService,
+        m.toastService,
+        m.analyticsService,
+        m.cdr,
+        m.router,
+        m.activatedRoute,
+        m.supabaseService,
+        m.helpDriverTourService,
+        m.helpContentService
+      );
+
+    it('handleLogout hides confirmation and calls logout', async () => {
+      const m = makeMocks();
+      const comp = newHome(m);
+      comp.showLogoutConfirmation = true;
+      await comp.handleLogout();
+      expect(comp.showLogoutConfirmation).toBe(false);
+      expect(m.adminAuthService.logout).toHaveBeenCalled();
+    });
+
+    it('onPullToRefresh loads prayers and personal prayers when logged in', async () => {
+      const m = makeMocks();
+      m.userSessionService.getCurrentSession = vi.fn(() => ({ email: 'user@example.com' }));
+      const comp = newHome(m);
+      await comp.onPullToRefresh();
+      expect(m.prayerService.loadPrayers).toHaveBeenCalledWith(false);
+      expect(m.prayerService.loadPersonalPrayers).toHaveBeenCalledWith(false);
+      expect(comp.isRefreshing).toBe(false);
+    });
+
+    it('onPullToRefresh skips when called again within 30 seconds', async () => {
+      const m = makeMocks();
+      const comp = newHome(m);
+      await comp.onPullToRefresh();
+      m.prayerService.loadPrayers.mockClear();
+      await comp.onPullToRefresh();
+      expect(m.prayerService.loadPrayers).not.toHaveBeenCalled();
+    });
+
+    it('onPullToRefresh reloads memorization items on memorize tab', async () => {
+      const m = makeMocks();
+      const comp = newHome(m);
+      comp.activeFilter = 'memorize';
+      await comp.onPullToRefresh();
+      expect(m.memorizationService.loadItems).toHaveBeenCalled();
+    });
+
+    it('toggleMemberUpdateAnswered updates member prayer via service', async () => {
+      const m = makeMocks();
+      const comp = newHome(m);
+      comp.planningCenterListId = 'list-1';
+      comp.planningCenterListMembers = [{ id: 'person-1', name: 'Bob' }];
+      comp.filteredPlanningCenterPrayers = [
+        { id: 'pc-member-person-1', updates: [] } as any,
+      ];
+      m.prayerService.getMemberPrayerUpdates.mockResolvedValue([
+        { id: 'u1', content: 'updated' },
+      ]);
+
+      await comp.toggleMemberUpdateAnswered({
+        updateId: 'upd-1',
+        prayerId: 'pc-member-person-1',
+        isAnswered: true,
+      });
+
+      expect(m.prayerService.updateMemberPrayerUpdate).toHaveBeenCalledWith(
+        'upd-1',
+        'person-1',
+        { is_answered: true },
+        'list-1'
+      );
+      expect(m.prayerService.getMemberPrayerUpdates).toHaveBeenCalledWith('person-1');
+    });
+
+    it('onMemorizedVerseAdded marks for check', () => {
+      const m = makeMocks();
+      const comp = newHome(m);
+      comp.onMemorizedVerseAdded();
+      expect(m.cdr.markForCheck).toHaveBeenCalled();
+    });
+
+    it('closeMemorizationPractice clears active practice item', () => {
+      const m = makeMocks();
+      const comp = newHome(m);
+      comp.practiceMemorizedItem = { id: 'v1' } as any;
+      comp.closeMemorizationPractice();
+      expect(comp.practiceMemorizedItem).toBeNull();
+      expect(m.cdr.markForCheck).toHaveBeenCalled();
+    });
+
+    it('onMemorizationPracticeComplete updates stats and refreshes item', async () => {
+      const m = makeMocks();
+      const item = { id: 'v1', text: 'verse' } as any;
+      const updated = { id: 'v1', text: 'verse', practiceCount: 1 };
+      m.memorizationService.items = [updated];
+      m.memorizationService.updatePracticeStats = vi
+        .fn()
+        .mockResolvedValue(updated);
+      const comp = newHome(m);
+      comp.practiceMemorizedItem = item;
+
+      await comp.onMemorizationPracticeComplete({
+        wrongAttempts: 0,
+        correctKeystrokes: 10,
+        completed: true,
+      });
+
+      expect(m.memorizationService.updatePracticeStats).toHaveBeenCalledWith('v1', {
+        wrongAttempts: 0,
+        correctKeystrokes: 10,
+        completed: true,
+      });
+      expect(comp.practiceMemorizedItem).toEqual(updated);
+    });
+
+    it('onMemorizationPersistInProgress saves in-progress state', () => {
+      const m = makeMocks();
+      const comp = newHome(m);
+      comp.practiceMemorizedItem = { id: 'v1' } as any;
+      const payload = { typedText: 'abc' } as any;
+      comp.onMemorizationPersistInProgress(payload);
+      expect(m.memorizationService.saveInProgress).toHaveBeenCalledWith('v1', payload);
+    });
+
+    it('onMemorizationClearInProgress clears in-progress state', () => {
+      const m = makeMocks();
+      const comp = newHome(m);
+      comp.practiceMemorizedItem = { id: 'v1' } as any;
+      comp.onMemorizationClearInProgress();
+      expect(m.memorizationService.clearInProgress).toHaveBeenCalledWith('v1');
+    });
+
+    it('confirmRemoveMemorizedItem opens confirmation dialog', () => {
+      const m = makeMocks();
+      const comp = newHome(m);
+      const item = { id: 'v1' } as any;
+      comp.confirmRemoveMemorizedItem(item);
+      expect(comp.memorizedItemToRemove).toBe(item);
+      expect(comp.showRemoveMemorizedConfirm).toBe(true);
+    });
+
+    it('removeMemorizedItemConfirmed removes item and clears practice', async () => {
+      const m = makeMocks();
+      const comp = newHome(m);
+      const item = { id: 'v1' } as any;
+      comp.memorizedItemToRemove = item;
+      comp.showRemoveMemorizedConfirm = true;
+      comp.practiceMemorizedItem = item;
+
+      await comp.removeMemorizedItemConfirmed();
+
+      expect(m.memorizationService.removeItem).toHaveBeenCalledWith('v1');
+      expect(comp.practiceMemorizedItem).toBeNull();
+      expect(comp.showRemoveMemorizedConfirm).toBe(false);
     });
   });
 });

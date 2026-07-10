@@ -17,6 +17,7 @@ describe('AdminComponent', () => {
     startEmailSubscribersOverviewTour: ReturnType<typeof vi.fn>;
     startPrayerEditorCreateTour: ReturnType<typeof vi.fn>;
     startPrayerEditorManageTour: ReturnType<typeof vi.fn>;
+    startPrayerPromptsAndTypesTour: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -75,6 +76,7 @@ describe('AdminComponent', () => {
       startEmailSubscribersOverviewTour: vi.fn(),
       startPrayerEditorCreateTour: vi.fn(),
       startPrayerEditorManageTour: vi.fn(),
+      startPrayerPromptsAndTypesTour: vi.fn(),
     };
 
     component = new AdminComponent(
@@ -1072,6 +1074,58 @@ describe('AdminComponent', () => {
       component.onEmailSubscribersOverviewTourFromHelp();
       await new Promise<void>((resolve) => setTimeout(resolve, 300));
       expect(adminHelpDriverTour.startEmailSubscribersOverviewTour).toHaveBeenCalled();
+    });
+  });
+
+  describe('Admin help — other guided tours', () => {
+    it('onEmailSubscribersTourFromHelp opens add form tour hooks', async () => {
+      const emailRef = {
+        prepareEmailSubscribersTour: vi.fn(),
+        openAddSubscriberFormForTour: vi.fn(),
+        showPlanningCenterTabForTour: vi.fn(),
+        runPlanningCenterSearchTourDemo: vi.fn().mockResolvedValue(undefined),
+        selectTourPlanningCenterMatchFromDemoResults: vi.fn(),
+        applyTourDemoPlanningCenterAdd: vi.fn(),
+        clearEmailSubscribersTourDemoForm: vi.fn(),
+      };
+      (component as { emailSettingsRef?: typeof emailRef }).emailSettingsRef = emailRef;
+      component.showAdminHelp = true;
+      component.onEmailSubscribersTourFromHelp();
+      expect(component.showAdminHelp).toBe(false);
+      expect(component.activeSettingsTab).toBe('email');
+      await new Promise<void>((resolve) => setTimeout(resolve, 200));
+      expect(emailRef.prepareEmailSubscribersTour).toHaveBeenCalled();
+      expect(adminHelpDriverTour.startEmailSubscribersTour).toHaveBeenCalled();
+    });
+
+    it('onPrayerPromptsTypesTourFromHelp prepares managers and starts tour', async () => {
+      const promptManagerRef = {
+        prepareTourInitialState: vi.fn().mockResolvedValue(undefined),
+      };
+      const prayerTypesManagerRef = {
+        prepareTourInitialState: vi.fn().mockResolvedValue(undefined),
+      };
+      (component as { promptManagerRef?: typeof promptManagerRef }).promptManagerRef = promptManagerRef;
+      (component as { prayerTypesManagerRef?: typeof prayerTypesManagerRef }).prayerTypesManagerRef =
+        prayerTypesManagerRef;
+      component.onPrayerPromptsTypesTourFromHelp();
+      await new Promise<void>((resolve) => setTimeout(resolve, 400));
+      expect(promptManagerRef.prepareTourInitialState).toHaveBeenCalled();
+      expect(prayerTypesManagerRef.prepareTourInitialState).toHaveBeenCalled();
+      expect(adminHelpDriverTour.startPrayerPromptsAndTypesTour).toHaveBeenCalled();
+    });
+
+    it('onPrayerEditorTourFromHelp prepares prayer editor and starts create tour', async () => {
+      const prayerSearchRef = {
+        preparePrayerEditorTourInitialState: vi.fn(),
+        openCreatePrayerFormForTour: vi.fn(),
+      };
+      (component as { prayerSearchRef?: typeof prayerSearchRef }).prayerSearchRef = prayerSearchRef;
+      component.onPrayerEditorTourFromHelp();
+      expect(component.activeSettingsTab).toBe('tools');
+      await new Promise<void>((resolve) => setTimeout(resolve, 250));
+      expect(prayerSearchRef.preparePrayerEditorTourInitialState).toHaveBeenCalled();
+      expect(adminHelpDriverTour.startPrayerEditorCreateTour).toHaveBeenCalled();
     });
   });
 });

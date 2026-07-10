@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import posthog from 'posthog-js';
+import { environment } from '../environments/environment';
 import {
   capturePostHogException,
+  capturePostHogPageview,
   initializePostHog,
   resetPostHogForTesting,
 } from './posthog';
@@ -11,7 +13,9 @@ vi.mock('posthog-js', () => ({
     init: vi.fn(),
     capture: vi.fn(),
     captureException: vi.fn(),
+    opt_in_capturing: vi.fn(),
     opt_out_capturing: vi.fn(),
+    register: vi.fn(),
   },
 }));
 
@@ -59,6 +63,45 @@ describe('posthog', () => {
       expect((window as Window & { posthog?: typeof posthog }).posthog).toBe(posthog);
     });
 
+    it('should opt in and register app environment in loaded callback', () => {
+      initializePostHog();
+
+      const initOptions = vi.mocked(posthog.init).mock.calls[0]?.[1];
+      const ph = {
+        opt_in_capturing: vi.fn(),
+        register: vi.fn(),
+      };
+      initOptions?.loaded?.(ph as never);
+
+      expect(ph.opt_in_capturing).toHaveBeenCalled();
+      expect(ph.register).toHaveBeenCalledWith({ app_environment: 'development' });
+    });
+
+    it('should return early when window is undefined', () => {
+      vi.stubGlobal('window', undefined);
+      resetPostHogForTesting();
+
+      initializePostHog();
+
+      expect(posthog.init).not.toHaveBeenCalled();
+      vi.unstubAllGlobals();
+    });
+
+    it('should debug and skip init when project key is not configured', () => {
+      const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+      const originalKey = environment.posthogKey;
+      environment.posthogKey = '';
+      resetPostHogForTesting();
+
+      initializePostHog();
+
+      expect(posthog.init).not.toHaveBeenCalled();
+      expect(debugSpy).toHaveBeenCalledWith('PostHog project key not configured');
+
+      environment.posthogKey = originalKey;
+      debugSpy.mockRestore();
+    });
+
     it('should not throw when init fails', () => {
       vi.mocked(posthog.init).mockImplementation(() => {
         throw new Error('init failed');
@@ -76,6 +119,44 @@ describe('posthog', () => {
       capturePostHogException(err, { source: 'test' });
 
       expect(posthog.captureException).toHaveBeenCalledWith(err, { source: 'test' });
+    });
+
+    it('should log when captureException fails', () => {
+      initializePostHog();
+      vi.mocked(posthog.captureException).mockImplementation(() => {
+        throw new Error('capture failed');
+      });
+
+      capturePostHogException(new Error('test'));
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to capture PostHog exception:',
+        expect.any(Error)
+      );
+    });
+  });
+
+  describe('capturePostHogPageview', () => {
+    it('should capture pageviews after initialization', () => {
+      initializePostHog();
+
+      capturePostHogPageview('/dashboard');
+
+      expect(posthog.capture).toHaveBeenCalledWith('$pageview', { $current_url: '/dashboard' });
+    });
+
+    it('should log when pageview capture fails', () => {
+      initializePostHog();
+      vi.mocked(posthog.capture).mockImplementation(() => {
+        throw new Error('pageview failed');
+      });
+
+      capturePostHogPageview('/fail');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to capture PostHog pageview:',
+        expect.any(Error)
+      );
     });
   });
 });

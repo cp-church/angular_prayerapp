@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, afterEach, vi } from 'vitest';
 import { markdownToPlainText, markdownToSafeHtml } from './markdown';
 
 describe('markdownToPlainText', () => {
@@ -90,10 +90,109 @@ describe('markdownToSafeHtml', () => {
     expect(html).not.toContain('javascript:');
   });
 
-  it('inlines blockquote styling so email clients render the left border', () => {
+  it('strips blockquote styling so email clients render the left border', () => {
     const html = markdownToSafeHtml('> quoted line');
     expect(html).toContain('<blockquote');
     expect(html).toContain('border-left');
     expect(html).toContain('rgba(57, 112, 77, 0.5)');
+  });
+
+  it('strips unsafe data: and vbscript: hrefs', () => {
+    const dataHtml = markdownToSafeHtml('[img](data:image/png;base64,abc)');
+    expect(dataHtml).not.toContain('data:image');
+
+    const vbHtml = markdownToSafeHtml('[run](vbscript:msgbox(1))');
+    expect(vbHtml).not.toContain('vbscript:');
+  });
+
+  it('preserves ++underline++ markers inside fenced code blocks', () => {
+    const html = markdownToSafeHtml('```\n++literal++\n```');
+    expect(html).toContain('++literal++');
+    expect(html).not.toMatch(/<u[^>]*>literal<\/u>/);
+  });
+
+  it('strips disallowed wrapper tags via allowlist fallback', () => {
+    const html = markdownToSafeHtml('<span onclick="x()">Hello</span>');
+    expect(html).not.toContain('<span');
+    expect(html).toContain('Hello');
+  });
+
+  it('strips disallowed attributes but keeps safe link attrs', () => {
+    const html = markdownToSafeHtml(
+      '<a href="https://example.com" class="evil" id="x">safe</a>'
+    );
+    expect(html).toContain('href="https://example.com"');
+    expect(html).not.toContain('class=');
+    expect(html).not.toContain('id=');
+  });
+
+  it('unwraps nested disallowed elements while keeping allowed children', () => {
+    const html = markdownToSafeHtml('<div><p><strong>keep</strong></p></div>');
+    expect(html).toContain('<strong>keep</strong>');
+    expect(html).not.toContain('<div');
+  });
+});
+
+describe('markdownToSafeHtml allowlist fallback', () => {
+  afterEach(() => {
+    vi.resetModules();
+    vi.doUnmock('dompurify');
+  });
+
+  async function loadMarkdownWithPassthroughPurify() {
+    vi.doMock('dompurify', () => ({
+      default: Object.assign(
+        () => ({
+          sanitize: (dirty: string) => String(dirty),
+          isSupported: true,
+        }),
+        { isSupported: true }
+      ),
+    }));
+    return import('./markdown');
+  }
+
+  it('strips unsafe content when DOMPurify passthrough keeps scripts', async () => {
+    const { markdownToSafeHtml: safeHtml } = await loadMarkdownWithPassthroughPurify();
+    const html = safeHtml(
+      '<div><script>alert(1)</script><p><strong>ok</strong></p><a href="javascript:alert(1)">bad</a><a href="data:image/png;base64,x">img</a><a href="vbscript:x">vbs</a></div>'
+    );
+    expect(html).not.toContain('<script');
+    expect(html).not.toContain('<div');
+    expect(html).toContain('<strong>ok</strong>');
+    expect(html).not.toContain('javascript:');
+    expect(html).not.toContain('data:image');
+    expect(html).not.toContain('vbscript:');
+  });
+
+  it('uses allowlist fallback when structural list tags are lost in sanitization', async () => {
+    vi.doMock('dompurify', () => ({
+      default: Object.assign(
+        () => ({
+          sanitize: (dirty: string) => String(dirty).replace(/<\/?ul>/gi, ''),
+          isSupported: true,
+        }),
+        { isSupported: true }
+      ),
+    }));
+    const { markdownToSafeHtml: safeHtml } = await import('./markdown');
+    const html = safeHtml('- one\n- two');
+    expect(html).toContain('<li>');
+    expect(html).toContain('one');
+  });
+
+  it('unwraps disallowed wrappers and keeps text nodes', async () => {
+    const { markdownToSafeHtml: safeHtml } = await loadMarkdownWithPassthroughPurify();
+    const html = safeHtml('<span>plain <em>emphasis</em></span>');
+    expect(html).toContain('plain');
+    expect(html).toContain('<em>emphasis</em>');
+    expect(html).not.toContain('<span');
+  });
+
+  it('skips re-applying underline style when already present', async () => {
+    const { markdownToSafeHtml: safeHtml } = await loadMarkdownWithPassthroughPurify();
+    const html = safeHtml('<u style="text-decoration: underline;">styled</u>');
+    expect(html).toContain('styled');
+    expect(html.match(/text-decoration: underline/g)?.length).toBe(1);
   });
 });

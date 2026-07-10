@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RichTextEditorComponent } from './rich-text-editor.component';
 
 describe('RichTextEditorComponent', () => {
@@ -40,5 +41,94 @@ describe('RichTextEditorComponent', () => {
     }
     // The update listener fires synchronously via Tiptap, so emitted should be set
     expect(typeof emitted === 'string' || emitted === undefined).toBe(true);
+  });
+
+  it('runs toolbar formatting commands via runToolbarAction', () => {
+    component.editor?.commands.setContent('<p>hello</p>');
+    for (const btn of component.toolbarButtons) {
+      const toggleSpy = vi.spyOn(btn, 'toggle');
+      component.runToolbarAction(btn);
+      expect(toggleSpy).toHaveBeenCalledWith(component.editor);
+    }
+  });
+
+  it('executes toolbar toggle handlers on the editor', () => {
+    component.editor?.commands.setContent('<p>hello</p>');
+    for (const btn of component.toolbarButtons) {
+      btn.toggle(component.editor!);
+    }
+    expect(component.editor).toBeTruthy();
+  });
+
+  it('applies ngOnChanges updates for value and disabled inputs', () => {
+    component.editor?.commands.setContent('<p>initial</p>');
+    component.lastEmitted = 'initial md';
+
+    component.value = '**updated**';
+    component.ngOnChanges({
+      value: {
+        currentValue: '**updated**',
+        previousValue: 'initial md',
+        firstChange: false,
+        isFirstChange: () => false,
+      },
+    });
+
+    component.disabled = true;
+    component.ngOnChanges({
+      disabled: {
+        currentValue: true,
+        previousValue: false,
+        firstChange: false,
+        isFirstChange: () => false,
+      },
+    });
+
+    expect(component.editor?.isEditable).toBe(false);
+  });
+
+  it('syncs external value changes and disabled state through ControlValueAccessor', () => {
+    const onChange = vi.fn();
+    const onTouched = vi.fn();
+    component.registerOnChange(onChange);
+    component.registerOnTouched(onTouched);
+
+    component.writeValue('**updated**');
+    expect(component.value).toBe('**updated**');
+
+    component.setDisabledState(true);
+    expect(component.disabled).toBe(true);
+    expect(component.editor?.isEditable).toBe(false);
+
+    component.setDisabledState(false);
+    expect(component.editor?.isEditable).toBe(true);
+  });
+
+  it('flushMarkdownToForm pushes latest markdown to form callbacks', () => {
+    const onChange = vi.fn();
+    component.registerOnChange(onChange);
+    let emitted: string | undefined;
+    component.valueChange.subscribe((v) => (emitted = v));
+
+    component.editor?.commands.setContent('<p>flush me</p>');
+    component.flushMarkdownToForm();
+
+    expect(onChange).toHaveBeenCalled();
+    expect(typeof emitted).toBe('string');
+  });
+
+  it('getPlainText returns editor text content', () => {
+    component.editor?.commands.setContent('<p>plain text</p>');
+    expect(component.getPlainText()).toContain('plain text');
+  });
+
+  it('runToolbarAction is ignored when disabled', () => {
+    component.setDisabledState(true);
+    const btn = component.toolbarButtons[0];
+    const toggleSpy = vi.spyOn(btn, 'toggle');
+
+    component.runToolbarAction(btn);
+
+    expect(toggleSpy).not.toHaveBeenCalled();
   });
 });

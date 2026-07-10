@@ -348,6 +348,53 @@ describe('PrintService', () => {
       expect(global.alert).toHaveBeenCalledWith('No prayers found in the database.');
     });
 
+    it('should alert with correct time range text for month, year, and twomonths', { timeout: 10000 }, async () => {
+      mockSupabaseClient.from.mockImplementation(() => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        neq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({ data: [], error: null }),
+      }));
+
+      await service.downloadPrintablePrayerList('month', null);
+      expect(global.alert).toHaveBeenCalledWith('No prayers found in the last month.');
+
+      vi.mocked(global.alert).mockClear();
+
+      await service.downloadPrintablePrayerList('year', null);
+      expect(global.alert).toHaveBeenCalledWith('No prayers found in the last year.');
+
+      vi.mocked(global.alert).mockClear();
+
+      await service.downloadPrintablePrayerList('twomonths', null);
+      expect(global.alert).toHaveBeenCalledWith('No prayers found in the last 2 months.');
+    });
+
+    it('should close newWindow when no prayers are found', { timeout: 10000 }, async () => {
+      const mockWindow = { close: vi.fn() };
+      mockSupabaseClient.from.mockImplementation(() => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        neq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({ data: [], error: null }),
+      }));
+
+      await service.downloadPrintablePrayerList('week', mockWindow as any);
+
+      expect(global.alert).toHaveBeenCalledWith('No prayers found in the last week.');
+      expect(mockWindow.close).toHaveBeenCalled();
+    });
+
+    it('getRangeFileLabel returns download slugs for every time range', () => {
+      const label = (service as any).getRangeFileLabel.bind(service);
+      expect(label('week')).toBe('week');
+      expect(label('twoweeks')).toBe('2weeks');
+      expect(label('month')).toBe('month');
+      expect(label('twomonths')).toBe('2months');
+      expect(label('year')).toBe('year');
+      expect(label('all')).toBe('all');
+    });
+
     it('should open new window with HTML content when window.open succeeds', { timeout: 10000 }, async () => {
       const mockWindow = {
         document: {

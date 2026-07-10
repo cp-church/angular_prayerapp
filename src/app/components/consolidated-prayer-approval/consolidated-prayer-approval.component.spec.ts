@@ -362,4 +362,119 @@ describe('ConsolidatedPrayerApprovalComponent', () => {
       expect(component.showEditUpdate).toBe(false);
     });
   });
+
+  describe('Inline update editing', () => {
+    let mockAdminDataService: {
+      editUpdate: ReturnType<typeof vi.fn>;
+    };
+    let mockToast: {
+      success: ReturnType<typeof vi.fn>;
+      error: ReturnType<typeof vi.fn>;
+    };
+
+    beforeEach(() => {
+      mockAdminDataService = {
+        editUpdate: vi.fn().mockResolvedValue(undefined),
+      };
+      mockToast = {
+        success: vi.fn(),
+        error: vi.fn(),
+      };
+      const mockCdr = { markForCheck: vi.fn(), detectChanges: vi.fn() } as unknown as import('@angular/core').ChangeDetectorRef;
+      component = new ConsolidatedPrayerApprovalComponent(
+        mockAdminDataService as unknown as import('../../services/admin-data.service').AdminDataService,
+        mockToast as unknown as import('../../services/toast.service').ToastService,
+        mockCdr
+      );
+      component.prayer = makePrayer();
+      component.pendingUpdates = [
+        {
+          id: 'update-1',
+          content: 'Original content',
+          author: 'Jane Doe',
+          author_email: 'jane@example.com',
+          created_at: new Date().toISOString(),
+          is_anonymous: false,
+        },
+      ];
+    });
+
+    it('startInlineUpdateEdit sets inline editing state', () => {
+      component.startInlineUpdateEdit({ id: 'update-1', content: 'Original content' });
+      expect(component.inlineEditingUpdateId).toBe('update-1');
+      expect(component.inlineEditingUpdateContent).toBe('Original content');
+    });
+
+    it('cancelInlineUpdate clears inline editing state', () => {
+      component.startInlineUpdateEdit({ id: 'update-1', content: 'Draft' });
+      component.cancelInlineUpdate();
+      expect(component.inlineEditingUpdateId).toBeNull();
+      expect(component.inlineEditingUpdateContent).toBe('');
+    });
+
+    it('saveInlineUpdate persists content and emits on success', async () => {
+      const spy = vi.spyOn(component.onUpdateEdited, 'emit');
+      component.startInlineUpdateEdit({ id: 'update-1', content: 'Original content' });
+      component.inlineEditingUpdateContent = 'Edited content';
+
+      await component.saveInlineUpdate('update-1');
+
+      expect(mockAdminDataService.editUpdate).toHaveBeenCalledWith('update-1', {
+        content: 'Edited content',
+      });
+      expect(component.pendingUpdates[0].content).toBe('Edited content');
+      expect(spy).toHaveBeenCalledWith({ id: 'update-1', updates: { content: 'Edited content' } });
+      expect(mockToast.success).toHaveBeenCalledWith('Update edited.');
+      expect(component.inlineEditingUpdateId).toBeNull();
+    });
+
+    it('saveInlineUpdate shows error toast on failure', async () => {
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockAdminDataService.editUpdate.mockRejectedValue(new Error('save failed'));
+      component.startInlineUpdateEdit({ id: 'update-1', content: 'Original content' });
+      component.inlineEditingUpdateContent = 'Edited content';
+
+      await component.saveInlineUpdate('update-1');
+
+      expect(mockToast.error).toHaveBeenCalledWith('Failed to edit update.');
+      consoleError.mockRestore();
+    });
+
+    it('saveInlineUpdate ignores duplicate saves while in flight', async () => {
+      let resolveEdit: () => void = () => {};
+      mockAdminDataService.editUpdate.mockReturnValue(
+        new Promise<void>((resolve) => {
+          resolveEdit = resolve;
+        })
+      );
+      component.startInlineUpdateEdit({ id: 'update-1', content: 'Original content' });
+      component.inlineEditingUpdateContent = 'Edited content';
+
+      const first = component.saveInlineUpdate('update-1');
+      await component.saveInlineUpdate('update-1');
+
+      resolveEdit();
+      await first;
+
+      expect(mockAdminDataService.editUpdate).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('formatDate catch paths', () => {
+    it('formatDate returns empty string when locale formatting throws', () => {
+      const spy = vi.spyOn(Date.prototype, 'toLocaleDateString').mockImplementation(() => {
+        throw new Error('locale failure');
+      });
+      expect(component.formatDate('2024-01-15')).toBe('');
+      spy.mockRestore();
+    });
+
+    it('formatUpdateDate returns empty string when locale formatting throws', () => {
+      const spy = vi.spyOn(Date.prototype, 'toLocaleDateString').mockImplementation(() => {
+        throw new Error('locale failure');
+      });
+      expect(component.formatUpdateDate('2024-01-15')).toBe('');
+      spy.mockRestore();
+    });
+  });
 });

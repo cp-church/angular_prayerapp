@@ -674,6 +674,185 @@ describe('PrayerService', () => {
       errSpy.mockRestore();
     });
   });
+
+  describe('member prayer updates', () => {
+    it('addMemberPrayerUpdate succeeds and invalidates caches', async () => {
+      supabase.client.from.mockImplementation((table: string) => {
+        if (table === 'member_prayer_updates') {
+          return {
+            insert: () => ({
+              select: () => ({
+                single: () =>
+                  Promise.resolve({ data: { id: 'u1' }, error: null }),
+              }),
+            }),
+          };
+        }
+        return {};
+      });
+
+      const result = await service.addMemberPrayerUpdate(
+        'p1',
+        'Bob',
+        'content',
+        'Author',
+        'a@b.com',
+        false,
+        'list-1'
+      );
+
+      expect(result).toBe(true);
+      expect(cache.invalidate).toHaveBeenCalledWith('memberPrayerUpdates');
+      expect(cache.invalidate).toHaveBeenCalledWith(
+        'planningCenterListData_list-1'
+      );
+      expect(toast.success).toHaveBeenCalledWith('Update added successfully');
+    });
+
+    it('addMemberPrayerUpdate returns false on error', async () => {
+      supabase.client.from.mockImplementation(() => ({
+        insert: () => ({
+          select: () => ({
+            single: () =>
+              Promise.resolve({ data: null, error: new Error('insert failed') }),
+          }),
+        }),
+      }));
+
+      const result = await service.addMemberPrayerUpdate(
+        'p1',
+        'Bob',
+        'content',
+        'Author'
+      );
+
+      expect(result).toBe(false);
+      expect(toast.error).toHaveBeenCalledWith('Failed to add update');
+    });
+
+    it('getMemberPrayerUpdatesBatch returns empty object for no ids', async () => {
+      const result = await service.getMemberPrayerUpdatesBatch([]);
+      expect(result).toEqual({});
+    });
+
+    it('getMemberPrayerUpdatesBatch groups updates by person_id', async () => {
+      supabase.client.from.mockImplementation(() => ({
+        select: () => ({
+          in: () => ({
+            order: () =>
+              Promise.resolve({
+                data: [
+                  {
+                    id: '1',
+                    person_id: 'p1',
+                    content: 'a',
+                    created_at: 't1',
+                    updated_at: 't1',
+                    is_answered: false,
+                  },
+                  {
+                    id: '2',
+                    person_id: 'p1',
+                    content: 'b',
+                    created_at: 't2',
+                    updated_at: 't2',
+                    is_answered: true,
+                  },
+                ],
+                error: null,
+              }),
+          }),
+        }),
+      }));
+
+      const result = await service.getMemberPrayerUpdatesBatch(['p1']);
+
+      expect(result.p1).toHaveLength(2);
+      expect(cache.set).toHaveBeenCalledWith('memberPrayerUpdates', result);
+    });
+
+    it('getMemberPrayerUpdates returns cached updates when available', async () => {
+      cache.get.mockReturnValue({ p1: [{ id: 'c1', content: 'cached' }] });
+
+      const result = await service.getMemberPrayerUpdates('p1');
+
+      expect(result).toEqual([{ id: 'c1', content: 'cached' }]);
+    });
+
+    it('getMemberPrayerUpdates fetches from database on cache miss', async () => {
+      cache.get.mockReturnValue(null);
+      supabase.client.from.mockImplementation(() => ({
+        select: () => ({
+          eq: () => ({
+            order: () =>
+              Promise.resolve({
+                data: [
+                  {
+                    id: 'db1',
+                    person_id: 'p1',
+                    content: 'from db',
+                    created_at: 't',
+                    updated_at: 't',
+                    is_answered: false,
+                  },
+                ],
+                error: null,
+              }),
+          }),
+        }),
+      }));
+
+      const result = await service.getMemberPrayerUpdates('p1');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].content).toBe('from db');
+    });
+
+    it('clearPlanningCenterListDataCache invalidates list cache key', () => {
+      service.clearPlanningCenterListDataCache('list-abc');
+      expect(cache.invalidate).toHaveBeenCalledWith(
+        'planningCenterListData_list-abc'
+      );
+    });
+
+    it('deleteMemberPrayerUpdate succeeds and clears caches', async () => {
+      supabase.client.from.mockImplementation(() => ({
+        delete: () => ({
+          eq: () => Promise.resolve({ error: null }),
+        }),
+      }));
+
+      const result = await service.deleteMemberPrayerUpdate('u1', 'p1', 'list-1');
+
+      expect(result).toBe(true);
+      expect(cache.invalidate).toHaveBeenCalledWith('memberPrayerUpdates');
+      expect(cache.invalidate).toHaveBeenCalledWith(
+        'planningCenterListData_list-1'
+      );
+      expect(toast.success).toHaveBeenCalledWith('Update deleted successfully');
+    });
+
+    it('updateMemberPrayerUpdate succeeds and clears caches', async () => {
+      supabase.client.from.mockImplementation(() => ({
+        update: () => ({
+          eq: () => ({
+            select: () => Promise.resolve({ data: [{}], error: null }),
+          }),
+        }),
+      }));
+
+      const result = await service.updateMemberPrayerUpdate(
+        'u1',
+        'p1',
+        { is_answered: true },
+        'list-1'
+      );
+
+      expect(result).toBe(true);
+      expect(cache.invalidate).toHaveBeenCalledWith('memberPrayerUpdates');
+      expect(toast.success).toHaveBeenCalledWith('Update saved successfully');
+    });
+  });
 });
 
 describe('PrayerService - Integration Tests', () => {

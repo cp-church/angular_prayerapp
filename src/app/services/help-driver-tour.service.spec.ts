@@ -2,8 +2,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { driver } from 'driver.js';
 import {
   FULL_GUIDED_TOUR_CLOSING_SENTINEL,
+  FULL_GUIDED_TOUR_QUEUE_KEY,
   HelpDriverTourService,
   parseFullGuidedTourQueue,
+  PRESENTATION_HELP_TOUR_SESSION_KEY,
   TOUR_REQUEST_BTN_MOBILE_ID,
   TOUR_REQUEST_BTN_DESKTOP_ID,
   TOUR_FILTER_PERSONAL_ID,
@@ -16,6 +18,44 @@ import {
   TOUR_PRAYER_MODE_DESKTOP_ID,
   TOUR_PRAYER_MODE_MOBILE_ID,
   TOUR_PRAYER_SEARCH_ID,
+  TOUR_SETTINGS_BTN_DESKTOP_ID,
+  TOUR_SETTINGS_BTN_MOBILE_ID,
+  TOUR_SETTINGS_PRINT_ROW_ID,
+  TOUR_SETTINGS_PRINT_PRAYERS_ID,
+  TOUR_SETTINGS_PRINT_PROMPTS_ID,
+  TOUR_SETTINGS_PRINT_PERSONAL_ID,
+  TOUR_SETTINGS_EMAIL_SUBSCRIPTION_ID,
+  TOUR_SETTINGS_PRAYER_REMINDERS_ID,
+  TOUR_SETTINGS_PRAYER_REMINDER_CONTROLS_ID,
+  TOUR_SETTINGS_FEEDBACK_SECTION_ID,
+  TOUR_SETTINGS_FEEDBACK_TYPE_ID,
+  TOUR_SETTINGS_FEEDBACK_DETAILS_ID,
+  TOUR_SETTINGS_THEME_ID,
+  TOUR_SETTINGS_TEXT_SIZE_ID,
+  TOUR_SETTINGS_PUSH_ID,
+  TOUR_SETTINGS_BADGES_ID,
+  TOUR_SETTINGS_PRAYER_ENCOURAGEMENT_ID,
+  TOUR_SETTINGS_DEFAULT_VIEW_ID,
+  TOUR_PRAYER_SUBMIT_REQUEST_ID,
+  TOUR_PRAYER_UPDATE_SUBMIT_ID,
+  TOUR_PRAYER_UPDATE_ANONYMOUS_WRAP_ID,
+  TOUR_PRAYER_UPDATE_MARK_ANSWERED_WRAP_ID,
+  TOUR_PRESENTATION_TOOLBAR_ID,
+  TOUR_PRESENTATION_PREV_ID,
+  TOUR_PRESENTATION_PLAY_ID,
+  TOUR_PRESENTATION_NEXT_ID,
+  TOUR_PRESENTATION_SETTINGS_BTN_ID,
+  TOUR_PRESENTATION_EXIT_ID,
+  TOUR_PRESENTATION_SETTINGS_MODAL_ID,
+  TOUR_PRESENTATION_SETTING_THEME_ID,
+  TOUR_PRESENTATION_SETTING_SMART_ID,
+  TOUR_PRESENTATION_SETTING_DURATION_ID,
+  TOUR_PRESENTATION_SETTING_CONTENT_TYPE_ID,
+  TOUR_PRESENTATION_SETTING_RANDOMIZE_ID,
+  TOUR_PRESENTATION_SETTING_TIME_FILTER_ID,
+  TOUR_PRESENTATION_SETTING_STATUS_ID,
+  TOUR_PRESENTATION_SETTING_TIMER_ID,
+  TOUR_PRESENTATION_SETTING_REFRESH_ID,
 } from './help-driver-tour.service';
 import type { HelpContent } from '../types/help-content';
 
@@ -892,6 +932,583 @@ describe('HelpDriverTourService', () => {
       const config = vi.mocked(driver).mock.calls[0][0];
       expect(config?.steps?.length).toBe(16);
       expect(config?.steps?.[0]?.element).toBeUndefined();
+    });
+  });
+
+  function stubWideMatchMedia(wide: boolean) {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockReturnValue({ matches: wide, addEventListener: vi.fn(), removeEventListener: vi.fn() })
+    );
+  }
+
+  function mountEl(id: string, tag = 'button'): HTMLElement {
+    const el = document.createElement(tag);
+    el.id = id;
+    document.body.appendChild(el);
+    return el;
+  }
+
+  function resolveStepElements(config: { steps?: Array<{ element?: unknown }> } | undefined, indices: number[]) {
+    for (const i of indices) {
+      const el = config?.steps?.[i]?.element;
+      if (typeof el === 'function') {
+        (el as () => HTMLElement)();
+      }
+    }
+  }
+
+  function fireStepNext(
+    config: { steps?: Array<{ popover?: { onNextClick?: (...args: unknown[]) => void } }> } | undefined,
+    stepIndex: number,
+    driverApi?: { refresh: ReturnType<typeof vi.fn>; moveNext: ReturnType<typeof vi.fn>; destroy?: ReturnType<typeof vi.fn> }
+  ) {
+    const refresh = driverApi?.refresh ?? vi.fn();
+    const moveNext = driverApi?.moveNext ?? vi.fn();
+    const destroy = driverApi?.destroy ?? vi.fn();
+    const hook = config?.steps?.[stepIndex]?.popover?.onNextClick;
+    hook?.(document.body, config!.steps![stepIndex]!, {
+      config: config!,
+      state: {} as never,
+      driver: { refresh, moveNext, destroy } as never,
+    });
+    return { refresh, moveNext, destroy };
+  }
+
+  function mountSettingsGear(wide = true) {
+    mountEl(wide ? TOUR_SETTINGS_BTN_DESKTOP_ID : TOUR_SETTINGS_BTN_MOBILE_ID);
+    stubWideMatchMedia(wide);
+  }
+
+  function settingsTourHooks() {
+    return {
+      openSettings: vi.fn(),
+      closeSettings: vi.fn(),
+      markForCheck: vi.fn(),
+    };
+  }
+
+  function mountPresentationDom() {
+    mountEl(TOUR_PRESENTATION_TOOLBAR_ID, 'div');
+    mountEl(TOUR_PRESENTATION_PREV_ID);
+    mountEl(TOUR_PRESENTATION_PLAY_ID);
+    mountEl(TOUR_PRESENTATION_NEXT_ID);
+    mountEl(TOUR_PRESENTATION_SETTINGS_BTN_ID);
+    mountEl(TOUR_PRESENTATION_EXIT_ID);
+    mountEl(TOUR_PRESENTATION_SETTINGS_MODAL_ID, 'div');
+    mountEl(TOUR_PRESENTATION_SETTING_THEME_ID, 'div');
+    mountEl(TOUR_PRESENTATION_SETTING_SMART_ID, 'div');
+    mountEl(TOUR_PRESENTATION_SETTING_DURATION_ID, 'div');
+    mountEl(TOUR_PRESENTATION_SETTING_CONTENT_TYPE_ID, 'div');
+    mountEl(TOUR_PRESENTATION_SETTING_RANDOMIZE_ID, 'div');
+    mountEl(TOUR_PRESENTATION_SETTING_TIME_FILTER_ID, 'div');
+    mountEl(TOUR_PRESENTATION_SETTING_STATUS_ID, 'div');
+    mountEl(TOUR_PRESENTATION_SETTING_TIMER_ID, 'div');
+    mountEl(TOUR_PRESENTATION_SETTING_REFRESH_ID, 'div');
+  }
+
+  describe('full guided tour utilities', () => {
+    it('setFullGuidedTourProgress emits current/total and clears when total < 1', () => {
+      const values: Array<{ current: number; total: number } | null> = [];
+      const sub = service.fullGuidedTourProgress$.subscribe((v) => values.push(v));
+      service.setFullGuidedTourProgress(2, 5);
+      service.setFullGuidedTourProgress(99, 0);
+      sub.unsubscribe();
+      expect(values).toEqual([null, { current: 2, total: 5 }, null]);
+    });
+
+    it('clearFullGuidedTourProgress sets progress to null', () => {
+      service.setFullGuidedTourProgress(1, 4);
+      service.clearFullGuidedTourProgress();
+      let latest: { current: number; total: number } | null = { current: -1, total: -1 };
+      const sub = service.fullGuidedTourProgress$.subscribe((v) => {
+        latest = v;
+      });
+      sub.unsubscribe();
+      expect(latest).toBeNull();
+    });
+
+    it('clearFullGuidedTourNavigationState removes queue and full-chain presentation payload', () => {
+      sessionStorage.setItem(FULL_GUIDED_TOUR_QUEUE_KEY, '["help_a"]');
+      sessionStorage.setItem(
+        PRESENTATION_HELP_TOUR_SESSION_KEY,
+        JSON.stringify({ fullGuidedTourFromFullChain: true, title: 't' })
+      );
+      service.clearFullGuidedTourNavigationState();
+      expect(sessionStorage.getItem(FULL_GUIDED_TOUR_QUEUE_KEY)).toBeNull();
+      expect(sessionStorage.getItem(PRESENTATION_HELP_TOUR_SESSION_KEY)).toBeNull();
+    });
+
+    it('clearFullGuidedTourNavigationState keeps presentation payload when not full-chain', () => {
+      sessionStorage.setItem(
+        PRESENTATION_HELP_TOUR_SESSION_KEY,
+        JSON.stringify({ fullGuidedTourFromFullChain: false, title: 'solo' })
+      );
+      service.clearFullGuidedTourNavigationState();
+      expect(sessionStorage.getItem(PRESENTATION_HELP_TOUR_SESSION_KEY)).toContain('solo');
+    });
+
+    it('interruptGuidedTours clears navigation, progress, and active driver', () => {
+      sessionStorage.setItem(FULL_GUIDED_TOUR_QUEUE_KEY, '[]');
+      service.setFullGuidedTourProgress(0, 3);
+      mountEl(TOUR_REQUEST_BTN_DESKTOP_ID);
+      stubWideMatchMedia(true);
+      service.startNewPrayerRequestTour(sampleHelp, { openPrayerForm });
+      const destroy = vi.mocked(driver).mock.results[0]?.value.destroy as ReturnType<typeof vi.fn>;
+      service.interruptGuidedTours();
+      expect(sessionStorage.getItem(FULL_GUIDED_TOUR_QUEUE_KEY)).toBeNull();
+      let progress: { current: number; total: number } | null = { current: 0, total: 1 };
+      const sub = service.fullGuidedTourProgress$.subscribe((v) => {
+        progress = v;
+      });
+      sub.unsubscribe();
+      expect(progress).toBeNull();
+      expect(destroy).toHaveBeenCalled();
+      vi.unstubAllGlobals();
+    });
+
+    it('queueTourFinishedCallback runs on programmatic tour end in sectionAdvance mode', () => {
+      vi.useFakeTimers();
+      const onFinished = vi.fn();
+      service.queueTourFinishedCallback(onFinished);
+      mountEl(TOUR_ADD_UPDATE_BTN_ID);
+      let savedConfig: Parameters<typeof driver>[0] | undefined;
+      vi.mocked(driver).mockImplementation((cfg) => {
+        savedConfig = cfg;
+        const inst = {
+          drive: vi.fn(),
+          destroy: vi.fn(() => {
+            savedConfig?.onDestroyed?.(undefined, undefined, {
+              config: savedConfig!,
+              state: { activeIndex: (savedConfig?.steps?.length ?? 1) - 1 } as never,
+              driver: inst as never,
+            });
+          }),
+          refresh: vi.fn(),
+          moveNext: vi.fn(),
+        };
+        return inst as ReturnType<typeof driver>;
+      });
+      service.startUpdatingPrayerTour(sampleUpdatingHelp, { includeAnonymousUpdateStep: false });
+      const config = savedConfig!;
+      const last = (config?.steps?.length ?? 1) - 1;
+      const hook = config?.steps?.[last]?.popover?.onNextClick;
+      hook?.(document.body, config!.steps![last]!, {
+        config: config!,
+        state: { activeIndex: last } as never,
+        driver: { destroy: vi.fn() } as never,
+      });
+      vi.runAllTimers();
+      expect(onFinished).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
+    });
+
+    it('queueTourFinishedCallback(null) turns sectionAdvance off', () => {
+      service.queueTourFinishedCallback(vi.fn());
+      service.queueTourFinishedCallback(null);
+      mountEl(TOUR_ADD_UPDATE_BTN_ID);
+      const onFinished = vi.fn();
+      service.startUpdatingPrayerTour(sampleUpdatingHelp);
+      const config = vi.mocked(driver).mock.calls[0][0];
+      const last = (config?.steps?.length ?? 1) - 1;
+      config?.onDestroyed?.(undefined, undefined, {
+        config: config!,
+        state: { activeIndex: last } as never,
+        driver: {} as never,
+      });
+      expect(onFinished).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('startFullGuidedTourWelcome', () => {
+    it('sets progress when totalSteps >= 2', () => {
+      service.startFullGuidedTourWelcome(vi.fn(), { totalSteps: 4 });
+      let latest: { current: number; total: number } | null = null;
+      const sub = service.fullGuidedTourProgress$.subscribe((v) => {
+        latest = v;
+      });
+      sub.unsubscribe();
+      expect(latest).toEqual({ current: 0, total: 4 });
+    });
+
+    it('Begin onNextClick destroys driver and runs onBegin via onDestroyed', () => {
+      const onBegin = vi.fn();
+      let savedConfig: Parameters<typeof driver>[0] | undefined;
+      vi.mocked(driver).mockImplementation((cfg) => {
+        savedConfig = cfg;
+        return {
+          drive: vi.fn(),
+          destroy: vi.fn(),
+          refresh: vi.fn(),
+          moveNext: vi.fn(),
+        } as ReturnType<typeof driver>;
+      });
+      vi.useFakeTimers();
+      service.startFullGuidedTourWelcome(onBegin, { totalSteps: 2 });
+      const beginHook = savedConfig?.steps?.[0]?.popover?.onNextClick;
+      beginHook?.(document.body, savedConfig!.steps![0]!, {
+        config: savedConfig!,
+        state: {} as never,
+        driver: { destroy: vi.fn() } as never,
+      });
+      savedConfig?.onDestroyed?.(undefined, undefined, {
+        config: savedConfig!,
+        state: { activeIndex: 0 } as never,
+        driver: {} as never,
+      });
+      vi.runAllTimers();
+      expect(onBegin).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
+    });
+
+    it('onCloseClick and onDestroyStarted clear progress without running onBegin', () => {
+      const onBegin = vi.fn();
+      let savedConfig: Parameters<typeof driver>[0] | undefined;
+      vi.mocked(driver).mockImplementation((cfg) => {
+        savedConfig = cfg;
+        return {
+          drive: vi.fn(),
+          destroy: vi.fn(),
+          refresh: vi.fn(),
+          moveNext: vi.fn(),
+        } as ReturnType<typeof driver>;
+      });
+      service.setFullGuidedTourProgress(0, 3);
+      sessionStorage.setItem(FULL_GUIDED_TOUR_QUEUE_KEY, '["help_x"]');
+      service.startFullGuidedTourWelcome(onBegin);
+      savedConfig?.steps?.[0]?.popover?.onCloseClick?.(document.body, savedConfig!.steps![0]!, {
+        config: savedConfig!,
+        state: {} as never,
+        driver: { destroy: vi.fn() } as never,
+      });
+      let progress: { current: number; total: number } | null = { current: 0, total: 1 };
+      const sub = service.fullGuidedTourProgress$.subscribe((v) => {
+        progress = v;
+      });
+      sub.unsubscribe();
+      expect(progress).toBeNull();
+      expect(sessionStorage.getItem(FULL_GUIDED_TOUR_QUEUE_KEY)).toBeNull();
+      expect(onBegin).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('startFullGuidedTourClosing', () => {
+    it('starts closing popover and sets progress on last step', () => {
+      service.startFullGuidedTourClosing({ totalSteps: 5 });
+      expect(driver).toHaveBeenCalledTimes(1);
+      const config = vi.mocked(driver).mock.calls[0][0];
+      expect(config?.steps?.length).toBe(1);
+      expect(config?.showProgress).toBe(false);
+      let latest: { current: number; total: number } | null = null;
+      const sub = service.fullGuidedTourProgress$.subscribe((v) => {
+        latest = v;
+      });
+      sub.unsubscribe();
+      expect(latest).toEqual({ current: 4, total: 5 });
+    });
+
+    it('onDestroyed clears progress', () => {
+      service.startFullGuidedTourClosing({ totalSteps: 3 });
+      const config = vi.mocked(driver).mock.calls[0][0];
+      service.setFullGuidedTourProgress(2, 3);
+      config?.onDestroyed?.(undefined, undefined, {
+        config: config!,
+        state: { activeIndex: 0 } as never,
+        driver: {} as never,
+      });
+      let progress: { current: number; total: number } | null = { current: 0, total: 1 };
+      const sub = service.fullGuidedTourProgress$.subscribe((v) => {
+        progress = v;
+      });
+      sub.unsubscribe();
+      expect(progress).toBeNull();
+    });
+  });
+
+  describe('startCreatingPrayersHelpSectionTour', () => {
+    const section = { title: 'Creating Prayers', description: 'Community requests and updates' };
+    const hooks = () => ({
+      openPrayerForm: vi.fn(),
+      closePrayerForm: vi.fn(),
+      switchToCurrent: vi.fn(),
+    });
+
+    it('does not call driver when Request button is missing', () => {
+      service.startCreatingPrayersHelpSectionTour(section, hooks());
+      expect(driver).not.toHaveBeenCalled();
+    });
+
+    it('starts with 11 steps by default and 12 with anonymous step', () => {
+      mountEl(TOUR_REQUEST_BTN_DESKTOP_ID);
+      stubWideMatchMedia(true);
+      service.startCreatingPrayersHelpSectionTour(section, hooks());
+      expect(vi.mocked(driver).mock.calls[0][0]?.steps?.length).toBe(11);
+      service.startCreatingPrayersHelpSectionTour(section, hooks(), { includeAnonymousUpdateStep: true });
+      expect(vi.mocked(driver).mock.calls[1][0]?.steps?.length).toBe(12);
+      vi.unstubAllGlobals();
+    });
+
+    it('step hooks open form, switch to current, and kill tour on last step', () => {
+      mountEl(TOUR_REQUEST_BTN_MOBILE_ID);
+      mountEl(TOUR_ADD_UPDATE_BTN_ID);
+      mountEl(TOUR_PRAYER_SUBMIT_REQUEST_ID);
+      mountEl(TOUR_PRAYER_UPDATE_SUBMIT_ID);
+      stubWideMatchMedia(false);
+      const h = hooks();
+      const refresh = vi.fn();
+      const moveNext = vi.fn();
+      vi.mocked(driver).mockImplementation(
+        () =>
+          ({
+            drive: vi.fn(),
+            destroy: vi.fn(),
+            refresh,
+            moveNext,
+          }) as ReturnType<typeof driver>
+      );
+      vi.useFakeTimers();
+      service.startCreatingPrayersHelpSectionTour(section, h);
+      const config = vi.mocked(driver).mock.calls[0][0];
+      resolveStepElements(config, [0, 5, 7]);
+      fireStepNext(config, 0, { refresh, moveNext });
+      expect(h.openPrayerForm).toHaveBeenCalled();
+      vi.advanceTimersByTime(200);
+      const bridgeIdx = 6;
+      fireStepNext(config, bridgeIdx, { refresh, moveNext });
+      expect(h.closePrayerForm).toHaveBeenCalled();
+      expect(h.switchToCurrent).toHaveBeenCalled();
+      vi.advanceTimersByTime(500);
+      const addUpdateIdx = 7;
+      const addBtn = document.getElementById(TOUR_ADD_UPDATE_BTN_ID)!;
+      const clickSpy = vi.spyOn(addBtn, 'click');
+      fireStepNext(config, addUpdateIdx, { refresh, moveNext });
+      expect(clickSpy).toHaveBeenCalled();
+      vi.advanceTimersByTime(250);
+      const last = (config?.steps?.length ?? 1) - 1;
+      fireStepNext(config, last);
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    });
+  });
+
+  describe('settings help section tours', () => {
+    const section = { title: 'Section', description: 'Section description' };
+
+    it('startPrintingHelpSectionTour: no gear → no driver; with DOM resolves elements and hooks', () => {
+      service.startPrintingHelpSectionTour(section, settingsTourHooks());
+      expect(driver).not.toHaveBeenCalled();
+
+      mountSettingsGear(true);
+      mountEl(TOUR_SETTINGS_PRINT_ROW_ID, 'div');
+      mountEl(TOUR_SETTINGS_PRINT_PRAYERS_ID);
+      mountEl(TOUR_SETTINGS_PRINT_PROMPTS_ID);
+      mountEl(TOUR_SETTINGS_PRINT_PERSONAL_ID);
+      const h = settingsTourHooks();
+      vi.useFakeTimers();
+      service.startPrintingHelpSectionTour(section, h);
+      const config = vi.mocked(driver).mock.calls[0][0];
+      expect(config?.steps?.length).toBe(7);
+      resolveStepElements(config, [0, 1, 2, 3, 4, 5, 6]);
+      const { refresh, moveNext } = fireStepNext(config, 0);
+      expect(h.openSettings).toHaveBeenCalled();
+      vi.advanceTimersByTime(420);
+      expect(h.markForCheck).toHaveBeenCalled();
+      expect(refresh).toHaveBeenCalled();
+      expect(moveNext).toHaveBeenCalled();
+      fireStepNext(config, 6);
+      expect(h.closeSettings).toHaveBeenCalled();
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    });
+
+    it('startEmailSubscriptionHelpSectionTour', () => {
+      mountSettingsGear(false);
+      mountEl(TOUR_SETTINGS_EMAIL_SUBSCRIPTION_ID, 'div');
+      const h = settingsTourHooks();
+      vi.useFakeTimers();
+      service.startEmailSubscriptionHelpSectionTour(section, h);
+      const config = vi.mocked(driver).mock.calls[0][0];
+      expect(config?.steps?.length).toBe(4);
+      resolveStepElements(config, [0, 1]);
+      fireStepNext(config, 0);
+      vi.advanceTimersByTime(420);
+      fireStepNext(config, 3);
+      expect(h.closeSettings).toHaveBeenCalled();
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    });
+
+    it('startPrayerRemindersHelpSectionTour', () => {
+      mountSettingsGear(true);
+      mountEl(TOUR_SETTINGS_PRAYER_REMINDERS_ID, 'div');
+      mountEl(TOUR_SETTINGS_PRAYER_REMINDER_CONTROLS_ID, 'div');
+      const h = settingsTourHooks();
+      vi.useFakeTimers();
+      service.startPrayerRemindersHelpSectionTour(section, h);
+      const config = vi.mocked(driver).mock.calls[0][0];
+      expect(config?.steps?.length).toBe(5);
+      resolveStepElements(config, [0, 1, 2]);
+      fireStepNext(config, 0);
+      vi.advanceTimersByTime(420);
+      fireStepNext(config, 4);
+      expect(h.closeSettings).toHaveBeenCalled();
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    });
+
+    it('startFeedbackHelpSectionTour', () => {
+      mountSettingsGear(true);
+      mountEl(TOUR_SETTINGS_FEEDBACK_SECTION_ID, 'div');
+      mountEl(TOUR_SETTINGS_FEEDBACK_TYPE_ID, 'div');
+      mountEl(TOUR_SETTINGS_FEEDBACK_DETAILS_ID, 'div');
+      const h = settingsTourHooks();
+      vi.useFakeTimers();
+      service.startFeedbackHelpSectionTour(section, h);
+      const config = vi.mocked(driver).mock.calls[0][0];
+      expect(config?.steps?.length).toBe(6);
+      resolveStepElements(config, [0, 1, 2, 3]);
+      fireStepNext(config, 0);
+      vi.advanceTimersByTime(420);
+      fireStepNext(config, 5);
+      expect(h.closeSettings).toHaveBeenCalled();
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    });
+
+    it('startAppSettingsHelpSectionTour walks all settings anchors', () => {
+      mountSettingsGear(true);
+      mountEl(TOUR_SETTINGS_PRINT_ROW_ID, 'div');
+      mountEl(TOUR_SETTINGS_THEME_ID, 'div');
+      mountEl(TOUR_SETTINGS_TEXT_SIZE_ID, 'div');
+      mountEl(TOUR_SETTINGS_EMAIL_SUBSCRIPTION_ID, 'div');
+      mountEl(TOUR_SETTINGS_PUSH_ID, 'div');
+      mountEl(TOUR_SETTINGS_BADGES_ID, 'div');
+      mountEl(TOUR_SETTINGS_PRAYER_ENCOURAGEMENT_ID, 'div');
+      mountEl(TOUR_SETTINGS_DEFAULT_VIEW_ID, 'div');
+      mountEl(TOUR_SETTINGS_PRAYER_REMINDERS_ID, 'div');
+      mountEl(TOUR_SETTINGS_FEEDBACK_SECTION_ID, 'div');
+      const h = settingsTourHooks();
+      vi.useFakeTimers();
+      service.startAppSettingsHelpSectionTour(section, h);
+      const config = vi.mocked(driver).mock.calls[0][0];
+      expect(config?.steps?.length).toBe(13);
+      resolveStepElements(config, Array.from({ length: 13 }, (_, i) => i));
+      fireStepNext(config, 0);
+      vi.advanceTimersByTime(420);
+      fireStepNext(config, 12);
+      expect(h.closeSettings).toHaveBeenCalled();
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    });
+  });
+
+  describe('startPresentationModePrayButtonPreludeTour', () => {
+    const section = { title: 'Presentation', description: 'Group prayer mode' };
+    const hooks = () => ({
+      continueToPresentation: vi.fn(),
+      markForCheck: vi.fn(),
+    });
+
+    it('with Pray button highlights element and continues on Next', () => {
+      mountEl(TOUR_PRAYER_MODE_DESKTOP_ID);
+      stubWideMatchMedia(true);
+      const h = hooks();
+      service.startPresentationModePrayButtonPreludeTour(section, h);
+      const config = vi.mocked(driver).mock.calls[0][0];
+      expect(config?.steps?.length).toBe(1);
+      resolveStepElements(config, [0]);
+      fireStepNext(config, 0);
+      expect(h.continueToPresentation).toHaveBeenCalled();
+      expect(h.markForCheck).toHaveBeenCalled();
+      vi.unstubAllGlobals();
+    });
+
+    it('without Pray button uses popover-only step', () => {
+      const h = hooks();
+      service.startPresentationModePrayButtonPreludeTour(section, h);
+      const config = vi.mocked(driver).mock.calls[0][0];
+      expect(config?.steps?.[0]?.element).toBeUndefined();
+      fireStepNext(config, 0);
+      expect(h.continueToPresentation).toHaveBeenCalled();
+    });
+
+    it('fullGuidedTourPrelude close clears navigation state', () => {
+      sessionStorage.setItem(FULL_GUIDED_TOUR_QUEUE_KEY, '["help_presentation"]');
+      service.setFullGuidedTourProgress(1, 4);
+      mountEl(TOUR_PRAYER_MODE_MOBILE_ID);
+      stubWideMatchMedia(false);
+      let savedConfig: Parameters<typeof driver>[0] | undefined;
+      vi.mocked(driver).mockImplementation((cfg) => {
+        savedConfig = cfg;
+        return {
+          drive: vi.fn(),
+          destroy: vi.fn(),
+          refresh: vi.fn(),
+          moveNext: vi.fn(),
+        } as ReturnType<typeof driver>;
+      });
+      service.startPresentationModePrayButtonPreludeTour(section, hooks(), { fullGuidedTourPrelude: true });
+      savedConfig?.steps?.[0]?.popover?.onCloseClick?.(document.body, savedConfig!.steps![0]!, {
+        config: savedConfig!,
+        state: {} as never,
+        driver: { destroy: vi.fn() } as never,
+      });
+      expect(sessionStorage.getItem(FULL_GUIDED_TOUR_QUEUE_KEY)).toBeNull();
+      let progress: { current: number; total: number } | null = { current: 0, total: 1 };
+      const sub = service.fullGuidedTourProgress$.subscribe((v) => {
+        progress = v;
+      });
+      sub.unsubscribe();
+      expect(progress).toBeNull();
+      vi.unstubAllGlobals();
+    });
+  });
+
+  describe('startPresentationModeTour', () => {
+    const section = { title: 'Presentation mode', description: 'Shared screen prayer' };
+
+    it('does not call driver when toolbar is missing', () => {
+      service.startPresentationModeTour(section, {
+        openSettings: vi.fn(),
+        closeSettings: vi.fn(),
+        exitPresentation: vi.fn(),
+        markForCheck: vi.fn(),
+      });
+      expect(driver).not.toHaveBeenCalled();
+    });
+
+    it('walks toolbar and settings steps; exit step runs hooks', () => {
+      mountPresentationDom();
+      const h = {
+        openSettings: vi.fn(),
+        closeSettings: vi.fn(),
+        exitPresentation: vi.fn(),
+        markForCheck: vi.fn(),
+        persistFullGuidedTourQueue: vi.fn(),
+        onFullGuidedTourInterrupted: vi.fn(),
+      };
+      vi.useFakeTimers();
+      service.startPresentationModeTour(section, h);
+      const config = vi.mocked(driver).mock.calls[0][0];
+      expect(config?.steps?.length).toBe(18);
+      resolveStepElements(config, Array.from({ length: 18 }, (_, i) => i));
+      fireStepNext(config, 5);
+      vi.advanceTimersByTime(380);
+      expect(h.openSettings).toHaveBeenCalled();
+      const closeSettingsIdx = 16;
+      fireStepNext(config, closeSettingsIdx);
+      vi.advanceTimersByTime(280);
+      expect(h.closeSettings).toHaveBeenCalled();
+      config?.onDestroyed?.(undefined, undefined, {
+        config: config!,
+        state: { activeIndex: 5 } as never,
+        driver: {} as never,
+      });
+      expect(h.onFullGuidedTourInterrupted).toHaveBeenCalled();
+      fireStepNext(config, 17);
+      expect(h.persistFullGuidedTourQueue).toHaveBeenCalled();
+      expect(h.exitPresentation).toHaveBeenCalled();
+      vi.useRealTimers();
     });
   });
 });

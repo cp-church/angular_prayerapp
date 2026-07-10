@@ -67,7 +67,8 @@ describe('UserSettingsComponent', () => {
 
     mockPrintService = {
       downloadPrintablePrayerList: vi.fn(() => Promise.resolve()),
-      downloadPrintablePromptList: vi.fn(() => Promise.resolve())
+      downloadPrintablePromptList: vi.fn(() => Promise.resolve()),
+      downloadPrintablePersonalPrayerList: vi.fn(() => Promise.resolve())
     };
 
     mockPrayerService = {
@@ -99,7 +100,7 @@ describe('UserSettingsComponent', () => {
 
     const mockUserPrayerReminderService = {
       ensureLoaded: vi.fn(() => Promise.resolve([])),
-      addSlot: vi.fn(() => Promise.resolve([])),
+      addSlot: vi.fn(() => Promise.resolve([{ id: 'slot-1', local_hour: 8, iana_timezone: 'America/Chicago' }])),
       removeSlot: vi.fn(() => Promise.resolve([]))
     };
 
@@ -2801,6 +2802,224 @@ describe('UserSettingsComponent', () => {
 
       expect(component.error).toBeTruthy();
       expect(component.showPrayForButton).toBe(true);
+    });
+  });
+
+  describe('personal prayer print and categories', () => {
+    it('loadPersonalCategories loads categories from prayer service', async () => {
+      mockPrayerService.getUniqueCategoriesForUser.mockResolvedValue(['Health', 'Family']);
+      await component.loadPersonalCategories();
+      expect(component.personalCategories).toEqual(['Health', 'Family']);
+    });
+
+    it('loadPersonalCategories logs error on failure', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockPrayerService.getUniqueCategoriesForUser.mockRejectedValue(new Error('load failed'));
+      await component.loadPersonalCategories();
+      expect(consoleSpy).toHaveBeenCalledWith('Error loading personal categories:', expect.any(Error));
+      consoleSpy.mockRestore();
+    });
+
+    it('togglePersonalCategory adds and removes categories', () => {
+      component.selectedPersonalCategories = [];
+      component.togglePersonalCategory('Health');
+      expect(component.selectedPersonalCategories).toEqual(['Health']);
+      component.togglePersonalCategory('Health');
+      expect(component.selectedPersonalCategories).toEqual([]);
+    });
+
+    it('handlePrintPersonalPrayers opens window and passes selected categories', async () => {
+      const mockWindow = {} as Window;
+      vi.spyOn(window, 'open').mockReturnValue(mockWindow);
+      component.selectedPersonalCategories = ['Health'];
+      await component.handlePrintPersonalPrayers();
+      expect(mockPrintService.downloadPrintablePersonalPrayerList).toHaveBeenCalledWith(['Health'], mockWindow);
+      expect(component.isPrintingPersonal).toBe(false);
+    });
+
+    it('handlePrintPersonalPrayers closes window on error', async () => {
+      const mockWindow = { close: vi.fn() };
+      vi.spyOn(window, 'open').mockReturnValue(mockWindow as unknown as Window);
+      mockPrintService.downloadPrintablePersonalPrayerList.mockRejectedValue(new Error('print failed'));
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      await component.handlePrintPersonalPrayers();
+      expect(mockWindow.close).toHaveBeenCalled();
+      expect(component.isPrintingPersonal).toBe(false);
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('prayer reminder slots', () => {
+    beforeEach(() => {
+      component.email = 'test@example.com';
+    });
+
+    it('formatHour12 returns localized time string', () => {
+      const result = component.formatHour12(14);
+      expect(typeof result).toBe('string');
+      expect(result.length).toBeGreaterThan(0);
+    });
+
+    it('formatPrayerReminderSlotLabel omits timezone when it matches device', () => {
+      const deviceTz = component.deviceIanaTimezone;
+      const label = component.formatPrayerReminderSlotLabel({
+        id: 's1',
+        local_hour: 9,
+        iana_timezone: deviceTz,
+      });
+      expect(label).not.toContain('·');
+    });
+
+    it('formatPrayerReminderSlotLabel includes timezone when different from device', () => {
+      const deviceTz = component.deviceIanaTimezone;
+      const otherTz = deviceTz === 'UTC' ? 'America/Chicago' : 'UTC';
+      const label = component.formatPrayerReminderSlotLabel({
+        id: 's2',
+        local_hour: 9,
+        iana_timezone: otherTz,
+      });
+      expect(label).toContain(otherTz);
+    });
+
+    it('addPrayerReminderSlot saves slot and shows success', async () => {
+      await component.addPrayerReminderSlot();
+      expect(component.prayerReminderSlots).toHaveLength(1);
+      expect(component.prayerReminderSuccess).toContain('saved');
+      expect(component.savingPrayerReminder).toBe(false);
+    });
+
+    it('addPrayerReminderSlot handles duplicate hour error', async () => {
+      (component as any).userPrayerReminderService.addSlot.mockRejectedValue({ code: '23505' });
+      await component.addPrayerReminderSlot();
+      expect(component.prayerReminderError).toContain('already have a reminder');
+    });
+
+    it('removePrayerReminderSlot removes slot and shows success', async () => {
+      await component.removePrayerReminderSlot('slot-1');
+      expect(component.prayerReminderSuccess).toContain('removed');
+      expect(component.savingPrayerReminder).toBe(false);
+    });
+
+    it('setReminderHour updates hour and closes dropdown', () => {
+      component.showReminderHourDropdown = true;
+      component.setReminderHour(7);
+      expect(component.selectedReminderHour).toBe(7);
+      expect(component.showReminderHourDropdown).toBe(false);
+    });
+
+    it('loadPrayerRemindersForModal hydrates slots from reminder service', async () => {
+      const slots = [{ id: 'cached', local_hour: 6, iana_timezone: 'UTC' }];
+      mockUserSessionService.getCurrentSession.mockReturnValue({
+        email: 'test@example.com',
+        fullName: 'Test User',
+        prayerHourReminders: slots,
+      });
+      (component as any).userPrayerReminderService.ensureLoaded.mockResolvedValue(slots);
+      component.email = 'test@example.com';
+      (component as any).loadPrayerRemindersForModal();
+      await vi.waitFor(() => {
+        expect(component.prayerReminderSlots).toEqual(slots);
+        expect(component.loadingPrayerReminders).toBe(false);
+      });
+    });
+  });
+
+  describe('preference setter shortcuts', () => {
+    beforeEach(() => {
+      component.email = 'test@example.com';
+      component.preferencesLoaded = true;
+      component.badgePreferencesLoaded = true;
+      component.prayerEncouragementUiLoaded = true;
+    });
+
+    it('setReceiveNotifications toggles and persists', async () => {
+      const toggleSpy = vi.spyOn(component, 'onNotificationToggle').mockResolvedValue();
+      component.receiveNotifications = true;
+      component.setReceiveNotifications(false);
+      expect(component.receiveNotifications).toBe(false);
+      expect(toggleSpy).toHaveBeenCalled();
+    });
+
+    it('setReceiveNotifications no-ops when preferences not loaded', () => {
+      component.preferencesLoaded = false;
+      const toggleSpy = vi.spyOn(component, 'onNotificationToggle');
+      component.setReceiveNotifications(false);
+      expect(toggleSpy).not.toHaveBeenCalled();
+    });
+
+    it('setBadgeFunctionalityEnabled toggles badge preference', async () => {
+      const toggleSpy = vi.spyOn(component, 'onBadgeFunctionalityToggle').mockResolvedValue();
+      component.badgeFunctionalityEnabled = false;
+      component.setBadgeFunctionalityEnabled(true);
+      expect(component.badgeFunctionalityEnabled).toBe(true);
+      expect(toggleSpy).toHaveBeenCalled();
+    });
+
+    it('setShowPrayForButton toggles encouragement UI', async () => {
+      const toggleSpy = vi.spyOn(component, 'onShowPrayForButtonToggle').mockResolvedValue();
+      component.showPrayForButton = true;
+      component.setShowPrayForButton(false);
+      expect(component.showPrayForButton).toBe(false);
+      expect(toggleSpy).toHaveBeenCalled();
+    });
+
+    it('setShowPrayingCount toggles encouragement UI', async () => {
+      const toggleSpy = vi.spyOn(component, 'onShowPrayingCountToggle').mockResolvedValue();
+      component.showPrayingCount = true;
+      component.setShowPrayingCount(false);
+      expect(component.showPrayingCount).toBe(false);
+      expect(toggleSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('ngOnChanges session and empty-email branches', () => {
+    it('hydrates all preferences from user session when modal opens', () => {
+      mockUserSessionService.getCurrentSession.mockReturnValue({
+        email: 'session@example.com',
+        fullName: 'Session User',
+        isActive: false,
+        receivePush: true,
+        badgeFunctionalityEnabled: true,
+        showPrayForButton: false,
+        showPrayingCount: false,
+        defaultPrayerView: 'personal',
+      });
+      component.isOpen = true;
+      component.ngOnChanges({
+        isOpen: {
+          currentValue: true,
+          previousValue: false,
+          firstChange: false,
+          isFirstChange: () => false,
+        },
+      });
+      expect(component.email).toBe('session@example.com');
+      expect(component.name).toBe('Session User');
+      expect(component.receiveNotifications).toBe(false);
+      expect(component.receivePushNotifications).toBe(true);
+      expect(component.badgeFunctionalityEnabled).toBe(true);
+      expect(component.showPrayForButton).toBe(false);
+      expect(component.defaultPrayerView).toBe('personal');
+      expect(component.preferencesLoaded).toBe(true);
+    });
+
+    it('sets defaults when modal opens with whitespace-only email and no session', () => {
+      mockUserSessionService.getCurrentSession.mockReturnValue(null);
+      localStorage.clear();
+      localStorage.setItem('prayerapp_user_email', '   ');
+      component.isOpen = true;
+      component.ngOnChanges({
+        isOpen: {
+          currentValue: true,
+          previousValue: false,
+          firstChange: false,
+          isFirstChange: () => false,
+        },
+      });
+      expect(component.receiveNotifications).toBe(true);
+      expect(component.receivePushNotifications).toBe(false);
+      expect(component.preferencesLoaded).toBe(true);
+      expect(component.defaultPrayerView).toBe('current');
     });
   });
 });

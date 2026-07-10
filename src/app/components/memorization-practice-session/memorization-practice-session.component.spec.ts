@@ -362,23 +362,27 @@ describe('MemorizationPracticeSessionComponent', () => {
 
     it('clears the red error ring after the flash and on a correct keystroke', async () => {
       const { component } = await renderSession();
-      vi.useFakeTimers();
       component.beginPracticeWithMode('type');
-
-      component.onPracticeInputKeyDown(makeKeyEvent('z'));
-      expect(component.flashError).toBe(true);
-
-      vi.advanceTimersByTime(220);
-      expect(component.flashError).toBe(false);
-
-      component.onPracticeInputKeyDown(makeKeyEvent('z'));
-      expect(component.flashError).toBe(true);
       const idx = component.currentTargetIndex!;
       const token = component.tokens[idx]!;
-      const key = token.kind === 'digit' ? token.text : token.text[0]!;
-      component.onPracticeInputKeyDown(makeKeyEvent(key));
-      expect(component.flashError).toBe(false);
-      vi.useRealTimers();
+      const correctKey = token.kind === 'digit' ? token.text : token.text[0]!;
+      const wrongKey = token.kind === 'digit' ? (correctKey === '0' ? '1' : '0') : correctKey.toLowerCase() === 'z' ? 'y' : 'z';
+
+      vi.useFakeTimers();
+      try {
+        component.onPracticeInputKeyDown(makeKeyEvent(wrongKey));
+        expect(component.flashError).toBe(true);
+
+        vi.advanceTimersByTime(220);
+        expect(component.flashError).toBe(false);
+
+        component.onPracticeInputKeyDown(makeKeyEvent(wrongKey));
+        expect(component.flashError).toBe(true);
+        component.onPracticeInputKeyDown(makeKeyEvent(correctKey));
+        expect(component.flashError).toBe(false);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('onPracticeInputKeyDown ignores modifier keys and non-character keys', async () => {
