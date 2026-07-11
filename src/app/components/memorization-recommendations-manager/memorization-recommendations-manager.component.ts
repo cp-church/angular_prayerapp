@@ -14,6 +14,7 @@ import {
 } from '@angular/cdk/drag-drop';
 import { BiblePassagePickerModalComponent } from '../bible-passage-picker-modal/bible-passage-picker-modal.component';
 import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog.component';
+import { ScriptureHoverPreviewComponent } from '../scripture-hover-preview/scripture-hover-preview.component';
 import { MemorizationRecommendationsService } from '../../services/memorization-recommendations.service';
 import { ScriptureService } from '../../services/scripture.service';
 import { ToastService } from '../../services/toast.service';
@@ -32,6 +33,7 @@ import type {
     DragDropModule,
     BiblePassagePickerModalComponent,
     ConfirmationDialogComponent,
+    ScriptureHoverPreviewComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -280,9 +282,17 @@ import type {
                               <circle cx="15" cy="18" r="1.5"></circle>
                             </svg>
                           </button>
-                          <div class="min-w-0 flex-1 font-medium text-gray-900 dark:text-gray-100 truncate">
-                            {{ item.reference }}
-                          </div>
+                          <app-scripture-hover-preview
+                            class="min-w-0 flex-1"
+                            [reference]="item.reference"
+                            [translation]="item.translation"
+                          >
+                            <div
+                              class="min-w-0 font-medium text-gray-900 dark:text-gray-100 truncate"
+                            >
+                              {{ item.reference }}
+                            </div>
+                          </app-scripture-hover-preview>
                           <button
                             type="button"
                             (click)="confirmRemoveVerse(item)"

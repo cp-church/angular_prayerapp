@@ -468,6 +468,10 @@ export class HelpContentService {
             text: 'Tap **Bible Books** to add an entire book—or a defined scope of books—to memorize in order. This is helpful when you want to work through a book chapter by chapter rather than picking individual references.',
           },
           {
+            subtitle: 'Recommended verses',
+            text: 'Tap **Recommended** to browse curated passages grouped by topic (for example counseling themes). Categories start collapsed—expand one to see its verses, then tap a card to add it to your list. Verses you already saved show **Already added** and cannot be tapped again. On desktop, hover a verse (or long-press on mobile) to preview the passage text before adding.',
+          },
+          {
             subtitle: 'Learning, Practicing, and Mastered',
             text: 'Passages move through three groups as you complete practice sessions: **Learning** (new or early progress), **Practicing** (building consistency), and **Mastered** (strong recall). Tap any card to start a session.',
           },
@@ -481,7 +485,7 @@ export class HelpContentService {
           },
           {
             subtitle: 'Removing passages',
-            text: 'Use the trash icon on a card to remove a passage from your list. You can add it again later from **Add Verses** or **Bible Books** if you want to restart.',
+            text: 'Use the trash icon on a card to remove a passage from your list. You can add it again later from **Add Verses**, **Bible Books**, or **Recommended** if you want to restart.',
           },
         ],
         order: 6,

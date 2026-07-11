@@ -669,10 +669,10 @@ describe('HelpDriverTourService', () => {
       );
       expect(driver).toHaveBeenCalledTimes(1);
       const config = vi.mocked(driver).mock.calls[0][0];
-      expect(config?.steps?.length).toBe(4);
+      expect(config?.steps?.length).toBe(5);
     });
 
-    it('starts with 4 steps when hasMemorizedItems is true', () => {
+    it('starts with 5 steps when hasMemorizedItems is true', () => {
       const mf = document.createElement('button');
       mf.id = TOUR_FILTER_MEMORIZE_ID;
       document.body.appendChild(mf);
@@ -683,7 +683,7 @@ describe('HelpDriverTourService', () => {
       );
       expect(driver).toHaveBeenCalledTimes(1);
       const config = vi.mocked(driver).mock.calls[0][0];
-      expect(config?.steps?.length).toBe(4);
+      expect(config?.steps?.length).toBe(5);
     });
 
     it('step 0 onNext runs switchToMemorize then refresh and moveNext', () => {

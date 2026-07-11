@@ -13,6 +13,7 @@ export const TOUR_FILTER_PROMPTS_ID = 'tour-filter-prompts';
 export const TOUR_FILTER_MEMORIZE_ID = 'tour-filter-memorize';
 export const TOUR_MEMORIZE_ACTION_BAR_ID = 'tour-memorize-action-bar';
 export const TOUR_MEMORIZE_ADD_VERSES_ID = 'tour-memorize-add-verses';
+export const TOUR_MEMORIZE_RECOMMENDED_ID = 'tour-memorize-recommended';
 export const TOUR_MEMORIZE_SAMPLE_CARD_ID = 'tour-memorize-sample-card';
 export const TOUR_MEMORIZE_EMPTY_STATE_ID = 'tour-memorize-empty-state';
 export const TOUR_PROMPT_TYPE_FILTERS_ID = 'tour-prompt-type-filters';
@@ -257,6 +258,13 @@ function getMemorizeActionBarEl(): HTMLElement | null {
     return null;
   }
   return document.getElementById(TOUR_MEMORIZE_ACTION_BAR_ID);
+}
+
+function getMemorizeRecommendedEl(): HTMLElement | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+  return document.getElementById(TOUR_MEMORIZE_RECOMMENDED_ID);
 }
 
 function getMemorizeEmptyStateEl(): HTMLElement | null {
@@ -1603,7 +1611,7 @@ export class HelpDriverTourService {
   }
 
   /**
-   * **Memorize** (`help_memorize`): Memorize filter → action bar → sample card or empty state → practice tips.
+   * **Memorize** (`help_memorize`): Memorize filter → action bar → Recommended → sample card or empty state → practice tips.
    */
   startMemorizeHelpSectionTour(
     section: { title: string; description: string },
@@ -1647,6 +1655,16 @@ export class HelpDriverTourService {
           align: 'start',
         },
       },
+      {
+        element: () => getMemorizeRecommendedEl()!,
+        popover: {
+          title: 'Recommended verses',
+          description:
+            'Tap <strong>Recommended</strong> for curated passages grouped by topic. Expand a category, then tap a verse to add it. Verses already on your list show <strong>Already added</strong>.',
+          side: 'bottom',
+          align: 'start',
+        },
+      },
     ];
 
     if (options.hasMemorizedItems) {
@@ -1655,7 +1673,7 @@ export class HelpDriverTourService {
         popover: {
           title: 'Passage cards',
           description:
-            'Tap a card to practice. Cards are grouped as <strong>Learning</strong>, <strong>Practicing</strong>, or <strong>Mastered</strong> based on completed sessions.',
+            'Tap a card to practice. Cards are grouped as <strong>Learning</strong>, <strong>Practicing</strong>, or <strong>Mastered</strong> based on completed sessions. On desktop, hover a verse (or long-press on mobile) to preview the passage text.',
           side: 'top',
           align: 'start',
         },
@@ -1666,7 +1684,7 @@ export class HelpDriverTourService {
         popover: {
           title: 'No passages yet',
           description:
-            'When you add a verse or Bible books list, it appears here. Use <strong>Add Verses</strong> or <strong>Bible Books</strong> above to get started.',
+            'When you add a verse, Bible books list, or Recommended passage, it appears here. Use the buttons above to get started.',
           side: 'top',
           align: 'start',
         },

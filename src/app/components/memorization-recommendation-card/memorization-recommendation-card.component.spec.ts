@@ -1,5 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/angular';
+import { userEvent } from '@testing-library/user-event';
 import { MemorizationRecommendationCardComponent } from './memorization-recommendation-card.component';
+import { ScriptureService } from '../../services/scripture.service';
 import type { MemorizationRecommendation } from '../../types/memorization';
 
 const sample: MemorizationRecommendation = {
@@ -10,6 +13,17 @@ const sample: MemorizationRecommendation = {
   displayOrder: 0,
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
+};
+
+const mockScriptureService = {
+  getPassage: vi.fn(() =>
+    Promise.resolve({
+      reference: 'John 3:16',
+      text: 'For God so loved the world',
+      translation: 'esv',
+    })
+  ),
+  getAudioUrl: vi.fn(),
 };
 
 describe('MemorizationRecommendationCardComponent', () => {
@@ -38,5 +52,19 @@ describe('MemorizationRecommendationCardComponent', () => {
     const emit = vi.spyOn(card.add, 'emit');
     card.onClick();
     expect(emit).not.toHaveBeenCalled();
+  });
+
+  it('wraps card in scripture hover preview and emits add on click', async () => {
+    const user = userEvent.setup();
+    const add = vi.fn();
+    const { fixture, container } = await render(MemorizationRecommendationCardComponent, {
+      componentInputs: { recommendation: sample, alreadyAdded: false },
+      providers: [{ provide: ScriptureService, useValue: mockScriptureService }],
+    });
+    fixture.componentInstance.add.subscribe(add);
+
+    expect(container.querySelector('app-scripture-hover-preview')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: /Add John 3:16/i }));
+    expect(add).toHaveBeenCalledWith(sample);
   });
 });

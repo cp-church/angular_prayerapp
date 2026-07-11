@@ -2,7 +2,19 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/angular';
 import { userEvent } from '@testing-library/user-event';
 import { MemorizedVerseCardComponent } from './memorized-verse-card.component';
+import { ScriptureService } from '../../services/scripture.service';
 import type { MemorizedItem } from '../../types/memorization';
+
+const mockScriptureService = {
+  getPassage: vi.fn(() =>
+    Promise.resolve({
+      reference: 'John 3:16',
+      text: 'For God so loved the world',
+      translation: 'esv',
+    })
+  ),
+  getAudioUrl: vi.fn(),
+};
 
 describe('MemorizedVerseCardComponent', () => {
   const verseItem: MemorizedItem = {
@@ -31,10 +43,14 @@ describe('MemorizedVerseCardComponent', () => {
     bibleBooksScope: 'ot',
   };
 
-  it('renders verse reference, translation, and session stats', async () => {
-    await render(MemorizedVerseCardComponent, {
-      componentInputs: { item: verseItem },
+  const renderCard = (item: MemorizedItem) =>
+    render(MemorizedVerseCardComponent, {
+      componentInputs: { item },
+      providers: [{ provide: ScriptureService, useValue: mockScriptureService }],
     });
+
+  it('renders verse reference, translation, and session stats', async () => {
+    await renderCard(verseItem);
     expect(screen.getByText('John 3:16')).toBeTruthy();
     expect(screen.getByText(/ESV/i)).toBeTruthy();
     expect(screen.getByText(/Sessions: 1 completed/i)).toBeTruthy();
@@ -42,20 +58,21 @@ describe('MemorizedVerseCardComponent', () => {
   });
 
   it('renders bible books count label instead of translation', async () => {
-    await render(MemorizedVerseCardComponent, {
-      componentInputs: { item: bibleBooksItem },
-    });
+    await renderCard(bibleBooksItem);
     expect(screen.getByText('Bible Books (OT)')).toBeTruthy();
     expect(screen.getByText(/39 books/i)).toBeTruthy();
     expect(screen.queryByText(/ESV/i)).toBeNull();
   });
 
+  it('wraps verse card in scripture hover preview', async () => {
+    const { container } = await renderCard(verseItem);
+    expect(container.querySelector('app-scripture-hover-preview')).toBeTruthy();
+  });
+
   it('emits practice when main button is clicked', async () => {
     const user = userEvent.setup();
     const practice = vi.fn();
-    const { fixture } = await render(MemorizedVerseCardComponent, {
-      componentInputs: { item: verseItem },
-    });
+    const { fixture } = await renderCard(verseItem);
     fixture.componentInstance.practice.subscribe(practice);
 
     const [practiceBtn] = screen.getAllByRole('button');
@@ -66,9 +83,7 @@ describe('MemorizedVerseCardComponent', () => {
   it('emits remove when remove button is clicked', async () => {
     const user = userEvent.setup();
     const remove = vi.fn();
-    const { fixture } = await render(MemorizedVerseCardComponent, {
-      componentInputs: { item: verseItem },
-    });
+    const { fixture } = await renderCard(verseItem);
     fixture.componentInstance.remove.subscribe(remove);
 
     await user.click(screen.getByRole('button', { name: 'Remove John 3:16' }));
