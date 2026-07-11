@@ -18,9 +18,10 @@ const ALLOWED_TAGS = [
   'pre',
   'a',
   'hr',
+  'img',
 ];
 
-const ALLOWED_ATTR = ['href', 'title', 'target', 'rel', 'style'];
+const ALLOWED_ATTR = ['href', 'title', 'target', 'rel', 'style', 'src', 'alt', 'width', 'height'];
 
 const SANITIZE_CONFIG = {
   ALLOWED_TAGS,
@@ -40,6 +41,20 @@ function isSafeHref(value: string): boolean {
   return true;
 }
 
+/** Images in email/broadcast HTML: https only, or root-relative paths (not protocol-relative). */
+function isSafeImageSrc(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  const lower = trimmed.toLowerCase();
+  if (lower.startsWith('javascript:') || lower.startsWith('vbscript:') || lower.startsWith('data:')) {
+    return false;
+  }
+  if (lower.startsWith('https://')) return true;
+  // Root-relative only (e.g. /marketing/…). Reject //evil.example or http:
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//')) return true;
+  return false;
+}
+
 // Inline styles matter for email clients that ignore <style>/class rules.
 // Kept in sync with `RichTextViewComponent` styles so in-app rendering looks the
 // same whether the CSS class applies (DOM-rendered) or the inline style wins
@@ -49,6 +64,8 @@ const INLINE_STYLES: Record<string, string> = {
     'margin: 0.5rem 0; padding: 0.25rem 0.75rem; border-left: 3px solid rgba(57, 112, 77, 0.5); opacity: 0.9;',
   /** Email clients often ignore default `u` styling; matches `RichTextViewComponent` */
   U: 'text-decoration: underline;',
+  /** Subscriber broadcast / email screenshots — fluid width in narrow mail clients */
+  IMG: 'display:block;max-width:100%;height:auto;border:0;border-radius:8px;margin:12px 0;',
 };
 
 type DomPurifyInstance = {
@@ -168,6 +185,20 @@ function applyRichHtmlEnhancements(root: ParentNode | null | undefined): void {
       node.setAttribute('style', INLINE_STYLES['BLOCKQUOTE']);
     }
   });
+
+  root.querySelectorAll('img').forEach((node) => {
+    const src = node.getAttribute('src') || '';
+    if (!isSafeImageSrc(src)) {
+      node.remove();
+      return;
+    }
+    if (!node.getAttribute('alt')) {
+      node.setAttribute('alt', '');
+    }
+    if (!node.getAttribute('style')) {
+      node.setAttribute('style', INLINE_STYLES['IMG']);
+    }
+  });
 }
 
 function stripToAllowlistedHtml(html: string, doc: Document): string {
@@ -206,6 +237,9 @@ function stripToAllowlistedHtml(html: string, doc: Document): string {
         return;
       }
       if (attr.name === 'href' && !isSafeHref(attr.value)) {
+        return;
+      }
+      if (attr.name === 'src' && !isSafeImageSrc(attr.value)) {
         return;
       }
       out.setAttribute(attr.name, attr.value);

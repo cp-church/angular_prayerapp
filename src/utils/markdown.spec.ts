@@ -131,6 +131,34 @@ describe('markdownToSafeHtml', () => {
     expect(html).toContain('<strong>keep</strong>');
     expect(html).not.toContain('<div');
   });
+
+  it('renders https and root-relative images for email broadcasts', () => {
+    const httpsHtml = markdownToSafeHtml(
+      '![Find Memorize](https://cpprayer.cp-church.org/marketing/memorize/01-find-memorize.png)'
+    );
+    expect(httpsHtml).toContain('<img');
+    expect(httpsHtml).toContain(
+      'src="https://cpprayer.cp-church.org/marketing/memorize/01-find-memorize.png"'
+    );
+    expect(httpsHtml).toContain('alt="Find Memorize"');
+    expect(httpsHtml).toContain('max-width:100%');
+
+    const relativeHtml = markdownToSafeHtml('![Action bar](/marketing/memorize/02-action-bar.png)');
+    expect(relativeHtml).toContain('src="/marketing/memorize/02-action-bar.png"');
+    expect(relativeHtml).toContain('alt="Action bar"');
+  });
+
+  it('strips unsafe image sources', () => {
+    const dataImg = markdownToSafeHtml('![x](data:image/png;base64,abc)');
+    expect(dataImg).not.toContain('<img');
+    expect(dataImg).not.toContain('data:image');
+
+    const httpImg = markdownToSafeHtml('![x](http://evil.example/a.png)');
+    expect(httpImg).not.toContain('http://evil.example');
+
+    const protoRelative = markdownToSafeHtml('![x](//evil.example/a.png)');
+    expect(protoRelative).not.toContain('//evil.example');
+  });
 });
 
 describe('markdownToSafeHtml allowlist fallback', () => {

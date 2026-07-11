@@ -4,6 +4,11 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Marketing — Memorize subscriber promo ✅
+- **Ops**: Paste-ready subscriber announcement (subject options, Markdown for Admin broadcast, companion HTML) lives in [`docs/marketing/memorize-subscriber-promo.md`](docs/marketing/memorize-subscriber-promo.md). Screenshots are under [`public/marketing/memorize/`](public/marketing/memorize/) and must be deployed before sending so `https://cpprayer.cp-church.org/marketing/memorize/…` resolves.
+- **Assets**: Modal crops are taken from full-resolution captures and downscaled (not upscaled) so email images stay sharp. Full-page Memorize shots (`01` / `02` / `05`) use a non-admin subscriber session (no Admin badge). [`07-practice-modes-grid.png`](public/marketing/memorize/07-practice-modes-grid.png) is a labeled 2×2 collage of Type, Initials, Word, and Reorder mid-practice on the same verse.
+- **Email**: [`markdownToSafeHtml`](src/utils/markdown.ts) allowlists safe HTTPS (and root-relative) `<img>` tags so Admin → **Send email to all subscribers** can include those screenshots in broadcast Markdown.
+
 ### Memorize — Recommended modal category accordions ✅
 - **UI**: The Memorize **Recommended** modal shows each category as a custom accordion (collapsed by default) with verse count and chevron; expand a category to see its verse cards. Closing the modal resets expansion. [`memorization-recommendations-modal.component.ts`](src/app/components/memorization-recommendations-modal/memorization-recommendations-modal.component.ts).
 - **Fix**: On Capacitor / touch devices, opening Recommended locks background scroll (body, documentElement, and `.safe-area-viewport`) and only allows `touchmove` inside the modal scroller so the page behind does not scroll. Same approach as the Bible passage picker. Touches inside a body-portaled scripture hover preview are also allowed so long-press previews remain scrollable.
