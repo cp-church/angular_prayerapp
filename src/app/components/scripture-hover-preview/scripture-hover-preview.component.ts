@@ -83,11 +83,12 @@ function isTouchOnlyDevice(): boolean {
   template: `
     <div
       #trigger
-      class="relative select-none"
+      class="relative select-none [-webkit-touch-callout:none]"
       (mouseenter)="onMouseEnter($event)"
       (mouseleave)="onMouseLeave()"
       (click)="onTriggerActivate($event)"
       (keydown.capture)="onTriggerKeydown($event)"
+      (contextmenu)="onTriggerContextMenu($event)"
       (touchstart)="onTouchStart($event)"
       (touchmove)="onTouchMove($event)"
       (touchend)="onTouchEnd($event)"
@@ -108,7 +109,7 @@ function isTouchOnlyDevice(): boolean {
       }
       <div
         data-scripture-hover-popover
-        class="fixed z-[220] box-border flex min-h-0 max-w-none flex-col overflow-hidden rounded-lg border border-slate-300 bg-white shadow-xl dark:border-slate-600 dark:bg-slate-800"
+        class="fixed z-[220] box-border flex min-h-0 max-w-none flex-col overflow-hidden rounded-lg border border-slate-300 bg-white shadow-xl select-none [-webkit-touch-callout:none] dark:border-slate-600 dark:bg-slate-800"
         [style.left.px]="positionX"
         [style.top.px]="positionY"
         [style.width.px]="popoverWidthPx"
@@ -312,10 +313,18 @@ export class ScriptureHoverPreviewComponent implements OnChanges, OnDestroy {
     this.longPressTimeout = setTimeout(() => {
       this.longPressTimeout = null;
       this.longPressTriggered = true;
+      // Suppress native text selection / callout that iOS/Android start on long-press.
+      this.clearTextSelection();
       this.setPositionFromPoint(clientX, clientY);
       this.openedByLongPress = true;
       void this.showPreview(refAtTouch, translation);
     }, LONG_PRESS_MS);
+  }
+
+  /** Block the native long-press context/callout menu on touch devices. */
+  onTriggerContextMenu(event: Event): void {
+    if (this.disabled || !isTouchOnlyDevice()) return;
+    event.preventDefault();
   }
 
   onTouchMove(event: TouchEvent): void {
@@ -679,6 +688,10 @@ export class ScriptureHoverPreviewComponent implements OnChanges, OnDestroy {
       clearTimeout(this.longPressTimeout);
       this.longPressTimeout = null;
     }
+  }
+
+  private clearTextSelection(): void {
+    window.getSelection()?.removeAllRanges();
   }
 
   private teardown(): void {

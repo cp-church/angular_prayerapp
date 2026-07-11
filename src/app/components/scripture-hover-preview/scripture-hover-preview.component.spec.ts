@@ -431,6 +431,43 @@ describe('ScriptureHoverPreviewComponent', () => {
     expect(component.openedByLongPress).toBe(false);
   });
 
+  it('clears text selection when long-press opens and blocks the context menu on touch devices', async () => {
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      configurable: true,
+      value: vi.fn().mockReturnValue({
+        matches: true,
+        media: '(hover: none)',
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+        onchange: null,
+      }),
+    });
+
+    const removeAllRanges = vi.fn();
+    vi.spyOn(window, 'getSelection').mockReturnValue({
+      removeAllRanges,
+    } as unknown as Selection);
+
+    const touch = { clientX: 120, clientY: 80 };
+    component.onTouchStart({
+      changedTouches: [touch],
+      touches: [touch],
+    } as unknown as TouchEvent);
+    await vi.advanceTimersByTimeAsync(500);
+    await vi.runAllTimersAsync();
+
+    expect(component.isVisible).toBe(true);
+    expect(removeAllRanges).toHaveBeenCalled();
+
+    const contextEvent = { preventDefault: vi.fn() };
+    component.onTriggerContextMenu(contextEvent as unknown as Event);
+    expect(contextEvent.preventDefault).toHaveBeenCalled();
+  });
+
   it('dismisses long-press preview when the list scrolls, but not when scrolling the popover', async () => {
     Object.defineProperty(window, 'matchMedia', {
       writable: true,

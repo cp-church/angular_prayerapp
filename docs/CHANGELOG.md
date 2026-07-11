@@ -14,6 +14,7 @@ Major features and milestones for the Prayer App.
 - **Fix**: Dismissing the preview no longer blanks the page. The popover is attached with `ApplicationRef` + `document.body` instead of CDK `DomPortalOutlet` on the host `ViewContainerRef` (detach was tearing down sibling views).
 - **Fix**: Preview popover stacking is `z-[220]` (backdrop `z-[210]`) so it appears above the Recommended modal (`z-[200]`), not behind it.
 - **Fix**: Mobile long-press keeps the preview open after finger lift (dismiss via backdrop tap or Escape) so the passage is readable; lift still suppresses the synthetic click so practice/add do not fire.
+- **Fix**: Long-press on mobile disables native text selection and the iOS/Android callout menu on the card and preview (`select-none`, `-webkit-touch-callout: none`, clear selection on open, block `contextmenu`).
 - **Fix**: Desktop hover popovers use `pointer-events: auto` with a short leave grace so the pointer can move into the popover to scroll long passages; scroll events inside the popover do not dismiss it.
 - **Fix**: Long-press cancels when the finger moves more than 10px (scroll gesture) so list scrolling does not open a preview. Opening a preview closes any other open instance so popovers do not stack.
 - **Fix**: Clicking a wrapped card (practice / add) dismisses the desktop hover preview so the portaled popover cannot sit above the practice session or Recommended modal and block interaction.
