@@ -128,6 +128,7 @@ describe('AdminSubscriberEmailBroadcastComponent', () => {
   describe('canSend', () => {
     it('is false when subject or body is empty', () => {
       const component = createComponent();
+      component.bodyFormat = 'markdown';
       component.subject = '';
       component.bodyMarkdown = 'x';
       expect(component.canSend).toBe(false);
@@ -137,11 +138,34 @@ describe('AdminSubscriberEmailBroadcastComponent', () => {
       expect(component.canSend).toBe(false);
     });
 
-    it('is true when subject and body have non-whitespace content', () => {
+    it('is true when subject and Markdown body have non-whitespace content', () => {
       const component = createComponent();
+      component.bodyFormat = 'markdown';
       component.subject = ' Hello ';
       component.bodyMarkdown = ' Body ';
       expect(component.canSend).toBe(true);
+    });
+
+    it('uses HTML body when format is html', () => {
+      const component = createComponent();
+      component.bodyFormat = 'html';
+      component.subject = 'Hi';
+      component.bodyHtml = '';
+      component.bodyMarkdown = 'ignored markdown';
+      expect(component.canSend).toBe(false);
+
+      component.bodyHtml = '<p>Hello</p>';
+      expect(component.canSend).toBe(true);
+    });
+  });
+
+  describe('setBodyFormat', () => {
+    it('switches format and marks for check', () => {
+      const component = createComponent();
+      expect(component.bodyFormat).toBe('html');
+      component.setBodyFormat('markdown');
+      expect(component.bodyFormat).toBe('markdown');
+      expect(mockCdr.markForCheck).toHaveBeenCalled();
     });
   });
 
@@ -149,7 +173,7 @@ describe('AdminSubscriberEmailBroadcastComponent', () => {
     it('does nothing when cannot send', () => {
       const component = createComponent();
       component.subject = '';
-      component.bodyMarkdown = 'x';
+      component.bodyHtml = 'x';
       component.recipientCount = 5;
 
       component.onSendClick();
@@ -159,7 +183,7 @@ describe('AdminSubscriberEmailBroadcastComponent', () => {
     it('does nothing when recipientCount is 0', () => {
       const component = createComponent();
       component.subject = 'Subj';
-      component.bodyMarkdown = 'Body';
+      component.bodyHtml = '<p>Body</p>';
       component.recipientCount = 0;
 
       component.onSendClick();
@@ -169,7 +193,7 @@ describe('AdminSubscriberEmailBroadcastComponent', () => {
     it('does nothing while sending', () => {
       const component = createComponent();
       component.subject = 'Subj';
-      component.bodyMarkdown = 'Body';
+      component.bodyHtml = '<p>Body</p>';
       component.recipientCount = 2;
       component.sending = true;
 
@@ -179,8 +203,20 @@ describe('AdminSubscriberEmailBroadcastComponent', () => {
 
     it('opens confirmation when can send and recipients exist', () => {
       const component = createComponent();
+      component.bodyFormat = 'markdown';
       component.subject = 'Subj';
       component.bodyMarkdown = 'Body';
+      component.recipientCount = 3;
+
+      component.onSendClick();
+      expect(component.showConfirmDialog).toBe(true);
+    });
+
+    it('opens confirmation for HTML body', () => {
+      const component = createComponent();
+      component.bodyFormat = 'html';
+      component.subject = 'Subj';
+      component.bodyHtml = '<p>Hi</p>';
       component.recipientCount = 3;
 
       component.onSendClick();
@@ -213,6 +249,7 @@ describe('AdminSubscriberEmailBroadcastComponent', () => {
     it('shows info toast when queued is 0', async () => {
       mockEmail.queueAdminManualBroadcastToSubscribers.mockResolvedValue({ queued: 0 });
       const component = createComponent();
+      component.bodyFormat = 'markdown';
       component.subject = 'Hi';
       component.bodyMarkdown = 'There';
 
@@ -235,6 +272,7 @@ describe('AdminSubscriberEmailBroadcastComponent', () => {
       component.ngOnInit();
       await flushMicrotasks();
 
+      component.bodyFormat = 'markdown';
       component.subject = 'News';
       component.bodyMarkdown = 'Update';
 
@@ -253,12 +291,30 @@ describe('AdminSubscriberEmailBroadcastComponent', () => {
       expect(component.recipientCount).toBe(10);
     });
 
+    it('queues HTML body when format is html', async () => {
+      mockEmail.queueAdminManualBroadcastToSubscribers.mockResolvedValue({ queued: 2 });
+      const component = createComponent();
+      component.bodyFormat = 'html';
+      component.subject = 'Promo';
+      component.bodyHtml = '<p><strong>Hello</strong></p>';
+      component.bodyMarkdown = 'should not send';
+
+      await component.onConfirmSend();
+
+      expect(mockEmail.queueAdminManualBroadcastToSubscribers).toHaveBeenCalledWith({
+        subject: 'Promo',
+        bodyHtml: '<p><strong>Hello</strong></p>',
+      });
+      expect(component.bodyHtml).toBe('');
+    });
+
     it('shows error toast on queue failure', async () => {
       mockEmail.queueAdminManualBroadcastToSubscribers.mockRejectedValue(new Error('queue full'));
 
       const component = createComponent();
+      component.bodyFormat = 'html';
       component.subject = 'S';
-      component.bodyMarkdown = 'B';
+      component.bodyHtml = '<p>B</p>';
 
       await component.onConfirmSend();
 
@@ -270,8 +326,9 @@ describe('AdminSubscriberEmailBroadcastComponent', () => {
       mockEmail.queueAdminManualBroadcastToSubscribers.mockRejectedValue('bad');
 
       const component = createComponent();
+      component.bodyFormat = 'html';
       component.subject = 'S';
-      component.bodyMarkdown = 'B';
+      component.bodyHtml = '<p>B</p>';
 
       await component.onConfirmSend();
 

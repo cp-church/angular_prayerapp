@@ -3,12 +3,15 @@ import {
   ChangeDetectorRef,
   Component,
   OnInit,
+  ViewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { EmailNotificationService } from '../../services/email-notification.service';
 import { ToastService } from '../../services/toast.service';
 import { RichTextEditorComponent } from '../rich-text-editor/rich-text-editor.component';
 import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog.component';
+
+export type AdminBroadcastBodyFormat = 'html' | 'markdown';
 
 @Component({
   selector: 'app-admin-subscriber-email-broadcast',
@@ -72,6 +75,7 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
           role="region"
           aria-labelledby="admin-subscriber-email-broadcast-trigger"
           class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-4"
+          (click)="$event.stopPropagation()"
         >
           <p class="text-sm text-gray-600 dark:text-gray-400">
             Sends one queued email per address (same pipeline as prayer/update notifications). Recipients are all
@@ -107,15 +111,80 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
           </div>
 
           <div>
-            <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Message</span>
-            <app-rich-text-editor
-              [(ngModel)]="bodyMarkdown"
-              name="adminBroadcastBody"
-              [disabled]="sending"
-              placeholder="Write your message…"
-              minHeight="12rem"
-              ariaLabel="Broadcast message body"
-            ></app-rich-text-editor>
+            <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" id="admin-broadcast-format-label"
+              >Message format</span
+            >
+            <div
+              class="inline-flex rounded-md border border-gray-300 dark:border-gray-600 overflow-hidden"
+              role="group"
+              aria-labelledby="admin-broadcast-format-label"
+            >
+              <button
+                type="button"
+                class="px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
+                [class.bg-blue-600]="bodyFormat === 'html'"
+                [class.text-white]="bodyFormat === 'html'"
+                [class.bg-white]="bodyFormat !== 'html'"
+                [class.dark:bg-gray-700]="bodyFormat !== 'html'"
+                [class.text-gray-800]="bodyFormat !== 'html'"
+                [class.dark:text-gray-100]="bodyFormat !== 'html'"
+                [disabled]="sending"
+                (click)="setBodyFormat('html')"
+              >
+                HTML paste
+              </button>
+              <button
+                type="button"
+                class="px-3 py-1.5 text-sm font-medium border-l border-gray-300 dark:border-gray-600 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
+                [class.bg-blue-600]="bodyFormat === 'markdown'"
+                [class.text-white]="bodyFormat === 'markdown'"
+                [class.bg-white]="bodyFormat !== 'markdown'"
+                [class.dark:bg-gray-700]="bodyFormat !== 'markdown'"
+                [class.text-gray-800]="bodyFormat !== 'markdown'"
+                [class.dark:text-gray-100]="bodyFormat !== 'markdown'"
+                [disabled]="sending"
+                (click)="setBodyFormat('markdown')"
+              >
+                Rich text
+              </button>
+            </div>
+            <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+              @if (bodyFormat === 'html') {
+                Paste the companion HTML from a marketing doc (screenshots keep working). Unsafe tags are stripped on send.
+              } @else {
+                Use the toolbar for short messages. Prefer <strong class="font-medium">HTML paste</strong> for emails with images.
+              }
+            </p>
+          </div>
+
+          <div>
+            <label
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              [attr.for]="bodyFormat === 'html' ? 'admin-broadcast-body-html' : null"
+              >Message</label
+            >
+            @if (bodyFormat === 'html') {
+              <textarea
+                id="admin-broadcast-body-html"
+                name="adminBroadcastBodyHtml"
+                [(ngModel)]="bodyHtml"
+                [disabled]="sending"
+                rows="16"
+                spellcheck="false"
+                placeholder="Paste HTML here…"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 font-mono text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500"
+                aria-label="Broadcast message HTML"
+              ></textarea>
+            } @else {
+              <app-rich-text-editor
+                [(ngModel)]="bodyMarkdown"
+                name="adminBroadcastBody"
+                [disabled]="sending"
+                placeholder="Write your message…"
+                minHeight="12rem"
+                ariaLabel="Broadcast message body"
+              ></app-rich-text-editor>
+            }
           </div>
 
           <div class="flex flex-wrap items-center gap-3 justify-end pt-2">
@@ -149,9 +218,14 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
   `,
 })
 export class AdminSubscriberEmailBroadcastComponent implements OnInit {
+  @ViewChild(RichTextEditorComponent) richTextEditor?: RichTextEditorComponent;
+
   sectionExpanded = false;
   subject = '';
+  /** Default HTML for marketing / screenshot emails; Rich text still available. */
+  bodyFormat: AdminBroadcastBodyFormat = 'html';
   bodyMarkdown = '';
+  bodyHtml = '';
   recipientCount: number | null = null;
   recipientCountLoading = true;
   sending = false;
@@ -173,7 +247,28 @@ export class AdminSubscriberEmailBroadcastComponent implements OnInit {
   }
 
   get canSend(): boolean {
-    return this.subject.trim().length > 0 && this.bodyMarkdown.trim().length > 0;
+    if (this.subject.trim().length === 0) {
+      return false;
+    }
+    switch (this.bodyFormat) {
+      case 'html':
+        return this.bodyHtml.trim().length > 0;
+      case 'markdown':
+        return this.bodyMarkdown.trim().length > 0;
+      default: {
+        const _exhaustive: never = this.bodyFormat;
+        void _exhaustive;
+        return false;
+      }
+    }
+  }
+
+  setBodyFormat(format: AdminBroadcastBodyFormat): void {
+    if (this.bodyFormat === format) {
+      return;
+    }
+    this.bodyFormat = format;
+    this.cdr.markForCheck();
   }
 
   toggleSection(): void {
@@ -214,6 +309,9 @@ export class AdminSubscriberEmailBroadcastComponent implements OnInit {
 
   async onConfirmSend(): Promise<void> {
     this.showConfirmDialog = false;
+    if (this.bodyFormat === 'markdown') {
+      this.richTextEditor?.flushMarkdownToForm();
+    }
     if (!this.canSend) {
       this.cdr.markForCheck();
       return;
@@ -221,16 +319,18 @@ export class AdminSubscriberEmailBroadcastComponent implements OnInit {
     this.sending = true;
     this.cdr.markForCheck();
     try {
-      const { queued } = await this.emailNotification.queueAdminManualBroadcastToSubscribers({
-        subject: this.subject,
-        bodyMarkdown: this.bodyMarkdown,
-      });
+      const queueOptions =
+        this.bodyFormat === 'html'
+          ? { subject: this.subject, bodyHtml: this.bodyHtml }
+          : { subject: this.subject, bodyMarkdown: this.bodyMarkdown };
+      const { queued } = await this.emailNotification.queueAdminManualBroadcastToSubscribers(queueOptions);
       if (queued === 0) {
         this.toast.info('No subscribers to email (non-blocked list is empty).');
       } else {
         this.toast.success(`Queued ${queued} email(s). The processor will send them one at a time.`);
         this.subject = '';
         this.bodyMarkdown = '';
+        this.bodyHtml = '';
       }
       await this.loadRecipientCount();
     } catch (err: unknown) {

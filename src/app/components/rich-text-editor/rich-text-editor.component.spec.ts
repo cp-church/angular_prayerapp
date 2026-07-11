@@ -117,6 +117,15 @@ describe('RichTextEditorComponent', () => {
     expect(typeof emitted).toBe('string');
   });
 
+  it('round-trips HTTPS Markdown images through TipTap getMarkdown', () => {
+    const md =
+      'Hello\n\n![Home with Memorize](https://cpprayer.cp-church.org/marketing/memorize/01-find-memorize.png)\n';
+    component.writeValue(md);
+    component.flushMarkdownToForm();
+    const out = component.value || '';
+    expect(out).toContain('![Home with Memorize](https://cpprayer.cp-church.org/marketing/memorize/01-find-memorize.png)');
+  });
+
   it('getPlainText returns editor text content', () => {
     component.editor?.commands.setContent('<p>plain text</p>');
     expect(component.getPlainText()).toContain('plain text');

@@ -8,7 +8,15 @@ Paste-ready copy for **Admin → Settings → Email → Send email to all subscr
 
 **Local layout preview:** open [`memorize-subscriber-promo-preview.html`](memorize-subscriber-promo-preview.html) (served from the repo root) to see the email with the green broadcast chrome and screenshots before deploy.
 
-The TipTap broadcast editor stores Markdown. Images use `![alt](https://…)` and are rendered by `markdownToSafeHtml` (HTTPS / root-relative `img` allowed). Prefer pasting the **Markdown body** block below into the rich-text field (or paste as plain text if the editor mangles image syntax).
+### How to send (recommended: HTML paste)
+
+1. Admin → **Settings** → **Email** → expand **Send email to all subscribers**.
+2. Subject: `New in the Prayer App: Memorize Scripture` (or another option below).
+3. Leave **Message format** on **HTML paste** (default).
+4. Copy **only** the contents of the companion **HTML** fenced block below (do not include the \`\`\`html fences). Paste into **Message**.
+5. **Send** → confirm **Queue emails**. Recipients are all non-blocked subscribers (including mass-email opt-outs); the Security → Test Account address is excluded.
+
+**Rich text (Markdown)** is still available for short notes without screenshots. Prefer HTML paste for this promo so images match the preview.
 
 ---
 
@@ -22,7 +30,9 @@ Recommended: **New in the Prayer App: Memorize Scripture**
 
 ---
 
-## Markdown body (paste into Admin broadcast)
+## Markdown body (optional — Rich text mode)
+
+Use only if you switch Message format to **Rich text**. For this promo, prefer the HTML companion below.
 
 ```markdown
 Friends,
@@ -105,9 +115,9 @@ We’re grateful to walk with you as you hide God’s Word in your heart.
 
 ---
 
-## Companion HTML (preview / external senders)
+## Companion HTML (paste into Admin → HTML paste)
 
-The Admin broadcast pipeline expects **Markdown**, not this HTML. Use this only for Outlook/preview or if you paste into a tool that accepts HTML. Image hosts are production URLs.
+Copy the block below into **Send email to all subscribers** with **Message format → HTML paste**. Image hosts are production URLs. Unsafe tags are stripped on send; keep `https://` image `src` values.
 
 ```html
 <div style="margin:0;color:#1f2937;font-size:16px;line-height:1.6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">

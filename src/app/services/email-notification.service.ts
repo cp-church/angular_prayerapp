@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
 import { SupabaseService } from './supabase.service';
 import { PushNotificationService } from './push-notification.service';
-import { markdownToPlainText, markdownToSafeHtml } from '../../utils/markdown';
+import { htmlToPlainText, markdownToPlainText, markdownToSafeHtml, sanitizeEmailHtml } from '../../utils/markdown';
 
 export interface SendEmailOptions {
   to: string | string[];
@@ -333,19 +333,34 @@ export class EmailNotificationService {
    */
   async queueAdminManualBroadcastToSubscribers(options: {
     subject: string;
-    bodyMarkdown: string;
+    /** TipTap / Markdown body (converted with markdownToSafeHtml). */
+    bodyMarkdown?: string;
+    /** Pasted HTML body (sanitized with sanitizeEmailHtml). Prefer for marketing emails with screenshots. */
+    bodyHtml?: string;
   }): Promise<{ queued: number }> {
     const broadcastSubject = options.subject.trim();
-    const bodyMarkdown = options.bodyMarkdown.trim();
+    const bodyMarkdown = options.bodyMarkdown?.trim() ?? '';
+    const bodyHtmlRaw = options.bodyHtml?.trim() ?? '';
     if (!broadcastSubject) {
       throw new Error('Subject is required');
     }
-    if (!bodyMarkdown) {
+    if (!bodyMarkdown && !bodyHtmlRaw) {
       throw new Error('Message body is required');
     }
+    if (bodyMarkdown && bodyHtmlRaw) {
+      throw new Error('Provide either Markdown or HTML body, not both');
+    }
 
-    const broadcastBodyHtml = markdownToSafeHtml(bodyMarkdown);
-    const broadcastBodyText = markdownToPlainText(bodyMarkdown);
+    const broadcastBodyHtml = bodyHtmlRaw
+      ? sanitizeEmailHtml(bodyHtmlRaw)
+      : markdownToSafeHtml(bodyMarkdown);
+    const broadcastBodyText = bodyHtmlRaw
+      ? htmlToPlainText(bodyHtmlRaw)
+      : markdownToPlainText(bodyMarkdown);
+    if (!broadcastBodyHtml.trim()) {
+      throw new Error('Message body is empty after sanitization');
+    }
+
     const variables = {
       broadcastSubject,
       broadcastBodyHtml,

@@ -275,26 +275,57 @@ function postProcessHtml(html: string): string {
   return container.innerHTML;
 }
 
+/**
+ * Sanitize already-authored HTML for email (Admin broadcast HTML paste).
+ * Same allowlist as {@link markdownToSafeHtml} (including safe HTTPS / root-relative images).
+ */
+export function sanitizeEmailHtml(html: string | null | undefined): string {
+  if (!html) return '';
+  const rawHtml = String(html);
+
+  const purify = getDomPurify();
+  let out = purify.sanitize(rawHtml, SANITIZE_CONFIG);
+
+  const useAllowlistFallback =
+    typeof document !== 'undefined' &&
+    (isPassthroughPurify(purify) || sanitizeLostStructuralTags(rawHtml, out));
+
+  if (useAllowlistFallback) {
+    out = stripToAllowlistedHtml(rawHtml, document);
+  } else {
+    out = postProcessHtml(out);
+  }
+
+  return out;
+}
+
 export function markdownToSafeHtml(markdown: string | null | undefined): string {
   if (!markdown) return '';
   const preprocessed = expandTiptapUnderlineForMarked(markdown);
   const parsed = getMarked().parse(preprocessed, { async: false });
   const rawHtml = typeof parsed === 'string' ? parsed : String(parsed);
+  return sanitizeEmailHtml(rawHtml);
+}
 
-  const purify = getDomPurify();
-  let html = purify.sanitize(rawHtml, SANITIZE_CONFIG);
-
-  const useAllowlistFallback =
-    typeof document !== 'undefined' &&
-    (isPassthroughPurify(purify) || sanitizeLostStructuralTags(rawHtml, html));
-
-  if (useAllowlistFallback) {
-    html = stripToAllowlistedHtml(rawHtml, document);
-  } else {
-    html = postProcessHtml(html);
+/**
+ * Strip tags from HTML for the plain-text MIME part of emails.
+ */
+export function htmlToPlainText(html: string | null | undefined): string {
+  if (!html) return '';
+  const raw = String(html);
+  if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
+    return raw
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
-
-  return html;
+  const el = document.createElement('div');
+  el.innerHTML = raw;
+  el.querySelectorAll('script,style').forEach((node) => node.remove());
+  const text = (el.textContent ?? '').replace(/\u00a0/g, ' ');
+  return text.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').replace(/[ \t]{2,}/g, ' ').trim();
 }
 
 /**

@@ -16,6 +16,7 @@ import {
 } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { Editor } from '@tiptap/core';
+import Image from '@tiptap/extension-image';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from 'tiptap-markdown';
 import { UnderlineWithMarkdown } from '../../lib/tiptap-underline-markdown.extension';
@@ -114,6 +115,13 @@ type ToolbarButton = {
       .rte-toolbar-glyph-underline {
         text-decoration: underline;
         text-underline-offset: 2px;
+      }
+      :host ::ng-deep .rte-host .ProseMirror img {
+        display: block;
+        max-width: 100%;
+        height: auto;
+        border-radius: 8px;
+        margin: 0.75rem 0;
       }
       :host ::ng-deep .rte-host .ProseMirror {
         outline: none !important;
@@ -270,6 +278,11 @@ export class RichTextEditorComponent
           underline: false,
         }),
         UnderlineWithMarkdown,
+        // Required so Markdown `![alt](https://…)` survives paste / getMarkdown (broadcast screenshots).
+        Image.configure({
+          allowBase64: false,
+          inline: false,
+        }),
         Markdown.configure({
           html: false,
           linkify: true,

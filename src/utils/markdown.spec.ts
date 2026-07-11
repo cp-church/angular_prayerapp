@@ -1,5 +1,5 @@
 import { describe, expect, it, afterEach, vi } from 'vitest';
-import { markdownToPlainText, markdownToSafeHtml } from './markdown';
+import { htmlToPlainText, markdownToPlainText, markdownToSafeHtml, sanitizeEmailHtml } from './markdown';
 
 describe('markdownToPlainText', () => {
   it('returns empty string for null/undefined/empty input', () => {
@@ -158,6 +158,35 @@ describe('markdownToSafeHtml', () => {
 
     const protoRelative = markdownToSafeHtml('![x](//evil.example/a.png)');
     expect(protoRelative).not.toContain('//evil.example');
+  });
+});
+
+describe('sanitizeEmailHtml', () => {
+  it('returns empty for nullish input', () => {
+    expect(sanitizeEmailHtml(null)).toBe('');
+    expect(sanitizeEmailHtml(undefined)).toBe('');
+    expect(sanitizeEmailHtml('')).toBe('');
+  });
+
+  it('keeps safe marketing HTML and strips scripts', () => {
+    const html = sanitizeEmailHtml(
+      '<p>Friends</p><script>alert(1)</script><img src="https://cpprayer.cp-church.org/marketing/memorize/01-find-memorize.png" alt="Memorize" width="560" />'
+    );
+    expect(html).toContain('<p>Friends</p>');
+    expect(html).toContain('<img');
+    expect(html).toContain('01-find-memorize.png');
+    expect(html).not.toContain('<script');
+  });
+});
+
+describe('htmlToPlainText', () => {
+  it('strips tags and keeps readable text', () => {
+    expect(htmlToPlainText('<p>Hello <strong>world</strong></p>')).toBe('Hello world');
+  });
+
+  it('returns empty for nullish input', () => {
+    expect(htmlToPlainText(null)).toBe('');
+    expect(htmlToPlainText(undefined)).toBe('');
   });
 });
 

@@ -110,6 +110,16 @@ describe('EmailNotificationService', () => {
     await expect(
       service.queueAdminManualBroadcastToSubscribers({ subject: 's', bodyMarkdown: '' })
     ).rejects.toThrow('Message body is required');
+    await expect(
+      service.queueAdminManualBroadcastToSubscribers({ subject: 's' })
+    ).rejects.toThrow('Message body is required');
+    await expect(
+      service.queueAdminManualBroadcastToSubscribers({
+        subject: 's',
+        bodyMarkdown: 'a',
+        bodyHtml: '<p>b</p>',
+      })
+    ).rejects.toThrow('Provide either Markdown or HTML body, not both');
   });
 
   it('queueAdminManualBroadcastToSubscribers returns queued 0 and does not trigger processor when no subscribers', async () => {
@@ -200,6 +210,49 @@ describe('EmailNotificationService', () => {
     expect(mockSupabase.client.functions.invoke).toHaveBeenCalledWith('trigger-email-processor', {
       method: 'POST',
     });
+  });
+
+  it('queueAdminManualBroadcastToSubscribers sanitizes pasted HTML and keeps images', async () => {
+    mockSupabase.client.from = vi.fn((table: string) => {
+      if (table === 'admin_settings') {
+        return mockAdminSettingsForBroadcast(null);
+      }
+      if (table === 'email_subscribers') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({
+              data: [{ email: 'a@x.com' }],
+              error: null,
+            }),
+          }),
+        };
+      }
+      return { insert: vi.fn().mockResolvedValue({ error: null }) };
+    });
+    mockSupabase.client.functions.invoke.mockResolvedValue({ data: { success: true }, error: null });
+    const enqueueSpy = vi.spyOn(service, 'enqueueEmail').mockResolvedValue(undefined);
+
+    await service.queueAdminManualBroadcastToSubscribers({
+      subject: 'Promo',
+      bodyHtml:
+        '<p>Hi</p><script>alert(1)</script><img src="https://cpprayer.cp-church.org/marketing/memorize/01-find-memorize.png" alt="Memorize" />',
+    });
+
+    expect(enqueueSpy).toHaveBeenCalledWith(
+      'a@x.com',
+      ADMIN_SUBSCRIBER_MANUAL_BROADCAST_TEMPLATE_KEY,
+      expect.objectContaining({
+        broadcastSubject: 'Promo',
+        broadcastBodyHtml: expect.stringContaining('<img'),
+        broadcastBodyText: expect.stringContaining('Hi'),
+      })
+    );
+    const vars = enqueueSpy.mock.calls[0][2] as {
+      broadcastBodyHtml: string;
+      broadcastBodyText: string;
+    };
+    expect(vars.broadcastBodyHtml).not.toContain('<script');
+    expect(vars.broadcastBodyHtml).toContain('01-find-memorize.png');
   });
 
   it('queueAdminManualBroadcastToSubscribers excludes configured test account email (case-insensitive)', async () => {
