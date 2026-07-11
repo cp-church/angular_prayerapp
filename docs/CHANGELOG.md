@@ -4,6 +4,9 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Memorize — IBCD counseling recommendation seed ✅
+- **Data**: Migration [`20260711120000_seed_ibcd_memorization_recommendations.sql`](supabase/migrations/20260711120000_seed_ibcd_memorization_recommendations.sql) seeds **30** counseling topic categories and **104** ESV-normalized verse references from Jim Newheiser / IBCD *Approximately 100 Go-to Texts for Biblical Counseling* (topic headings only; idempotent `ON CONFLICT DO NOTHING`). Duplicate references across topics are stored once (first category wins). Admins can still edit categories and verses under **Settings → Content → Memorize Recommendations**.
+
 ### Memorize — recommendation categories ✅
 - **Data**: Migration [`20260710210000_memorization_recommendation_categories.sql`](supabase/migrations/20260710210000_memorization_recommendation_categories.sql) adds `memorization_recommendation_categories` and required `category_id` on `memorization_recommendations` (FK `ON DELETE RESTRICT`). Existing verses are backfilled into a default **General** category.
 - **Admin**: Settings → Content → **Memorize Recommendations** manages categories (add/rename/delete when empty, drag reorder) and verses under each category. Adding a verse requires a selected category. Drag a verse onto another category’s list (including empty “Drop verses here” zones) to move it. [`memorization-recommendations-manager.component.ts`](src/app/components/memorization-recommendations-manager/memorization-recommendations-manager.component.ts).
