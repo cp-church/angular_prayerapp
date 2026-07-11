@@ -37,6 +37,7 @@ import { GitHubSettingsComponent } from '../../components/github-settings/github
 import { PrayerEncouragementSettingsComponent } from '../../components/prayer-encouragement-settings/prayer-encouragement-settings.component';
 import { RichTextEditorsSettingsComponent } from '../../components/rich-text-editors-settings/rich-text-editors-settings.component';
 import { PlanningCenterListMapperComponent } from '../../components/planning-center-list-mapper/planning-center-list-mapper.component';
+import { MemorizationRecommendationsManagerComponent } from '../../components/memorization-recommendations-manager/memorization-recommendations-manager.component';
 import { SiteAnalyticsActivityChartComponent } from '../../components/site-analytics-activity-chart/site-analytics-activity-chart.component';
 import { AdminHelpModalComponent } from '../../components/admin-help-modal/admin-help-modal.component';
 import { AdminHelpDriverTourService } from '../../services/admin-help-driver-tour.service';
@@ -71,6 +72,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
     PrayerEncouragementSettingsComponent,
     RichTextEditorsSettingsComponent,
     PlanningCenterListMapperComponent,
+    MemorizationRecommendationsManagerComponent,
     SiteAnalyticsActivityChartComponent,
     AdminHelpModalComponent
   ],
@@ -647,6 +649,9 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
                 </div>
                 <div class="mb-4">
                   <app-prayer-types-manager #prayerTypesManager></app-prayer-types-manager>
+                </div>
+                <div class="mb-4">
+                  <app-memorization-recommendations-manager></app-memorization-recommendations-manager>
                 </div>
                 <div class="mb-4">
                   <app-planning-center-list-mapper></app-planning-center-list-mapper>

@@ -244,6 +244,25 @@ describe('BiblePassagePickerModalComponent', () => {
     viewport.remove();
   });
 
+  it('restores documentElement overflow when no safe-area-viewport (admin shell)', async () => {
+    document.querySelectorAll('.safe-area-viewport').forEach((el) => el.remove());
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+
+    const { fixture } = await render(BiblePassagePickerModalComponent, {
+      componentInputs: { isOpen: true },
+    });
+
+    expect(document.documentElement.style.overflow).toBe('hidden');
+    expect(document.body.style.overflow).toBe('hidden');
+
+    fixture.componentRef.setInput('isOpen', false);
+    fixture.detectChanges();
+
+    expect(document.documentElement.style.overflow).toBe('');
+    expect(document.body.style.overflow).toBe('');
+  });
+
   it('blocks touchmove on footer chrome (e.g. Add button) while open', async () => {
     const { fixture } = await render(BiblePassagePickerModalComponent, {
       componentInputs: { isOpen: true, confirmLabel: 'Add' },

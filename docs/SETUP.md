@@ -376,7 +376,7 @@ supabase functions deploy scripture-audio
 
 Each function’s [`deno.json`](../supabase/functions/scripture/deno.json) sets **`verify_jwt": false`** so MFA/localStorage logins (anon key only) can fetch passages. Re-deploy after changing that file.
 
-Apply migration [`20260707120000_memorization_esv.sql`](../supabase/migrations/20260707120000_memorization_esv.sql) before testing (`supabase db push`). Optional Edge Function secrets:
+Apply migration [`20260707120000_memorization_esv.sql`](../supabase/migrations/20260707120000_memorization_esv.sql) before testing (`supabase db push`). For admin-curated Memorize recommendations, also apply [`20260710200000_memorization_recommendations.sql`](../supabase/migrations/20260710200000_memorization_recommendations.sql), [`20260710210000_memorization_recommendation_categories.sql`](../supabase/migrations/20260710210000_memorization_recommendation_categories.sql) (categories + required `category_id`; existing rows backfill to **General**), [`20260710220000_apply_memorization_recommendation_placements.sql`](../supabase/migrations/20260710220000_apply_memorization_recommendation_placements.sql) (atomic verse move/reorder RPC), and [`20260710230000_reorder_memorization_recommendation_categories.sql`](../supabase/migrations/20260710230000_reorder_memorization_recommendation_categories.sql) (atomic category reorder RPC). Optional Edge Function secrets:
 
 | Secret | Default | Purpose |
 |--------|---------|---------|

@@ -39,8 +39,10 @@ import { PersonalPrayerEditModalComponent } from "../../components/personal-pray
 import { PersonalPrayerUpdateEditModalComponent } from "../../components/personal-prayer-update-edit-modal/personal-prayer-update-edit-modal.component";
 import { ConfirmationDialogComponent } from "../../components/confirmation-dialog/confirmation-dialog.component";
 import { MemorizationService } from "../../services/memorization.service";
+import { MemorizationRecommendationsService } from "../../services/memorization-recommendations.service";
 import { MemorizationActionBarComponent } from "../../components/memorization-action-bar/memorization-action-bar.component";
 import { MemorizedVerseCardComponent } from "../../components/memorized-verse-card/memorized-verse-card.component";
+import { MemorizationRecommendationsModalComponent } from "../../components/memorization-recommendations-modal/memorization-recommendations-modal.component";
 import { AddMemorizedVerseModalComponent } from "../../components/add-memorized-verse-modal/add-memorized-verse-modal.component";
 import { AddMemorizedBibleBooksModalComponent } from "../../components/add-memorized-bible-books-modal/add-memorized-bible-books-modal.component";
 import { MemorizationPracticeSessionComponent } from "../../components/memorization-practice-session/memorization-practice-session.component";
@@ -49,6 +51,8 @@ import { memorizationNeedsKeyboardOnOpen } from "../../lib/memorization/memoriza
 import type {
   MemorizedItem,
   MemorizationInProgressSavePayload,
+  MemorizationRecommendation,
+  MemorizationRecommendationCategoryGroup,
 } from "../../types/memorization";
 import {
   PrayerService,
@@ -111,6 +115,7 @@ const HELP_SECTION_ID_PRESENTATION = "help_presentation";
     ConfirmationDialogComponent,
     MemorizationActionBarComponent,
     MemorizedVerseCardComponent,
+    MemorizationRecommendationsModalComponent,
     AddMemorizedVerseModalComponent,
     AddMemorizedBibleBooksModalComponent,
     MemorizationPracticeSessionComponent,
@@ -559,6 +564,15 @@ const HELP_SECTION_ID_PRESENTATION = "help_presentation";
       <app-add-memorized-bible-books-modal
         [isOpen]="showAddMemorizedBibleBooks"
         (onClose)="showAddMemorizedBibleBooks = false"
+      />
+      <app-memorization-recommendations-modal
+        [isOpen]="showMemorizationRecommendations"
+        [groups]="memorizationRecommendationGroups"
+        [alreadyAddedReferences]="memorizationRecommendationOwnedKeys"
+        [busyId]="addingRecommendationId"
+        [loading]="!!(memorizationRecommendationsService.loading$ | async)"
+        (onClose)="showMemorizationRecommendations = false"
+        (add)="addRecommendedVerse($event)"
       />
       @if (practiceMemorizedItem) {
       <app-memorization-practice-session
@@ -1144,6 +1158,7 @@ const HELP_SECTION_ID_PRESENTATION = "help_presentation";
             <app-memorization-action-bar
               (addVerses)="showAddMemorizedVerse = true"
               (addBibleBooks)="showAddMemorizedBibleBooks = true"
+              (openRecommended)="openMemorizationRecommendations()"
             />
             @if (!(memorizationService.loading$ | async) && memorizedItems.length
             === 0) {
@@ -1344,8 +1359,12 @@ export class HomeComponent implements OnInit, OnDestroy {
   memorizedLearning: MemorizedItem[] = [];
   memorizedPracticing: MemorizedItem[] = [];
   memorizedMastered: MemorizedItem[] = [];
+  memorizationRecommendationGroups: MemorizationRecommendationCategoryGroup[] = [];
+  memorizationRecommendationOwnedKeys = new Set<string>();
+  addingRecommendationId: string | null = null;
   showAddMemorizedVerse = false;
   showAddMemorizedBibleBooks = false;
+  showMemorizationRecommendations = false;
   practiceMemorizedItem: MemorizedItem | null = null;
   showRemoveMemorizedConfirm = false;
   memorizedItemToRemove: MemorizedItem | null = null;
@@ -1443,6 +1462,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     public planningCenterListService: PlanningCenterListService,
     public badgeService: BadgeService,
     public memorizationService: MemorizationService,
+    public memorizationRecommendationsService: MemorizationRecommendationsService,
     private cacheService: CacheService,
     private toastService: ToastService,
     private analyticsService: AnalyticsService,
@@ -1632,6 +1652,19 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.memorizedLearning = grouped.learning;
         this.memorizedPracticing = grouped.practicing;
         this.memorizedMastered = grouped.mastered;
+        this.memorizationRecommendationOwnedKeys = new Set(
+          items
+            .filter((item) => item.kind === "verse" || item.kind == null)
+            .map((item) => `${item.translation}:${item.reference}`)
+        );
+        this.cdr.markForCheck();
+      });
+
+    this.memorizationRecommendationsService.items$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.memorizationRecommendationGroups =
+          this.memorizationRecommendationsService.groupedSnapshot;
         this.cdr.markForCheck();
       });
 
@@ -3050,6 +3083,56 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   onMemorizedVerseAdded(): void {
     this.cdr.markForCheck();
+  }
+
+  openMemorizationRecommendations(): void {
+    this.showMemorizationRecommendations = true;
+    this.cdr.markForCheck();
+    void this.memorizationRecommendationsService.load(true).then(() => {
+      this.memorizationRecommendationGroups =
+        this.memorizationRecommendationsService.groupedSnapshot;
+      this.cdr.markForCheck();
+    });
+  }
+
+  isRecommendationAlreadyAdded(rec: MemorizationRecommendation): boolean {
+    return this.memorizedItems.some(
+      (item) =>
+        (item.kind === "verse" || item.kind == null) &&
+        item.reference === rec.reference &&
+        item.translation === rec.translation
+    );
+  }
+
+  async addRecommendedVerse(rec: MemorizationRecommendation): Promise<void> {
+    if (this.addingRecommendationId || this.isRecommendationAlreadyAdded(rec)) {
+      return;
+    }
+    this.addingRecommendationId = rec.id;
+    this.cdr.markForCheck();
+    try {
+      const result = await this.memorizationService.addVerse(
+        rec.reference,
+        rec.translation
+      );
+      if (result.ok) {
+        this.toastService.success("Added to memorization list.");
+      } else if (result.reason === "duplicate") {
+        this.toastService.error(
+          "This passage is already in your memorization list."
+        );
+      } else if (result.reason === "no_user") {
+        this.toastService.error("Sign in to add verses to memorize.");
+      } else {
+        this.toastService.error("Could not save this passage.");
+      }
+    } catch (e) {
+      console.error(e);
+      this.toastService.error("Could not save this passage.");
+    } finally {
+      this.addingRecommendationId = null;
+      this.cdr.markForCheck();
+    }
   }
 
   openMemorizationPractice(item: MemorizedItem): void {

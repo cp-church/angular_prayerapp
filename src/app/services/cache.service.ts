@@ -57,7 +57,8 @@ export class CacheService {
     ['prayerTypes', { key: 'prayerTypes_cache', ttl: 60 * 60 * 1000 }],  // 1 hour (was 10 min)
     ['adminSettings', { key: 'adminSettings_cache', ttl: 60 * 60 * 1000 }],  // 1 hour (was 15 min)
     ['emailSettings', { key: 'emailSettings_cache', ttl: 60 * 60 * 1000 }],  // 1 hour (was 15 min)
-    ['analytics', { key: 'analytics_cache', ttl: 15 * 60 * 1000 }]     // 15 min (was 5)
+    ['analytics', { key: 'analytics_cache', ttl: 15 * 60 * 1000 }],     // 15 min (was 5)
+    ['memorizationRecommendations', { key: 'memorizationRecommendations_cache', ttl: 60 * 60 * 1000 }]  // 1 hour
   ]);
 
   constructor() {
@@ -168,12 +169,24 @@ export class CacheService {
    * Invalidate cache for a specific key
    */
   invalidate(key: string): void {
-    this.inMemoryCache.delete(key);
-    this.observableCache.delete(key);
+    const configKey = key.split('_')[0];
+    const config = this.cacheConfigs.get(configKey);
+    const storageKey = config?.key || key;
+
+    this.inMemoryCache.delete(storageKey);
+    this.observableCache.delete(storageKey);
+    // Also clear the logical key if callers stored under it directly.
+    if (storageKey !== key) {
+      this.inMemoryCache.delete(key);
+      this.observableCache.delete(key);
+    }
 
     if (this.localStorageEnabled) {
       try {
-        localStorage.removeItem(key);
+        localStorage.removeItem(storageKey);
+        if (storageKey !== key) {
+          localStorage.removeItem(key);
+        }
       } catch (error) {
         console.warn('Failed to remove cache from localStorage:', error);
       }

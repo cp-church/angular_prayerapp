@@ -118,6 +118,17 @@ describe('CacheService', () => {
       expect(localStorage.getItem(key)).toBeNull();
     });
 
+    it('should invalidate configured storage key for memorizationRecommendations', () => {
+      service.set('memorizationRecommendations', { categories: [], items: [] });
+      expect(localStorage.getItem('memorizationRecommendations_cache')).toBeTruthy();
+      expect(service.get('memorizationRecommendations')).toBeTruthy();
+
+      service.invalidate('memorizationRecommendations');
+
+      expect(service.get('memorizationRecommendations')).toBeNull();
+      expect(localStorage.getItem('memorizationRecommendations_cache')).toBeNull();
+    });
+
     it('should work without localStorage', () => {
       // Mock localStorage to throw on operations
       const originalSetItem = localStorage.setItem;

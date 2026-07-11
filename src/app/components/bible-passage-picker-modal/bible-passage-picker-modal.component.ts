@@ -436,15 +436,26 @@ export class BiblePassagePickerModalComponent implements OnChanges, OnDestroy {
   }
 
   private lockBackgroundScroll(): void {
-    this.scrollLockEl = this.findPageScrollContainer();
-    this.scrollLockPreviousOverflow = this.scrollLockEl.style.overflow;
-    this.scrollLockPreviousTouchAction = this.scrollLockEl.style.touchAction;
-    this.scrollLockEl.style.overflow = 'hidden';
-    this.scrollLockEl.style.touchAction = 'none';
-
+    // Capture body/html first. If the page scroller is documentElement (e.g. Admin
+    // has no `.safe-area-viewport`), mutating it before this would make unlock restore
+    // `hidden` and leave the page unscrollable.
     this.bodyPreviousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
     this.htmlPreviousOverflow = document.documentElement.style.overflow;
+
+    const scroller = this.findPageScrollContainer();
+    if (scroller !== document.documentElement && scroller !== document.body) {
+      this.scrollLockEl = scroller;
+      this.scrollLockPreviousOverflow = scroller.style.overflow;
+      this.scrollLockPreviousTouchAction = scroller.style.touchAction;
+      scroller.style.overflow = 'hidden';
+      scroller.style.touchAction = 'none';
+    } else {
+      this.scrollLockEl = null;
+      this.scrollLockPreviousOverflow = '';
+      this.scrollLockPreviousTouchAction = '';
+    }
+
+    document.body.style.overflow = 'hidden';
     document.documentElement.style.overflow = 'hidden';
   }
 

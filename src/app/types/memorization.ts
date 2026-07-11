@@ -77,3 +77,47 @@ export interface MemorizedItemRow {
   created_at: string;
   updated_at: string;
 }
+
+/** Admin-curated category for Memorize recommendation verses. */
+export interface MemorizationRecommendationCategory {
+  id: string;
+  name: string;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MemorizationRecommendationCategoryRow {
+  id: string;
+  name: string;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Admin-curated verse shown on the Memorize tab as a recommendation. */
+export interface MemorizationRecommendation {
+  id: string;
+  reference: string;
+  translation: BibleTranslation;
+  categoryId: string;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MemorizationRecommendationRow {
+  id: string;
+  reference: string;
+  translation: string;
+  category_id: string;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Category with its verses, ordered for the Recommended modal / admin UI. */
+export interface MemorizationRecommendationCategoryGroup {
+  category: MemorizationRecommendationCategory;
+  items: MemorizationRecommendation[];
+}
