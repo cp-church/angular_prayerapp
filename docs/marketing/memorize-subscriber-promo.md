@@ -6,19 +6,21 @@ Paste-ready copy for **Admin → Settings → Email → Send email to all subscr
 
 `https://cpprayer.cp-church.org/marketing/memorize/`
 
-**Local layout preview:** open [`memorize-subscriber-promo-preview.html`](memorize-subscriber-promo-preview.html) (served from the repo root) to see the email with the green broadcast chrome and screenshots before deploy.
+**Local layout preview:** open `[memorize-subscriber-promo-preview.html](memorize-subscriber-promo-preview.html)` (served from the repo root) to see the email with the green broadcast chrome and screenshots before deploy.
 
 ### How to send (recommended: HTML paste)
 
 1. Admin → **Settings** → **Email** → expand **Send email to all subscribers**.
 2. Subject: `New in the Prayer App: Memorize Scripture` (or another option below).
 3. Leave **Message format** on **HTML paste** (default).
-4. Copy **only** the contents of the companion **HTML** fenced block below (do not include the \`\`\`html fences). Paste into **Message**.
+4. Copy **only** the contents of the companion **HTML** fenced block below (do not include the html fences). Paste into **Message**.
 5. **Send** → confirm **Queue emails**. Recipients are all non-blocked subscribers (including mass-email opt-outs); the Security → Test Account address is excluded.
 
 **Rich text (Markdown)** is still available for short notes without screenshots. Prefer HTML paste for this promo so images match the preview.
 
 ---
+
+
 
 ## Subject line options
 
@@ -29,6 +31,8 @@ Paste-ready copy for **Admin → Settings → Email → Send email to all subscr
 Recommended: **New in the Prayer App: Memorize Scripture**
 
 ---
+
+
 
 ## Markdown body (optional — Rich text mode)
 
@@ -115,6 +119,8 @@ We’re grateful to walk with you as you hide God’s Word in your heart.
 
 ---
 
+
+
 ## Companion HTML (paste into Admin → HTML paste)
 
 Copy the block below into **Send email to all subscribers** with **Message format → HTML paste**. Image hosts are production URLs. Unsafe tags are stripped on send; keep `https://` image `src` values.
@@ -123,47 +129,47 @@ Copy the block below into **Send email to all subscribers** with **Message forma
 <div style="margin:0;color:#1f2937;font-size:16px;line-height:1.6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <p>Friends,</p>
   <p>We’re excited to share a new feature in the Cross Pointe Prayer App: <strong>Memorize Scripture</strong>.</p>
-  <p>Memorize is your <strong>private</strong> place to learn Bible passages (ESV), practice with guided games, listen to the text read aloud, and track progress from Learning → Practicing → Mastered. It sits right on Home next to Current, Answered, Prompts, and Personal.</p>
+  <p>Memorize is your <strong>private</strong> place to learn Bible passages (ESV), practice with guided games, listen to the text read aloud, and track progress from Learning → Practicing → Mastered. It sits right on the Home screen next to Current, Answered, Prompts, and Personal.</p>
 
   <h3 style="color:#1f2937;font-size:18px;margin:24px 0 8px;">How to find Memorize</h3>
   <ol style="padding-left:1.25rem;margin:0 0 12px;">
     <li>Open the Prayer App: <a href="https://cpprayer.cp-church.org">https://cpprayer.cp-church.org</a></li>
-    <li>On Home, tap the <strong>Memorize</strong> filter tile (it shows how many passages you’ve saved).</li>
-    <li>On phones, Memorize is on the <strong>second row</strong> of filters.</li>
+    <li>On the Home screen, tap the <strong>Memorize</strong> filter tile (it shows how many passages you’ve saved).</li>
+    <li>On mobile, Memorize is on the <strong>second row</strong> of filters.</li>
   </ol>
   <img src="https://cpprayer.cp-church.org/marketing/memorize/01-find-memorize.png" alt="Home with the Memorize filter selected" width="560" style="display:block;max-width:100%;height:auto;border:0;border-radius:8px;margin:12px 0;" />
 
   <h3 style="color:#1f2937;font-size:18px;margin:24px 0 8px;">Add passages three ways</h3>
   <p>From the Memorize action bar you can:</p>
   <ul style="padding-left:1.25rem;margin:0 0 12px;">
-    <li><strong>+ Add Verses</strong> — pick any ESV passage (book → chapter → verse range)</li>
-    <li><strong>+ Bible Books</strong> — add a whole-book list (All 66, OT, or NT) and practice book-by-book</li>
-    <li><strong>+ Recommended</strong> — curated topic categories with ready-to-add verses</li>
+    <li><strong>Add Verses</strong> — pick any ESV passage (book → chapter → verse range)</li>
+    <li><strong>Bible Books</strong> — add a whole-book list (All 66, OT, or NT) and practice book-by-book</li>
+    <li><strong>Recommended</strong> — curated topics with 100+ ready-to-add verses</li>
   </ul>
   <img src="https://cpprayer.cp-church.org/marketing/memorize/02-action-bar.png" alt="Memorize action bar" width="560" style="display:block;max-width:100%;height:auto;border:0;border-radius:8px;margin:12px 0;" />
-  <p><strong>Add Verses</strong> opens the Bible picker. Choose Old or New Testament, a book, then a chapter and verse range. Passages load from the English Standard Version (ESV).</p>
+  <p><strong>Add Verses</strong> opens the passage selection. Choose Old or New Testament, a book, then a chapter and verse range. Passages load from the English Standard Version (ESV).</p>
   <img src="https://cpprayer.cp-church.org/marketing/memorize/03-add-verses.png" alt="Add Verses Bible picker for John" width="560" style="display:block;max-width:100%;height:auto;border:0;border-radius:8px;margin:12px 0;" />
 
   <h3 style="color:#1f2937;font-size:18px;margin:24px 0 8px;">Recommended verses by topic</h3>
-  <p><strong>+ Recommended</strong> opens counseling-friendly topic categories (Anger, Fear, Marriage, Worry, and many more). Expand a category, then tap a verse to add it. Verses already on your list show as <strong>Already added</strong>.</p>
-  <p>On desktop, <strong>hover</strong> a verse card to preview the text; on mobile, <strong>long-press</strong>. Tap still adds the verse (or opens practice on your list).</p>
+  <p><strong>Recommended</strong> opens counseling-friendly topics (Anger, Fear, Marriage, Worry, and many more). Expand a category, then tap a verse to add it. Verses already on your list show as <strong>Already added</strong>.</p>
+  <p>To preview the text: on desktop, <strong>hover</strong> over a verse card; on mobile, <strong>long-press</strong> a verse card. Tap still adds the verse (or opens practice on your list).</p>
   <img src="https://cpprayer.cp-church.org/marketing/memorize/04-recommended.png" alt="Recommended verses modal with topic categories" width="560" style="display:block;max-width:100%;height:auto;border:0;border-radius:8px;margin:12px 0;" />
 
   <h3 style="color:#1f2937;font-size:18px;margin:24px 0 8px;">Your list and mastery groups</h3>
   <ul style="padding-left:1.25rem;margin:0 0 12px;">
-    <li><strong>Learning</strong> — getting started</li>
-    <li><strong>Practicing</strong> — building fluency</li>
-    <li><strong>Mastered</strong> — well practiced</li>
+    <li><strong>Learning</strong> = 2 sessions done</li>
+    <li><strong>Practicing</strong> = between 3 and 8 sessions done</li>
+    <li><strong>Mastered</strong> = over 9 sessions done</li>
   </ul>
-  <p>Each card shows the reference, last practiced date, and session count. Tap a card to practice; use the trash icon to remove (you can always add it again later).</p>
+  <p>Each card shows the reference, last practiced date, and session count. Tap a card to practice; use the trash icon to remove it (you can always add it again later).</p>
   <img src="https://cpprayer.cp-church.org/marketing/memorize/05-mastery-list.png" alt="Memorize list with Learning and Practicing groups" width="560" style="display:block;max-width:100%;height:auto;border:0;border-radius:8px;margin:12px 0;" />
 
   <h3 style="color:#1f2937;font-size:18px;margin:24px 0 8px;">Practice modes and Listen</h3>
-  <p>Tap a passage to open practice. You’ll see the full text, optional <strong>Listen</strong> (ESV audio with speed controls), and a five-round difficulty path (Round 1 is easiest).</p>
+  <p>Tap a passage to open practice. You’ll see the full text, with an optional <strong>Listen</strong> button (ESV audio with speed controls), and a five-round difficulty path (Round 1 is easiest).</p>
   <p>Tap <strong>Start practice</strong> and choose a mode:</p>
   <ul style="padding-left:1.25rem;margin:0 0 12px;">
     <li><strong>Type mode</strong> — type the first letter of each blank</li>
-    <li><strong>Initials mode</strong> — same typing with a cue row</li>
+    <li><strong>Initials mode</strong> — same as above but with a cue row</li>
     <li><strong>Word mode</strong> — tap the correct word choices</li>
     <li><strong>Reorder mode</strong> — drag chunks into the right order</li>
   </ul>
@@ -181,6 +187,8 @@ Copy the block below into **Send email to all subscribers** with **Message forma
 
 ---
 
+
+
 ## Send checklist
 
 1. Deploy so the PNGs under `/marketing/memorize/` are reachable on `https://cpprayer.cp-church.org`.
@@ -189,14 +197,19 @@ Copy the block below into **Send email to all subscribers** with **Message forma
 4. Preview carefully — screenshots should load from production.
 5. Send when ready.
 
+
+
 ### Screenshot inventory
 
-| File | Shows |
-|------|--------|
-| `01-find-memorize.png` | Memorize filter selected + list |
-| `02-action-bar.png` | Same view (action bar + list) |
-| `03-add-verses.png` | Bible picker (John chapters) |
-| `04-recommended.png` | Recommended categories with verses |
-| `05-mastery-list.png` | Learning / Practicing groups |
-| `06-practice.png` | Choose practice mode dialog (optional / unused in email body) |
+
+| File                         | Shows                                                                  |
+| ---------------------------- | ---------------------------------------------------------------------- |
+| `01-find-memorize.png`       | Memorize filter selected + list                                        |
+| `02-action-bar.png`          | Same view (action bar + list)                                          |
+| `03-add-verses.png`          | Bible picker (John chapters)                                           |
+| `04-recommended.png`         | Recommended categories with verses                                     |
+| `05-mastery-list.png`        | Learning / Practicing groups                                           |
+| `06-practice.png`            | Choose practice mode dialog (optional / unused in email body)          |
 | `07-practice-modes-grid.png` | Four corners: Type, Initials, Word, Reorder mid-practice (James 1:2–4) |
+
+
