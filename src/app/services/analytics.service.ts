@@ -15,6 +15,7 @@ export interface AnalyticsStats {
   answeredPrayers: number;
   archivedPrayers: number;
   totalSubscribers: number;
+  memorizationTotal: number;
   memorizationLearning: number;
   memorizationPracticing: number;
   memorizationMastered: number;
@@ -165,6 +166,7 @@ export class AnalyticsService {
       answeredPrayers: 0,
       archivedPrayers: 0,
       totalSubscribers: 0,
+      memorizationTotal: 0,
       memorizationLearning: 0,
       memorizationPracticing: 0,
       memorizationMastered: 0,
@@ -356,6 +358,7 @@ export class AnalyticsService {
               : [],
           }))
         );
+        stats.memorizationTotal = rows.length;
         stats.memorizationLearning = mastery.learning;
         stats.memorizationPracticing = mastery.practicing;
         stats.memorizationMastered = mastery.mastered;

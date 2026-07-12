@@ -321,6 +321,7 @@ describe('AnalyticsService', () => {
         answeredPrayers: 0,
         archivedPrayers: 0,
         totalSubscribers: 0,
+        memorizationTotal: 0,
         memorizationLearning: 0,
         memorizationPracticing: 0,
         memorizationMastered: 0,
@@ -343,6 +344,7 @@ describe('AnalyticsService', () => {
         answeredPrayers: expect.any(Number),
         archivedPrayers: expect.any(Number),
         totalSubscribers: expect.any(Number),
+        memorizationTotal: expect.any(Number),
         memorizationLearning: expect.any(Number),
         memorizationPracticing: expect.any(Number),
         memorizationMastered: expect.any(Number),
@@ -387,6 +389,7 @@ describe('AnalyticsService', () => {
       expect(stats.totalPageViews).toBe(0);
       expect(stats.totalPrayers).toBe(0);
       expect(stats.totalSubscribers).toBe(0);
+      expect(stats.memorizationTotal).toBe(0);
       expect(stats.memorizationLearning).toBe(0);
       expect(stats.memorizationPracticing).toBe(0);
       expect(stats.memorizationMastered).toBe(0);
@@ -525,6 +528,7 @@ describe('AnalyticsService', () => {
       expect(stats.answeredPrayers).toBe(15);
       expect(stats.archivedPrayers).toBe(5);
       expect(stats.totalSubscribers).toBe(25);
+      expect(stats.memorizationTotal).toBe(4);
       expect(stats.memorizationLearning).toBe(2);
       expect(stats.memorizationPracticing).toBe(1);
       expect(stats.memorizationMastered).toBe(1);
@@ -639,6 +643,7 @@ describe('AnalyticsService', () => {
       expect(stats.yearPageViews).toBe(0);
       expect(stats.currentPrayers).toBe(0);
       expect(stats.archivedPrayers).toBe(0);
+      expect(stats.memorizationTotal).toBe(0);
       expect(stats.memorizationLearning).toBe(0);
       expect(stats.loading).toBe(false);
       expect(consoleErrorSpy).toHaveBeenCalledTimes(7); // All error branches logged

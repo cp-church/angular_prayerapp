@@ -4,6 +4,9 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Admin Analytics — Memorize total count ✅
+- **UI**: Admin → Settings → Analytics adds a **Total** metric card for site-wide count of all `memorized_items` rows (sum of Learning + Practicing + Mastered). [`analytics.service.ts`](src/app/services/analytics.service.ts), [`admin.component.ts`](src/app/pages/admin/admin.component.ts).
+
 ### Marketing — Memorize subscriber promo ✅
 - **Ops**: Paste-ready subscriber announcement (subject options, Markdown, companion HTML) lives in [`docs/marketing/memorize-subscriber-promo.md`](docs/marketing/memorize-subscriber-promo.md). Screenshots are under [`public/marketing/memorize/`](public/marketing/memorize/) and must be deployed before sending so `https://cpprayer.cp-church.org/marketing/memorize/…` resolves. Prefer **HTML paste** in Admin broadcast for this promo.
 - **Assets**: Modal crops are taken from full-resolution captures and downscaled (not upscaled) so email images stay sharp. Full-page Memorize shots (`01` / `02` / `05`) use a non-admin subscriber session (no Admin badge). [`07-practice-modes-grid.png`](public/marketing/memorize/07-practice-modes-grid.png) is a labeled 2×2 collage of Type, Initials, Word, and Reorder mid-practice on the same verse.
