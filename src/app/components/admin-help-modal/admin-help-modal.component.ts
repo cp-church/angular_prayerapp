@@ -32,6 +32,8 @@ const ADMIN_HELP_SECTION_PRAYER_EDITOR = 'admin_help_prayer_editor';
 const ADMIN_HELP_SECTION_PRAYER_EDITOR_MANAGE = 'admin_help_prayer_editor_manage';
 /** Matches `admin_help_prompts_and_types` in AdminHelpContentService defaults. */
 const ADMIN_HELP_SECTION_PRAYER_PROMPTS_AND_TYPES = 'admin_help_prompts_and_types';
+/** Matches `admin_help_memorize_recommendations` in AdminHelpContentService defaults. */
+const ADMIN_HELP_SECTION_MEMORIZE_RECOMMENDATIONS = 'admin_help_memorize_recommendations';
 
 @Component({
   selector: 'app-admin-help-modal',
@@ -265,6 +267,37 @@ const ADMIN_HELP_SECTION_PRAYER_PROMPTS_AND_TYPES = 'admin_help_prompts_and_type
                               </span>
                             </button>
                           </div>
+                        } @else if (section.id === helpSectionIdMemorizeRecommendations) {
+                          <div
+                            class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
+                          >
+                            <button
+                              type="button"
+                              (click)="onStartMemorizeRecommendationsTour($event)"
+                              class="w-full px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 flex items-start justify-between gap-2 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 transition-colors text-left cursor-pointer"
+                              [attr.aria-label]="'Start guided tour: ' + section.title"
+                            >
+                              <div class="flex items-start gap-3 flex-1 min-w-0">
+                                <div
+                                  class="text-lg mt-1 flex-shrink-0 w-6 h-6"
+                                  [innerHTML]="getSafeIcon(section.icon)"
+                                  aria-hidden="true"
+                                ></div>
+                                <div class="min-w-0">
+                                  <h3 class="font-semibold not-dark:text-gray-900 dark:text-white">{{ section.title }}</h3>
+                                  <p class="text-sm text-gray-600 dark:text-gray-200">{{ section.description }}</p>
+                                </div>
+                              </div>
+                              <span
+                                class="flex-shrink-0 mt-1 inline-flex items-center justify-center w-9 h-9 rounded-full bg-blue-600 dark:bg-blue-600 text-white"
+                                aria-hidden="true"
+                              >
+                                <svg class="w-5 h-5 ml-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                  <path d="M8 5v14l11-7z" />
+                                </svg>
+                              </span>
+                            </button>
+                          </div>
                         } @else {
                         <div
                           class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
@@ -398,6 +431,7 @@ export class AdminHelpModalComponent implements OnInit, OnChanges {
   @Output() startPrayerEditorTour = new EventEmitter<void>();
   @Output() startPrayerEditorManageTour = new EventEmitter<void>();
   @Output() startPrayerPromptsTypesTour = new EventEmitter<void>();
+  @Output() startMemorizeRecommendationsTour = new EventEmitter<void>();
   @ViewChild('contentArea') contentArea!: ElementRef<HTMLElement>;
 
   readonly helpSectionIdEmailSubscribersOverview = ADMIN_HELP_SECTION_EMAIL_SUBSCRIBERS_OVERVIEW;
@@ -405,6 +439,7 @@ export class AdminHelpModalComponent implements OnInit, OnChanges {
   readonly helpSectionIdPrayerEditor = ADMIN_HELP_SECTION_PRAYER_EDITOR;
   readonly helpSectionIdPrayerEditorManage = ADMIN_HELP_SECTION_PRAYER_EDITOR_MANAGE;
   readonly helpSectionIdPrayerPromptsAndTypes = ADMIN_HELP_SECTION_PRAYER_PROMPTS_AND_TYPES;
+  readonly helpSectionIdMemorizeRecommendations = ADMIN_HELP_SECTION_MEMORIZE_RECOMMENDATIONS;
 
   helpSections$!: Observable<AdminHelpSection[]>;
   filteredSections$!: Observable<AdminHelpSection[]>;
@@ -497,6 +532,11 @@ export class AdminHelpModalComponent implements OnInit, OnChanges {
   onStartPrayerPromptsTypesTour(event: Event): void {
     event.stopPropagation();
     this.startPrayerPromptsTypesTour.emit();
+  }
+
+  onStartMemorizeRecommendationsTour(event: Event): void {
+    event.stopPropagation();
+    this.startMemorizeRecommendationsTour.emit();
   }
 
   getSafeIcon(icon: string): SafeHtml {

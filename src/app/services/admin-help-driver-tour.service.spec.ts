@@ -203,6 +203,29 @@ describe('AdminHelpDriverTourService', () => {
     });
   });
 
+  describe('startMemorizeRecommendationsTour', () => {
+    it('calls interruptGuidedTours and driver with Content / memorize recommendations steps', () => {
+      service.startMemorizeRecommendationsTour(true);
+      expect(helpDriverTour.interruptGuidedTours).toHaveBeenCalled();
+      const cfg = vi.mocked(driver).mock.calls[0][0] as { steps: { element?: string }[] };
+      expect(cfg.steps.some((s) => s.element === '#admin-settings-tab-content')).toBe(true);
+      expect(cfg.steps.some((s) => s.element === '#memorization-recommendations-manager-trigger')).toBe(
+        true
+      );
+      expect(cfg.steps.some((s) => s.element === '#tour-memorize-rec-categories-list')).toBe(true);
+      expect(cfg.steps.some((s) => s.element === '#tour-memorize-rec-verses-list')).toBe(true);
+    });
+
+    it('uses empty-state copy when no categories exist', () => {
+      service.startMemorizeRecommendationsTour(false);
+      const cfg = vi.mocked(driver).mock.calls[0][0] as {
+        steps: { element?: string; popover?: { title?: string } }[];
+      };
+      expect(cfg.steps.some((s) => s.element === '#tour-memorize-rec-categories-list')).toBe(false);
+      expect(cfg.steps.some((s) => s.popover?.title === 'No categories yet')).toBe(true);
+    });
+  });
+
   describe('startEmailSubscribersTour', () => {
     it('starts driver with the interactive subscribers tour', () => {
       service.startEmailSubscribersTour({

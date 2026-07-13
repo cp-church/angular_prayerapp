@@ -17,6 +17,7 @@ describe('AdminComponent', () => {
     startPrayerEditorCreateTour: ReturnType<typeof vi.fn>;
     startPrayerEditorManageTour: ReturnType<typeof vi.fn>;
     startPrayerPromptsAndTypesTour: ReturnType<typeof vi.fn>;
+    startMemorizeRecommendationsTour: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -73,6 +74,7 @@ describe('AdminComponent', () => {
       startPrayerEditorCreateTour: vi.fn(),
       startPrayerEditorManageTour: vi.fn(),
       startPrayerPromptsAndTypesTour: vi.fn(),
+      startMemorizeRecommendationsTour: vi.fn(),
     };
 
     component = new AdminComponent(
@@ -1084,6 +1086,19 @@ describe('AdminComponent', () => {
       expect(promptManagerRef.prepareTourInitialState).toHaveBeenCalled();
       expect(prayerTypesManagerRef.prepareTourInitialState).toHaveBeenCalled();
       expect(adminHelpDriverTour.startPrayerPromptsAndTypesTour).toHaveBeenCalled();
+    });
+
+    it('onMemorizeRecommendationsTourFromHelp prepares manager and starts tour', async () => {
+      const memorizeRecommendationsManagerRef = {
+        prepareTourInitialState: vi.fn().mockResolvedValue(true),
+      };
+      (component as { memorizeRecommendationsManagerRef?: typeof memorizeRecommendationsManagerRef })
+        .memorizeRecommendationsManagerRef = memorizeRecommendationsManagerRef;
+      component.onMemorizeRecommendationsTourFromHelp();
+      expect(component.activeSettingsTab).toBe('content');
+      await new Promise<void>((resolve) => setTimeout(resolve, 400));
+      expect(memorizeRecommendationsManagerRef.prepareTourInitialState).toHaveBeenCalled();
+      expect(adminHelpDriverTour.startMemorizeRecommendationsTour).toHaveBeenCalledWith(true);
     });
 
     it('onPrayerEditorTourFromHelp prepares prayer editor and starts create tour', async () => {

@@ -182,6 +182,16 @@ describe('AdminHelpModalComponent', () => {
     expect(emitSpy).toHaveBeenCalled();
   });
 
+  it('onStartMemorizeRecommendationsTour emits and stops propagation', () => {
+    const comp = createComponent();
+    const emitSpy = vi.fn();
+    comp.startMemorizeRecommendationsTour.subscribe(emitSpy);
+    const ev = { stopPropagation: vi.fn() } as unknown as Event;
+    comp.onStartMemorizeRecommendationsTour(ev);
+    expect(ev.stopPropagation).toHaveBeenCalled();
+    expect(emitSpy).toHaveBeenCalled();
+  });
+
   it('onClose destroys driver tour and emits', () => {
     const comp = createComponent();
     const tour = (comp as unknown as { adminHelpDriverTour: AdminHelpDriverTourService }).adminHelpDriverTour;

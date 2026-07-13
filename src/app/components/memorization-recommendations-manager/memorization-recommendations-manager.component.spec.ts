@@ -123,4 +123,20 @@ describe('MemorizationRecommendationsManagerComponent', () => {
     expect(component.groups[0].items[0].categoryId).toBe('cat-1');
     expect(component.groups[1].items).toHaveLength(0);
   });
+
+  it('prepareTourInitialState expands, loads, and returns whether categories exist', async () => {
+    component.sectionExpanded = false;
+    component.loadedOnce = false;
+    component.showPicker = true;
+    component.showAddCategory = true;
+
+    const hasCategories = await component.prepareTourInitialState();
+
+    expect(component.sectionExpanded).toBe(true);
+    expect(component.showPicker).toBe(false);
+    expect(component.showAddCategory).toBe(false);
+    expect(recommendations.load).toHaveBeenCalledWith(true);
+    expect(hasCategories).toBe(true);
+    expect(component.addTargetCategoryId).toBe('cat-1');
+  });
 });

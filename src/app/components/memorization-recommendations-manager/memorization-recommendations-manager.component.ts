@@ -92,7 +92,10 @@ import type {
           class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-6"
           (click)="$event.stopPropagation()"
         >
-          <p class="text-sm text-gray-600 dark:text-gray-300">
+          <p
+            id="tour-memorize-rec-intro"
+            class="text-sm text-gray-600 dark:text-gray-300"
+          >
             Manage categories and curated verses for the Memorize <strong>Recommended</strong> modal.
             Every verse must belong to a category. Drag to reorder categories, reorder verses, or move verses between categories.
           </p>
@@ -104,7 +107,10 @@ import type {
           } @else {
             <!-- Categories -->
             <div>
-              <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div
+                id="tour-memorize-rec-categories-toolbar"
+                class="flex flex-wrap items-center justify-between gap-2 mb-3"
+              >
                 <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                   Categories
                 </h3>
@@ -143,6 +149,7 @@ import type {
                 </p>
               } @else {
                 <div
+                  id="tour-memorize-rec-categories-list"
                   cdkDropList
                   [cdkDropListData]="groups"
                   (cdkDropListDropped)="onCategoryDrop($event)"
@@ -219,7 +226,10 @@ import type {
 
             <!-- Verses by category -->
             <div>
-              <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div
+                id="tour-memorize-rec-verses-toolbar"
+                class="flex flex-wrap items-center justify-between gap-2 mb-3"
+              >
                 <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                   Verses
                 </h3>
@@ -240,7 +250,11 @@ import type {
                 </p>
               }
 
-              <div cdkDropListGroup [class.opacity-60]="reorderingVerses">
+              <div
+                id="tour-memorize-rec-verses-list"
+                cdkDropListGroup
+                [class.opacity-60]="reorderingVerses"
+              >
                 @for (group of groups; track group.category.id) {
                   <div class="mb-4">
                     <p class="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">
@@ -379,6 +393,33 @@ export class MemorizationRecommendationsManagerComponent {
       void this.fetchAll();
     }
     this.mark();
+  }
+
+  /** Admin help tour: expand section, close forms/picker, load categories and verses. */
+  async prepareTourInitialState(): Promise<boolean> {
+    this.showPicker = false;
+    this.showAddCategory = false;
+    this.pendingRemoveVerse = null;
+    this.pendingRemoveCategory = null;
+    this.editingCategoryId = null;
+    this.editingCategoryName = '';
+
+    if (!this.sectionExpanded) {
+      this.sectionExpanded = true;
+    }
+    if (!this.loadedOnce) {
+      await this.fetchAll();
+    } else if (this.loading) {
+      await this.fetchAll();
+    } else {
+      this.syncFromService();
+      if (!this.addTargetCategoryId && this.groups.length > 0) {
+        this.addTargetCategoryId = this.groups[0].category.id;
+      }
+      this.mark();
+    }
+
+    return this.groups.length > 0;
   }
 
   selectAddTarget(categoryId: string): void {

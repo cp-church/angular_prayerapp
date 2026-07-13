@@ -668,7 +668,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
                   <app-prayer-types-manager #prayerTypesManager></app-prayer-types-manager>
                 </div>
                 <div class="mb-4">
-                  <app-memorization-recommendations-manager></app-memorization-recommendations-manager>
+                  <app-memorization-recommendations-manager #memorizeRecommendationsManager></app-memorization-recommendations-manager>
                 </div>
                 <div class="mb-4">
                   <app-planning-center-list-mapper></app-planning-center-list-mapper>
@@ -754,6 +754,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
         (startPrayerEditorTour)="onPrayerEditorTourFromHelp()"
         (startPrayerEditorManageTour)="onPrayerEditorManageTourFromHelp()"
         (startPrayerPromptsTypesTour)="onPrayerPromptsTypesTourFromHelp()"
+        (startMemorizeRecommendationsTour)="onMemorizeRecommendationsTourFromHelp()"
       ></app-admin-help-modal>
     </div>
   `
@@ -763,6 +764,8 @@ export class AdminComponent implements OnInit, OnDestroy {
   @ViewChild('prayerSearch') prayerSearchRef?: PrayerSearchComponent;
   @ViewChild('promptManager') promptManagerRef?: PromptManagerComponent;
   @ViewChild('prayerTypesManager') prayerTypesManagerRef?: PrayerTypesManagerComponent;
+  @ViewChild('memorizeRecommendationsManager')
+  memorizeRecommendationsManagerRef?: MemorizationRecommendationsManagerComponent;
 
   activeTab: AdminTab = 'prayers';
   activeSettingsTab: SettingsTab = 'analytics';
@@ -844,6 +847,22 @@ export class AdminComponent implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         }, 150);
       })();
+    }, 200);
+  }
+
+  /** From Admin Help: Content tab — Memorize Recommendations overview (no add forms opened). */
+  onMemorizeRecommendationsTourFromHelp(): void {
+    this.showAdminHelp = false;
+    this.onTabChange('settings');
+    this.onSettingsTabChange('content');
+    this.cdr.markForCheck();
+    window.setTimeout(() => {
+      void this.memorizeRecommendationsManagerRef?.prepareTourInitialState().then((hasCategories) => {
+        window.setTimeout(() => {
+          this.adminHelpDriverTour.startMemorizeRecommendationsTour(hasCategories ?? false);
+          this.cdr.markForCheck();
+        }, 150);
+      });
     }, 200);
   }
 

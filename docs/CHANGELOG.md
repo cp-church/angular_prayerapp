@@ -4,6 +4,9 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Admin help — Memorize Recommendations guided tour ✅
+- **UI**: Admin header **?** → **Memorize Recommendations** starts a driver.js tour of Settings → Content → **Memorize Recommendations** (categories, verses, drag-reorder). Does not open add forms. [`admin-help-driver-tour.service.ts`](src/app/services/admin-help-driver-tour.service.ts), [`memorization-recommendations-manager.component.ts`](src/app/components/memorization-recommendations-manager/memorization-recommendations-manager.component.ts), [`admin-help-modal.component.ts`](src/app/components/admin-help-modal/admin-help-modal.component.ts).
+
 ### Admin Analytics — Memorize total count ✅
 - **UI**: Admin → Settings → Analytics adds a **Total** metric card for site-wide count of all `memorized_items` rows (sum of Learning + Practicing + Mastered). [`analytics.service.ts`](src/app/services/analytics.service.ts), [`admin.component.ts`](src/app/pages/admin/admin.component.ts).
 

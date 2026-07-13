@@ -100,6 +100,21 @@ export class AdminHelpContentService {
         updatedAt: now,
         createdBy: 'system',
       },
+      {
+        id: 'admin_help_memorize_recommendations',
+        title: 'Memorize Recommendations',
+        description:
+          'Start the guided tour — walks Settings → Content, Memorize Recommendations (categories, verses, drag-reorder). Does not open add forms.',
+        icon:
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 7h8"/><path d="M8 11h6"/></svg>',
+        content: [],
+        order: 6,
+        isActive: true,
+        videoEmbedUrl: undefined,
+        createdAt: now,
+        updatedAt: now,
+        createdBy: 'system',
+      },
     ];
   }
 }
