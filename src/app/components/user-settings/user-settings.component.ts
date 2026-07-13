@@ -109,7 +109,7 @@ type PrintRange = "week" | "twoweeks" | "month" | "year" | "all";
                 </div>
                 <div
                   id="tour-settings-print-buttons"
-                  class="grid grid-cols-1 sm:grid-cols-3 gap-1.5 sm:gap-2"
+                  class="grid grid-cols-3 gap-1.5 sm:gap-2"
                 >
             <!-- Print Prayer List -->
             <div class="relative flex-1 min-w-0">
@@ -127,7 +127,7 @@ type PrintRange = "week" | "twoweeks" | "month" | "year" | "all";
                   (click)="handlePrint()"
                   title="Print prayers for the selected time period"
                   [disabled]="isPrinting"
-                  class="flex-1 flex flex-row sm:flex-col items-center justify-center gap-2 p-2 sm:p-3 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="flex-1 flex flex-col items-center justify-center gap-2 p-2 sm:p-3 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   @if (!isPrinting) {
                   <svg
@@ -252,7 +252,7 @@ type PrintRange = "week" | "twoweeks" | "month" | "year" | "all";
                   (click)="handlePrintPrompts()"
                   [disabled]="isPrintingPrompts"
                   title="Print prayer prompts for the selected time period"
-                  class="flex-1 flex flex-row sm:flex-col items-center justify-center gap-2 p-2 sm:p-3 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="flex-1 flex flex-col items-center justify-center gap-2 p-2 sm:p-3 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   @if (!isPrintingPrompts) {
                   <svg
@@ -389,7 +389,7 @@ type PrintRange = "week" | "twoweeks" | "month" | "year" | "all";
                   (click)="handlePrintPersonalPrayers()"
                   title="Print personal prayers for the selected categories"
                   [disabled]="isPrintingPersonal"
-                  class="flex-1 flex flex-row sm:flex-col items-center justify-center gap-2 p-2 sm:p-3 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="flex-1 flex flex-col items-center justify-center gap-2 p-2 sm:p-3 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   @if (!isPrintingPersonal) {
                   <svg

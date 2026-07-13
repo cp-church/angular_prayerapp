@@ -4,8 +4,8 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
-### Settings — Prayer reminders Add button layout ✅
-- **UI**: **Add reminder** keeps the plus icon and label on one row at all breakpoints (was stacked vertically on `sm+`). [`user-settings.component.ts`](src/app/components/user-settings/user-settings.component.ts).
+### Settings — Print and Add reminder button layout ✅
+- **UI**: **Print** tiles stay in one row of three on all screen sizes (no longer stack into three rows on narrow viewports). Icon and label are stacked inside each tile at every breakpoint. **Add reminder** keeps the plus icon and label on one row at all breakpoints. [`user-settings.component.ts`](src/app/components/user-settings/user-settings.component.ts).
 
 ### Admin help — Memorize Recommendations guided tour ✅
 - **UI**: Admin header **?** → **Memorize Recommendations** starts a driver.js tour of Settings → Content → **Memorize Recommendations** (categories, verses, drag-reorder). Does not open add forms. [`admin-help-driver-tour.service.ts`](src/app/services/admin-help-driver-tour.service.ts), [`memorization-recommendations-manager.component.ts`](src/app/components/memorization-recommendations-manager/memorization-recommendations-manager.component.ts), [`admin-help-modal.component.ts`](src/app/components/admin-help-modal/admin-help-modal.component.ts).
