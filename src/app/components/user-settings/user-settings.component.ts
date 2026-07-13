@@ -1684,7 +1684,7 @@ type PrintRange = "week" | "twoweeks" | "month" | "year" | "all";
                 (click)="addPrayerReminderSlot()"
                 [disabled]="savingPrayerReminder || !email.trim()"
                 title="Add a prayer reminder for the selected hour"
-                class="w-full min-w-0 flex flex-row sm:flex-col items-center justify-center gap-2 p-2 sm:p-3 rounded-lg border-2 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                class="w-full min-w-0 flex flex-row items-center justify-center gap-2 p-2 sm:p-3 rounded-lg border-2 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 @if (!savingPrayerReminder) {
                 <svg
