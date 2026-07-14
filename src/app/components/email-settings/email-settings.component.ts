@@ -264,7 +264,7 @@ import { AdminSectionLoadingComponent } from '../admin-section-loading/admin-sec
             >
               <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
                 Users opt in under <strong class="text-gray-800 dark:text-gray-200">Settings → Prayer reminders</strong>. This controls which template the hourly job sends. The
-                <strong class="text-gray-800 dark:text-gray-200">random recent prayer</strong> option picks a different prayer when possible: <strong class="text-gray-800 dark:text-gray-200">every</strong> approved <strong class="text-gray-800 dark:text-gray-200">current</strong> community prayer on the church list, plus <strong class="text-gray-800 dark:text-gray-200">all</strong> of your personal prayers that are not <strong class="text-gray-800 dark:text-gray-200">Answered</strong>. Edit copy in <strong class="text-gray-800 dark:text-gray-200">Email Templates</strong> (keys <code class="text-xs">user_hourly_prayer_reminder</code> and <code class="text-xs">user_hourly_prayer_reminder_with_spotlight</code>).
+                <strong class="text-gray-800 dark:text-gray-200">random recent prayer</strong> option picks a different prayer when possible: <strong class="text-gray-800 dark:text-gray-200">every</strong> approved <strong class="text-gray-800 dark:text-gray-200">current</strong> community prayer on the church list, plus <strong class="text-gray-800 dark:text-gray-200">all</strong> of your personal prayers that are not <strong class="text-gray-800 dark:text-gray-200">Answered</strong>.
               </p>
 
               @if (loadingHourlyTemplate) {
