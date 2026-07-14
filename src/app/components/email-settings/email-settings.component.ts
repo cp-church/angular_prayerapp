@@ -358,7 +358,7 @@ import { AdminSectionLoadingComponent } from '../admin-section-loading/admin-sec
                   (click)="saveHourlyUserReminderTemplate()"
                   [disabled]="savingHourlyTemplate || loadingHourlyTemplate"
                   class="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                  aria-label="Save hourly reminder template"
+                  aria-label="Save reminder template"
                 >
                   @if (savingHourlyTemplate) {
                     <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -370,7 +370,7 @@ import { AdminSectionLoadingComponent } from '../admin-section-loading/admin-sec
                       <polyline points="7 3 7 8 15 8"></polyline>
                     </svg>
                   }
-                  {{ savingHourlyTemplate ? 'Saving…' : 'Save hourly reminder template' }}
+                  {{ savingHourlyTemplate ? 'Saving…' : 'Save reminder template' }}
                 </button>
               </div>
             </div>
@@ -426,7 +426,7 @@ import { AdminSectionLoadingComponent } from '../admin-section-loading/admin-sec
             >
               <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
                 Users opt in under <strong class="text-gray-800 dark:text-gray-200">Settings → Memorization reminders</strong>. This controls which template the hourly job sends. The
-                <strong class="text-gray-800 dark:text-gray-200">spotlight</strong> option highlights the item on the user's memorization list that needs the most practice (learning tier and least recently practiced first). Edit copy in <strong class="text-gray-800 dark:text-gray-200">Email Templates</strong> (keys <code class="text-xs">user_hourly_memorization_reminder</code> and <code class="text-xs">user_hourly_memorization_reminder_with_spotlight</code>).
+                <strong class="text-gray-800 dark:text-gray-200">spotlight</strong> option highlights the item on the user's memorization list that needs the most practice (learning tier and least recently practiced first).
               </p>
 
               @if (loadingHourlyMemorizationTemplate) {
@@ -520,7 +520,7 @@ import { AdminSectionLoadingComponent } from '../admin-section-loading/admin-sec
                   (click)="saveHourlyMemorizationReminderTemplate()"
                   [disabled]="savingHourlyMemorizationTemplate || loadingHourlyMemorizationTemplate"
                   class="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                  aria-label="Save memorization hourly reminder template"
+                  aria-label="Save reminder template"
                 >
                   @if (savingHourlyMemorizationTemplate) {
                     <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -532,7 +532,7 @@ import { AdminSectionLoadingComponent } from '../admin-section-loading/admin-sec
                       <polyline points="7 3 7 8 15 8"></polyline>
                     </svg>
                   }
-                  {{ savingHourlyMemorizationTemplate ? 'Saving…' : 'Save memorization reminder template' }}
+                  {{ savingHourlyMemorizationTemplate ? 'Saving…' : 'Save reminder template' }}
                 </button>
               </div>
             </div>
