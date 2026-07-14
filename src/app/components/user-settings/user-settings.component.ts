@@ -27,7 +27,9 @@ import { Subject, takeUntil, debounceTime, distinctUntilChanged } from "rxjs";
 import { getUserInfo } from "../../../utils/userInfoStorage";
 import { GitHubFeedbackFormComponent } from "../github-feedback-form/github-feedback-form.component";
 import { UserPrayerReminderService } from "../../services/user-prayer-reminder.service";
+import { UserMemorizationReminderService } from "../../services/user-memorization-reminder.service";
 import type { UserPrayerHourReminderSlot } from "../../types/user-prayer-hour-reminder";
+import type { UserMemorizationHourReminderSlot } from "../../types/user-memorization-hour-reminder";
 
 type ThemeOption = "light" | "dark" | "system";
 type PrintRange = "week" | "twoweeks" | "month" | "year" | "all";
@@ -1634,6 +1636,240 @@ type PrintRange = "week" | "twoweeks" | "month" | "year" | "all";
             }
           </div>
 
+          <!-- Memorization reminders (hourly self nudges) -->
+          <div
+            id="tour-settings-memorization-reminders"
+            class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 space-y-2"
+          >
+            <div
+              class="font-medium text-gray-800 dark:text-gray-100 text-sm sm:text-base"
+            >
+              Memorization reminders
+            </div>
+            <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+              Choose times to get a short reminder to practice memorization. We
+              email you when email notifications are on, and send a push when
+              push is on and this device is registered—if both are on, you get
+              both. Times use your device time zone (top of each hour).
+            </p>
+            @if (loadingMemorizationReminders) {
+            <div
+              class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400"
+              role="status"
+            >
+              <svg
+                class="animate-spin h-4 w-4"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              Loading reminders…
+            </div>
+            } @else if (memorizationReminderSlots.length === 0) {
+            <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+              No reminder hours saved yet.
+            </p>
+            } @else {
+            <ul class="flex flex-col gap-1.5 sm:gap-2" role="list">
+              @for (slot of memorizationReminderSlots; track slot.id) {
+              <li
+                class="flex w-full min-w-0 items-center justify-between gap-2 rounded-lg border-2 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all overflow-hidden"
+              >
+                <span
+                  class="flex-1 p-2 sm:p-3 text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100"
+                  >{{ formatMemorizationReminderSlotLabel(slot) }}</span
+                >
+                <button
+                  type="button"
+                  (click)="removeMemorizationReminderSlot(slot.id)"
+                  [disabled]="savingMemorizationReminder"
+                  class="self-stretch flex items-center justify-center px-3 border-l border-gray-200 dark:border-gray-700 text-xs sm:text-sm font-medium text-red-600 dark:text-red-400 hover:bg-blue-100/60 dark:hover:bg-blue-900/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                  [attr.aria-label]="
+                    'Remove reminder ' + formatMemorizationReminderSlotLabel(slot)
+                  "
+                >
+                  Remove
+                </button>
+              </li>
+              }
+            </ul>
+            }
+            <div
+              id="tour-settings-memorization-reminder-controls"
+              class="grid grid-cols-2 gap-1.5 sm:gap-2"
+            >
+              <div class="relative min-w-0">
+                <div
+                  [ngClass]="{
+                    'border-blue-500 bg-blue-50 dark:bg-blue-900/20 hover:border-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30':
+                      showMemorizationReminderHourDropdown,
+                    'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20':
+                      !showMemorizationReminderHourDropdown
+                  }"
+                  class="flex w-full min-w-0 rounded-lg border-2 transition-all overflow-hidden"
+                >
+                  <button
+                    type="button"
+                    id="memorization-reminder-hour-select"
+                    (click)="
+                      showMemorizationReminderHourDropdown = !showMemorizationReminderHourDropdown
+                    "
+                    [disabled]="savingMemorizationReminder"
+                    [attr.aria-expanded]="showMemorizationReminderHourDropdown"
+                    aria-haspopup="listbox"
+                    aria-label="Memorization reminder hour"
+                    title="Select memorization reminder hour"
+                    class="w-full flex items-center justify-between gap-2 p-2 sm:p-3 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span
+                      class="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100"
+                      >{{ formatHour12(selectedMemorizationReminderHour) }}</span
+                    >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      class="text-gray-600 dark:text-gray-400 transition-transform shrink-0"
+                      [class.rotate-180]="showMemorizationReminderHourDropdown"
+                      aria-hidden="true"
+                    >
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </button>
+                </div>
+
+                @if (showMemorizationReminderHourDropdown) {
+                <div>
+                  <div
+                    class="fixed inset-0 z-10"
+                    (click)="showMemorizationReminderHourDropdown = false"
+                  ></div>
+                  <div
+                    role="listbox"
+                    aria-label="Memorization reminder hour"
+                    class="absolute left-0 right-0 mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-20 max-h-60 overflow-y-auto"
+                  >
+                    @for (opt of reminderHourOptions; track opt.value) {
+                    <button
+                      type="button"
+                      role="option"
+                      [attr.aria-selected]="selectedMemorizationReminderHour === opt.value"
+                      (click)="setMemorizationReminderHour(opt.value)"
+                      class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between cursor-pointer"
+                      [title]="'Set memorization reminder hour to ' + opt.label"
+                    >
+                      <span>{{ opt.label }}</span>
+                      @if (selectedMemorizationReminderHour === opt.value) {
+                      <span class="text-blue-600 dark:text-blue-400">✓</span>
+                      }
+                    </button>
+                    }
+                  </div>
+                </div>
+                }
+              </div>
+              <button
+                type="button"
+                (click)="addMemorizationReminderSlot()"
+                [disabled]="savingMemorizationReminder || !email.trim()"
+                title="Add a memorization reminder for the selected hour"
+                class="w-full min-w-0 flex flex-row items-center justify-center gap-2 p-2 sm:p-3 rounded-lg border-2 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                @if (!savingMemorizationReminder) {
+                <svg
+                  width="18"
+                  height="18"
+                  class="text-gray-600 dark:text-gray-400 sm:w-5 sm:h-5 shrink-0"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                } @else {
+                <svg
+                  width="18"
+                  height="18"
+                  class="text-gray-600 dark:text-gray-400 sm:w-5 sm:h-5 animate-spin shrink-0"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  style="transform-origin: center"
+                  aria-hidden="true"
+                >
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="4"
+                    fill="none"
+                    opacity="0.25"
+                  ></circle>
+                  <path
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    opacity="0.75"
+                  ></path>
+                </svg>
+                }
+                <span
+                  class="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100"
+                  >Add reminder</span
+                >
+              </button>
+            </div>
+            @if (memorizationReminderError) {
+            <div
+              class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-2"
+              role="alert"
+            >
+              <p class="text-xs sm:text-sm text-red-800 dark:text-red-200">
+                {{ memorizationReminderError }}
+              </p>
+            </div>
+            }
+            @if (memorizationReminderSuccess) {
+            <div
+              class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-2"
+              role="status"
+              aria-live="polite"
+            >
+              <p class="text-xs sm:text-sm text-green-800 dark:text-green-200">
+                {{ memorizationReminderSuccess }}
+              </p>
+            </div>
+            }
+          </div>
+
           <!-- Error Message -->
           @if (error) {
           <div
@@ -2169,6 +2405,15 @@ export class UserSettingsComponent implements OnInit, OnDestroy, OnChanges {
   selectedReminderHour = 9;
   reminderHourOptions: { value: number; label: string }[] = [];
 
+  /** Hourly memorization reminders */
+  memorizationReminderSlots: UserMemorizationHourReminderSlot[] = [];
+  loadingMemorizationReminders = false;
+  savingMemorizationReminder = false;
+  memorizationReminderError: string | null = null;
+  memorizationReminderSuccess: string | null = null;
+  selectedMemorizationReminderHour = 9;
+  showMemorizationReminderHourDropdown = false;
+
   private destroy$ = new Subject<void>();
   private emailChange$ = new Subject<string>();
   private isInitialLoad = false;
@@ -2212,6 +2457,7 @@ export class UserSettingsComponent implements OnInit, OnDestroy, OnChanges {
     public userSessionService: UserSessionService,
     public capacitorService: CapacitorService,
     private userPrayerReminderService: UserPrayerReminderService,
+    private userMemorizationReminderService: UserMemorizationReminderService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -2332,7 +2578,10 @@ export class UserSettingsComponent implements OnInit, OnDestroy, OnChanges {
 
       this.prayerReminderError = null;
       this.prayerReminderSuccess = null;
+      this.memorizationReminderError = null;
+      this.memorizationReminderSuccess = null;
       this.loadPrayerRemindersForModal();
+      this.loadMemorizationRemindersForModal();
 
       // Reset flag after a short delay
       setTimeout(() => {
@@ -2398,6 +2647,140 @@ export class UserSettingsComponent implements OnInit, OnDestroy, OnChanges {
       return hour;
     }
     return `${hour} · ${slot.iana_timezone}`;
+  }
+
+  formatMemorizationReminderSlotLabel(slot: UserMemorizationHourReminderSlot): string {
+    const hour = this.formatHour12(slot.local_hour);
+    if (slot.iana_timezone === this.deviceIanaTimezone) {
+      return hour;
+    }
+    return `${hour} · ${slot.iana_timezone}`;
+  }
+
+  private loadMemorizationRemindersForModal(): void {
+    this.memorizationReminderError = null;
+    const modalEmail = this.email?.trim() ?? '';
+    const session = this.userSessionService.getCurrentSession();
+    const sessionEmail = session?.email?.trim() ?? '';
+    const sessionCacheMatchesModal =
+      sessionEmail === modalEmail &&
+      session?.memorizationHourReminders !== undefined;
+
+    if (!modalEmail) {
+      this.memorizationReminderSlots = [];
+      this.loadingMemorizationReminders = false;
+      this.cdr.markForCheck();
+      return;
+    }
+
+    if (sessionCacheMatchesModal) {
+      this.memorizationReminderSlots = [...session!.memorizationHourReminders!];
+    } else {
+      this.memorizationReminderSlots = [];
+    }
+
+    const needsBlockingLoad = !sessionCacheMatchesModal;
+    this.loadingMemorizationReminders = needsBlockingLoad;
+    this.cdr.markForCheck();
+    this.userMemorizationReminderService
+      .ensureLoaded(true)
+      .then((slots) => {
+        if ((this.email?.trim() ?? '') !== modalEmail) {
+          this.loadingMemorizationReminders = false;
+          this.cdr.markForCheck();
+          return;
+        }
+        const currentSessionEmail =
+          this.userSessionService.getCurrentSession()?.email?.trim() ?? '';
+        if (currentSessionEmail !== modalEmail) {
+          this.memorizationReminderSlots = [];
+          this.loadingMemorizationReminders = false;
+          this.cdr.markForCheck();
+          return;
+        }
+        this.memorizationReminderSlots = [...slots];
+        this.loadingMemorizationReminders = false;
+        this.cdr.markForCheck();
+      })
+      .catch((err: unknown) => {
+        console.error("Memorization reminders load failed:", err);
+        this.memorizationReminderError =
+          err && typeof err === "object" && "message" in err
+            ? String((err as { message: string }).message)
+            : "Failed to load memorization reminders";
+        this.loadingMemorizationReminders = false;
+        this.cdr.markForCheck();
+      });
+  }
+
+  async addMemorizationReminderSlot(): Promise<void> {
+    if (!this.email?.trim()) {
+      return;
+    }
+    this.savingMemorizationReminder = true;
+    this.memorizationReminderError = null;
+    this.memorizationReminderSuccess = null;
+    this.cdr.markForCheck();
+    try {
+      const slots = await this.userMemorizationReminderService.addSlot(
+        this.email.trim(),
+        this.deviceIanaTimezone,
+        this.selectedMemorizationReminderHour
+      );
+      this.memorizationReminderSlots = [...slots];
+      this.memorizationReminderSuccess = "✅ Reminder saved.";
+      setTimeout(() => {
+        this.memorizationReminderSuccess = null;
+        this.cdr.markForCheck();
+      }, 2500);
+    } catch (err: unknown) {
+      const code =
+        err && typeof err === "object" && "code" in err
+          ? String((err as { code: string }).code)
+          : "";
+      if (code === "23505") {
+        this.memorizationReminderError =
+          "You already have a reminder for that hour and time zone.";
+      } else {
+        this.memorizationReminderError =
+          err && typeof err === "object" && "message" in err
+            ? String((err as { message: string }).message)
+            : "Could not save reminder.";
+      }
+    } finally {
+      this.savingMemorizationReminder = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  async removeMemorizationReminderSlot(id: string): Promise<void> {
+    if (!this.email?.trim()) {
+      return;
+    }
+    this.savingMemorizationReminder = true;
+    this.memorizationReminderError = null;
+    this.memorizationReminderSuccess = null;
+    this.cdr.markForCheck();
+    try {
+      const slots = await this.userMemorizationReminderService.removeSlot(
+        this.email.trim(),
+        id
+      );
+      this.memorizationReminderSlots = [...slots];
+      this.memorizationReminderSuccess = "✅ Reminder removed.";
+      setTimeout(() => {
+        this.memorizationReminderSuccess = null;
+        this.cdr.markForCheck();
+      }, 2500);
+    } catch (err: unknown) {
+      this.memorizationReminderError =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message: string }).message)
+          : "Could not remove reminder.";
+    } finally {
+      this.savingMemorizationReminder = false;
+      this.cdr.markForCheck();
+    }
   }
 
   private loadPrayerRemindersForModal(): void {
@@ -2801,6 +3184,11 @@ export class UserSettingsComponent implements OnInit, OnDestroy, OnChanges {
   setReminderHour(hour: number): void {
     this.selectedReminderHour = hour;
     this.showReminderHourDropdown = false;
+  }
+
+  setMemorizationReminderHour(hour: number): void {
+    this.selectedMemorizationReminderHour = hour;
+    this.showMemorizationReminderHourDropdown = false;
   }
 
   async onNotificationToggle(): Promise<void> {

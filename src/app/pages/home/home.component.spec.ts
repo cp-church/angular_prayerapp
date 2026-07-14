@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { BehaviorSubject, of, NEVER } from 'rxjs';
+import { BehaviorSubject, of, NEVER, Subject } from 'rxjs';
+import { NavigationEnd } from '@angular/router';
 import { HomeComponent } from './home.component';
 import { PrayerRequest } from '../../services/prayer.service';
 
@@ -4316,6 +4317,104 @@ describe('HomeComponent', () => {
           replaceUrl: true
         })
       );
+    });
+
+    it('should open Memorize tab from ?filter=memorize deep link and load items', async () => {
+      const mocks = makeMocks();
+      mocks.router.url = '/?filter=memorize';
+      mocks.router.parseUrl = vi.fn(() => ({
+        queryParams: { filter: 'memorize' }
+      }));
+      mocks.activatedRoute = {
+        snapshot: { queryParams: { filter: 'memorize' } }
+      };
+      mocks.prayerService.getPersonalPrayers.mockResolvedValue([]);
+      mocks.prayerService.getUniqueCategoriesForUser.mockResolvedValue([]);
+
+      const comp = new HomeComponent(
+        mocks.prayerService,
+        mocks.promptService,
+        mocks.adminAuthService,
+        mocks.userSessionService,
+        mocks.planningCenterListService,
+        mocks.badgeService,
+        mocks.memorizationService,
+        mocks.memorizationRecommendationsService,
+        mocks.cacheService,
+        mocks.toastService,
+        mocks.analyticsService,
+        mocks.cdr,
+        mocks.router,
+        mocks.activatedRoute,
+        mocks.supabaseService,
+        mocks.helpDriverTourService,
+        mocks.helpContentService
+      );
+
+      comp.ngOnInit();
+      mocks.userSessionSubject.next({ defaultPrayerView: 'current' });
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      expect(comp.activeFilter).toBe('memorize');
+      expect(mocks.memorizationService.loadItems).toHaveBeenCalled();
+      expect(mocks.router.navigate).toHaveBeenCalledWith(
+        [],
+        expect.objectContaining({
+          queryParams: {},
+          queryParamsHandling: '',
+          replaceUrl: true
+        })
+      );
+    });
+
+    it('should apply memorize push deep link after session when navigation arrives before viewReady', async () => {
+      const mocks = makeMocks();
+      const routerEvents$ = new Subject<NavigationEnd>();
+      mocks.router.events = routerEvents$.asObservable();
+      mocks.router.url = '/';
+      mocks.router.parseUrl = vi.fn((url: string) => {
+        if (String(url).includes('filter=memorize')) {
+          return { queryParams: { filter: 'memorize' } };
+        }
+        return { queryParams: {} };
+      });
+      mocks.activatedRoute = {
+        snapshot: { queryParams: {} }
+      };
+      mocks.prayerService.getPersonalPrayers.mockResolvedValue([]);
+      mocks.prayerService.getUniqueCategoriesForUser.mockResolvedValue([]);
+
+      const comp = new HomeComponent(
+        mocks.prayerService,
+        mocks.promptService,
+        mocks.adminAuthService,
+        mocks.userSessionService,
+        mocks.planningCenterListService,
+        mocks.badgeService,
+        mocks.memorizationService,
+        mocks.memorizationRecommendationsService,
+        mocks.cacheService,
+        mocks.toastService,
+        mocks.analyticsService,
+        mocks.cdr,
+        mocks.router,
+        mocks.activatedRoute,
+        mocks.supabaseService,
+        mocks.helpDriverTourService,
+        mocks.helpContentService
+      );
+
+      comp.ngOnInit();
+      routerEvents$.next(
+        new NavigationEnd(1, '/?filter=memorize', '/?filter=memorize')
+      );
+
+      mocks.userSessionSubject.next({ defaultPrayerView: 'current' });
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(comp.activeFilter).toBe('memorize');
+      expect(mocks.memorizationService.loadItems).toHaveBeenCalled();
     });
 
     it('should load Planning Center data without blocking filter application', async () => {

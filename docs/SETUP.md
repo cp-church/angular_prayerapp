@@ -190,6 +190,20 @@ Confirm the Edge Function logs in **Supabase → Edge Functions → send-user-ho
 
 After migration `20260414120000_user_hourly_reminder_spotlight_prayer.sql`, **Admin → Settings → Email** includes an **Hourly user prayer reminder email** control (`admin_settings.user_hourly_prayer_reminder_template_key`) and template **`user_hourly_prayer_reminder_with_spotlight`** (spotlight pool: **community** = **all** approved **current** prayers app-wide; **personal** = that subscriber’s **all** non-**Answered**; default HTML matches **Prayer Update**-style containers; **`{{spotlightUpdateBlockHtml}}`** omits the Update block when there is no update). Deploy the updated `send-user-hourly-prayer-reminders` Edge Function when you ship that migration.
 
+### User hourly memorization reminders (Vault + pg_cron)
+
+Migration `20260714120000_user_memorization_hour_reminders.sql` registers an hourly job (`invoke-user-hourly-memorization-reminders`, `0 * * * *` UTC) that POSTs to **`send-user-hourly-memorization-reminders`** using the same Vault secrets **`project_url`** and **`service_role_key`**.
+
+Deploy the Edge Function after applying the migration:
+
+```bash
+supabase functions deploy send-user-hourly-memorization-reminders
+```
+
+**Admin → Settings → Email → Hourly user memorization reminder email** selects `admin_settings.user_hourly_memorization_reminder_template_key` (`user_hourly_memorization_reminder` or `user_hourly_memorization_reminder_with_spotlight`). Spotlight emails link to **`APP_URL/?filter=memorize`** and highlight the memorized item needing the most practice.
+
+Confirm logs under **Supabase → Edge Functions → send-user-hourly-memorization-reminders**. Optionally: `select * from cron.job where jobname = 'invoke-user-hourly-memorization-reminders';`
+
 ### Community prayer reminders (`send-prayer-reminders`)
 
 Migration `20260317120000_schedule_send_prayer_reminders_cron.sql` registers a **daily** job (`invoke-send-prayer-reminders`, **`0 10 * * *` UTC**) that POSTs to the Edge Function **`send-prayer-reminders`** (reminder emails + auto-archive per `admin_settings`). Uses the **same Vault secrets** as above (`project_url`, `service_role_key`).

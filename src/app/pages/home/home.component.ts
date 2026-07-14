@@ -1438,8 +1438,9 @@ export class HomeComponent implements OnInit, OnDestroy {
   // Subject for managing subscriptions
   private destroy$ = new Subject<void>();
 
-  /** From `/?filter=current|answered` on first load (mass email link); applied when session is ready. */
-  private initialEmailFilterTab: "current" | "answered" | null = null;
+  /** From `/?filter=current|answered|memorize` on first load (email/push deep link); applied when session is ready. */
+  private initialEmailFilterTab: "current" | "answered" | "memorize" | null =
+    null;
 
   /** Welcome + each help section + thank you (for global full-tour progress). */
   private fullGuidedTourTotalSteps = 0;
@@ -1484,7 +1485,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     const initialTree = this.router.parseUrl(this.router.url);
     const qf = initialTree.queryParams["filter"];
-    if (qf === "current" || qf === "answered") {
+    if (qf === "current" || qf === "answered" || qf === "memorize") {
       this.initialEmailFilterTab = qf;
     }
 
@@ -1500,14 +1501,22 @@ export class HomeComponent implements OnInit, OnDestroy {
         if (!this.isRouterUrlHome(e.urlAfterRedirects)) {
           return;
         }
+        const tree = this.router.parseUrl(e.urlAfterRedirects);
+        const filterParam = tree.queryParams["filter"];
+        const deepLinkFilter =
+          filterParam === "current" ||
+          filterParam === "answered" ||
+          filterParam === "memorize"
+            ? filterParam
+            : null;
         if (this.viewReady) {
-          const tree = this.router.parseUrl(e.urlAfterRedirects);
-          const filterParam = tree.queryParams["filter"];
-          if (filterParam === "current" || filterParam === "answered") {
-            this.setFilter(filterParam);
+          if (deepLinkFilter) {
+            this.setFilter(deepLinkFilter);
             this.cdr.markForCheck();
             this.navigateStrippingFilterQueryParam();
           }
+        } else if (deepLinkFilter) {
+          this.initialEmailFilterTab = deepLinkFilter;
         }
         window.setTimeout(() => this.tryResumeFullGuidedTourQueue(), 400);
       });

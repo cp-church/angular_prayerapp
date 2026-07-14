@@ -1222,6 +1222,17 @@ Users can save one or more **local clock hours** (with an IANA time zone) in **S
 
 - **Documentation**: [CHANGELOG.md](CHANGELOG.md) (*Prayer reminders (hourly nudges)*), [docs/README.md](README.md) (Core Capabilities + Email/Push), in-app Help (`help_prayer_reminders` + App Settings). User-facing subsection: **Prayer reminders (hourly nudges) (Settings)** above.
 
+### User hourly memorization reminders (self nudges)
+
+Same delivery model as prayer hourly reminders, but for scripture memory practice:
+
+- **Table**: `user_memorization_hour_reminders` (migration `20260714120000_user_memorization_hour_reminders.sql`: table, RLS, anon MFA policy, RPC `get_user_memorization_hour_reminders_due_now`, email templates, cron). Hour matching and DST behavior match prayer reminders.
+- **Edge function**: `supabase/functions/send-user-hourly-memorization-reminders/` — **email** when `is_active`; **push** when `receive_push` + `device_tokens`; template from `admin_settings.user_hourly_memorization_reminder_template_key`. **`{{appLink}}`** = `APP_URL/?filter=memorize`. Spotlight template (`user_hourly_memorization_reminder_with_spotlight`) picks highest-need row from `memorized_items` (learning tier, least recently practiced, fewest completed sessions; rotation via `hourly_memorization_reminder_last_spotlight_key` after successful push or email). Verse spotlight text from `scripture_cache` when `kind = 'verse'`.
+- **Scheduling**: pg_cron job **`invoke-user-hourly-memorization-reminders`** (`0 * * * *` UTC), same Vault secrets as prayer hourly job.
+- **App**: `UserMemorizationReminderService` + `UserSessionData.memorizationHourReminders`; settings UI **Memorization reminders** (after **Memorization practice**).
+- **Admin**: Email settings → **Hourly user memorization reminder email**.
+- **Help**: `help_memorization_reminders` + App Settings bullet in `help-content.service.ts`.
+
 ---
 
 ## Contributing

@@ -4,6 +4,7 @@ import { SupabaseService } from './supabase.service';
 import { AdminAuthService } from './admin-auth.service';
 import { distinctUntilChanged, first, map } from 'rxjs/operators';
 import type { UserPrayerHourReminderSlot } from '../types/user-prayer-hour-reminder';
+import type { UserMemorizationHourReminderSlot } from '../types/user-memorization-hour-reminder';
 
 export interface UserSessionData {
   email: string;
@@ -23,6 +24,9 @@ export interface UserSessionData {
   /** Cached hourly self-reminder slots; undefined = never fetched this session. */
   prayerHourReminders?: UserPrayerHourReminderSlot[];
   prayerHourRemindersFetchedAt?: number;
+  /** Cached hourly memorization reminder slots; undefined = never fetched this session. */
+  memorizationHourReminders?: UserMemorizationHourReminderSlot[];
+  memorizationHourRemindersFetchedAt?: number;
 }
 
 /**

@@ -106,6 +106,12 @@ describe('UserSettingsComponent', () => {
       removeSlot: vi.fn(() => Promise.resolve([]))
     };
 
+    const mockUserMemorizationReminderService = {
+      ensureLoaded: vi.fn(() => Promise.resolve([])),
+      addSlot: vi.fn(() => Promise.resolve([{ id: 'mem-slot-1', local_hour: 8, iana_timezone: 'America/Chicago' }])),
+      removeSlot: vi.fn(() => Promise.resolve([]))
+    };
+
     mockChangeDetectorRef = {
       detectChanges: vi.fn(),
       markForCheck: vi.fn()
@@ -138,6 +144,7 @@ describe('UserSettingsComponent', () => {
       mockUserSessionService,
       mockCapacitorService as CapacitorService,
       mockUserPrayerReminderService as any,
+      mockUserMemorizationReminderService as any,
       mockChangeDetectorRef as ChangeDetectorRef
     );
   });
@@ -3041,6 +3048,105 @@ describe('UserSettingsComponent', () => {
         expect(component.prayerReminderSlots).toEqual(slots);
         expect(component.loadingPrayerReminders).toBe(false);
       });
+    });
+  });
+
+  describe('memorization reminder slots', () => {
+    beforeEach(() => {
+      component.email = 'test@example.com';
+    });
+
+    it('formatMemorizationReminderSlotLabel omits timezone when it matches device', () => {
+      const deviceTz = component.deviceIanaTimezone;
+      const label = component.formatMemorizationReminderSlotLabel({
+        id: 's1',
+        local_hour: 9,
+        iana_timezone: deviceTz,
+      });
+      expect(label).not.toContain('·');
+    });
+
+    it('addMemorizationReminderSlot saves slot and shows success', async () => {
+      await component.addMemorizationReminderSlot();
+      expect(component.memorizationReminderSlots).toHaveLength(1);
+      expect(component.memorizationReminderSuccess).toContain('saved');
+      expect(component.savingMemorizationReminder).toBe(false);
+    });
+
+    it('addMemorizationReminderSlot handles duplicate hour error', async () => {
+      (component as any).userMemorizationReminderService.addSlot.mockRejectedValue({ code: '23505' });
+      await component.addMemorizationReminderSlot();
+      expect(component.memorizationReminderError).toContain('already have a reminder');
+    });
+
+    it('removeMemorizationReminderSlot removes slot and shows success', async () => {
+      await component.removeMemorizationReminderSlot('mem-slot-1');
+      expect(component.memorizationReminderSuccess).toContain('removed');
+      expect(component.savingMemorizationReminder).toBe(false);
+    });
+
+    it('setMemorizationReminderHour updates hour and closes dropdown', () => {
+      component.showMemorizationReminderHourDropdown = true;
+      component.setMemorizationReminderHour(7);
+      expect(component.selectedMemorizationReminderHour).toBe(7);
+      expect(component.showMemorizationReminderHourDropdown).toBe(false);
+    });
+
+    it('loadMemorizationRemindersForModal hydrates slots from reminder service', async () => {
+      const slots = [{ id: 'cached', local_hour: 6, iana_timezone: 'UTC' }];
+      mockUserSessionService.getCurrentSession.mockReturnValue({
+        email: 'test@example.com',
+        fullName: 'Test User',
+        memorizationHourReminders: slots,
+      });
+      (component as any).userMemorizationReminderService.ensureLoaded.mockResolvedValue(slots);
+      component.email = 'test@example.com';
+      (component as any).loadMemorizationRemindersForModal();
+      await vi.waitFor(() => {
+        expect(component.memorizationReminderSlots).toEqual(slots);
+        expect(component.loadingMemorizationReminders).toBe(false);
+      });
+    });
+
+    it('loadMemorizationRemindersForModal ignores stale session cache for another email', async () => {
+      const otherSlots = [{ id: 'other', local_hour: 3, iana_timezone: 'UTC' }];
+      mockUserSessionService.getCurrentSession.mockReturnValue({
+        email: 'other@example.com',
+        memorizationHourReminders: otherSlots,
+      });
+      (component as any).userMemorizationReminderService.ensureLoaded.mockResolvedValue([]);
+      component.email = 'test@example.com';
+      component.memorizationReminderSlots = otherSlots;
+      (component as any).loadMemorizationRemindersForModal();
+      expect(component.memorizationReminderSlots).toEqual([]);
+      expect(component.loadingMemorizationReminders).toBe(true);
+      await vi.waitFor(() => {
+        expect(component.memorizationReminderSlots).toEqual([]);
+        expect(component.loadingMemorizationReminders).toBe(false);
+      });
+    });
+
+    it('loadMemorizationRemindersForModal ignores ensureLoaded result when session email changed', async () => {
+      const slots = [{ id: 'cached', local_hour: 6, iana_timezone: 'UTC' }];
+      mockUserSessionService.getCurrentSession.mockReturnValue({
+        email: 'test@example.com',
+        memorizationHourReminders: undefined,
+      });
+      (component as any).userMemorizationReminderService.ensureLoaded.mockImplementation(
+        async () => {
+          mockUserSessionService.getCurrentSession.mockReturnValue({
+            email: 'other@example.com',
+          });
+          return slots;
+        }
+      );
+      component.email = 'test@example.com';
+      component.memorizationReminderSlots = [];
+      (component as any).loadMemorizationRemindersForModal();
+      await vi.waitFor(() => {
+        expect(component.loadingMemorizationReminders).toBe(false);
+      });
+      expect(component.memorizationReminderSlots).toEqual([]);
     });
   });
 

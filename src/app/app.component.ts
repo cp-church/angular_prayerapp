@@ -549,6 +549,20 @@ export class AppComponent implements OnInit {
             this.router.navigate(["/admin"]);
           });
         });
+
+      // Open Memorize tab when a memorization reminder push is tapped
+      capacitorService.notificationEvents$
+        .pipe(
+          filter((event) => event.source === "tap"),
+          filter((event) => event.type === "memorization_reminder")
+        )
+        .subscribe(() => {
+          this.ngZone.run(() => {
+            void this.router.navigate(["/"], {
+              queryParams: { filter: "memorize" },
+            });
+          });
+        });
     } catch (error) {
       // Likely running on web where Capacitor/PrayerService lazy imports may not be needed
       console.debug(

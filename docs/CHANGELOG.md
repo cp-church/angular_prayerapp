@@ -4,6 +4,16 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Memorization reminders (hourly nudges) ✅
+- **Settings**: Users opt in under **Settings → Memorization reminders** — pick local clock hours (top of each hour, device IANA time zone) for personal memorization nudges. Separate from **Prayer reminders**. [`user-settings.component.ts`](src/app/components/user-settings/user-settings.component.ts), [`UserMemorizationReminderService`](src/app/services/user-memorization-reminder.service.ts).
+- **Email**: Sent when **Email subscription** is on (`email_subscribers.is_active`), using template key **`user_hourly_memorization_reminder`** or admin-selected **`user_hourly_memorization_reminder_with_spotlight`**. Links use **`{{appLink}}`** = `APP_URL` + `?filter=memorize`. **`HomeComponent`** applies `filter=memorize` on load (same deep-link pattern as `filter=current|answered`) and strips the query param after switching to the Memorize tab.
+- **Push**: Sent when **Push notifications** are on and a `device_tokens` row exists (`data.type`: `memorization_reminder`). Both channels when both apply. Tapping the push on native opens home with **`?filter=memorize`** ([`app.component.ts`](src/app/app.component.ts), [`home.component.ts`](src/app/pages/home/home.component.ts)).
+- **Spotlight template**: Picks the subscriber’s memorized item needing the most work (Learning before Practicing/Mastered; never-practiced and oldest `last_practiced_at` first; fewest completed sessions; tie-break rotation via `email_subscribers.hourly_memorization_reminder_last_spotlight_key`). Verse text from `scripture_cache` when available.
+- **Data**: Migration [`20260714120000_user_memorization_hour_reminders.sql`](supabase/migrations/20260714120000_user_memorization_hour_reminders.sql) — `user_memorization_hour_reminders`, RPC `get_user_memorization_hour_reminders_due_now`, `admin_settings.user_hourly_memorization_reminder_template_key`, email templates, pg_cron job **`invoke-user-hourly-memorization-reminders`**.
+- **Edge**: [`send-user-hourly-memorization-reminders`](supabase/functions/send-user-hourly-memorization-reminders/index.ts) — hourly via Vault + `pg_net` (same secrets as prayer reminders). Deploy after applying migration.
+- **Admin**: **Admin → Settings → Email → Hourly user memorization reminder email** template picker. [`email-settings.component.ts`](src/app/components/email-settings/email-settings.component.ts).
+- **Help**: Standalone section **`help_memorization_reminders`** and **App Settings** item in [`help-content.service.ts`](src/app/services/help-content.service.ts).
+
 ### Settings — sticky modal header ✅
 - **UI**: The Settings modal header (title + close) stays fixed while the body scrolls. [`user-settings.component.ts`](src/app/components/user-settings/user-settings.component.ts).
 

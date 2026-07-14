@@ -1474,5 +1474,40 @@ describe('AppComponent', () => {
       expect(fetchAdminData).toHaveBeenCalledWith(false, true);
       expect(mockRouter.navigate).toHaveBeenCalledWith(['/admin']);
     });
+
+    it('navigates to Memorize tab when memorization reminder push is tapped', async () => {
+      const notificationEvents$ = new Subject<{
+        source: string;
+        type: string;
+        data?: Record<string, string>;
+      }>();
+
+      mockInjector.get = vi.fn((token: { name?: string }) => {
+        const name = token?.name ?? '';
+        if (name.includes('CapacitorService')) {
+          return { notificationEvents$: notificationEvents$.asObservable() };
+        }
+        if (name.includes('PrayerService')) {
+          return { loadPrayers: vi.fn() };
+        }
+        if (name.includes('AdminDataService')) {
+          return { fetchAdminData: vi.fn() };
+        }
+        return {};
+      });
+
+      await (component as any).setupPushRefreshListener();
+
+      notificationEvents$.next({
+        source: 'tap',
+        type: 'memorization_reminder',
+        data: { url: 'https://app.example/?filter=memorize' },
+      });
+      await Promise.resolve();
+
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/'], {
+        queryParams: { filter: 'memorize' },
+      });
+    });
   });
 });
