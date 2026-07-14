@@ -18,6 +18,8 @@ export interface UserSessionData {
   /** When false, hide the N Praying chip; undefined defaults to true. */
   showPrayingCount?: boolean;
   defaultPrayerView?: 'current' | 'personal';
+  /** When true, memorization practice does not auto-reveal blanks after 3 wrong attempts. */
+  memorizationStrictMode?: boolean;
   /** Cached hourly self-reminder slots; undefined = never fetched this session. */
   prayerHourReminders?: UserPrayerHourReminderSlot[];
   prayerHourRemindersFetchedAt?: number;
@@ -41,6 +43,8 @@ export class UserSessionService {
 
   private hasInitializedSubject = new BehaviorSubject<boolean>(false);
   private hasInitialized$ = this.hasInitializedSubject.asObservable();
+  /** True after auth/session bootstrap has finished for the current login. */
+  readonly sessionInitialized$ = this.hasInitializedSubject.asObservable().pipe(distinctUntilChanged());
 
   private hasBeenAuthenticated = false; // Track if user was ever authenticated
 
@@ -48,12 +52,12 @@ export class UserSessionService {
     private supabase: SupabaseService,
     private adminAuth: AdminAuthService
   ) {
-    // Restore cached session immediately if available
+    // Restore cached session immediately if available (skip pre-upgrade entries missing strict mode).
     const cachedUserSession = localStorage.getItem('userSession');
     if (cachedUserSession) {
       try {
         const session = JSON.parse(cachedUserSession);
-        if (session && session.email) {
+        if (this.shouldPublishCachedSession(session)) {
           this.userSessionSubject.next(session);
         }
       } catch (err) {
@@ -80,9 +84,8 @@ export class UserSessionService {
         if (email) {
           // Try to load from localStorage first for instant availability
           const cachedSession = this.loadFromCache(email);
-          if (cachedSession) {
+          if (cachedSession && this.shouldPublishCachedSession(cachedSession)) {
             this.userSessionSubject.next(cachedSession);
-            this.hasInitializedSubject.next(true);
           }
           
           // Then load from database to refresh data
@@ -117,7 +120,7 @@ export class UserSessionService {
         this.supabase.client
           .from('email_subscribers')
           .select(
-            'email, name, is_active, receive_push, badge_functionality_enabled, default_prayer_view, show_pray_for_button, show_praying_count'
+            'email, name, is_active, receive_push, badge_functionality_enabled, default_prayer_view, show_pray_for_button, show_praying_count, memorization_strict_mode'
           )
           .eq('email', email.toLowerCase().trim())
           .maybeSingle(),
@@ -142,7 +145,8 @@ export class UserSessionService {
           badgeFunctionalityEnabled: data.badge_functionality_enabled ?? false,
           showPrayForButton: data.show_pray_for_button ?? true,
           showPrayingCount: data.show_praying_count ?? true,
-          defaultPrayerView: data.default_prayer_view || 'current'
+          defaultPrayerView: data.default_prayer_view || 'current',
+          memorizationStrictMode: data.memorization_strict_mode ?? false
         };
         this.userSessionSubject.next(sessionData);
         this.saveToCache(sessionData);
@@ -158,7 +162,8 @@ export class UserSessionService {
           badgeFunctionalityEnabled: false,
           showPrayForButton: true,
           showPrayingCount: true,
-          defaultPrayerView: 'current'
+          defaultPrayerView: 'current',
+          memorizationStrictMode: false
         };
         this.userSessionSubject.next(sessionData);
         this.saveToCache(sessionData);
@@ -176,7 +181,8 @@ export class UserSessionService {
         badgeFunctionalityEnabled: false,
         showPrayForButton: true,
         showPrayingCount: true,
-        defaultPrayerView: 'current'
+        defaultPrayerView: 'current',
+        memorizationStrictMode: false
       };
       this.userSessionSubject.next(sessionData);
       this.saveToCache(sessionData);
@@ -190,6 +196,10 @@ export class UserSessionService {
    */
   getCurrentSession(): UserSessionData | null {
     return this.userSessionSubject.value;
+  }
+
+  isSessionInitialized(): boolean {
+    return this.hasInitializedSubject.value;
   }
 
   /**
@@ -395,6 +405,17 @@ export class UserSessionService {
       console.warn('[UserSession] Failed to load session from cache:', err);
     }
     return null;
+  }
+
+  /** Pre-upgrade caches omit memorizationStrictMode; publishing them would default strict to false. */
+  private shouldPublishCachedSession(session: unknown): session is UserSessionData {
+    return (
+      typeof session === 'object' &&
+      session !== null &&
+      typeof (session as UserSessionData).email === 'string' &&
+      (session as UserSessionData).email.length > 0 &&
+      typeof (session as UserSessionData).memorizationStrictMode === 'boolean'
+    );
   }
 
   /**

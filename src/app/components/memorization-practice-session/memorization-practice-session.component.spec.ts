@@ -2,10 +2,12 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest';
-import { render } from '@testing-library/angular';
+import { render, screen } from '@testing-library/angular';
+import { BehaviorSubject } from 'rxjs';
 import { ElementRef, SimpleChange, ɵresolveComponentResources as resolveComponentResources } from '@angular/core';
 import { MemorizationPracticeSessionComponent } from './memorization-practice-session.component';
 import { ScriptureService } from '../../services/scripture.service';
+import { UserSessionService } from '../../services/user-session.service';
 import type { MemorizedItem } from '../../types/memorization';
 import { MEMORIZATION_FULL_HIDE_ROUND } from '../../lib/memorization/memorizationPracticeUtils';
 import { MEMORIZE_LISTEN_REPEAT_GAP_MS } from '../../lib/memorization/memorizeListenSpeedStorage';
@@ -31,6 +33,34 @@ const mockScriptureService = {
     useSpeechSynthesis: false,
   }),
 };
+
+function createMockUserSessionService(
+  memorizationStrictMode = false,
+  options: { deferSessionLoad?: boolean } = {},
+) {
+  const session = {
+    email: 'test@example.com',
+    fullName: 'Test User',
+    memorizationStrictMode,
+  };
+  const deferSessionLoad = options.deferSessionLoad ?? false;
+  const subject = new BehaviorSubject(deferSessionLoad ? null : session);
+  const initializedSubject = new BehaviorSubject(!deferSessionLoad);
+  return {
+    getCurrentSession: vi.fn(() => subject.value),
+    userSession$: subject.asObservable(),
+    sessionInitialized$: initializedSubject.asObservable(),
+    isSessionInitialized: vi.fn(() => initializedSubject.value),
+    setMemorizationStrictMode(strict: boolean): void {
+      subject.next({ ...session, memorizationStrictMode: strict });
+      initializedSubject.next(true);
+    },
+    finishSessionLoad(strict: boolean = memorizationStrictMode): void {
+      subject.next({ ...session, memorizationStrictMode: strict });
+      initializedSubject.next(true);
+    },
+  };
+}
 
 function makeKeyEvent(key: string, overrides: Partial<KeyboardEvent> = {}): KeyboardEvent {
   return {
@@ -63,19 +93,31 @@ async function renderSession(
   options: {
     item?: MemorizedItem;
     isOpen?: boolean;
+    memorizationStrictMode?: boolean;
+    deferSessionLoad?: boolean;
   } = {}
 ) {
   const closed = vi.fn();
   const completed = vi.fn();
   const persistInProgress = vi.fn();
   const clearInProgress = vi.fn();
+  const strictMode = options.memorizationStrictMode ?? false;
+  const sessionService = createMockUserSessionService(strictMode, {
+    deferSessionLoad: options.deferSessionLoad,
+  });
 
   const result = await render(MemorizationPracticeSessionComponent, {
     componentInputs: {
       item: options.item ?? verseItem,
       isOpen: options.isOpen ?? true,
     },
-    providers: [{ provide: ScriptureService, useValue: mockScriptureService }],
+    providers: [
+      { provide: ScriptureService, useValue: mockScriptureService },
+      {
+        provide: UserSessionService,
+        useValue: sessionService,
+      },
+    ],
   });
 
   const { fixture } = result;
@@ -90,7 +132,7 @@ async function renderSession(
   await fixture.whenStable();
   cdr.detectChanges();
 
-  return { ...result, component, cdr, closed, completed, persistInProgress, clearInProgress };
+  return { ...result, component, cdr, closed, completed, persistInProgress, clearInProgress, sessionService };
 }
 
 function revealAllHiddenViaTyping(component: MemorizationPracticeSessionComponent): void {
@@ -319,7 +361,7 @@ describe('MemorizationPracticeSessionComponent', () => {
     });
 
     it('auto-reveals after three consecutive wrong guesses', async () => {
-      const { component } = await renderSession();
+      const { component } = await renderSession({ memorizationStrictMode: false });
       vi.useFakeTimers();
       component.beginPracticeWithMode('word');
       const idx = component.currentTargetIndex!;
@@ -330,6 +372,39 @@ describe('MemorizationPracticeSessionComponent', () => {
 
       expect(component.isTokenRevealed(idx)).toBe(true);
       expect(component.wrongAttemptsTotal).toBe(3);
+      vi.advanceTimersByTime(220);
+    });
+
+    it('does not auto-reveal after three wrong guesses when strict mode is on', async () => {
+      const { component } = await renderSession({ memorizationStrictMode: true });
+      vi.useFakeTimers();
+      component.beginPracticeWithMode('word');
+      const idx = component.currentTargetIndex!;
+
+      component.processWordGuess('__wrong__');
+      component.processWordGuess('__wrong__');
+      component.processWordGuess('__wrong__');
+      component.processWordGuess('__wrong__');
+
+      expect(component.isTokenRevealed(idx)).toBe(false);
+      expect(component.wrongAttemptsTotal).toBe(4);
+      vi.advanceTimersByTime(220);
+    });
+
+    it('does not auto-reveal before session loads when user has strict mode', async () => {
+      const { component, sessionService } = await renderSession({ deferSessionLoad: true });
+      vi.useFakeTimers();
+      component.beginPracticeWithMode('word');
+      const idx = component.currentTargetIndex!;
+
+      component.processWordGuess('__wrong__');
+      component.processWordGuess('__wrong__');
+      component.processWordGuess('__wrong__');
+      expect(component.isTokenRevealed(idx)).toBe(false);
+
+      sessionService.finishSessionLoad(true);
+      component.processWordGuess('__wrong__');
+      expect(component.isTokenRevealed(idx)).toBe(false);
       vi.advanceTimersByTime(220);
     });
 
@@ -434,6 +509,25 @@ describe('MemorizationPracticeSessionComponent', () => {
       expect(component.flashError).toBe(true);
       vi.advanceTimersByTime(220);
       expect(component.flashError).toBe(false);
+    });
+
+    it('onReorderWrongSwap is ignored in standard mode', async () => {
+      const { component } = await renderSession({ memorizationStrictMode: false });
+      component.beginPracticeWithMode('reorder');
+      component.onReorderWrongSwap();
+      expect(component.wrongAttemptsTotal).toBe(0);
+    });
+
+    it('onReorderWrongSwap increments wrong attempts in strict mode', async () => {
+      const { component } = await renderSession({ memorizationStrictMode: true });
+      vi.useFakeTimers();
+      component.beginPracticeWithMode('reorder');
+      component.onReorderWrongSwap();
+      expect(component.wrongAttemptsTotal).toBe(1);
+      expect(component.flashError).toBe(true);
+      vi.advanceTimersByTime(220);
+      expect(component.flashError).toBe(false);
+      vi.useRealTimers();
     });
 
     it('onReorderSlotChunkIdsChange updates slots', async () => {
@@ -628,6 +722,115 @@ describe('MemorizationPracticeSessionComponent', () => {
       expect(component.sessionSeed).toBe('saved-seed');
       expect(component.roundIndex).toBe(1);
       expect(component.roundAffirmation).toBeTruthy();
+    });
+
+    it('hydrates legacy betweenRounds errors for strict mode advance gate', async () => {
+      const item: MemorizedItem = {
+        ...verseItem,
+        inProgressPractice: {
+          sessionSeed: 'legacy-seed',
+          wrongAttempts: 2,
+          correctKeystrokes: 4,
+          updatedAt: Date.now(),
+          phase: { kind: 'betweenRounds', completedRoundIndex: 1 },
+          practiceMode: 'type',
+        },
+      };
+      const { component, cdr } = await renderSession({
+        item,
+        memorizationStrictMode: true,
+      });
+
+      expect(component.roundCompletedWithErrors).toBe(true);
+      expect(component.wrongAttemptsInRound).toBe(2);
+      cdr.detectChanges();
+      expect(component.showNextRoundOption).toBe(false);
+      expect(screen.queryByTestId('memorize-next-round')).toBeNull();
+    });
+
+    it('hydrates legacy inRound errors from session wrongAttempts', async () => {
+      const item: MemorizedItem = {
+        ...verseItem,
+        inProgressPractice: {
+          sessionSeed: 'legacy-in-round',
+          wrongAttempts: 2,
+          correctKeystrokes: 1,
+          updatedAt: Date.now(),
+          phase: { kind: 'inRound', roundIndex: 1 },
+          practiceMode: 'type',
+        },
+      };
+      const { component } = await renderSession({ item, memorizationStrictMode: true });
+
+      expect(component.wrongAttemptsInRound).toBe(2);
+      expect(component.phase).toBe('practicing');
+      expect(component.awaitingRoundAdvance).toBe(false);
+    });
+
+    it('re-syncs strict mode when user session updates after practice opens', async () => {
+      const { component, sessionService } = await renderSession({ memorizationStrictMode: false });
+      component.beginPracticeWithMode('type');
+      expect(component.strictModeEnabled).toBe(false);
+
+      sessionService.setMemorizationStrictMode(true);
+      expect(component.strictModeEnabled).toBe(true);
+    });
+
+    it('hides Next round until session loads when between-rounds had errors', async () => {
+      const item: MemorizedItem = {
+        ...verseItem,
+        inProgressPractice: {
+          sessionSeed: 'pending-session',
+          wrongAttempts: 2,
+          correctKeystrokes: 4,
+          updatedAt: Date.now(),
+          phase: { kind: 'betweenRounds', completedRoundIndex: 1 },
+          practiceMode: 'type',
+        },
+      };
+      const { component, cdr, sessionService } = await renderSession({
+        item,
+        deferSessionLoad: true,
+      });
+
+      expect(component.roundCompletedWithErrors).toBe(true);
+      expect(component.showNextRoundOption).toBe(false);
+      cdr.detectChanges();
+      expect(screen.queryByTestId('memorize-next-round')).toBeNull();
+
+      const roundBefore = component.roundIndex;
+      component.nextRound();
+      expect(component.roundIndex).toBe(roundBefore);
+
+      sessionService.finishSessionLoad(true);
+      expect(component.strictModeEnabled).toBe(true);
+      expect(component.showNextRoundOption).toBe(false);
+    });
+
+    it('shows Next round after session loads in standard mode despite prior errors', async () => {
+      const item: MemorizedItem = {
+        ...verseItem,
+        inProgressPractice: {
+          sessionSeed: 'pending-session-standard',
+          wrongAttempts: 1,
+          correctKeystrokes: 2,
+          updatedAt: Date.now(),
+          phase: { kind: 'betweenRounds', completedRoundIndex: 1 },
+          practiceMode: 'type',
+        },
+      };
+      const { component, cdr, sessionService } = await renderSession({
+        item,
+        deferSessionLoad: true,
+      });
+
+      expect(component.showNextRoundOption).toBe(false);
+      sessionService.finishSessionLoad(false);
+      cdr.detectChanges();
+
+      expect(component.strictModeEnabled).toBe(false);
+      expect(component.showNextRoundOption).toBe(true);
+      expect(screen.getByTestId('memorize-next-round')).toBeTruthy();
     });
 
     it('hydrates inRound reorder state on open', async () => {
@@ -890,6 +1093,58 @@ describe('MemorizationPracticeSessionComponent', () => {
       expect(component.awaitingRoundAdvance).toBe(false);
       expect(persistInProgress).toHaveBeenCalled();
     });
+
+    it('persistInProgress saves wrongAttemptsInRound 0 after repeatRound', async () => {
+      const { component, persistInProgress } = await renderSession({ memorizationStrictMode: true });
+      component.beginPracticeWithMode('word');
+      component.processWordGuess('__wrong__');
+      const idx = component.currentTargetIndex!;
+      component.processWordGuess(component.tokens[idx]!.text);
+      while (component.currentTargetIndex !== null && !component.awaitingRoundAdvance) {
+        const i = component.currentTargetIndex!;
+        component.processWordGuess(component.tokens[i]!.text);
+      }
+      expect(component.wrongAttemptsInRound).toBe(1);
+
+      persistInProgress.mockClear();
+      component.repeatRound();
+
+      expect(component.wrongAttemptsInRound).toBe(0);
+      expect(persistInProgress).toHaveBeenCalledWith(
+        expect.objectContaining({
+          wrongAttemptsInRound: 0,
+          phase: { kind: 'inRound', roundIndex: component.roundIndex },
+        }),
+      );
+    });
+
+    it('hides Next round in strict mode when the round had errors', async () => {
+      const { component, cdr } = await renderSession({ memorizationStrictMode: true });
+      component.beginPracticeWithMode('word');
+      component.processWordGuess('__wrong__');
+      const idx = component.currentTargetIndex!;
+      component.processWordGuess(component.tokens[idx]!.text);
+      while (component.currentTargetIndex !== null && !component.awaitingRoundAdvance) {
+        const i = component.currentTargetIndex!;
+        component.processWordGuess(component.tokens[i]!.text);
+      }
+      cdr.detectChanges();
+
+      expect(component.awaitingRoundAdvance).toBe(true);
+      expect(component.showNextRoundOption).toBe(false);
+      expect(screen.queryByTestId('memorize-next-round')).toBeNull();
+    });
+
+    it('shows Next round in strict mode after a perfect round', async () => {
+      const { component, cdr } = await renderSession({ memorizationStrictMode: true });
+      component.beginPracticeWithMode('type');
+      revealAllHiddenViaTyping(component);
+      cdr.detectChanges();
+
+      expect(component.awaitingRoundAdvance).toBe(true);
+      expect(component.showNextRoundOption).toBe(true);
+      expect(screen.getByTestId('memorize-next-round')).toBeTruthy();
+    });
   });
 
   describe('passage audio handlers', () => {
@@ -1056,7 +1311,7 @@ describe('MemorizationPracticeSessionComponent', () => {
     });
 
     it('type mode auto-reveals token after three wrong keystrokes', async () => {
-      const { component } = await renderSession();
+      const { component } = await renderSession({ memorizationStrictMode: false });
       vi.useFakeTimers();
       component.beginPracticeWithMode('type');
       const idx = component.currentTargetIndex!;
@@ -1070,6 +1325,58 @@ describe('MemorizationPracticeSessionComponent', () => {
       expect(component.isTokenRevealed(idx)).toBe(true);
       vi.advanceTimersByTime(220);
       vi.useRealTimers();
+    });
+
+    it('type mode does not auto-reveal when strict mode is on', async () => {
+      const { component } = await renderSession({ memorizationStrictMode: true });
+      vi.useFakeTimers();
+      component.beginPracticeWithMode('type');
+      const idx = component.currentTargetIndex!;
+      const token = component.tokens[idx]!;
+      const wrongKey = token.kind === 'digit' ? (token.text === '0' ? '9' : '0') : 'Z';
+
+      component.onPracticeInputKeyDown(makeKeyEvent(wrongKey));
+      component.onPracticeInputKeyDown(makeKeyEvent(wrongKey));
+      component.onPracticeInputKeyDown(makeKeyEvent(wrongKey));
+      component.onPracticeInputKeyDown(makeKeyEvent(wrongKey));
+
+      expect(component.isTokenRevealed(idx)).toBe(false);
+      expect(component.wrongAttemptsTotal).toBe(4);
+      vi.advanceTimersByTime(220);
+      vi.useRealTimers();
+    });
+
+    it('shows round error count in practice header only when greater than zero', async () => {
+      const { component, cdr } = await renderSession();
+      vi.useFakeTimers();
+      component.beginPracticeWithMode('word');
+      cdr.detectChanges();
+      expect(screen.queryByTestId('memorize-error-count')).toBeNull();
+
+      component.processWordGuess('__wrong__');
+      cdr.detectChanges();
+      expect(screen.getByTestId('memorize-error-count').textContent).toContain('Errors: 1');
+      vi.useRealTimers();
+    });
+
+    it('keeps round error count visible until the next round starts', async () => {
+      const { component, cdr } = await renderSession({ memorizationStrictMode: true });
+      component.beginPracticeWithMode('word');
+      component.processWordGuess('__wrong__');
+      const idx = component.currentTargetIndex!;
+      component.processWordGuess(component.tokens[idx]!.text);
+      while (component.currentTargetIndex !== null && !component.awaitingRoundAdvance) {
+        const i = component.currentTargetIndex!;
+        component.processWordGuess(component.tokens[i]!.text);
+      }
+      cdr.detectChanges();
+      expect(screen.getByTestId('memorize-error-count').textContent).toContain('Errors: 1');
+      expect(component.wrongAttemptsInRound).toBe(1);
+
+      component.repeatRound();
+      cdr.detectChanges();
+      expect(screen.queryByTestId('memorize-error-count')).toBeNull();
+      expect(component.wrongAttemptsInRound).toBe(0);
     });
 
     it('onPracticeInput clears value when hint is active', async () => {

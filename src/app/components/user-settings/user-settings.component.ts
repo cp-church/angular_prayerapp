@@ -45,12 +45,12 @@ type PrintRange = "week" | "twoweeks" | "month" | "year" | "all";
       (click)="onClose.emit()"
     >
       <div
-        class="settings-modal-panel bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md sm:max-w-lg lg:max-w-2xl max-h-[90dvh] sm:max-h-[85dvh] overflow-y-auto"
+        class="settings-modal-panel flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md sm:max-w-lg lg:max-w-2xl max-h-[90dvh] sm:max-h-[85dvh] overflow-hidden"
         (click)="$event.stopPropagation()"
       >
         <!-- Header -->
         <div
-          class="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700"
+          class="settings-modal-header flex shrink-0 items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
         >
           <div class="flex items-center gap-2">
             <svg
@@ -95,7 +95,7 @@ type PrintRange = "week" | "twoweeks" | "month" | "year" | "all";
         </div>
 
         <!-- Content -->
-        <div class="p-4 sm:p-6 space-y-4">
+        <div class="settings-modal-body flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4">
           <!-- Print -->
           <div
             class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4"
@@ -1496,6 +1496,144 @@ type PrintRange = "week" | "twoweeks" | "month" | "year" | "all";
             }
           </div>
 
+          <!-- Memorization strict mode -->
+          <div
+            id="tour-settings-memorization-strict-mode"
+            class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 space-y-2"
+          >
+            <div class="flex items-start gap-2 sm:gap-3">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-3">
+                  <div
+                    class="font-medium text-gray-800 dark:text-gray-100 text-sm sm:text-base"
+                  >
+                    @if (memorizationStrictModeLoaded) { Memorization practice }
+                    @else {
+                    <span
+                      class="inline-block h-5 w-48 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"
+                    ></span>
+                    }
+                  </div>
+                  @if (savingMemorizationStrictMode) {
+                  <svg
+                    class="animate-spin h-4 w-4 text-blue-600"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      class="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      stroke-width="4"
+                    ></circle>
+                    <path
+                      class="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  }
+                </div>
+                @if (memorizationStrictModeLoaded) {
+                <div class="grid grid-cols-2 gap-1.5 sm:gap-2">
+                  <button
+                    type="button"
+                    (click)="setMemorizationStrictMode(false)"
+                    [disabled]="savingMemorizationStrictMode"
+                    [ngClass]="{
+                      'border-blue-500 bg-blue-50 dark:bg-blue-900/20 hover:border-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30':
+                        memorizationStrictMode === false,
+                      'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20':
+                        memorizationStrictMode !== false
+                    }"
+                    title="Auto-reveal blanks after three wrong attempts"
+                    class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span
+                      class="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100 text-center"
+                      >Standard</span
+                    >
+                  </button>
+                  <button
+                    type="button"
+                    (click)="setMemorizationStrictMode(true)"
+                    [disabled]="savingMemorizationStrictMode"
+                    [ngClass]="{
+                      'border-blue-500 bg-blue-50 dark:bg-blue-900/20 hover:border-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30':
+                        memorizationStrictMode === true,
+                      'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20':
+                        memorizationStrictMode !== true
+                    }"
+                    title="Keep practicing until you get each blank right"
+                    class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span
+                      class="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100 text-center"
+                      >Strict</span
+                    >
+                  </button>
+                </div>
+                } @else {
+                <div class="grid grid-cols-2 gap-1.5 sm:gap-2">
+                  <div
+                    class="h-12 bg-gray-300 dark:bg-gray-600 rounded-lg animate-pulse"
+                  ></div>
+                  <div
+                    class="h-12 bg-gray-300 dark:bg-gray-600 rounded-lg animate-pulse"
+                  ></div>
+                </div>
+                }
+              </div>
+            </div>
+            <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+              @if (memorizationStrictModeLoaded) {
+              {{
+                savingMemorizationStrictMode
+                  ? "Saving..."
+                  : memorizationStrictMode
+                  ? "Wrong answers are not auto-solved; keep trying until you get each blank right."
+                  : "After three wrong attempts on a blank, the answer is revealed automatically."
+              }}
+              } @else {
+              <span
+                class="inline-block h-4 w-64 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"
+              ></span>
+              }
+            </p>
+            @if (successMemorizationStrictMode) {
+            <div
+              class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-2"
+              role="alert"
+              aria-live="assertive"
+              aria-atomic="true"
+            >
+              <div class="flex items-start gap-2">
+                <svg
+                  class="text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <p
+                  class="text-xs sm:text-sm text-green-800 dark:text-green-200"
+                >
+                  {{ successMemorizationStrictMode }}
+                </p>
+              </div>
+            </div>
+            }
+          </div>
+
           <!-- Error Message -->
           @if (error) {
           <div
@@ -1957,6 +2095,15 @@ type PrintRange = "week" | "twoweeks" | "month" | "year" | "all";
       .settings-modal-panel::-webkit-scrollbar {
         display: none;
       }
+
+      .settings-modal-body {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+
+      .settings-modal-body::-webkit-scrollbar {
+        display: none;
+      }
     `,
   ],
 })
@@ -1987,11 +2134,15 @@ export class UserSettingsComponent implements OnInit, OnDestroy, OnChanges {
   successBadge: string | null = null;
   successPrayerEncouragementUi: string | null = null;
   successDefaultView: string | null = null;
+  successMemorizationStrictMode: string | null = null;
   preferencesLoaded = false;
   badgePreferencesLoaded = false;
   prayerEncouragementUiLoaded = false;
   defaultViewPreferencesLoaded = false;
+  memorizationStrictModeLoaded = false;
   defaultPrayerView: "current" | "personal" | null = null;
+  memorizationStrictMode = false;
+  savingMemorizationStrictMode = false;
 
   isPrinting = false;
   isPrintingPrompts = false;
@@ -2107,6 +2258,7 @@ export class UserSettingsComponent implements OnInit, OnDestroy, OnChanges {
       this.badgePreferencesLoaded = false;
       this.prayerEncouragementUiLoaded = false;
       this.defaultViewPreferencesLoaded = false;
+      this.memorizationStrictModeLoaded = false;
 
       // Get user info and preferences from UserSessionService cache
       const userSession = this.userSessionService.getCurrentSession();
@@ -2131,6 +2283,9 @@ export class UserSettingsComponent implements OnInit, OnDestroy, OnChanges {
         // Get default prayer view preference from cached session
         this.defaultPrayerView = userSession.defaultPrayerView || "current";
         this.defaultViewPreferencesLoaded = true;
+
+        this.memorizationStrictMode = userSession.memorizationStrictMode ?? false;
+        this.memorizationStrictModeLoaded = true;
       } else {
         // Fall back to localStorage if session not available
         const userInfo = this.getUserInfo();
@@ -2162,6 +2317,8 @@ export class UserSettingsComponent implements OnInit, OnDestroy, OnChanges {
           this.prayerEncouragementUiLoaded = true;
           this.defaultPrayerView = "current";
           this.defaultViewPreferencesLoaded = true;
+          this.memorizationStrictMode = false;
+          this.memorizationStrictModeLoaded = true;
         }
       }
 
@@ -2171,6 +2328,7 @@ export class UserSettingsComponent implements OnInit, OnDestroy, OnChanges {
       this.successPushNotification = null;
       this.successBadge = null;
       this.successPrayerEncouragementUi = null;
+      this.successMemorizationStrictMode = null;
 
       this.prayerReminderError = null;
       this.prayerReminderSuccess = null;
@@ -2488,6 +2646,8 @@ export class UserSettingsComponent implements OnInit, OnDestroy, OnChanges {
   ): Promise<void> {
     if (!emailAddress.trim()) {
       this.preferencesLoaded = true;
+      this.memorizationStrictMode = false;
+      this.memorizationStrictModeLoaded = true;
       return;
     }
 
@@ -2495,22 +2655,28 @@ export class UserSettingsComponent implements OnInit, OnDestroy, OnChanges {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(emailAddress)) {
       this.preferencesLoaded = true;
+      this.memorizationStrictMode = false;
+      this.memorizationStrictModeLoaded = true;
       return;
     }
+
+    const normalizedEmail = emailAddress.toLowerCase().trim();
 
     try {
       // Check for approved preferences in email_subscribers
       const { data: subscriberData, error } = await this.supabase.client
         .from("email_subscribers")
         .select("*")
-        .eq("email", emailAddress.toLowerCase().trim())
+        .eq("email", normalizedEmail)
         .maybeSingle();
 
       if (error) {
         console.error("Error loading subscriber preferences:", error);
         this.receiveNotifications = true; // Default to true on error
         this.receivePushNotifications = false;
+        this.memorizationStrictMode = false;
         this.preferencesLoaded = true;
+        this.memorizationStrictModeLoaded = true;
         return;
       }
 
@@ -2521,20 +2687,37 @@ export class UserSettingsComponent implements OnInit, OnDestroy, OnChanges {
         }
         this.receiveNotifications = subscriberData.is_active;
         this.receivePushNotifications = subscriberData.receive_push ?? false;
+        this.memorizationStrictMode = subscriberData.memorization_strict_mode ?? false;
       } else {
         // New user - set defaults (receive_push only becomes true when app installs and registers device token)
         this.receiveNotifications = true;
         this.receivePushNotifications = false;
+        this.memorizationStrictMode = false;
       }
 
       this.preferencesLoaded = true;
+      this.memorizationStrictModeLoaded = true;
+      await this.syncMemorizationStrictModeToUserSession(normalizedEmail);
       this.cdr.markForCheck();
     } catch (err) {
       console.error("Error loading preferences:", err);
       this.receiveNotifications = true; // Default to true on error
       this.receivePushNotifications = false;
+      this.memorizationStrictMode = false;
       this.preferencesLoaded = true;
+      this.memorizationStrictModeLoaded = true;
     }
+  }
+
+  private async syncMemorizationStrictModeToUserSession(email: string): Promise<void> {
+    const currentSession = this.userSessionService.getCurrentSession();
+    if (currentSession) {
+      await this.userSessionService.updateUserSession({
+        memorizationStrictMode: this.memorizationStrictMode,
+      });
+      return;
+    }
+    await this.userSessionService.loadUserSession(email);
   }
 
   onEmailChange(): void {
@@ -2563,6 +2746,18 @@ export class UserSettingsComponent implements OnInit, OnDestroy, OnChanges {
     }
     this.badgeFunctionalityEnabled = enabled;
     void this.onBadgeFunctionalityToggle();
+  }
+
+  setMemorizationStrictMode(enabled: boolean): void {
+    if (
+      !this.memorizationStrictModeLoaded ||
+      this.savingMemorizationStrictMode ||
+      this.memorizationStrictMode === enabled
+    ) {
+      return;
+    }
+    this.memorizationStrictMode = enabled;
+    void this.onMemorizationStrictModeToggle();
   }
 
   setShowPrayForButton(enabled: boolean): void {
@@ -2850,6 +3045,79 @@ export class UserSettingsComponent implements OnInit, OnDestroy, OnChanges {
       this.cdr.markForCheck();
     } finally {
       this.savingBadge = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  async onMemorizationStrictModeToggle(): Promise<void> {
+    const email = this.email.toLowerCase().trim();
+
+    if (!email) {
+      this.error = "Email not found. Please log in again.";
+      return;
+    }
+
+    this.savingMemorizationStrictMode = true;
+    this.error = null;
+    this.successMemorizationStrictMode = null;
+
+    try {
+      const { data: existingRecord, error: fetchError } =
+        await this.supabase.client
+          .from("email_subscribers")
+          .select("id")
+          .eq("email", email)
+          .maybeSingle();
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      if (existingRecord) {
+        const { error: updateError } = await this.supabase.client
+          .from("email_subscribers")
+          .update({
+            memorization_strict_mode: this.memorizationStrictMode,
+          })
+          .eq("email", email);
+
+        if (updateError) {
+          throw updateError;
+        }
+      } else {
+        const { error: insertError } = await this.supabase.client
+          .from("email_subscribers")
+          .insert({
+            email,
+            memorization_strict_mode: this.memorizationStrictMode,
+          });
+
+        if (insertError) {
+          throw insertError;
+        }
+      }
+
+      await this.syncMemorizationStrictModeToUserSession(email);
+
+      this.successMemorizationStrictMode = this.memorizationStrictMode
+        ? "✅ Strict memorization practice enabled"
+        : "✅ Standard memorization practice enabled";
+
+      this.savingMemorizationStrictMode = false;
+      this.cdr.markForCheck();
+
+      setTimeout(() => {
+        this.successMemorizationStrictMode = null;
+        this.cdr.markForCheck();
+      }, 3000);
+    } catch (err) {
+      console.error("Error updating memorization strict mode:", err);
+      this.error =
+        err instanceof Error
+          ? err.message
+          : "Failed to update memorization practice preference";
+      this.memorizationStrictMode = !this.memorizationStrictMode;
+      this.savingMemorizationStrictMode = false;
       this.cdr.markForCheck();
     }
   }

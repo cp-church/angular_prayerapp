@@ -87,6 +87,15 @@
             }
           </div>
           <div class="flex items-center gap-2 shrink-0">
+            @if (phase === 'practicing' && wrongAttemptsInRound > 0) {
+              <span
+                data-testid="memorize-error-count"
+                class="text-sm text-red-600 dark:text-red-400 font-medium tabular-nums"
+                aria-live="polite"
+              >
+                Errors: {{ wrongAttemptsInRound }}
+              </span>
+            }
             @if (showStartOver) {
               <button
                 type="button"
@@ -391,6 +400,7 @@
                         (slotChunkIdsChange)="onReorderSlotChunkIdsChange($event)"
                         (invalidDrop)="onReorderInvalidDrop()"
                         (slotsBecameCorrect)="onReorderSlotsBecameCorrect($event)"
+                        (wrongSwap)="onReorderWrongSwap()"
                       />
                     } @else if (practiceMode === 'word') {
                       <div
@@ -564,13 +574,16 @@
                   >
                     Repeat this round
                   </button>
+                  @if (showNextRoundOption) {
                   <button
                     type="button"
+                    data-testid="memorize-next-round"
                     (click)="nextRound()"
                     class="w-full sm:w-auto px-4 py-3 rounded-lg font-medium transition-colors cursor-pointer bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-900/60 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-700"
                   >
                     Next round
                   </button>
+                  }
                 </div>
               </div>
             }

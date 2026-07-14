@@ -145,6 +145,8 @@ export class MemorizationReorderPanelComponent implements OnInit, OnChanges, OnD
   @Output() slotChunkIdsChange = new EventEmitter<number[]>();
   @Output() invalidDrop = new EventEmitter<void>();
   @Output() slotsBecameCorrect = new EventEmitter<number[]>();
+  /** Swap completed but no slot moved into its correct reading-order position. */
+  @Output() wrongSwap = new EventEmitter<void>();
 
   @ViewChild('listRoot') listRef?: ElementRef<HTMLDivElement>;
 
@@ -367,7 +369,11 @@ export class MemorizationReorderPanelComponent implements OnInit, OnChanges, OnD
       if (next[i] === i && prev[i] !== i) became.push(i);
     }
     this.slotChunkIdsChange.emit(next);
-    if (became.length > 0) this.slotsBecameCorrect.emit(became);
+    if (became.length > 0) {
+      this.slotsBecameCorrect.emit(became);
+    } else {
+      this.wrongSwap.emit();
+    }
   }
 
   private clearPending(): void {

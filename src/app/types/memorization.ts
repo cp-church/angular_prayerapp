@@ -37,6 +37,8 @@ export interface MemorizationInProgress {
   updatedAt: number;
   phase: MemorizationInProgressPhase;
   practiceMode?: MemorizationPracticeMode;
+  /** Wrong attempts in the round just completed (strict mode advance gate). */
+  wrongAttemptsInRound?: number;
 }
 
 export type MemorizationInProgressSavePayload = Omit<

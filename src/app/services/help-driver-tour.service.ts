@@ -39,6 +39,7 @@ export const TOUR_SETTINGS_PUSH_ID = 'tour-settings-push-notifications';
 export const TOUR_SETTINGS_BADGES_ID = 'tour-settings-badges';
 export const TOUR_SETTINGS_PRAYER_ENCOURAGEMENT_ID = 'tour-settings-prayer-encouragement';
 export const TOUR_SETTINGS_DEFAULT_VIEW_ID = 'tour-settings-default-view';
+export const TOUR_SETTINGS_MEMORIZATION_STRICT_MODE_ID = 'tour-settings-memorization-strict-mode';
 /** First prayer card in the list: “Add Update” opens the inline update form (see `PrayerCardComponent.tourUpdateAnchors`). */
 export const TOUR_ADD_UPDATE_BTN_ID = 'tour-prayer-add-update';
 /** **Pray For** / **Prayed For** on the first community card (see `PrayerCardComponent.tourPrayForEncouragementAnchors`). */
@@ -1695,7 +1696,7 @@ export class HelpDriverTourService {
       popover: {
         title: 'Practice modes',
         description:
-          'Each session offers modes such as <strong>Type</strong>, <strong>Word</strong>, <strong>Reorder</strong>, and <strong>First letters</strong>. You can also <strong>Listen</strong> to ESV audio while you practice. Progress saves automatically.',
+          'Each session offers modes such as <strong>Type</strong>, <strong>Word</strong>, <strong>Reorder</strong>, and <strong>First letters</strong>. You can also <strong>Listen</strong> to ESV audio while you practice. In <strong>Settings → Memorization practice</strong>, choose <strong>Standard</strong> (auto-reveal after three wrong attempts) or <strong>Strict</strong> (no auto-reveal; finish each round with zero errors before <strong>Next round</strong>). Progress saves automatically.',
         side: 'bottom',
         align: 'center',
         onNextClick: this.popoverNextKillsTour(),
@@ -2280,7 +2281,7 @@ export class HelpDriverTourService {
 
   /**
    * **App Settings** (`help_settings`): Settings panel overview—print, theme, text size, notifications, badges,
-   * prayer encouragement, default view, reminders, feedback, then footer notes.
+   * prayer encouragement, default view, memorization practice, reminders, feedback, then footer notes.
    */
   startAppSettingsHelpSectionTour(
     section: { title: string; description: string },
@@ -2326,8 +2327,10 @@ export class HelpDriverTourService {
       document.getElementById(TOUR_SETTINGS_PRAYER_ENCOURAGEMENT_ID) ?? badgesEl();
     const defaultViewEl = (): HTMLElement =>
       document.getElementById(TOUR_SETTINGS_DEFAULT_VIEW_ID) ?? encouragementEl();
+    const memorizationEl = (): HTMLElement =>
+      document.getElementById(TOUR_SETTINGS_MEMORIZATION_STRICT_MODE_ID) ?? defaultViewEl();
     const remindersEl = (): HTMLElement =>
-      document.getElementById(TOUR_SETTINGS_PRAYER_REMINDERS_ID) ?? defaultViewEl();
+      document.getElementById(TOUR_SETTINGS_PRAYER_REMINDERS_ID) ?? memorizationEl();
     const feedbackEl = (): HTMLElement =>
       document.getElementById(TOUR_SETTINGS_FEEDBACK_SECTION_ID) ?? remindersEl();
 
@@ -2418,6 +2421,16 @@ export class HelpDriverTourService {
           title: 'Default prayer view',
           description:
             'Pick <strong>Current Prayers</strong> or <strong>Personal Prayers</strong> as your default when you open the app—saved to your account.',
+          side: 'bottom',
+          align: 'start',
+        },
+      },
+      {
+        element: () => memorizationEl(),
+        popover: {
+          title: 'Memorization practice',
+          description:
+            'Choose <strong>Standard</strong> (auto-reveal after three wrong attempts on a blank) or <strong>Strict</strong> (no auto-reveal; <strong>Errors: N</strong> in practice; finish each round with zero errors before <strong>Next round</strong>). Syncs across your devices.',
           side: 'bottom',
           align: 'start',
         },

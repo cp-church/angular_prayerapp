@@ -132,6 +132,22 @@ describe('HelpContentService', () => {
       expect(
         settingsSection!.content?.some((item) => item.subtitle === 'Show "Praying #" button')
       ).toBe(true);
+      expect(
+        settingsSection!.content?.some((item) => item.subtitle === 'Memorization practice')
+      ).toBe(true);
+    });
+
+    it('should include strict memorization practice help in Memorize Scripture section', () => {
+      let sections: HelpSection[] = [];
+      service.getSections().subscribe((data) => {
+        sections = data;
+      });
+
+      const memorizeSection = sections.find((s) => s.id === 'help_memorize');
+      expect(memorizeSection).toBeDefined();
+      expect(
+        memorizeSection!.content?.some((item) => item.subtitle === 'Standard and Strict practice')
+      ).toBe(true);
     });
 
     it('should include prayer encouragement UI settings in Prayer Encouragement section', () => {

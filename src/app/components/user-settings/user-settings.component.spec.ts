@@ -88,9 +88,11 @@ describe('UserSettingsComponent', () => {
         isActive: true,
         receiveNotifications: true,
         receiveAdminEmails: false,
-        receivePush: true
+        receivePush: true,
+        memorizationStrictMode: false,
       })),
-      updateUserSession: vi.fn(async () => ({}))
+      updateUserSession: vi.fn(async () => ({})),
+      loadUserSession: vi.fn(async () => ({})),
     };
 
     mockCapacitorService = {
@@ -999,6 +1001,55 @@ describe('UserSettingsComponent', () => {
       expect(component.name).toBe('Existing User');
       expect(component.receiveNotifications).toBe(false);
       expect(component.receivePushNotifications).toBe(false);
+    });
+
+    it('should load memorization strict mode from subscriber preferences', async () => {
+      const mockSubscriber = {
+        name: 'Existing User',
+        is_active: true,
+        receive_push: false,
+        memorization_strict_mode: true,
+      };
+
+      mockSupabaseService.client.from.mockReturnValue({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            maybeSingle: vi.fn(() => Promise.resolve({ data: mockSubscriber, error: null })),
+          })),
+        })),
+      });
+
+      await component['loadPreferencesAutomatically']('test@example.com');
+
+      expect(component.memorizationStrictMode).toBe(true);
+      expect(component.memorizationStrictModeLoaded).toBe(true);
+      expect(mockUserSessionService.updateUserSession).toHaveBeenCalledWith({
+        memorizationStrictMode: true,
+      });
+    });
+
+    it('should load user session when strict mode loads without cached session', async () => {
+      mockUserSessionService.getCurrentSession.mockReturnValue(null);
+      const mockSubscriber = {
+        name: 'Existing User',
+        is_active: true,
+        receive_push: false,
+        memorization_strict_mode: true,
+      };
+
+      mockSupabaseService.client.from.mockReturnValue({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            maybeSingle: vi.fn(() => Promise.resolve({ data: mockSubscriber, error: null })),
+          })),
+        })),
+      });
+
+      await component['loadPreferencesAutomatically']('test@example.com');
+
+      expect(component.memorizationStrictMode).toBe(true);
+      expect(mockUserSessionService.loadUserSession).toHaveBeenCalledWith('test@example.com');
+      expect(mockUserSessionService.updateUserSession).not.toHaveBeenCalled();
     });
 
     it('should set defaults for new users', async () => {
@@ -2099,6 +2150,75 @@ describe('UserSettingsComponent', () => {
 
     // Verify the method completed without error
     expect(component.savingBadge).toBe(false);
+  });
+
+  it('should handle memorization strict mode toggle', async () => {
+    component.email = 'test@example.com';
+    component.memorizationStrictMode = true;
+    component.memorizationStrictModeLoaded = true;
+
+    mockSupabaseService.client.from = vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          maybeSingle: vi.fn(() => Promise.resolve({ data: { id: 'sub-1' }, error: null }))
+        }))
+      })),
+      update: vi.fn(() => ({
+        eq: vi.fn(() => Promise.resolve({ data: null, error: null }))
+      })),
+    }));
+
+    await component.onMemorizationStrictModeToggle();
+
+    expect(component.savingMemorizationStrictMode).toBe(false);
+    expect(mockUserSessionService.updateUserSession).toHaveBeenCalledWith({
+      memorizationStrictMode: true,
+    });
+  });
+
+  it('should load user session when strict mode toggled without cached session', async () => {
+    component.email = 'test@example.com';
+    component.memorizationStrictMode = true;
+    component.memorizationStrictModeLoaded = true;
+    mockUserSessionService.getCurrentSession.mockReturnValue(null);
+
+    mockSupabaseService.client.from = vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          maybeSingle: vi.fn(() => Promise.resolve({ data: { id: 'sub-1' }, error: null })),
+        })),
+      })),
+      update: vi.fn(() => ({
+        eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
+      })),
+    }));
+
+    await component.onMemorizationStrictModeToggle();
+
+    expect(mockUserSessionService.loadUserSession).toHaveBeenCalledWith('test@example.com');
+    expect(mockUserSessionService.updateUserSession).not.toHaveBeenCalled();
+  });
+
+  it('should revert memorization strict mode on toggle failure', async () => {
+    component.email = 'test@example.com';
+    component.memorizationStrictMode = true;
+    component.memorizationStrictModeLoaded = true;
+
+    mockSupabaseService.client.from = vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          maybeSingle: vi.fn(() => Promise.resolve({ data: { id: 'sub-1' }, error: null }))
+        }))
+      })),
+      update: vi.fn(() => ({
+        eq: vi.fn(() => Promise.resolve({ data: null, error: { message: 'fail' } }))
+      })),
+    }));
+
+    await component.onMemorizationStrictModeToggle();
+
+    expect(component.memorizationStrictMode).toBe(false);
+    expect(component.savingMemorizationStrictMode).toBe(false);
   });
 
   it('should mark all items from cache as read', () => {

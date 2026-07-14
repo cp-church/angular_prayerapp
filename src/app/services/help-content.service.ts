@@ -480,6 +480,10 @@ export class HelpContentService {
             text: 'Each session includes modes such as **Type** (fill in blanks), **Word** (tap words in order), **Reorder** (arrange shuffled words), and **First letters** (type from initials). Complete rounds to finish a session; stats update on the card when you are done.',
           },
           {
+            subtitle: 'Standard and Strict practice',
+            text: 'In **Settings → Memorization practice**, choose **Standard** (default) or **Strict**. **Standard** auto-reveals the current blank after three wrong answers in Type, Initials, and Word modes. **Strict** keeps the red error flash until you answer correctly, shows **Errors: N** in the practice header when the round has mistakes, and in **Reorder** counts a swap as wrong when no part lands in its correct slot. In Strict mode, **Next round** stays hidden until you finish the round with zero errors—you can **Repeat this round** until then. The preference syncs across your devices.',
+          },
+          {
             subtitle: 'Listen while you practice',
             text: 'During practice you can open **Listen** for ESV audio of the passage (when available). Playback controls let you adjust speed and jump within the passage. Scripture text and audio are provided under ESV license terms shown in the practice UI.',
           },
@@ -705,6 +709,10 @@ export class HelpContentService {
           {
             subtitle: 'Default Prayer View',
             text: 'Set your preferred default view when you log in. Choose between "Current Prayers View" to see public prayers waiting for prayer, or "Personal Prayers View" to see your personal prayer list. Your selection is saved and will be remembered each time you log in.',
+          },
+          {
+            subtitle: 'Memorization practice',
+            text: 'Choose **Standard** or **Strict** for scripture memory sessions. **Standard** auto-reveals blanks after three wrong attempts in Type, Initials, and Word modes. **Strict** disables auto-reveal, shows **Errors: N** during practice when the round has mistakes, and in **Reorder** counts a swap as wrong when no part lands in its correct slot. Strict mode hides **Next round** until the current round finishes with zero errors (use **Repeat this round** until then). Saved to your account and synced across devices.',
           },
           {
             subtitle: 'Prayer reminders (hourly nudges)',

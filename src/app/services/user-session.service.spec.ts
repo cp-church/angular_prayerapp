@@ -2051,6 +2051,98 @@ describe('UserSessionService', () => {
       expect(session?.showPrayingCount).toBe(false);
     });
 
+    it('should map memorization_strict_mode from database', async () => {
+      mockSupabaseService.client.from = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: {
+                email: 'test@example.com',
+                name: 'John Doe',
+                is_active: true,
+                receive_push: false,
+                badge_functionality_enabled: false,
+                default_prayer_view: 'current',
+                show_pray_for_button: true,
+                show_praying_count: true,
+                memorization_strict_mode: true,
+              },
+              error: null,
+            }),
+          }),
+        }),
+      });
+
+      await service.loadUserSession('test@example.com');
+
+      expect(service.getCurrentSession()?.memorizationStrictMode).toBe(true);
+    });
+
+    it('should not publish pre-upgrade cache missing memorizationStrictMode from constructor', () => {
+      localStorage.setItem(
+        'userSession',
+        JSON.stringify({
+          email: 'test@example.com',
+          fullName: 'Cached User',
+          isActive: true,
+          receiveNotifications: true,
+          receiveAdminEmails: false,
+        }),
+      );
+
+      const freshService = new UserSessionService(mockSupabaseService, mockAdminAuthService);
+      expect(freshService.getCurrentSession()).toBeNull();
+    });
+
+    it('should not mark session initialized until database refresh when cache is published', async () => {
+      const cachedSession = {
+        email: 'cached@example.com',
+        fullName: 'Cached User',
+        isActive: true,
+        receiveNotifications: true,
+        receiveAdminEmails: false,
+        memorizationStrictMode: false,
+      };
+      localStorage.setItem('userSession', JSON.stringify(cachedSession));
+
+      let resolveDb!: (value: { data: unknown; error: null }) => void;
+      const dbPromise = new Promise<{ data: unknown; error: null }>((resolve) => {
+        resolveDb = resolve;
+      });
+
+      mockSupabaseService.client.auth.getSession = vi.fn().mockResolvedValue({
+        data: { session: { user: { email: 'cached@example.com' } } },
+      });
+      mockSupabaseService.client.from.mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockReturnValue(dbPromise),
+          }),
+        }),
+      });
+
+      const newService = new UserSessionService(mockSupabaseService, mockAdminAuthService);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      expect(newService.getCurrentSession()?.memorizationStrictMode).toBe(false);
+      expect(newService.isSessionInitialized()).toBe(false);
+
+      resolveDb({
+        data: {
+          email: 'cached@example.com',
+          name: 'Cached User',
+          is_active: true,
+          memorization_strict_mode: true,
+        },
+        error: null,
+      });
+      await dbPromise;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      expect(newService.isSessionInitialized()).toBe(true);
+      expect(newService.getCurrentSession()?.memorizationStrictMode).toBe(true);
+    });
+
     it('should default show pray-for prefs to true when columns absent', async () => {
       mockSupabaseService.client.from = vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({

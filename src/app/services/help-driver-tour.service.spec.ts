@@ -36,6 +36,7 @@ import {
   TOUR_SETTINGS_BADGES_ID,
   TOUR_SETTINGS_PRAYER_ENCOURAGEMENT_ID,
   TOUR_SETTINGS_DEFAULT_VIEW_ID,
+  TOUR_SETTINGS_MEMORIZATION_STRICT_MODE_ID,
   TOUR_PRAYER_SUBMIT_REQUEST_ID,
   TOUR_PRAYER_UPDATE_SUBMIT_ID,
   TOUR_PRAYER_UPDATE_ANONYMOUS_WRAP_ID,
@@ -1385,17 +1386,18 @@ describe('HelpDriverTourService', () => {
       mountEl(TOUR_SETTINGS_BADGES_ID, 'div');
       mountEl(TOUR_SETTINGS_PRAYER_ENCOURAGEMENT_ID, 'div');
       mountEl(TOUR_SETTINGS_DEFAULT_VIEW_ID, 'div');
+      mountEl(TOUR_SETTINGS_MEMORIZATION_STRICT_MODE_ID, 'div');
       mountEl(TOUR_SETTINGS_PRAYER_REMINDERS_ID, 'div');
       mountEl(TOUR_SETTINGS_FEEDBACK_SECTION_ID, 'div');
       const h = settingsTourHooks();
       vi.useFakeTimers();
       service.startAppSettingsHelpSectionTour(section, h);
       const config = vi.mocked(driver).mock.calls[0][0];
-      expect(config?.steps?.length).toBe(13);
-      resolveStepElements(config, Array.from({ length: 13 }, (_, i) => i));
+      expect(config?.steps?.length).toBe(14);
+      resolveStepElements(config, Array.from({ length: 14 }, (_, i) => i));
       fireStepNext(config, 0);
       vi.advanceTimersByTime(420);
-      fireStepNext(config, 12);
+      fireStepNext(config, 13);
       expect(h.closeSettings).toHaveBeenCalled();
       vi.useRealTimers();
       vi.unstubAllGlobals();
