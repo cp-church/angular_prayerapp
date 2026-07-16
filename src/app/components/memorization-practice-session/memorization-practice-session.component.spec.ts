@@ -1145,6 +1145,205 @@ describe('MemorizationPracticeSessionComponent', () => {
       expect(component.showNextRoundOption).toBe(true);
       expect(screen.getByTestId('memorize-next-round')).toBeTruthy();
     });
+
+    it('strict final round with errors shows repeat instead of done', async () => {
+      const { component, cdr, completed } = await renderSession({ memorizationStrictMode: true });
+      component.startRoundChoice = MEMORIZATION_FULL_HIDE_ROUND;
+      component.beginPracticeWithMode('word');
+      component.processWordGuess('__wrong__');
+      while (component.currentTargetIndex !== null && !component.awaitingRoundAdvance) {
+        const i = component.currentTargetIndex!;
+        component.processWordGuess(component.tokens[i]!.text);
+      }
+      cdr.detectChanges();
+
+      expect(component.phase).toBe('practicing');
+      expect(component.awaitingRoundAdvance).toBe(true);
+      expect(component.roundCompletedWithErrors).toBe(true);
+      expect(component.showNextRoundOption).toBe(false);
+      expect(screen.queryByTestId('memorize-next-round')).toBeNull();
+      expect(completed).not.toHaveBeenCalled();
+    });
+
+    it('strict final round with perfect completion shows done', async () => {
+      const { component, cdr, completed } = await renderSession({ memorizationStrictMode: true });
+      component.startRoundChoice = MEMORIZATION_FULL_HIDE_ROUND;
+      component.beginPracticeWithMode('type');
+      revealAllHiddenViaTyping(component);
+      cdr.detectChanges();
+
+      expect(component.phase).toBe('done');
+      expect(component.completionMessage).toBeTruthy();
+      expect(screen.getByTestId('memorize-done-title').textContent?.trim()).toBe('Finished');
+      expect(completed).toHaveBeenCalledWith(expect.objectContaining({ completed: true }));
+    });
+
+    it('standard final round with errors still shows done', async () => {
+      const { component, cdr, completed } = await renderSession({ memorizationStrictMode: false });
+      component.startRoundChoice = MEMORIZATION_FULL_HIDE_ROUND;
+      component.beginPracticeWithMode('word');
+      component.processWordGuess('__wrong__');
+      while (component.currentTargetIndex !== null && component.phase !== 'done') {
+        const i = component.currentTargetIndex!;
+        component.processWordGuess(component.tokens[i]!.text);
+      }
+      cdr.detectChanges();
+
+      expect(component.phase).toBe('done');
+      expect(completed).toHaveBeenCalledWith(expect.objectContaining({ completed: true }));
+    });
+
+    it('strict final round requires perfect repeat before done', async () => {
+      const { component, cdr, completed } = await renderSession({ memorizationStrictMode: true });
+      component.startRoundChoice = MEMORIZATION_FULL_HIDE_ROUND;
+      component.beginPracticeWithMode('word');
+      component.processWordGuess('__wrong__');
+      while (component.currentTargetIndex !== null && !component.awaitingRoundAdvance) {
+        const i = component.currentTargetIndex!;
+        component.processWordGuess(component.tokens[i]!.text);
+      }
+      expect(completed).not.toHaveBeenCalled();
+
+      component.repeatRound();
+      revealAllHiddenViaTyping(component);
+      cdr.detectChanges();
+
+      expect(component.phase).toBe('done');
+      expect(completed).toHaveBeenCalledTimes(1);
+    });
+
+    it('standard resume on final round with errors shows finish instead of next round', async () => {
+      const item: MemorizedItem = {
+        ...verseItem,
+        inProgressPractice: {
+          sessionSeed: 'final-standard-resume',
+          wrongAttempts: 2,
+          correctKeystrokes: 10,
+          wrongAttemptsInRound: 2,
+          updatedAt: Date.now(),
+          phase: { kind: 'betweenRounds', completedRoundIndex: MEMORIZATION_FULL_HIDE_ROUND },
+          practiceMode: 'type',
+        },
+      };
+      const { component, cdr, completed } = await renderSession({
+        item,
+        memorizationStrictMode: false,
+      });
+      cdr.detectChanges();
+
+      expect(component.awaitingRoundAdvance).toBe(true);
+      expect(component.roundIndex).toBe(MEMORIZATION_FULL_HIDE_ROUND);
+      expect(component.showNextRoundOption).toBe(false);
+      expect(component.showFinishPracticeOption).toBe(true);
+      expect(screen.queryByTestId('memorize-next-round')).toBeNull();
+      expect(screen.getByTestId('memorize-finish-practice')).toBeTruthy();
+      expect(
+        screen.getByText(/repeat this round or finish practice/i),
+      ).toBeTruthy();
+
+      component.nextRound();
+      expect(component.roundIndex).toBe(MEMORIZATION_FULL_HIDE_ROUND);
+
+      component.finishPracticeSession();
+      cdr.detectChanges();
+
+      expect(component.phase).toBe('done');
+      expect(completed).toHaveBeenCalledWith(expect.objectContaining({ completed: true }));
+    });
+
+    it('switching strict off on final round with errors shows finish practice', async () => {
+      const item: MemorizedItem = {
+        ...verseItem,
+        inProgressPractice: {
+          sessionSeed: 'final-strict-resume',
+          wrongAttempts: 1,
+          correctKeystrokes: 8,
+          wrongAttemptsInRound: 1,
+          updatedAt: Date.now(),
+          phase: { kind: 'betweenRounds', completedRoundIndex: MEMORIZATION_FULL_HIDE_ROUND },
+          practiceMode: 'type',
+        },
+      };
+      const { component, cdr, sessionService, completed } = await renderSession({
+        item,
+        memorizationStrictMode: true,
+      });
+      cdr.detectChanges();
+
+      expect(component.showNextRoundOption).toBe(false);
+      expect(component.showFinishPracticeOption).toBe(false);
+
+      sessionService.setMemorizationStrictMode(false);
+      cdr.detectChanges();
+
+      expect(component.showFinishPracticeOption).toBe(true);
+      expect(screen.getByTestId('memorize-finish-practice')).toBeTruthy();
+      expect(
+        screen.getByText(/repeat this round or finish practice/i),
+      ).toBeTruthy();
+
+      component.finishPracticeSession();
+      cdr.detectChanges();
+
+      expect(component.phase).toBe('done');
+      expect(completed).toHaveBeenCalledWith(expect.objectContaining({ completed: true }));
+    });
+
+    it('strict final round with errors waits for session before finishing', async () => {
+      const { component, cdr, completed, sessionService } = await renderSession({
+        memorizationStrictMode: true,
+        deferSessionLoad: true,
+      });
+      component.startRoundChoice = MEMORIZATION_FULL_HIDE_ROUND;
+      component.beginPracticeWithMode('word');
+      component.processWordGuess('__wrong__');
+      while (component.currentTargetIndex !== null && !component.awaitingRoundAdvance && component.phase !== 'done') {
+        const i = component.currentTargetIndex!;
+        component.processWordGuess(component.tokens[i]!.text);
+      }
+      cdr.detectChanges();
+
+      expect(component.phase).toBe('practicing');
+      expect(component.awaitingRoundAdvance).toBe(true);
+      expect(completed).not.toHaveBeenCalled();
+      expect(component.showFinishPracticeOption).toBe(false);
+      expect(screen.queryByTestId('memorize-finish-practice')).toBeNull();
+      expect(
+        screen.getByText(/finish practice once settings load/i),
+      ).toBeTruthy();
+
+      sessionService.finishSessionLoad(true);
+      cdr.detectChanges();
+
+      expect(component.strictModeEnabled).toBe(true);
+      expect(component.showFinishPracticeOption).toBe(false);
+      expect(completed).not.toHaveBeenCalled();
+    });
+
+    it('standard final round with errors auto-finishes once session loads', async () => {
+      const { component, cdr, completed, sessionService } = await renderSession({
+        memorizationStrictMode: false,
+        deferSessionLoad: true,
+      });
+      component.startRoundChoice = MEMORIZATION_FULL_HIDE_ROUND;
+      component.beginPracticeWithMode('word');
+      component.processWordGuess('__wrong__');
+      while (component.currentTargetIndex !== null && !component.awaitingRoundAdvance && component.phase !== 'done') {
+        const i = component.currentTargetIndex!;
+        component.processWordGuess(component.tokens[i]!.text);
+      }
+      cdr.detectChanges();
+
+      expect(component.phase).toBe('practicing');
+      expect(component.awaitingRoundAdvance).toBe(true);
+      expect(completed).not.toHaveBeenCalled();
+
+      sessionService.finishSessionLoad(false);
+      cdr.detectChanges();
+
+      expect(component.phase).toBe('done');
+      expect(completed).toHaveBeenCalledWith(expect.objectContaining({ completed: true }));
+    });
   });
 
   describe('passage audio handlers', () => {

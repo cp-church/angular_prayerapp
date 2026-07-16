@@ -341,10 +341,38 @@ export class MemorizationPracticeSessionComponent
   }
 
   /** Strict mode: advance only after a perfect round (no wrong attempts). */
+  get isFinalRound(): boolean {
+    return this.roundIndex >= MEMORIZATION_FULL_HIDE_ROUND;
+  }
+
   get showNextRoundOption(): boolean {
+    if (this.isFinalRound) return false;
     if (!this.roundCompletedWithErrors) return true;
-    if (!this.userSessionService.isSessionInitialized()) return false;
-    return !this.strictModeEnabled;
+    return !this.mustRepeatDueToErrors();
+  }
+
+  /** Final round in standard mode: finish with errors after resume or strict-mode toggle. */
+  get showFinishPracticeOption(): boolean {
+    return (
+      this.awaitingRoundAdvance &&
+      this.isFinalRound &&
+      this.userSessionService.isSessionInitialized() &&
+      !this.strictModeEnabled
+    );
+  }
+
+  get roundAdvanceHeaderCopy(): string {
+    if (!this.awaitingRoundAdvance) return '';
+    if (this.isFinalRound) {
+      if (this.showFinishPracticeOption) {
+        return `Round ${this.roundIndex} complete — repeat this round or finish practice.`;
+      }
+      if (!this.userSessionService.isSessionInitialized()) {
+        return `Round ${this.roundIndex} complete — repeat this round or finish practice once settings load.`;
+      }
+      return `Round ${this.roundIndex} complete — repeat this round until you finish with no errors.`;
+    }
+    return `Round ${this.roundIndex} complete — repeat or continue to round ${this.roundIndex + 1}.`;
   }
 
   get listenButtonLabel(): string {
@@ -1162,6 +1190,7 @@ export class MemorizationPracticeSessionComponent
     this.wrongAttemptsInRound = 0;
     this.roundCompletedWithErrors = false;
     this.pendingBetweenRoundsErrors = 0;
+    this.deferFinalRoundUntilSessionInit = false;
     const seed = this.sessionSeed || this.item.id;
     if (this.practiceModeRef === 'reorder') {
       const n = this.reorderChunks.length;
@@ -1277,6 +1306,7 @@ export class MemorizationPracticeSessionComponent
     if (!this.userSessionService.isSessionInitialized()) return;
     const strict = this.userSessionService.getCurrentSession()?.memorizationStrictMode ?? false;
     this.applyStrictModeFromSession(strict);
+    this.reconcileFinalRoundAfterSessionLoad();
     // Session init can change showNextRoundOption even when strict mode stays false.
     this.cdr.markForCheck();
   }
@@ -1324,6 +1354,35 @@ export class MemorizationPracticeSessionComponent
     return 0;
   }
 
+  /** Strict mode (or pending session) requires repeating after errors before advancing mid-run. */
+  private mustRepeatDueToErrors(): boolean {
+    if (this.wrongAttemptsInRound <= 0) return false;
+    if (!this.userSessionService.isSessionInitialized()) return true;
+    return this.strictModeEnabled;
+  }
+
+  /** Final round: defer until session loads, then repeat only in strict mode. */
+  private mustRepeatFinalRound(): boolean {
+    if (!this.isFinalRound || this.wrongAttemptsInRound <= 0) return false;
+    if (!this.userSessionService.isSessionInitialized()) return true;
+    return this.strictModeEnabled;
+  }
+
+  /** Standard mode on final round: auto-finish with errors once session bootstrap resolves. */
+  private reconcileFinalRoundAfterSessionLoad(): void {
+    if (!this.deferFinalRoundUntilSessionInit) return;
+    this.deferFinalRoundUntilSessionInit = false;
+    if (
+      !this.awaitingRoundAdvance ||
+      !this.isFinalRound ||
+      this.wrongAttemptsInRound <= 0 ||
+      this.strictModeEnabled
+    ) {
+      return;
+    }
+    this.finishPracticeSession();
+  }
+
   private tryAutoRevealAfterWrong(revealFirstLetterCue = false): void {
     if (this.isAutoRevealBlocked() || this.currentTargetIndex === null) return;
     if (this.consecutiveWrong < MAX_WRONG_BEFORE_REVEAL) return;
@@ -1357,27 +1416,24 @@ export class MemorizationPracticeSessionComponent
 
   private onRoundComplete(): void {
     this.syncMetricRefs();
-    if (this.roundIndex >= MEMORIZATION_FULL_HIDE_ROUND) {
-      if (this.practiceCompleted) return;
-      this.practiceCompleted = true;
-      this.completed.emit({
-        wrongAttempts: this.wrongAttemptsRef,
-        correctKeystrokes: this.correctKeystrokesRef,
-        completed: true,
-      });
-      this.completionMessage = pickRandomAllDoneMessage();
-      this.phase = 'done';
-      requestAnimationFrame(() => {
-        if (this.practiceScrollRef?.nativeElement) {
-          this.practiceScrollRef.nativeElement.scrollTop = 0;
-        }
-      });
+    const mustRepeatFinalRound = this.mustRepeatFinalRound();
+
+    if (this.isFinalRound && !mustRepeatFinalRound) {
+      this.finishPracticeSession();
       return;
     }
+
     if (this.roundAdvanceHandled === this.roundIndex) return;
     this.roundAdvanceHandled = this.roundIndex;
     this.pendingBetweenRoundsErrors = this.wrongAttemptsInRound;
     this.roundCompletedWithErrors = this.wrongAttemptsInRound > 0;
+    if (
+      this.isFinalRound &&
+      this.wrongAttemptsInRound > 0 &&
+      !this.userSessionService.isSessionInitialized()
+    ) {
+      this.deferFinalRoundUntilSessionInit = true;
+    }
     this.persistPracticeSnapshot({ kind: 'betweenRounds', completedRoundIndex: this.roundIndex });
     this.roundAffirmation = pickRandomRoundAffirmation();
     this.awaitingRoundAdvance = true;
@@ -1386,6 +1442,26 @@ export class MemorizationPracticeSessionComponent
   }
 
   private pendingBetweenRoundsErrors = 0;
+  /** Set when final round completes with errors before session bootstrap; cleared after reconcile. */
+  private deferFinalRoundUntilSessionInit = false;
+
+  finishPracticeSession(): void {
+    if (this.awaitingRoundAdvance && !this.showFinishPracticeOption) return;
+    if (this.practiceCompleted) return;
+    this.practiceCompleted = true;
+    this.completed.emit({
+      wrongAttempts: this.wrongAttemptsRef,
+      correctKeystrokes: this.correctKeystrokesRef,
+      completed: true,
+    });
+    this.completionMessage = pickRandomAllDoneMessage();
+    this.phase = 'done';
+    requestAnimationFrame(() => {
+      if (this.practiceScrollRef?.nativeElement) {
+        this.practiceScrollRef.nativeElement.scrollTop = 0;
+      }
+    });
+  }
 
   private persistPracticeSnapshot(phasePayload: MemorizationInProgressSavePayload['phase']): void {
     if (!this.sessionSeed) return;
