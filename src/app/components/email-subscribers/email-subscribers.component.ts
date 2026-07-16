@@ -17,6 +17,7 @@ import { ToastService } from '../../services/toast.service';
 import { AdminDataService } from '../../services/admin-data.service';
 import { SendNotificationDialogComponent } from '../send-notification-dialog/send-notification-dialog.component';
 import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog.component';
+import { EmailSubscriberTimestampComponent } from '../email-subscriber-timestamp/email-subscriber-timestamp.component';
 import { lookupPersonByEmail, batchLookupPlanningCenter, searchPlanningCenterByName, PlanningCenterPerson } from '../../../lib/planning-center';
 import { environment } from '../../../environments/environment';
 
@@ -48,7 +49,7 @@ function escapeForIlikePattern(value: string): string {
 @Component({
   selector: 'app-email-subscribers',
   standalone: true,
-  imports: [CommonModule, FormsModule, SendNotificationDialogComponent, ConfirmationDialogComponent],
+  imports: [CommonModule, FormsModule, SendNotificationDialogComponent, ConfirmationDialogComponent, EmailSubscriberTimestampComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div #emailSubscribersContainer class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/40" [class.cursor-pointer]="!sectionExpanded" (click)="!sectionExpanded && onSectionToggle()">
@@ -558,24 +559,28 @@ function escapeForIlikePattern(value: string): string {
             
             <!-- Added column -->
             <div
-              class="col-span-1 sm:col-span-2 flex items-center"
+              class="col-span-1 sm:col-span-2 min-w-0"
               [attr.id]="$first ? 'tour-email-overview-added' : null"
             >
               <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Added</p>
-              <p class="text-xs text-gray-500 dark:text-gray-500" [title]="'Joined: ' + (subscriber.created_at | date:'medium')">{{ subscriber.created_at | date:'short' }}</p>
+              <app-email-subscriber-timestamp
+                [value]="subscriber.created_at"
+                titlePrefix="Joined: "
+                emptyLabel="Unknown"
+                emptyTitle="Subscriber join date is not available"
+              />
             </div>
             
             <!-- Activity column -->
             <div
-              class="col-span-1 sm:col-span-2 flex items-center"
+              class="col-span-1 sm:col-span-2 min-w-0"
               [attr.id]="$first ? 'tour-email-overview-activity' : null"
             >
               <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 sm:hidden">Activity</p>
-              @if (subscriber.last_activity_date) {
-              <p class="text-xs text-gray-500 dark:text-gray-500" [title]="'Last active: ' + (subscriber.last_activity_date | date:'medium')">{{ subscriber.last_activity_date | date:'short' }}</p>
-              } @else {
-              <p class="text-xs text-gray-400 dark:text-gray-600" title="User has not accessed the portal yet">No activity</p>
-              }
+              <app-email-subscriber-timestamp
+                [value]="subscriber.last_activity_date"
+                titlePrefix="Last active: "
+              />
             </div>
             
             <!-- Email (is_active) column — mass-email subscription -->

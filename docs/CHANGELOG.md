@@ -4,6 +4,9 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Admin — Email Subscribers mobile dates ✅
+- **UI**: On narrow screens, **Added** and **Activity** stack label above a single-line timestamp (`date:'short'`). From **`sm` and up**, date and time render on separate lines (`shortDate` / `shortTime`). Shared markup lives in [`EmailSubscriberTimestampComponent`](src/app/components/email-subscriber-timestamp/email-subscriber-timestamp.component.ts). [`email-subscribers.component.ts`](src/app/components/email-subscribers/email-subscribers.component.ts).
+
 ### Hourly reminder refactor ✅
 - **Shared service**: Prayer and memorization hourly slots use one [`UserHourReminderService`](src/app/services/user-hour-reminder.service.ts) with `UserHourReminderSlot` and per-kind session cache keys. Race-safe fetch generation and account-switch guards apply to **both** kinds (prayer was previously weaker).
 - **Settings UI**: [`HourReminderSettingsSectionComponent`](src/app/components/hour-reminder-settings-section/hour-reminder-settings-section.component.ts) replaces duplicated blocks in [`user-settings.component.ts`](src/app/components/user-settings/user-settings.component.ts) (~1.6k lines removed).
