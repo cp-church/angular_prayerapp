@@ -24,6 +24,8 @@ import {
   cueGlyphForTypableToken,
   pickHiddenCueTypableSlotIndices,
   buildMemorizationChoiceLabels,
+  memorizationWordChoiceRowCount,
+  splitMemorizationChoiceRows,
   type MemorizationToken,
 } from './memorizationPracticeUtils';
 
@@ -434,9 +436,9 @@ describe('buildMemorizationChoiceLabels', () => {
       { kind: 'digit', text: '2' },
     ];
     const typable = [0, 2];
-    const labels = buildMemorizationChoiceLabels(tokens, typable, 0, 4, seedRandom(11));
+    const labels = buildMemorizationChoiceLabels(tokens, typable, 0, 6, seedRandom(11));
     expect(labels).toContain('1');
-    expect(labels.length).toBe(4);
+    expect(labels.length).toBe(6);
   });
 
   it('word blanks exclude digit distractors', () => {
@@ -449,5 +451,35 @@ describe('buildMemorizationChoiceLabels', () => {
     const labels = buildMemorizationChoiceLabels(tokens, typable, 0, 3, seedRandom(13));
     expect(labels.every((l) => l === 'God' || /^[A-Za-z]+$/.test(l) || l === 'God')).toBe(true);
     expect(labels).not.toContain('3');
+  });
+});
+
+describe('splitMemorizationChoiceRows', () => {
+  it('returns empty rows when there are no labels', () => {
+    expect(splitMemorizationChoiceRows([])).toEqual([[], [], []]);
+  });
+
+  it('splits evenly across three rows with earlier rows taking extras', () => {
+    expect(splitMemorizationChoiceRows(['a', 'b', 'c', 'd', 'e'])).toEqual([
+      ['a', 'b'],
+      ['c', 'd'],
+      ['e'],
+    ]);
+    expect(splitMemorizationChoiceRows(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])).toEqual([
+      ['a', 'b', 'c'],
+      ['d', 'e', 'f'],
+      ['g', 'h'],
+    ]);
+    expect(splitMemorizationChoiceRows(['a', 'b', 'c', 'd'], 2)).toEqual([
+      ['a', 'b'],
+      ['c', 'd'],
+    ]);
+  });
+});
+
+describe('memorizationWordChoiceRowCount', () => {
+  it('maps viewport width to compact vs comfortable row counts', () => {
+    expect(memorizationWordChoiceRowCount(false)).toBe(3);
+    expect(memorizationWordChoiceRowCount(true)).toBe(2);
   });
 });

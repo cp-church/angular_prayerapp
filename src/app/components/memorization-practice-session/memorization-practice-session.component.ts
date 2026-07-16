@@ -77,6 +77,7 @@ import {
   type MemorizationToken,
 } from '../../lib/memorization/memorizationPracticeUtils';
 import { MemorizationReorderPanelComponent } from '../memorization-reorder-panel/memorization-reorder-panel.component';
+import { MemorizationWordChoicesFooterComponent } from '../memorization-word-choices-footer/memorization-word-choices-footer.component';
 import { MemorizeListenControlsDialogComponent } from '../memorize-listen-controls-dialog/memorize-listen-controls-dialog.component';
 import { BibleBooksMemorizationListComponent } from '../bible-books-memorization-list/bible-books-memorization-list.component';
 import { ScriptureAttributionComponent } from '../scripture-attribution/scripture-attribution.component';
@@ -87,7 +88,7 @@ type Phase = 'intro' | 'practicing' | 'done';
 
 const MAX_WRONG_BEFORE_REVEAL = 3;
 const MEMORIZATION_WORD_CHOICE_COUNT_WORD = 8;
-const MEMORIZATION_WORD_CHOICE_COUNT_DIGIT = 4;
+const MEMORIZATION_WORD_CHOICE_COUNT_DIGIT = 6;
 const MEMORIZE_EXTRA_GAP_ABOVE_KEYBOARD_PX = 48;
 const MEMORIZE_EXTRA_GAP_ABOVE_WORD_CHOICES_PX = 16;
 const MEMORIZE_HINT_EXTRA_PEEK_INTERVAL_MS = 1000;
@@ -117,6 +118,7 @@ function hiddenTypingTokenIndices(
   imports: [
     CommonModule,
     MemorizationReorderPanelComponent,
+    MemorizationWordChoicesFooterComponent,
     MemorizeListenControlsDialogComponent,
     BibleBooksMemorizationListComponent,
     ScriptureAttributionComponent,
@@ -1456,6 +1458,7 @@ export class MemorizationPracticeSessionComponent
     });
     this.completionMessage = pickRandomAllDoneMessage();
     this.phase = 'done';
+    this.cdr.markForCheck();
     requestAnimationFrame(() => {
       if (this.practiceScrollRef?.nativeElement) {
         this.practiceScrollRef.nativeElement.scrollTop = 0;
