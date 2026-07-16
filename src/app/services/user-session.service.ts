@@ -3,8 +3,7 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { SupabaseService } from './supabase.service';
 import { AdminAuthService } from './admin-auth.service';
 import { distinctUntilChanged, first, map } from 'rxjs/operators';
-import type { UserPrayerHourReminderSlot } from '../types/user-prayer-hour-reminder';
-import type { UserMemorizationHourReminderSlot } from '../types/user-memorization-hour-reminder';
+import type { UserHourReminderSlot } from '../types/user-hour-reminder';
 
 export interface UserSessionData {
   email: string;
@@ -22,10 +21,10 @@ export interface UserSessionData {
   /** When true, memorization practice does not auto-reveal blanks after 3 wrong attempts. */
   memorizationStrictMode?: boolean;
   /** Cached hourly self-reminder slots; undefined = never fetched this session. */
-  prayerHourReminders?: UserPrayerHourReminderSlot[];
+  prayerHourReminders?: UserHourReminderSlot[];
   prayerHourRemindersFetchedAt?: number;
   /** Cached hourly memorization reminder slots; undefined = never fetched this session. */
-  memorizationHourReminders?: UserMemorizationHourReminderSlot[];
+  memorizationHourReminders?: UserHourReminderSlot[];
   memorizationHourRemindersFetchedAt?: number;
 }
 
