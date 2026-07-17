@@ -4,6 +4,12 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Settings — shared Enabled/Disabled toggle ✅
+- **UI**: Extracted [`EnabledDisabledToggleComponent`](src/app/components/enabled-disabled-toggle/enabled-disabled-toggle.component.ts) for the two-tile **Enabled** / **Disabled** grid (loading skeleton, selection styling, save-disabled state). **Email Notifications**, **Push Notifications**, and **Notification Badges** in [`user-settings.component.ts`](src/app/components/user-settings/user-settings.component.ts) now share this component instead of duplicated markup.
+
+### Settings — push notifications UI ✅
+- **UI**: **Push Notifications** in Settings now uses the same **Enabled** / **Disabled** button pair as **Email Notifications**, replacing the checkbox and dynamic “Subscribed…” label. [`user-settings.component.ts`](src/app/components/user-settings/user-settings.component.ts).
+
 ### Admin — Email Subscribers mobile dates ✅
 - **UI**: On narrow screens, **Added** and **Activity** stack label above a single-line timestamp (`date:'short'`). From **`sm` and up**, date and time render on separate lines (`shortDate` / `shortTime`). Shared markup lives in [`EmailSubscriberTimestampComponent`](src/app/components/email-subscriber-timestamp/email-subscriber-timestamp.component.ts). [`email-subscribers.component.ts`](src/app/components/email-subscribers/email-subscribers.component.ts).
 

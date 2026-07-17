@@ -27,6 +27,7 @@ import { Subject, takeUntil, debounceTime, distinctUntilChanged } from "rxjs";
 import { getUserInfo } from "../../../utils/userInfoStorage";
 import { GitHubFeedbackFormComponent } from "../github-feedback-form/github-feedback-form.component";
 import { HourReminderSettingsSectionComponent } from "../hour-reminder-settings-section/hour-reminder-settings-section.component";
+import { EnabledDisabledToggleComponent } from "../enabled-disabled-toggle/enabled-disabled-toggle.component";
 
 type ThemeOption = "light" | "dark" | "system";
 type PrintRange = "week" | "twoweeks" | "month" | "year" | "all";
@@ -34,7 +35,13 @@ type PrintRange = "week" | "twoweeks" | "month" | "year" | "all";
 @Component({
   selector: "app-user-settings",
   standalone: true,
-  imports: [NgClass, FormsModule, GitHubFeedbackFormComponent, HourReminderSettingsSectionComponent],
+  imports: [
+    NgClass,
+    FormsModule,
+    GitHubFeedbackFormComponent,
+    HourReminderSettingsSectionComponent,
+    EnabledDisabledToggleComponent,
+  ],
   template: `
     <!-- Modal Overlay -->
     @if (isOpen) {
@@ -755,55 +762,14 @@ type PrintRange = "week" | "twoweeks" | "month" | "year" | "all";
                   </svg>
                   }
                 </div>
-                @if (preferencesLoaded) {
-                <div class="grid grid-cols-2 gap-1.5 sm:gap-2">
-                  <button
-                    type="button"
-                    (click)="setReceiveNotifications(true)"
-                    [disabled]="savingNotification"
-                    [ngClass]="{
-                      'border-blue-500 bg-blue-50 dark:bg-blue-900/20 hover:border-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30':
-                        receiveNotifications === true,
-                      'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20':
-                        receiveNotifications !== true
-                    }"
-                    title="Enable email notifications"
-                    class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span
-                      class="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100"
-                      >Enabled</span
-                    >
-                  </button>
-                  <button
-                    type="button"
-                    (click)="setReceiveNotifications(false)"
-                    [disabled]="savingNotification"
-                    [ngClass]="{
-                      'border-blue-500 bg-blue-50 dark:bg-blue-900/20 hover:border-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30':
-                        receiveNotifications === false,
-                      'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20':
-                        receiveNotifications !== false
-                    }"
-                    title="Disable email notifications"
-                    class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span
-                      class="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100"
-                      >Disabled</span
-                    >
-                  </button>
-                </div>
-                } @else {
-                <div class="grid grid-cols-2 gap-1.5 sm:gap-2">
-                  <div
-                    class="h-12 bg-gray-300 dark:bg-gray-600 rounded-lg animate-pulse"
-                  ></div>
-                  <div
-                    class="h-12 bg-gray-300 dark:bg-gray-600 rounded-lg animate-pulse"
-                  ></div>
-                </div>
-                }
+                <app-enabled-disabled-toggle
+                  [loaded]="preferencesLoaded"
+                  [saving]="savingNotification"
+                  [value]="receiveNotifications"
+                  enabledTitle="Enable email notifications"
+                  disabledTitle="Disable email notifications"
+                  (valueChange)="setReceiveNotifications($event)"
+                />
               </div>
             </div>
             <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
@@ -859,40 +825,13 @@ type PrintRange = "week" | "twoweeks" | "month" | "year" | "all";
             id="tour-settings-push-notifications"
             class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 space-y-2"
           >
-            <div class="flex items-start gap-3">
-              @if (preferencesLoaded) {
-              <input
-                type="checkbox"
-                id="pushNotifications"
-                [(ngModel)]="receivePushNotifications"
-                (ngModelChange)="onPushNotificationToggle()"
-                [disabled]="savingPushNotification"
-                name="pushNotifications"
-                aria-label="Receive push notifications"
-                title="Enable or disable push notifications for new prayers and updates"
-                class="mt-1 h-4 w-4 text-blue-600 border-gray-300 bg-white dark:bg-gray-800 rounded focus:ring-blue-500 cursor-pointer focus:ring-2 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-              />
-              } @else {
-              <div
-                class="mt-1 h-4 w-4 bg-gray-300 dark:bg-gray-600 rounded animate-pulse flex-shrink-0"
-              ></div>
-              }
+            <div class="flex items-start gap-2 sm:gap-3">
               <div class="flex-1">
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 mb-3">
                   <div
-                    class="font-medium text-gray-900 dark:text-gray-100 text-sm sm:text-base"
+                    class="font-medium text-gray-800 dark:text-gray-100 text-sm sm:text-base"
                   >
-                    @if (preferencesLoaded) {
-                    {{
-                      receivePushNotifications
-                        ? "Subscribed to Push Notifications"
-                        : "Not Subscribed to Push Notifications"
-                    }}
-                    } @else {
-                    <span
-                      class="inline-block h-5 w-48 bg-gray-300 dark:bg-gray-600 rounded animate-pulse"
-                    ></span>
-                    }
+                    Push Notifications
                   </div>
                   @if (savingPushNotification) {
                   <svg
@@ -917,6 +856,14 @@ type PrintRange = "week" | "twoweeks" | "month" | "year" | "all";
                   </svg>
                   }
                 </div>
+                <app-enabled-disabled-toggle
+                  [loaded]="preferencesLoaded"
+                  [saving]="savingPushNotification"
+                  [value]="receivePushNotifications"
+                  enabledTitle="Enable push notifications"
+                  disabledTitle="Disable push notifications"
+                  (valueChange)="setReceivePushNotifications($event)"
+                />
               </div>
             </div>
             <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
@@ -1002,55 +949,14 @@ type PrintRange = "week" | "twoweeks" | "month" | "year" | "all";
                   </svg>
                   }
                 </div>
-                @if (badgePreferencesLoaded) {
-                <div class="grid grid-cols-2 gap-1.5 sm:gap-2">
-                  <button
-                    type="button"
-                    (click)="setBadgeFunctionalityEnabled(true)"
-                    [disabled]="savingBadge"
-                    [ngClass]="{
-                      'border-blue-500 bg-blue-50 dark:bg-blue-900/20 hover:border-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30':
-                        badgeFunctionalityEnabled === true,
-                      'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20':
-                        badgeFunctionalityEnabled !== true
-                    }"
-                    title="Enable notification badges"
-                    class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span
-                      class="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100"
-                      >Enabled</span
-                    >
-                  </button>
-                  <button
-                    type="button"
-                    (click)="setBadgeFunctionalityEnabled(false)"
-                    [disabled]="savingBadge"
-                    [ngClass]="{
-                      'border-blue-500 bg-blue-50 dark:bg-blue-900/20 hover:border-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30':
-                        badgeFunctionalityEnabled === false,
-                      'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20':
-                        badgeFunctionalityEnabled !== false
-                    }"
-                    title="Disable notification badges"
-                    class="flex flex-col items-center gap-1 sm:gap-2 p-2 sm:p-3 rounded-lg border-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span
-                      class="text-xs sm:text-sm font-medium text-gray-800 dark:text-gray-100"
-                      >Disabled</span
-                    >
-                  </button>
-                </div>
-                } @else {
-                <div class="grid grid-cols-2 gap-1.5 sm:gap-2">
-                  <div
-                    class="h-12 bg-gray-300 dark:bg-gray-600 rounded-lg animate-pulse"
-                  ></div>
-                  <div
-                    class="h-12 bg-gray-300 dark:bg-gray-600 rounded-lg animate-pulse"
-                  ></div>
-                </div>
-                }
+                <app-enabled-disabled-toggle
+                  [loaded]="badgePreferencesLoaded"
+                  [saving]="savingBadge"
+                  [value]="badgeFunctionalityEnabled"
+                  enabledTitle="Enable notification badges"
+                  disabledTitle="Disable notification badges"
+                  (valueChange)="setBadgeFunctionalityEnabled($event)"
+                />
               </div>
             </div>
             <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
@@ -2336,6 +2242,18 @@ export class UserSettingsComponent implements OnInit, OnDestroy, OnChanges {
     }
     this.receiveNotifications = enabled;
     void this.onNotificationToggle();
+  }
+
+  setReceivePushNotifications(enabled: boolean): void {
+    if (
+      !this.preferencesLoaded ||
+      this.savingPushNotification ||
+      this.receivePushNotifications === enabled
+    ) {
+      return;
+    }
+    this.receivePushNotifications = enabled;
+    void this.onPushNotificationToggle();
   }
 
   setBadgeFunctionalityEnabled(enabled: boolean): void {

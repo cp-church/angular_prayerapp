@@ -2027,7 +2027,7 @@ export class HelpDriverTourService {
         popover: {
           title: 'What stays separate',
           description:
-            '<strong>Push notifications</strong> are a separate switch below (when available). Some <strong>direct</strong> emails—such as when a prayer you submitted is approved or needs attention—may still be sent when the app must reach you about your own content.',
+            '<strong>Push notifications</strong> are a separate <strong>Enabled</strong> / <strong>Disabled</strong> control below (when available). Some <strong>direct</strong> emails—such as when a prayer you submitted is approved or needs attention—may still be sent when the app must reach you about your own content.',
           side: 'bottom',
           align: 'center',
         },

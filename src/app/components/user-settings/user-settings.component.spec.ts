@@ -2985,6 +2985,21 @@ describe('UserSettingsComponent', () => {
       expect(toggleSpy).not.toHaveBeenCalled();
     });
 
+    it('setReceivePushNotifications toggles and persists', async () => {
+      const toggleSpy = vi.spyOn(component, 'onPushNotificationToggle').mockResolvedValue();
+      component.receivePushNotifications = false;
+      component.setReceivePushNotifications(true);
+      expect(component.receivePushNotifications).toBe(true);
+      expect(toggleSpy).toHaveBeenCalled();
+    });
+
+    it('setReceivePushNotifications no-ops when preferences not loaded', () => {
+      component.preferencesLoaded = false;
+      const toggleSpy = vi.spyOn(component, 'onPushNotificationToggle');
+      component.setReceivePushNotifications(true);
+      expect(toggleSpy).not.toHaveBeenCalled();
+    });
+
     it('setBadgeFunctionalityEnabled toggles badge preference', async () => {
       const toggleSpy = vi.spyOn(component, 'onBadgeFunctionalityToggle').mockResolvedValue();
       component.badgeFunctionalityEnabled = false;
