@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BibleBooksMemorizationListComponent } from '../bible-books-memorization-list/bible-books-memorization-list.component';
 import {
@@ -101,7 +101,7 @@ const SCOPE_OPTIONS: {
     }
   `,
 })
-export class AddMemorizedBibleBooksModalComponent {
+export class AddMemorizedBibleBooksModalComponent implements OnChanges {
   @Input() isOpen = false;
   @Input() translation: BibleTranslation = 'esv';
   @Output() onClose = new EventEmitter<void>();
@@ -117,6 +117,12 @@ export class AddMemorizedBibleBooksModalComponent {
     private memorization: MemorizationService,
     private toast: ToastService
   ) {}
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['isOpen']?.currentValue === true) {
+      this.translation = this.memorization.getPreferredTranslation();
+    }
+  }
 
   async handleAdd(): Promise<void> {
     this.submitting = true;

@@ -9,11 +9,15 @@ import {
   Output,
   SimpleChanges,
   ViewChild,
+  inject,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { BibleTranslationPickerComponent } from '../bible-translation-picker/bible-translation-picker.component';
 import { BIBLE_BOOKS_PUBLIC } from '../../lib/memorization/bibleCanonPublic';
 import { buildBiblePassageReference } from '../../lib/memorization/buildBiblePassageReference';
 import type { BibleBookPublic } from '../../lib/memorization/bible-structure-types';
+import { MemorizationService } from '../../services/memorization.service';
+import type { BibleTranslation } from '../../types/memorization';
 
 type Testament = 'ot' | 'nt';
 
@@ -22,7 +26,7 @@ const TESTAMENT_KEY = 'prayer_app_memorize_add_testament';
 @Component({
   selector: 'app-bible-passage-picker-modal',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, BibleTranslationPickerComponent],
   styles: [
     `
       .picker-book-list {
@@ -68,9 +72,11 @@ const TESTAMENT_KEY = 'prayer_app_memorize_add_testament';
 
         <div class="flex-1 min-h-0 flex flex-col overflow-hidden">
           <div class="shrink-0 px-4 sm:px-6 pt-3 touch-none">
-            <p class="mb-3 text-xs text-gray-600 dark:text-gray-400">
-              Passages are loaded from the English Standard Version (ESV).
-            </p>
+            <app-bible-translation-picker
+              [translation]="translation"
+              triggerId="bible-translation-picker-trigger"
+              (translationChange)="onTranslationChanged($event)"
+            />
 
             <div
               class="shrink-0 flex gap-2 mb-3"
@@ -199,6 +205,8 @@ const TESTAMENT_KEY = 'prayer_app_memorize_add_testament';
   `,
 })
 export class BiblePassagePickerModalComponent implements OnChanges, OnDestroy {
+  private readonly memorization = inject(MemorizationService);
+
   private static readonly TOUCH_GUARD_OPTIONS: AddEventListenerOptions = {
     passive: false,
     capture: true,
@@ -221,7 +229,12 @@ export class BiblePassagePickerModalComponent implements OnChanges, OnDestroy {
   @Input() busy = false;
   @Output() close = new EventEmitter<void>();
   @Output() confirmed = new EventEmitter<string>();
+  @Output() translationChange = new EventEmitter<BibleTranslation>();
 
+  translation: BibleTranslation = 'esv';
+
+  @ViewChild(BibleTranslationPickerComponent)
+  private translationPicker?: BibleTranslationPickerComponent;
   @ViewChild('bookListScroller') private bookListScroller?: ElementRef<HTMLElement>;
   @ViewChild('verseSection') private verseSection?: ElementRef<HTMLElement>;
 
@@ -254,6 +267,7 @@ export class BiblePassagePickerModalComponent implements OnChanges, OnDestroy {
       }
     }
     if (changes['isOpen']?.currentValue === true) {
+      this.translation = this.memorization.getPreferredTranslation();
       this.testament = this.readTestament();
       this.resetSelection();
       this.expandedBookId = null;
@@ -297,7 +311,16 @@ export class BiblePassagePickerModalComponent implements OnChanges, OnDestroy {
   @HostListener('document:keydown.escape')
   onEscape(): void {
     if (!this.isOpen) return;
+    if (this.translationPicker?.isDropdownOpen) {
+      this.translationPicker.closeDropdown();
+      return;
+    }
     this.close.emit();
+  }
+
+  onTranslationChanged(next: BibleTranslation): void {
+    this.translation = next;
+    this.translationChange.emit(next);
   }
 
   setTestament(next: Testament): void {

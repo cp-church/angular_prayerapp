@@ -40,6 +40,7 @@ import { PersonalPrayerUpdateEditModalComponent } from "../../components/persona
 import { ConfirmationDialogComponent } from "../../components/confirmation-dialog/confirmation-dialog.component";
 import { MemorizationService } from "../../services/memorization.service";
 import { MemorizationRecommendationsService } from "../../services/memorization-recommendations.service";
+import { ScriptureService } from "../../services/scripture.service";
 import { MemorizationActionBarComponent } from "../../components/memorization-action-bar/memorization-action-bar.component";
 import { MemorizedVerseCardComponent } from "../../components/memorized-verse-card/memorized-verse-card.component";
 import { MemorizationRecommendationsModalComponent } from "../../components/memorization-recommendations-modal/memorization-recommendations-modal.component";
@@ -1464,6 +1465,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     public badgeService: BadgeService,
     public memorizationService: MemorizationService,
     public memorizationRecommendationsService: MemorizationRecommendationsService,
+    private scriptureService: ScriptureService,
     private cacheService: CacheService,
     private toastService: ToastService,
     private analyticsService: AnalyticsService,
@@ -3120,9 +3122,17 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.addingRecommendationId = rec.id;
     this.cdr.markForCheck();
     try {
+      const translation = rec.translation ?? this.memorizationService.getPreferredTranslation();
+      const passage = await this.scriptureService.getPassage(rec.reference, translation);
+      const text = passage.text?.trim();
+      if (!text) {
+        this.toastService.error("No text returned for this passage.");
+        return;
+      }
+
       const result = await this.memorizationService.addVerse(
         rec.reference,
-        rec.translation
+        translation
       );
       if (result.ok) {
         this.toastService.success("Added to memorization list.");
@@ -3137,7 +3147,8 @@ export class HomeComponent implements OnInit, OnDestroy {
       }
     } catch (e) {
       console.error(e);
-      this.toastService.error("Could not save this passage.");
+      const msg = e instanceof Error ? e.message : "Could not save this passage.";
+      this.toastService.error(msg);
     } finally {
       this.addingRecommendationId = null;
       this.cdr.markForCheck();

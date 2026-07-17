@@ -378,26 +378,50 @@ If you don't use Planning Center, set token to empty string. App will work witho
 
 ---
 
-## ESV API (Memorize tab)
+## ESV API and API.Bible (Memorize tab)
 
-The **Memorize** home tab loads passage text and listen audio from the [Crossway ESV API](https://api.esv.org/). Register for a non-commercial API token, then add it as a Supabase Edge Function secret:
+The **Memorize** tab loads passage text from the [Crossway ESV API](https://api.esv.org/) and, for additional translations, [API.Bible](https://api.bible/). **Listen** mode uses ESV passage audio only; other translations are text-only.
+
+### ESV (required for ESV passages and listen)
 
 ```bash
 supabase secrets set ESV_API_TOKEN=your_token_here
+```
+
+### API.Bible (KJV, NASB, LSB, NIV, NLT, CSB)
+
+Register at [API.Bible](https://api.bible/), then set your API key and each text Bible ID (from `GET /v1/bibles` on the REST API):
+
+```bash
+supabase secrets set API_BIBLE_KEY=your_api_bible_key
+supabase secrets set API_BIBLE_BIBLE_ID_KJV=...
+supabase secrets set API_BIBLE_BIBLE_ID_NASB=...
+supabase secrets set API_BIBLE_BIBLE_ID_LSB=...
+supabase secrets set API_BIBLE_BIBLE_ID_NIV=...
+supabase secrets set API_BIBLE_BIBLE_ID_NLT=...
+supabase secrets set API_BIBLE_BIBLE_ID_CSB=...
+```
+
+Optional: `API_BIBLE_BASE_URL` (default `https://rest.api.bible`), `API_BIBLE_CACHE_TTL_DAYS` (default **14**).
+
+Deploy after setting secrets:
+
+```bash
 supabase functions deploy scripture
 supabase functions deploy scripture-audio
 ```
 
 Each function’s [`deno.json`](../supabase/functions/scripture/deno.json) sets **`verify_jwt": false`** so MFA/localStorage logins (anon key only) can fetch passages. Re-deploy after changing that file.
 
-Apply migration [`20260707120000_memorization_esv.sql`](../supabase/migrations/20260707120000_memorization_esv.sql) before testing (`supabase db push`). For admin-curated Memorize recommendations, also apply [`20260710200000_memorization_recommendations.sql`](../supabase/migrations/20260710200000_memorization_recommendations.sql), [`20260710210000_memorization_recommendation_categories.sql`](../supabase/migrations/20260710210000_memorization_recommendation_categories.sql) (categories + required `category_id`; existing rows backfill to **General**), [`20260710220000_apply_memorization_recommendation_placements.sql`](../supabase/migrations/20260710220000_apply_memorization_recommendation_placements.sql) (atomic verse move/reorder RPC), [`20260710230000_reorder_memorization_recommendation_categories.sql`](../supabase/migrations/20260710230000_reorder_memorization_recommendation_categories.sql) (atomic category reorder RPC), and [`20260711120000_seed_ibcd_memorization_recommendations.sql`](../supabase/migrations/20260711120000_seed_ibcd_memorization_recommendations.sql) (optional seed: IBCD counseling topics + verse references for the **Recommended** modal; categories A→Z by `display_order`), plus [`20260711130000_sort_ibcd_recommendation_categories_alpha.sql`](../supabase/migrations/20260711130000_sort_ibcd_recommendation_categories_alpha.sql) if the seed was already applied with topic-list order. Optional Edge Function secrets:
+Apply migration [`20260707120000_memorization_esv.sql`](../supabase/migrations/20260707120000_memorization_esv.sql) before testing (`supabase db push`). For admin-curated Memorize recommendations, also apply [`20260710200000_memorization_recommendations.sql`](../supabase/migrations/20260710200000_memorization_recommendations.sql), [`20260710210000_memorization_recommendation_categories.sql`](../supabase/migrations/20260710210000_memorization_recommendation_categories.sql) (categories + required `category_id`; existing rows backfill to **General**), [`20260710220000_apply_memorization_recommendation_placements.sql`](../supabase/migrations/20260710220000_apply_memorization_recommendation_placements.sql) (atomic verse move/reorder RPC), [`20260710230000_reorder_memorization_recommendation_categories.sql`](../supabase/migrations/20260710230000_reorder_memorization_recommendation_categories.sql) (atomic category reorder RPC), [`20260717120000_memorization_recommendations_multi_translation.sql`](../supabase/migrations/20260717120000_memorization_recommendations_multi_translation.sql) (allow non-ESV `translation` on curated recommendations), and [`20260711120000_seed_ibcd_memorization_recommendations.sql`](../supabase/migrations/20260711120000_seed_ibcd_memorization_recommendations.sql) (optional seed: IBCD counseling topics + verse references for the **Recommended** modal; categories A→Z by `display_order`), plus [`20260711130000_sort_ibcd_recommendation_categories_alpha.sql`](../supabase/migrations/20260711130000_sort_ibcd_recommendation_categories_alpha.sql) if the seed was already applied with topic-list order. Optional Edge Function secrets:
 
 | Secret | Default | Purpose |
 |--------|---------|---------|
-| `ESV_CACHE_TTL_DAYS` | **7** | Drop stale `scripture_cache` rows older than this many days |
+| `ESV_CACHE_TTL_DAYS` | **7** | Drop stale `scripture_cache` rows older than this many days (ESV) |
+| `API_BIBLE_CACHE_TTL_DAYS` | **14** | TTL for API.Bible cached passages |
 | `ESV_CACHE_MAX_VERSES` | **500** | LRU verse budget across cached passages (oldest `cached_at` evicted first) |
 
-Without `ESV_API_TOKEN`, users can still manage memorization lists, but adding verses by reference and listen mode will fail until the secret is set.
+Without `ESV_API_TOKEN`, ESV passages and listen mode fail until the secret is set. Without `API_BIBLE_KEY` and Bible IDs, non-ESV translations fail at fetch time; users can still manage lists in other translations if passages were previously cached.
 
 ---
 

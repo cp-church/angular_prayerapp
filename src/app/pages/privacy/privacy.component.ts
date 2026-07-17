@@ -1,15 +1,17 @@
 import { Component, ChangeDetectionStrategy } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { RouterModule } from "@angular/router";
+import { ScriptureAttributionComponent } from '../../components/scripture-attribution/scripture-attribution.component';
 import {
-  ESV_COPYRIGHT_NOTICE,
   ESV_ORG_URL,
-} from "../../lib/memorization/esv-copyright";
+  API_BIBLE_ATTRIBUTION_TRANSLATIONS,
+} from "../../lib/memorization/scripture-attributions";
+import { BIBLE_TRANSLATION_LABELS } from "../../types/memorization";
 
 @Component({
   selector: "app-privacy",
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, ScriptureAttributionComponent],
   template: `
     <div
       class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors"
@@ -206,12 +208,26 @@ import {
             </p>
           </section>
 
-          <section id="esv-copyright">
+          <section id="scripture-copyright">
             <h2 class="text-xl font-semibold mt-6 mb-2">
-              10. Scripture Copyright (ESV)
+              10. Scripture Copyright
             </h2>
-            <p>
-              The Memorize feature displays passage text and audio from the
+            <p class="text-sm text-gray-600 dark:text-gray-300">
+              The Memorize feature displays Bible passage text. Copyright notices below follow
+              <a
+                href="https://api.bible/terms-and-conditions"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-blue-600 dark:text-blue-400 hover:underline"
+                >API.Bible</a
+              >
+              attribution requirements and each publisher’s permission-to-quote guidance. The same
+              notices appear with passage text in the app.
+            </p>
+
+            <h3 class="text-lg font-semibold mt-5 mb-2">English Standard Version (ESV)</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-300">
+              Passage text and listen-mode audio are from the
               <a
                 [href]="esvOrgUrl"
                 target="_blank"
@@ -221,16 +237,29 @@ import {
               >
               via the Crossway ESV API.
             </p>
-            <p class="mt-3 text-sm text-gray-600 dark:text-gray-300">
-              {{ esvNotice }}
+            <p class="mt-3">
+              <app-scripture-attribution translation="esv" variant="privacy" />
+            </p>
+
+            <h3 class="text-lg font-semibold mt-5 mb-2">API.Bible translations</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">
+              KJV, NASB, LSB, NIV, NLT, and CSB passage text is provided through
               <a
-                [href]="esvOrgUrl"
+                href="https://api.bible/"
                 target="_blank"
                 rel="noopener noreferrer"
                 class="text-blue-600 dark:text-blue-400 hover:underline"
-                >www.esv.org</a
+                >API.Bible</a
               >.
             </p>
+            @for (code of apiBibleTranslations; track code) {
+              <div class="mt-4">
+                <p class="font-medium text-gray-800 dark:text-gray-200 text-sm">
+                  {{ translationLabels[code] }}
+                </p>
+                <app-scripture-attribution [translation]="code" variant="privacy" />
+              </div>
+            }
           </section>
 
           <section>
@@ -257,6 +286,7 @@ import {
   styles: [],
 })
 export class PrivacyComponent {
-  readonly esvNotice = ESV_COPYRIGHT_NOTICE;
   readonly esvOrgUrl = ESV_ORG_URL;
+  readonly apiBibleTranslations = API_BIBLE_ATTRIBUTION_TRANSLATIONS;
+  readonly translationLabels = BIBLE_TRANSLATION_LABELS;
 }

@@ -1,21 +1,29 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { TestBed } from '@angular/core/testing';
 import { render, screen } from '@testing-library/angular';
 import { BiblePassagePickerModalComponent } from './bible-passage-picker-modal.component';
 import { BIBLE_BOOKS_PUBLIC } from '../../lib/memorization/bibleCanonPublic';
+import { MemorizationService } from '../../services/memorization.service';
+
+const mockMemorization = {
+  getPreferredTranslation: vi.fn(() => 'esv' as const),
+  setPreferredTranslation: vi.fn(),
+};
+
+function createPicker(): BiblePassagePickerModalComponent {
+  TestBed.resetTestingModule();
+  TestBed.configureTestingModule({
+    imports: [BiblePassagePickerModalComponent],
+    providers: [{ provide: MemorizationService, useValue: mockMemorization }],
+  });
+  return TestBed.createComponent(BiblePassagePickerModalComponent).componentInstance;
+}
 
 describe('BiblePassagePickerModalComponent', () => {
-  let component: BiblePassagePickerModalComponent;
-
   const romans = BIBLE_BOOKS_PUBLIC.find((b) => b.id === 'ROM')!;
 
-  beforeEach(() => {
-    localStorage.clear();
-    document.body.style.overflow = '';
-    document.documentElement.style.overflow = '';
-    component = new BiblePassagePickerModalComponent();
-  });
-
   afterEach(() => {
+    TestBed.resetTestingModule();
     document.body.style.overflow = '';
     document.documentElement.style.overflow = '';
     document.querySelectorAll('.safe-area-viewport').forEach((el) => {
@@ -25,6 +33,18 @@ describe('BiblePassagePickerModalComponent', () => {
     });
     vi.restoreAllMocks();
   });
+
+  describe('logic', () => {
+    let component: BiblePassagePickerModalComponent;
+
+    beforeEach(() => {
+      localStorage.clear();
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      vi.clearAllMocks();
+      mockMemorization.getPreferredTranslation.mockReturnValue('esv');
+      component = createPicker();
+    });
 
   it('selects a verse on first click', () => {
     component.onVerseClick(4);
@@ -149,6 +169,28 @@ describe('BiblePassagePickerModalComponent', () => {
     expect(close).not.toHaveBeenCalled();
   });
 
+  it('onTranslationChanged updates translation and emits translationChange', () => {
+    const changed = vi.fn();
+    component.translationChange.subscribe(changed);
+    component.onTranslationChanged('niv');
+    expect(component.translation).toBe('niv');
+    expect(changed).toHaveBeenCalledWith('niv');
+  });
+
+  it('onEscape closes translation dropdown before closing modal', () => {
+    component.isOpen = true;
+    const closeDropdown = vi.fn();
+    (component as unknown as { translationPicker: { isDropdownOpen: boolean; closeDropdown: () => void } }).translationPicker = {
+      isDropdownOpen: true,
+      closeDropdown,
+    };
+    const close = vi.fn();
+    component.close.subscribe(close);
+    component.onEscape();
+    expect(closeDropdown).toHaveBeenCalled();
+    expect(close).not.toHaveBeenCalled();
+  });
+
   it('scrolls expanded book row into view in the book list scroller', () => {
     const scroller = document.createElement('div');
     const row = document.createElement('div');
@@ -218,6 +260,37 @@ describe('BiblePassagePickerModalComponent', () => {
     expect(component.verseCount).toBeNull();
   });
 
+  it('registers capture-phase touchmove guard while open', () => {
+    const addSpy = vi.spyOn(document, 'addEventListener');
+    component.isOpen = true;
+    component.ngOnChanges({
+      isOpen: {
+        currentValue: true,
+        previousValue: false,
+        firstChange: true,
+        isFirstChange: () => true,
+      },
+    });
+
+    expect(addSpy).toHaveBeenCalledWith('touchmove', expect.any(Function), {
+      passive: false,
+      capture: true,
+    });
+
+    addSpy.mockRestore();
+  });
+  });
+
+  describe('DOM', () => {
+    beforeEach(() => {
+      localStorage.clear();
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      vi.clearAllMocks();
+      mockMemorization.getPreferredTranslation.mockReturnValue('esv');
+      TestBed.resetTestingModule();
+    });
+
   it('locks page scroll while open and restores on close', async () => {
     const viewport = document.createElement('div');
     viewport.className = 'safe-area-viewport';
@@ -228,6 +301,7 @@ describe('BiblePassagePickerModalComponent', () => {
     const { fixture } = await render(BiblePassagePickerModalComponent, {
       componentInputs: { isOpen: true },
       container: viewport,
+      providers: [{ provide: MemorizationService, useValue: mockMemorization }],
     });
 
     expect(viewport.style.overflow).toBe('hidden');
@@ -251,6 +325,7 @@ describe('BiblePassagePickerModalComponent', () => {
 
     const { fixture } = await render(BiblePassagePickerModalComponent, {
       componentInputs: { isOpen: true },
+      providers: [{ provide: MemorizationService, useValue: mockMemorization }],
     });
 
     expect(document.documentElement.style.overflow).toBe('hidden');
@@ -266,6 +341,7 @@ describe('BiblePassagePickerModalComponent', () => {
   it('blocks touchmove on footer chrome (e.g. Add button) while open', async () => {
     const { fixture } = await render(BiblePassagePickerModalComponent, {
       componentInputs: { isOpen: true, confirmLabel: 'Add' },
+      providers: [{ provide: MemorizationService, useValue: mockMemorization }],
     });
     const addButton = screen.getByRole('button', { name: 'Add' });
     const event = new TouchEvent('touchmove', { bubbles: true, cancelable: true });
@@ -277,31 +353,13 @@ describe('BiblePassagePickerModalComponent', () => {
     expect(preventSpy).toHaveBeenCalled();
   });
 
-  it('registers capture-phase touchmove guard while open', () => {
-    const addSpy = vi.spyOn(document, 'addEventListener');
-    component.isOpen = true;
-    component.ngOnChanges({
-      isOpen: {
-        currentValue: true,
-        previousValue: false,
-        firstChange: true,
-        isFirstChange: () => true,
-      },
-    });
-
-    expect(addSpy).toHaveBeenCalledWith('touchmove', expect.any(Function), {
-      passive: false,
-      capture: true,
-    });
-
-    addSpy.mockRestore();
-  });
-
   it('renders dialog when isOpen', async () => {
     await render(BiblePassagePickerModalComponent, {
       componentInputs: { isOpen: true, confirmLabel: 'Add' },
+      providers: [{ provide: MemorizationService, useValue: mockMemorization }],
     });
     expect(screen.getByRole('dialog')).toBeTruthy();
     expect(screen.getByText('Pick Chapter')).toBeTruthy();
+  });
   });
 });

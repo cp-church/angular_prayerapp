@@ -181,7 +181,7 @@ describe('ToastContainerComponent', () => {
       const fixedContainer = fixture.nativeElement.querySelector('.fixed');
       expect(fixedContainer).toBeTruthy();
       expect(fixedContainer.className).toContain('top-0');
-      expect(fixedContainer.className).toContain('z-50');
+      expect(fixedContainer.className).toContain('z-[250]');
     });
 
     it('should render icon in toast', async () => {

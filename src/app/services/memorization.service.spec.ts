@@ -36,6 +36,7 @@ describe('MemorizationService', () => {
   };
 
   beforeEach(() => {
+    localStorage.clear();
     supabase = {
       client: {
         from: vi.fn(),
@@ -50,6 +51,21 @@ describe('MemorizationService', () => {
       getCurrentSession: vi.fn(() => ({ email: 'user@test.com' })),
     };
     service = new MemorizationService(supabase as never, toast, userSession as never);
+  });
+
+  it('getPreferredTranslation defaults to esv', () => {
+    expect(service.getPreferredTranslation()).toBe('esv');
+  });
+
+  it('setPreferredTranslation persists valid translation to localStorage', () => {
+    service.setPreferredTranslation('niv');
+    expect(localStorage.getItem('prayer_app_preferred_bible_translation')).toBe('niv');
+    expect(service.getPreferredTranslation()).toBe('niv');
+  });
+
+  it('getPreferredTranslation ignores invalid stored value', () => {
+    localStorage.setItem('prayer_app_preferred_bible_translation', 'invalid');
+    expect(service.getPreferredTranslation()).toBe('esv');
   });
 
   it('addVerse rejects duplicate reference+translation', async () => {

@@ -242,6 +242,9 @@ export class MemorizationRecommendationsService {
     const normalizedRef = reference.trim();
     if (!normalizedRef) return { ok: false, reason: 'empty_reference' };
     if (!categoryId.trim()) return { ok: false, reason: 'missing_category' };
+    if (!isBibleTranslation(translation)) {
+      return { ok: false, reason: 'db_error' };
+    }
 
     const nextOrder =
       this.itemsSubject.value

@@ -1,9 +1,10 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BiblePassagePickerModalComponent } from '../bible-passage-picker-modal/bible-passage-picker-modal.component';
 import { ScriptureService } from '../../services/scripture.service';
 import { MemorizationService } from '../../services/memorization.service';
 import { ToastService } from '../../services/toast.service';
+import type { BibleTranslation } from '../../types/memorization';
 
 @Component({
   selector: 'app-add-memorized-verse-modal',
@@ -16,15 +17,19 @@ import { ToastService } from '../../services/toast.service';
       confirmLabel="Add"
       (close)="onClose.emit()"
       (confirmed)="onPassageConfirmed($event)"
+      (translationChange)="onPickerTranslationChanged($event)"
     />
   `,
 })
-export class AddMemorizedVerseModalComponent {
+export class AddMemorizedVerseModalComponent implements OnChanges {
   @Input() isOpen = false;
   @Output() onClose = new EventEmitter<void>();
   @Output() added = new EventEmitter<void>();
+  @Output() translationChange = new EventEmitter<BibleTranslation>();
 
   adding = false;
+  /** Translation shown in the passage picker when the user confirms. */
+  selectedTranslation: BibleTranslation = 'esv';
 
   constructor(
     private scripture: ScriptureService,
@@ -32,17 +37,29 @@ export class AddMemorizedVerseModalComponent {
     private toast: ToastService
   ) {}
 
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['isOpen']?.currentValue === true) {
+      this.selectedTranslation = this.memorization.getPreferredTranslation();
+    }
+  }
+
+  onPickerTranslationChanged(translation: BibleTranslation): void {
+    this.selectedTranslation = translation;
+    this.translationChange.emit(translation);
+  }
+
   async onPassageConfirmed(reference: string): Promise<void> {
     if (this.adding) return;
     this.adding = true;
     try {
-      const passage = await this.scripture.getPassage(reference, 'esv');
+      const translation = this.selectedTranslation;
+      const passage = await this.scripture.getPassage(reference, translation);
       const text = passage.text?.trim();
       if (!text) {
         this.toast.error('No text returned for this passage.');
         return;
       }
-      const result = await this.memorization.addVerse(reference, 'esv');
+      const result = await this.memorization.addVerse(reference, translation);
       if (result.ok) {
         this.toast.success('Added to memorization list.');
         this.added.emit();

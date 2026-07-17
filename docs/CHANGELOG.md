@@ -4,6 +4,18 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Fix — Add Verses uses picker translation ✅
+- **Memorize**: [`add-memorized-verse-modal`](src/app/components/add-memorized-verse-modal/add-memorized-verse-modal.component.ts) tracks the passage picker’s selected translation on confirm instead of re-reading `localStorage` preference, so fetch/save match what the user chose.
+
+### Fix — toast above memorize modals ✅
+- **UI**: [`toast-container`](src/app/components/toast-container/toast-container.component.ts) stacks at `z-[250]` (above memorize modals at `z-[200]` and scripture hover preview at `z-[220]`) so success/error toasts stay visible when adding verses from **Recommended**.
+
+### Memorize — API.Bible translations ✅
+- **Translations**: Memorize supports **ESV** (Crossway API) plus **KJV, NASB, LSB, NIV, NLT, CSB** via [API.Bible](https://api.bible/) through the `scripture` Edge Function. Passage text is cached per `(reference, translation)` with existing LRU `verse_count` pruning.
+- **UI**: Bible passage picker and **Recommended** modal share [`BibleTranslationPickerComponent`](src/app/components/bible-translation-picker/bible-translation-picker.component.ts); preference persists in `localStorage` via [`MemorizationService`](src/app/services/memorization.service.ts). [`scripture-attribution`](src/app/components/scripture-attribution/scripture-attribution.component.ts) shows publisher-required copyright (API.Bible Appendix B + Lockman / Biblica / Tyndale / Holman). **Listen** remains **ESV-only** (no verse-level API.Bible audio).
+- **Ops**: New Supabase secrets `API_BIBLE_KEY` and `API_BIBLE_BIBLE_ID_*` — see [`docs/SETUP.md`](docs/SETUP.md#esv-api-memorize-tab). `scripture` Edge Function keeps ESV + API.Bible helpers in a single [`index.ts`](../supabase/functions/scripture/index.ts) (Supabase deploy bundles the entrypoint only). Cache reads try USFM keys first, then legacy human-readable keys for rows written before the USFM migration. Cache prune uses the oldest translation TTL cutoff so API.Bible rows are not evicted early on ESV requests.
+- **Data**: Migration [`20260717120000_memorization_recommendations_multi_translation.sql`](supabase/migrations/20260717120000_memorization_recommendations_multi_translation.sql) widens `memorization_recommendations.translation` from ESV-only to all supported Bible codes so admin **Memorize Recommendations** can save curated verses in the admin’s chosen translation.
+
 ### Settings — shared Enabled/Disabled toggle ✅
 - **UI**: Extracted [`EnabledDisabledToggleComponent`](src/app/components/enabled-disabled-toggle/enabled-disabled-toggle.component.ts) for the two-tile **Enabled** / **Disabled** grid (loading skeleton, selection styling, save-disabled state). **Email Notifications**, **Push Notifications**, and **Notification Badges** in [`user-settings.component.ts`](src/app/components/user-settings/user-settings.component.ts) now share this component instead of duplicated markup.
 

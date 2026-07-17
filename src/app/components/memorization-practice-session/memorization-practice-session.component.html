@@ -239,7 +239,7 @@
                   >
                     {{ formatMemorizationTokensPlain(tokens) }}
                   </p>
-                  <app-scripture-attribution />
+                  <app-scripture-attribution [translation]="item.translation" />
                 }
               </div>
             </div>
@@ -510,7 +510,7 @@
 
               @if (phase === 'practicing' && !isBibleBooks) {
                 <div data-testid="memorize-practice-attribution">
-                  <app-scripture-attribution />
+                  <app-scripture-attribution [translation]="item.translation" />
                 </div>
               }
 

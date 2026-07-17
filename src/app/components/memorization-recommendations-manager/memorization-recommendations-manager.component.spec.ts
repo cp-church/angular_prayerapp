@@ -70,6 +70,10 @@ describe('MemorizationRecommendationsManagerComponent', () => {
         addRecommendation: vi.fn(),
         removeRecommendation: vi.fn(),
       } as any,
+      {
+        getPreferredTranslation: vi.fn(() => 'esv' as const),
+        setPreferredTranslation: vi.fn(),
+      } as any,
       {} as any,
       { error: vi.fn(), success: vi.fn() } as any,
       { markForCheck: vi.fn(), detectChanges: vi.fn() } as any,

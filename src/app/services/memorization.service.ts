@@ -28,6 +28,8 @@ export interface PracticeSessionResult {
   completed: boolean;
 }
 
+const PREFERRED_TRANSLATION_KEY = 'prayer_app_preferred_bible_translation';
+
 @Injectable({
   providedIn: 'root',
 })
@@ -57,6 +59,24 @@ export class MemorizationService {
 
   get items(): MemorizedItem[] {
     return this.itemsSubject.value;
+  }
+
+  getPreferredTranslation(): BibleTranslation {
+    try {
+      const stored = localStorage.getItem(PREFERRED_TRANSLATION_KEY);
+      if (isBibleTranslation(stored)) return stored;
+    } catch {
+      /* ignore */
+    }
+    return 'esv';
+  }
+
+  setPreferredTranslation(translation: BibleTranslation): void {
+    try {
+      localStorage.setItem(PREFERRED_TRANSLATION_KEY, translation);
+    } catch {
+      /* ignore */
+    }
   }
 
   async loadItems(): Promise<void> {

@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { ESV_COPYRIGHT_NOTICE, ESV_ORG_URL } from '../../lib/memorization/esv-copyright';
+import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
+import type { BibleTranslation } from '../../types/memorization';
+import { SCRIPTURE_ATTRIBUTION_NOTICES } from '../../lib/memorization/scripture-attributions';
 
 const LINK_CLASS =
-  'text-inherit underline underline-offset-2 decoration-gray-300/80 dark:decoration-gray-600/80 hover:decoration-gray-400 dark:hover:decoration-gray-500';
+  'text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline';
 
 @Component({
   selector: 'app-scripture-attribution',
@@ -11,26 +12,51 @@ const LINK_CLASS =
   template: `
     <div
       data-testid="scripture-attribution"
-      class="mt-2 pt-1.5 border-t border-gray-100/80 dark:border-gray-700/40"
+      [class]="wrapperClass"
     >
-      <p
-        class="w-full text-[10px] leading-snug text-gray-400/90 dark:text-gray-500/90"
-      >
-        {{ esvNotice }}
-        <a
-          [href]="esvOrgUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-          [class]="linkClass"
-        >
-          www.esv.org
-        </a>
+      <p [class]="textClass">
+        <span>{{ notice.text }}</span>
+        @if (notice.links.length) {
+          @for (link of notice.links; track link.href; let i = $index) {
+            @if (i > 0) {
+              <span> and </span>
+            } @else {
+              <span> </span>
+            }
+            <a
+              [href]="link.href"
+              target="_blank"
+              rel="noopener noreferrer"
+              [class]="linkClass"
+            >
+              {{ link.label }}
+            </a>
+          }
+          <span>{{ notice.suffix ?? '' }}</span>
+        }
       </p>
     </div>
   `,
 })
 export class ScriptureAttributionComponent {
+  @Input({ required: true }) translation!: BibleTranslation;
+  @Input() variant: 'inline' | 'privacy' = 'inline';
+
   readonly linkClass = LINK_CLASS;
-  readonly esvNotice = ESV_COPYRIGHT_NOTICE;
-  readonly esvOrgUrl = ESV_ORG_URL;
+
+  get wrapperClass(): string {
+    return this.variant === 'privacy'
+      ? ''
+      : 'mt-2 pt-1.5 border-t border-gray-100/80 dark:border-gray-700/40';
+  }
+
+  get textClass(): string {
+    return this.variant === 'privacy'
+      ? 'text-sm text-gray-600 dark:text-gray-300'
+      : 'w-full text-[10px] leading-snug text-gray-400/90 dark:text-gray-500/90';
+  }
+
+  get notice() {
+    return SCRIPTURE_ATTRIBUTION_NOTICES[this.translation];
+  }
 }

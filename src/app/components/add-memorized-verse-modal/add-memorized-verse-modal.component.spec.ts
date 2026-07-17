@@ -12,13 +12,39 @@ describe('AddMemorizedVerseModalComponent', () => {
 
   beforeEach(() => {
     scripture = { getPassage: vi.fn() };
-    memorization = { addVerse: vi.fn() };
+    memorization = {
+      addVerse: vi.fn(),
+      getPreferredTranslation: vi.fn(() => 'esv' as const),
+    };
     toast = { success: vi.fn(), error: vi.fn() };
     component = new AddMemorizedVerseModalComponent(
       scripture as unknown as ScriptureService,
       memorization as unknown as MemorizationService,
       toast as unknown as ToastService
     );
+  });
+
+  it('uses picker translation on confirm instead of re-reading preference', async () => {
+    memorization.getPreferredTranslation.mockReturnValue('esv');
+    component.onPickerTranslationChanged('nlt');
+    scripture.getPassage.mockResolvedValue({
+      reference: 'John 3:16',
+      text: 'For God so loved',
+      translation: 'nlt',
+    });
+    memorization.addVerse.mockResolvedValue({ ok: true, item: { id: '1' } });
+
+    await component.onPassageConfirmed('John 3:16');
+
+    expect(scripture.getPassage).toHaveBeenCalledWith('John 3:16', 'nlt');
+    expect(memorization.addVerse).toHaveBeenCalledWith('John 3:16', 'nlt');
+  });
+
+  it('syncs selected translation from preference when modal opens', () => {
+    memorization.getPreferredTranslation.mockReturnValue('csb');
+    component.isOpen = true;
+    component.ngOnChanges({ isOpen: { currentValue: true, previousValue: false, firstChange: false, isFirstChange: () => false } });
+    expect(component.selectedTranslation).toBe('csb');
   });
 
   it('adds verse and emits on success', async () => {

@@ -238,6 +238,41 @@ describe('MemorizationRecommendationsService', () => {
     expect(cache.invalidate).toHaveBeenCalled();
   });
 
+  it('addRecommendation persists non-ESV translation in insert payload', async () => {
+    const insertSingle = vi.fn().mockResolvedValue({
+      data: makeRow({ id: 'new', reference: 'John 3:16', translation: 'niv' }),
+      error: null,
+    });
+    const insertSelect = vi.fn().mockReturnValue({ single: insertSingle });
+    const insert = vi.fn().mockReturnValue({ select: insertSelect });
+
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'memorization_recommendations') {
+        return {
+          insert,
+          select: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        };
+      }
+      return {
+        select: vi.fn().mockReturnValue({
+          order: vi.fn().mockResolvedValue({ data: [makeCategoryRow()], error: null }),
+        }),
+      };
+    });
+
+    const result = await service.addRecommendation('John 3:16', CAT_ID, 'niv');
+    expect(result.ok).toBe(true);
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reference: 'John 3:16',
+        translation: 'niv',
+        category_id: CAT_ID,
+      })
+    );
+  });
+
   it('addRecommendation returns duplicate on unique violation', async () => {
     const insertSingle = vi.fn().mockResolvedValue({
       data: null,

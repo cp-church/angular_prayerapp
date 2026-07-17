@@ -1,15 +1,35 @@
-export type BibleTranslation = 'esv';
+export const BIBLE_TRANSLATION_CODES = [
+  'esv',
+  'nasb',
+  'lsb',
+  'csb',
+  'kjv',
+  'niv',
+  'nlt',
+] as const;
+
+export type BibleTranslation = (typeof BIBLE_TRANSLATION_CODES)[number];
 
 export function isBibleTranslation(
   value: string | null | undefined
 ): value is BibleTranslation {
-  return value === 'esv';
+  return !!value && (BIBLE_TRANSLATION_CODES as readonly string[]).includes(value);
 }
 
-/** ESV has passage-level streaming audio for memorize listen mode. */
+/** Only ESV has passage-level streaming audio suitable for memorize listen. */
 export function isMemorizationListenTranslation(translation: BibleTranslation): boolean {
   return translation === 'esv';
 }
+
+export const BIBLE_TRANSLATION_LABELS: Record<BibleTranslation, string> = {
+  esv: 'ESV — English Standard Version',
+  kjv: 'KJV — King James Version',
+  nasb: 'NASB — New American Standard Bible',
+  lsb: 'LSB — Legacy Standard Bible',
+  niv: 'NIV — New International Version',
+  nlt: 'NLT — New Living Translation',
+  csb: 'CSB — Christian Standard Bible',
+};
 
 export type MemorizationMasterLevel = 'learning' | 'practicing' | 'mastered';
 
@@ -53,7 +73,7 @@ export type BibleBooksMemorizationScope = 'all' | 'ot' | 'nt';
 export interface MemorizedItem {
   id: string;
   reference: string;
-  /** Bible-books list text only; verse items keep `''` — ESV passages are fetched on demand. */
+  /** Bible-books list text only; verse items keep `''` — passage text is fetched on demand. */
   text: string;
   translation: BibleTranslation;
   dateAdded: number;

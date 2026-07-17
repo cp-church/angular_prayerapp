@@ -16,9 +16,11 @@ import { BiblePassagePickerModalComponent } from '../bible-passage-picker-modal/
 import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog.component';
 import { ScriptureHoverPreviewComponent } from '../scripture-hover-preview/scripture-hover-preview.component';
 import { MemorizationRecommendationsService } from '../../services/memorization-recommendations.service';
+import { MemorizationService } from '../../services/memorization.service';
 import { ScriptureService } from '../../services/scripture.service';
 import { ToastService } from '../../services/toast.service';
 import type {
+  BibleTranslation,
   MemorizationRecommendation,
   MemorizationRecommendationCategory,
   MemorizationRecommendationCategoryGroup,
@@ -336,6 +338,7 @@ import type {
       confirmLabel="Add recommendation"
       (close)="showPicker = false; mark()"
       (confirmed)="onPassageConfirmed($event)"
+      (translationChange)="pickerTranslation = $event"
     />
 
     @if (pendingRemoveVerse) {
@@ -378,9 +381,11 @@ export class MemorizationRecommendationsManagerComponent {
   groups: MemorizationRecommendationCategoryGroup[] = [];
   pendingRemoveVerse: MemorizationRecommendation | null = null;
   pendingRemoveCategory: MemorizationRecommendationCategory | null = null;
+  pickerTranslation: BibleTranslation = 'esv';
 
   constructor(
     private recommendations: MemorizationRecommendationsService,
+    private memorization: MemorizationService,
     private scripture: ScriptureService,
     private toast: ToastService,
     private cdr: ChangeDetectorRef,
@@ -432,6 +437,7 @@ export class MemorizationRecommendationsManagerComponent {
       this.toast.error('Select a category first.');
       return;
     }
+    this.pickerTranslation = this.memorization.getPreferredTranslation();
     this.showPicker = true;
     this.mark();
   }
@@ -520,7 +526,8 @@ export class MemorizationRecommendationsManagerComponent {
     this.appRef.tick();
 
     try {
-      const passage = await this.scripture.getPassage(reference, 'esv');
+      const translation = this.pickerTranslation || this.memorization.getPreferredTranslation();
+      const passage = await this.scripture.getPassage(reference, translation);
       const text = passage.text?.trim();
       if (!text) {
         this.toast.error('No text returned for this passage.');
@@ -530,7 +537,7 @@ export class MemorizationRecommendationsManagerComponent {
       const result = await this.recommendations.addRecommendation(
         reference,
         this.addTargetCategoryId,
-        'esv'
+        translation
       );
       if (result.ok) {
         this.toast.success('Recommendation added.');
