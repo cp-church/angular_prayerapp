@@ -333,6 +333,19 @@ function tokenMatchStatus(expected: string, spoken: string): ReciteTokenStatus |
   return wordsFuzzyMatch(expected, spoken) ? 'correct' : null;
 }
 
+/** Correct matches show expected verse/reference spelling and casing in the UI. */
+function alignmentSpokenDisplay(
+  tokens: MemorizationToken[],
+  tokenIndex: number,
+  status: ReciteTokenStatus,
+  heard: string
+): string {
+  if (status === 'correct') {
+    return tokens[tokenIndex]!.text;
+  }
+  return heard;
+}
+
 /**
  * True when the spoken word matches the *immediate next* expected token because the
  * user skipped the current word (e.g. "For so loved" with "God" omitted).
@@ -442,8 +455,14 @@ function alignTypableSubsequence(
         }
         const digitMatch = consumeExpectedDigit(expectedWord, digitCandidate);
         const assignmentStatus = digitMatch.status;
-        const spokenDisplay =
+        const heard =
           candidate !== digitCandidate ? candidate : digitMatch.fragment;
+        const spokenDisplay = alignmentSpokenDisplay(
+          tokens,
+          tokenIndex,
+          digitMatch.status,
+          heard
+        );
         results.push({
           tokenIndex,
           status: digitMatch.status,
@@ -464,7 +483,9 @@ function alignTypableSubsequence(
         break;
       }
 
-      if (isReciteDigitToken(candidate)) {
+      // Skip stray digit tokens only when they do not match the expected word (e.g. verse
+      // "twelve" normalizes to "12" and must not be discarded as reference noise).
+      if (isReciteDigitToken(candidate) && tokenMatchStatus(expectedWord, candidate) === null) {
         spokenIdx += 1;
         digitRemainder = null;
         continue;
@@ -472,8 +493,14 @@ function alignTypableSubsequence(
 
       const status = tokenMatchStatus(expectedWord, candidate);
       if (status === 'correct' || status === 'wrong') {
-        results.push({ tokenIndex, status, spokenText: candidate, spokenIndex: spokenIdx });
-        spokenAssignments.push({ spokenIndex: spokenIdx, text: candidate, status });
+        const spokenDisplay = alignmentSpokenDisplay(tokens, tokenIndex, status, candidate);
+        results.push({
+          tokenIndex,
+          status,
+          spokenText: spokenDisplay,
+          spokenIndex: spokenIdx,
+        });
+        spokenAssignments.push({ spokenIndex: spokenIdx, text: spokenDisplay, status });
         advanceSpokenIndex();
         matched = true;
         break;
@@ -731,11 +758,14 @@ function buildSpokenWordsFromTranscript(
   spoken: string[],
   assignments: AlignTypableSubsequenceResult['spokenAssignments']
 ): ReciteSpokenWordDisplay[] {
-  const statusByIndex = new Map<number, 'correct' | 'wrong'>();
+  const displayByIndex = new Map<number, { text: string; status: 'correct' | 'wrong' }>();
   for (const assignment of assignments) {
-    const existing = statusByIndex.get(assignment.spokenIndex);
+    const existing = displayByIndex.get(assignment.spokenIndex);
     if (!existing || assignment.status === 'wrong') {
-      statusByIndex.set(assignment.spokenIndex, assignment.status);
+      displayByIndex.set(assignment.spokenIndex, {
+        text: assignment.text,
+        status: assignment.status,
+      });
     }
   }
 
@@ -743,9 +773,10 @@ function buildSpokenWordsFromTranscript(
   for (let i = 0; i < spoken.length; i++) {
     const text = spoken[i]!;
     if (isSkippableSpokenWord(text)) continue;
+    const display = displayByIndex.get(i);
     spokenWords.push({
-      text,
-      status: statusByIndex.get(i) ?? 'wrong',
+      text: display?.text ?? text,
+      status: display?.status ?? 'wrong',
     });
   }
   return spokenWords;

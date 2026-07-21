@@ -231,7 +231,47 @@ describe('memorizationReciteAlignment', () => {
       );
       expect(firstWord?.status).toBe('correct');
       expect(bookDigit?.status).toBe('correct');
-      expect(bookDigit?.spokenText).toBe('second');
+      expect(bookDigit?.spokenText).toBe('2');
+    });
+
+    it('aligns verse number words like twelve (James 1:1) without marking them skipped', () => {
+      const jamesTokens = buildMemorizationTokens(
+        'James, a servant of God and of the Lord Jesus Christ, To the twelve tribes in the Dispersion: Greetings.',
+        'James 1:1'
+      );
+      const jamesTypable = getTypableTokenIndices(jamesTokens);
+      const verse =
+        'james a servant of god and of the lord jesus christ to the twelve tribes in the dispersion greetings';
+      for (const transcript of [`${verse} james 1 1`, `${verse} james 1:1`]) {
+        const summary = alignRecitation(jamesTokens, jamesTypable, transcript, 'James 1:1');
+        const twelve = summary.results.find(
+          (r) => jamesTokens[r.tokenIndex]?.text === 'twelve'
+        );
+        expect(twelve?.status, transcript).toBe('correct');
+        expect(twelve?.spokenText, transcript).toBe('twelve');
+        expect(formatReciteSkippedLabels(jamesTokens, summary.results), transcript).not.toContain(
+          'twelve'
+        );
+        expect(summary.missingCount, transcript).toBe(0);
+      }
+    });
+
+    it('shows expected spelling and casing for correct matches in aligned columns', () => {
+      const jamesTokens = buildMemorizationTokens(
+        'James, a servant of God and of the Lord Jesus Christ,',
+        'James 1:1'
+      );
+      const jamesTypable = getTypableTokenIndices(jamesTokens);
+      const summary = alignRecitation(
+        jamesTokens,
+        jamesTypable,
+        'james a servant of god and of the lord jesus christ james 1 1',
+        'James 1:1'
+      );
+      const godCol = summary.alignedColumns.find((c) => c.expected?.text === 'God');
+      const jamesCol = summary.alignedColumns.find((c) => c.expected?.text === 'James');
+      expect(godCol?.spoken?.text).toBe('God');
+      expect(jamesCol?.spoken?.text).toBe('James');
     });
 
     it('does not mark all following words wrong after one missed word', () => {
@@ -273,7 +313,7 @@ describe('memorizationReciteAlignment', () => {
       expect(godCol?.expected?.status).toBe('missing');
 
       const forCol = summary.alignedColumns.find((c) => c.expected?.text === 'For');
-      expect(forCol?.spoken?.text).toBe('for');
+      expect(forCol?.spoken?.text).toBe('For');
       expect(forCol?.spoken?.status).toBe('correct');
       expect(forCol?.expected?.status).toBe('correct');
     });
@@ -356,7 +396,7 @@ describe('memorizationReciteAlignment', () => {
         'For so loved the world',
         'John 3:16'
       );
-      expect(summary.spokenWords.map((w) => w.text)).toEqual(['for', 'so', 'loved', 'the', 'world']);
+      expect(summary.spokenWords.map((w) => w.text)).toEqual(['For', 'so', 'loved', 'the', 'world']);
       expect(summary.missingCount).toBeGreaterThan(0);
     });
 
@@ -368,8 +408,8 @@ describe('memorizationReciteAlignment', () => {
         'John 3:16'
       );
       expect(summary.spokenWords.some((w) => w.text === '9' && w.status === 'wrong')).toBe(true);
-      expect(summary.spokenWords.some((w) => w.text === 'god' && w.status === 'correct')).toBe(true);
-      expect(summary.spokenWords.some((w) => w.text === 'God')).toBe(false);
+      expect(summary.spokenWords.some((w) => w.text === 'God' && w.status === 'correct')).toBe(true);
+      expect(summary.spokenWords.some((w) => w.text === 'god')).toBe(false);
     });
 
     it('marks only the first word wrong when verse starts with a duplicate later word', () => {
@@ -503,7 +543,7 @@ describe('memorizationReciteAlignment', () => {
       expect(purpose?.status).toBe('wrong');
       expect(purpose?.spokenText).toBe('timing');
       expect(romans?.status).toBe('correct');
-      expect(romans?.spokenText).toBe('romans');
+      expect(romans?.spokenText).toBe('Romans');
       expect(together?.status).toBe('missing');
       expect(
         summary.results.filter((r) => r.spokenText === 'timing' && r.status === 'wrong')
