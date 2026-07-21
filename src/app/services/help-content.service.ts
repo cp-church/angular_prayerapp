@@ -461,7 +461,7 @@ export class HelpContentService {
           },
           {
             subtitle: 'Adding verses',
-            text: 'Tap **Add Verses** to open the passage picker. Choose a book, chapter, and verse range (ESV text loads when you practice). You can add single verses or short passages. Tap a selected verse again to deselect before choosing another.',
+            text: 'Tap **Verses** to open the passage picker. Choose a book, chapter, and verse range (ESV text loads when you practice). You can add single verses or short passages. Tap a selected verse again to deselect before choosing another.',
           },
           {
             subtitle: 'Adding Bible books',
@@ -489,7 +489,7 @@ export class HelpContentService {
           },
           {
             subtitle: 'Removing passages',
-            text: 'Use the trash icon on a card to remove a passage from your list. You can add it again later from **Add Verses**, **Bible Books**, or **Recommended** if you want to restart.',
+            text: 'Use the trash icon on a card to remove a passage from your list. You can add it again later from **Verses**, **Bible Books**, or **Recommended** if you want to restart.',
           },
         ],
         order: 6,

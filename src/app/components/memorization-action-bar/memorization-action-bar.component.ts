@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 const ACTION_BTN_BASE =
   'flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer sm:flex-none';
 
-/** Soft blue — matches verse picker primary actions (Add Verses default / picker tab selected). */
+/** Soft blue — matches verse picker primary actions (Verses default / picker tab selected). */
 const SOFT_BLUE_BTN =
   'border-blue-200 bg-blue-100 text-blue-800 hover:border-blue-300 hover:bg-blue-200 dark:border-blue-700 dark:bg-blue-900/40 dark:text-blue-200 dark:hover:border-blue-600 dark:hover:bg-blue-900/60';
 
@@ -28,8 +28,7 @@ const SECONDARY_BTN =
         [attr.aria-pressed]="addVersesActive"
         [class]="actionBtnBase + ' ' + softBlueBtn"
       >
-        <span aria-hidden="true">+</span>
-        Add Verses
+        Verses
       </button>
       <button
         type="button"
@@ -37,7 +36,6 @@ const SECONDARY_BTN =
         [attr.aria-pressed]="bibleBooksActive"
         [class]="actionBtnBase + ' ' + (bibleBooksActive ? softBlueBtn : secondaryBtn)"
       >
-        <span aria-hidden="true">+</span>
         Bible Books
       </button>
       <button
@@ -47,7 +45,6 @@ const SECONDARY_BTN =
         [attr.aria-pressed]="recommendedActive"
         [class]="actionBtnBase + ' ' + (recommendedActive ? softBlueBtn : secondaryBtn)"
       >
-        <span aria-hidden="true">+</span>
         Recommended
       </button>
     </div>
