@@ -1,5 +1,19 @@
-import { Component, EventEmitter, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
+
+const ACTION_BTN_BASE =
+  'flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 cursor-pointer sm:flex-none';
+
+/** Soft blue — matches verse picker primary actions (Add Verses default / picker tab selected). */
+const SOFT_BLUE_BTN =
+  'border-blue-200 bg-blue-100 text-blue-800 hover:border-blue-300 hover:bg-blue-200 dark:border-blue-700 dark:bg-blue-900/40 dark:text-blue-200 dark:hover:border-blue-600 dark:hover:bg-blue-900/60';
+
+/**
+ * Neutral at rest; hover/active snap to soft blue.
+ * Dark hover uses `!` because theme `@utility` classes (e.g. bg-gray-800) set `!important`.
+ */
+const SECONDARY_BTN =
+  'border-gray-300 bg-white text-gray-600 hover:!border-blue-200 hover:!bg-blue-100 hover:!text-blue-800 active:!border-blue-200 active:!bg-blue-100 active:!text-blue-800 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400 dark:hover:!border-blue-700 dark:hover:!bg-blue-900/40 dark:hover:!text-blue-200 dark:active:!border-blue-700 dark:active:!bg-blue-900/40 dark:active:!text-blue-200';
 
 @Component({
   selector: 'app-memorization-action-bar',
@@ -11,7 +25,8 @@ import { CommonModule } from '@angular/common';
         type="button"
         id="tour-memorize-add-verses"
         (click)="addVerses.emit()"
-        class="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer sm:flex-none"
+        [attr.aria-pressed]="addVersesActive"
+        [class]="actionBtnBase + ' ' + softBlueBtn"
       >
         <span aria-hidden="true">+</span>
         Add Verses
@@ -19,7 +34,8 @@ import { CommonModule } from '@angular/common';
       <button
         type="button"
         (click)="addBibleBooks.emit()"
-        class="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-blue-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-blue-600 dark:hover:bg-gray-700 sm:flex-none"
+        [attr.aria-pressed]="bibleBooksActive"
+        [class]="actionBtnBase + ' ' + (bibleBooksActive ? softBlueBtn : secondaryBtn)"
       >
         <span aria-hidden="true">+</span>
         Bible Books
@@ -28,7 +44,8 @@ import { CommonModule } from '@angular/common';
         type="button"
         id="tour-memorize-recommended"
         (click)="openRecommended.emit()"
-        class="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:border-blue-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-blue-600 dark:hover:bg-gray-700 sm:flex-none"
+        [attr.aria-pressed]="recommendedActive"
+        [class]="actionBtnBase + ' ' + (recommendedActive ? softBlueBtn : secondaryBtn)"
       >
         <span aria-hidden="true">+</span>
         Recommended
@@ -37,7 +54,15 @@ import { CommonModule } from '@angular/common';
   `,
 })
 export class MemorizationActionBarComponent {
+  @Input() addVersesActive = false;
+  @Input() bibleBooksActive = false;
+  @Input() recommendedActive = false;
+
   @Output() addVerses = new EventEmitter<void>();
   @Output() addBibleBooks = new EventEmitter<void>();
   @Output() openRecommended = new EventEmitter<void>();
+
+  protected readonly actionBtnBase = ACTION_BTN_BASE;
+  protected readonly softBlueBtn = SOFT_BLUE_BTN;
+  protected readonly secondaryBtn = SECONDARY_BTN;
 }

@@ -40,4 +40,24 @@ describe('MemorizationActionBarComponent', () => {
     await user.click(screen.getByRole('button', { name: /Recommended/i }));
     expect(openRecommended).toHaveBeenCalledOnce();
   });
+
+  it('applies soft blue styles to secondary buttons when their modal is active', async () => {
+    await render(MemorizationActionBarComponent, {
+      componentInputs: {
+        bibleBooksActive: true,
+        recommendedActive: false,
+      },
+    });
+
+    const bibleBooks = screen.getByRole('button', { name: /Bible Books/i });
+    const recommended = screen.getByRole('button', { name: /Recommended/i });
+
+    expect(bibleBooks.className).toContain('bg-blue-100');
+    expect(bibleBooks.className).toContain('dark:bg-blue-900/40');
+    expect(bibleBooks.getAttribute('aria-pressed')).toBe('true');
+
+    expect(recommended.className).toContain('bg-white');
+    expect(recommended.className).toContain('dark:bg-gray-800');
+    expect(recommended.getAttribute('aria-pressed')).toBe('false');
+  });
 });

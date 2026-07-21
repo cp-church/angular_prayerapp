@@ -1160,6 +1160,9 @@ const HELP_SECTION_ID_PRESENTATION = "help_presentation";
 
             @if (activeFilter === 'memorize') {
             <app-memorization-action-bar
+              [addVersesActive]="showAddMemorizedVerse"
+              [bibleBooksActive]="showAddMemorizedBibleBooks"
+              [recommendedActive]="showMemorizationRecommendations"
               (addVerses)="showAddMemorizedVerse = true"
               (addBibleBooks)="showAddMemorizedBibleBooks = true"
               (openRecommended)="openMemorizationRecommendations()"
