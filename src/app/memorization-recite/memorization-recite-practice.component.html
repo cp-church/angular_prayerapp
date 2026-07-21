@@ -13,7 +13,7 @@
         Say the <strong>entire</strong> verse and reference from memory. Shown words are cues only.
         Hold Hint to peek at blanks.
       </p>
-    } @else if (phase === 'recording') {
+    } @else if (phase === 'recording' || phase === 'stopping') {
       <p class="text-sm text-red-600 dark:text-red-400 font-medium mb-4 animate-pulse">
         Recording… {{ formatReciteDuration(recordingMs) }}
       </p>
@@ -25,10 +25,18 @@
       </p>
       @if (skippedWordsLabel) {
         <p
-          class="text-sm text-amber-700 dark:text-amber-400 mb-4"
+          class="text-sm text-amber-700 dark:text-amber-400 mb-2"
           data-testid="memorize-recite-skipped"
         >
           Skipped: {{ skippedWordsLabel }}
+        </p>
+      }
+      @if (transcript) {
+        <p
+          class="text-xs text-gray-500 dark:text-gray-400 mb-4"
+          data-testid="memorize-recite-transcript"
+        >
+          What we heard: {{ transcript }}
         </p>
       } @else {
         <div class="mb-4"></div>

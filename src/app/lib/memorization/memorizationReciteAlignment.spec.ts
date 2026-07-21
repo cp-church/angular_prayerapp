@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   alignRecitation,
   buildReciteDisplaySegments,
+  formatReciteSkippedLabels,
   normalizeReciteWord,
   reciteScorePercent,
   tokenizeReciteTranscript,
@@ -64,7 +65,7 @@ describe('memorizationReciteAlignment', () => {
       'For God so loved the world John 3:16',
     ]) {
       const summary = alignRecitation(tokens, typable, transcript, 'John 3:16');
-      expect(summary.correctCount, transcript).toBe(typable.length);
+      expect(summary.correctCount, transcript).toBe(summary.totalTypable);
       expect(summary.missingCount, transcript).toBe(0);
       expect(summary.wrongCount, transcript).toBe(0);
     }
@@ -77,7 +78,7 @@ describe('memorizationReciteAlignment', () => {
       'For God so loved the world John 3 1 6',
       'John 3:16'
     );
-    expect(summary.correctCount).toBe(typable.length);
+    expect(summary.correctCount).toBe(summary.totalTypable);
     expect(summary.missingCount).toBe(0);
     expect(summary.wrongCount).toBe(0);
     expect(reciteScorePercent(summary)).toBe(100);
@@ -91,7 +92,7 @@ describe('memorizationReciteAlignment', () => {
 
   it('handles empty transcript', () => {
     const summary = alignRecitation(tokens, typable, '', 'John 3:16');
-    expect(summary.missingCount).toBe(typable.length);
+    expect(summary.missingCount).toBe(summary.totalTypable);
     expect(summary.correctCount).toBe(0);
   });
 
@@ -138,7 +139,7 @@ describe('memorizationReciteAlignment', () => {
         'And we know that all things work together for good Romans 8:28',
         'Romans 8:28'
       );
-      expect(summary.correctCount).toBe(romansTypable.length);
+      expect(summary.correctCount).toBe(summary.totalTypable);
       expect(summary.wrongCount).toBe(0);
     });
 
@@ -150,7 +151,7 @@ describe('memorizationReciteAlignment', () => {
         'Romans 8 verse twenty eight and we know that all things work together for good',
       ]) {
         const summary = alignRecitation(romansTokens, romansTypable, transcript, 'Romans 8:28');
-        expect(summary.correctCount, transcript).toBe(romansTypable.length);
+        expect(summary.correctCount, transcript).toBe(summary.totalTypable);
         expect(summary.wrongCount, transcript).toBe(0);
         expect(summary.missingCount, transcript).toBe(0);
       }
@@ -163,7 +164,7 @@ describe('memorizationReciteAlignment', () => {
         'Romans chapter 8 verse 28 and we know that all things work together for good',
         'Romans 8:28'
       );
-      expect(summary.correctCount).toBe(romansTypable.length);
+      expect(summary.correctCount).toBe(summary.totalTypable);
       expect(summary.missingCount).toBe(0);
       expect(summary.wrongCount).toBe(0);
     });
@@ -175,7 +176,7 @@ describe('memorizationReciteAlignment', () => {
         'John 3 16 for God so loved the world',
         'John 3:16'
       );
-      expect(summary.correctCount).toBe(typable.length);
+      expect(summary.correctCount).toBe(summary.totalTypable);
       expect(summary.missingCount).toBe(0);
     });
 
@@ -296,7 +297,42 @@ describe('memorizationReciteAlignment', () => {
       ).toBe(1);
     });
 
-    it('shows per-digit skipped markers in grouped verse numbers', () => {
+    it('counts a fully omitted verse number as one skip (2 Timothy 3:16)', () => {
+      const timothyTokens = buildMemorizationTokens(
+        'All Scripture is breathed out by God and profitable for teaching, for reproof, for correction, and for training in righteousness,',
+        '2 Timothy 3:16'
+      );
+      const timothyTypable = getTypableTokenIndices(timothyTokens);
+      const summary = alignRecitation(
+        timothyTokens,
+        timothyTypable,
+        'all scripture is breathed out by god and profitable for teaching for reproof for correction and for training in righteousness 2 timothy 3',
+        '2 Timothy 3:16'
+      );
+      expect(formatReciteSkippedLabels(timothyTokens, summary.results)).toEqual(['16']);
+      expect(summary.missingCount).toBe(1);
+      const verse16 = summary.alignedColumns.find((c) => c.expected?.text === '16');
+      expect(verse16?.spokenChars).toEqual([{ char: '—', status: 'missing' }]);
+    });
+
+    it('accepts 2 Timothy 3:16 when STT hears three sixteen', () => {
+      const timothyTokens = buildMemorizationTokens(
+        'All Scripture is breathed out by God and profitable for teaching, for reproof, for correction, and for training in righteousness,',
+        '2 Timothy 3:16'
+      );
+      const timothyTypable = getTypableTokenIndices(timothyTokens);
+      const summary = alignRecitation(
+        timothyTokens,
+        timothyTypable,
+        'all scripture is breathed out by god and profitable for teaching for reproof for correction and for training in righteousness 2 timothy 3 sixteen',
+        '2 Timothy 3:16'
+      );
+      expect(summary.missingCount).toBe(0);
+      const verse16 = summary.alignedColumns.find((c) => c.expected?.text === '16');
+      expect(verse16?.spokenChars?.[0]?.status).toBe('correct');
+    });
+
+    it('shows per-digit skipped markers when only part of a verse number is wrong', () => {
       const summary = alignRecitation(
         romansTokens,
         romansTypable,
@@ -308,6 +344,9 @@ describe('memorizationReciteAlignment', () => {
         { char: '8', status: 'wrong' },
         { char: '—', status: 'missing' },
       ]);
+      expect(summary.wrongCount).toBe(1);
+      expect(summary.missingCount).toBe(1);
+      expect(formatReciteSkippedLabels(romansTokens, summary.results)).toEqual([]);
     });
 
     it('lists every spoken word in transcript order for results display', () => {
@@ -391,7 +430,7 @@ describe('memorizationReciteAlignment', () => {
           `${verse} ${refSpoken}`,
           'John 15:5'
         );
-        expect(summary.correctCount, refSpoken).toBe(john15Typable.length);
+        expect(summary.correctCount, refSpoken).toBe(summary.totalTypable);
         expect(summary.wrongCount, refSpoken).toBe(0);
         expect(summary.missingCount, refSpoken).toBe(0);
       }

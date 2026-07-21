@@ -5,10 +5,17 @@ import { isWhisperReciteSupported } from '../lib/memorization/isWhisperReciteSup
 
 export const RECITE_MAX_DURATION_MS = 3 * 60 * 1000;
 export const RECITE_MIN_DURATION_MS = 1000;
+/** Brief tail after stop tap so trailing reference words are not clipped. */
+export const RECITE_STOP_TAIL_MS = 400;
 
 export type ReciteRecordingCallbacks = {
   onDurationMs?: (ms: number) => void;
   onMaxDurationReached?: () => void;
+};
+
+export type ReciteCapturedRecording = {
+  blob: Blob;
+  audioSeconds: number;
 };
 
 @Injectable({
@@ -25,6 +32,7 @@ export class MemorizationReciteService {
   private recordingActive = false;
   private recordingStartToken = 0;
   private stopInFlight: Promise<string> | null = null;
+  private captureInFlight: Promise<ReciteCapturedRecording> | null = null;
   private transcribeAbort: AbortController | null = null;
 
   constructor(
@@ -74,6 +82,26 @@ export class MemorizationReciteService {
     }
   }
 
+  async stopRecordingCapture(): Promise<ReciteCapturedRecording> {
+    if (this.captureInFlight) {
+      return this.captureInFlight;
+    }
+
+    this.captureInFlight = this.finishStopCapture().finally(() => {
+      this.captureInFlight = null;
+    });
+    return this.captureInFlight;
+  }
+
+  async transcribeCapturedRecording(params: {
+    blob: Blob;
+    audioSeconds: number;
+    memorizedItemId?: string;
+    prompt?: string;
+  }): Promise<string> {
+    return this.transcribeWhisper(params);
+  }
+
   async stopAndTranscribe(params: {
     memorizedItemId?: string;
     prompt?: string;
@@ -82,7 +110,15 @@ export class MemorizationReciteService {
       return this.stopInFlight;
     }
 
-    this.stopInFlight = this.finishStopAndTranscribe(params).finally(() => {
+    this.stopInFlight = (async () => {
+      const captured = await this.stopRecordingCapture();
+      return this.transcribeCapturedRecording({
+        blob: captured.blob,
+        audioSeconds: captured.audioSeconds,
+        memorizedItemId: params.memorizedItemId,
+        prompt: params.prompt,
+      });
+    })().finally(() => {
       this.stopInFlight = null;
     });
     return this.stopInFlight;
@@ -92,7 +128,13 @@ export class MemorizationReciteService {
     this.recordingStartToken += 1;
     this.transcribeAbort?.abort();
     const inFlight = this.stopInFlight;
+    const capture = this.captureInFlight;
     await this.cleanup();
+    if (capture) {
+      void capture.catch(() => {
+        // ignore errors from an in-flight capture cancelled by cleanup
+      });
+    }
     if (inFlight) {
       try {
         await inFlight;
@@ -102,10 +144,7 @@ export class MemorizationReciteService {
     }
   }
 
-  private async finishStopAndTranscribe(params: {
-    memorizedItemId?: string;
-    prompt?: string;
-  }): Promise<string> {
+  private async finishStopCapture(): Promise<ReciteCapturedRecording> {
     if (!this.recordingActive) {
       await this.cleanup();
       throw new Error('No active recording.');
@@ -120,6 +159,11 @@ export class MemorizationReciteService {
     const maxAudioSeconds = RECITE_MAX_DURATION_MS / 1000;
     const audioSeconds = Math.min(durationMs / 1000, maxAudioSeconds);
 
+    const captureToken = this.recordingStartToken;
+    await this.delay(RECITE_STOP_TAIL_MS);
+    if (captureToken !== this.recordingStartToken) {
+      throw new Error('Recording cancelled.');
+    }
     const blob = await this.stopMediaRecorder();
     await this.stopMediaStream();
     this.clearTimers();
@@ -127,12 +171,7 @@ export class MemorizationReciteService {
       throw new Error('No audio recorded. Try again.');
     }
 
-    return this.transcribeWhisper({
-      blob,
-      memorizedItemId: params.memorizedItemId,
-      prompt: params.prompt,
-      audioSeconds,
-    });
+    return { blob, audioSeconds };
   }
 
   private async transcribeWhisper(params: {
@@ -165,9 +204,10 @@ export class MemorizationReciteService {
     }
     if (useMfaAuth) {
       const mfaSessionStart = localStorage.getItem('mfa_session_start');
-      if (mfaSessionStart) {
-        form.append('mfa_session_start', mfaSessionStart);
+      if (!mfaSessionStart) {
+        throw new Error('Session expired. Sign in again to use Recite mode.');
       }
+      form.append('mfa_session_start', mfaSessionStart);
     }
     if (params.memorizedItemId) {
       form.append('memorized_item_id', params.memorizedItemId);
@@ -310,5 +350,9 @@ export class MemorizationReciteService {
     this.mediaRecorder = null;
     this.audioChunks = [];
     await this.stopMediaStream();
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

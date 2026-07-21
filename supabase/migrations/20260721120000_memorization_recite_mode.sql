@@ -1,5 +1,4 @@
--- Memorization Recite mode: admin toggle, usage ledger, is_admin fix, and secured usage RPC.
--- Consolidated for production (replaces 20260721130100, 20260721130200, 20260721140000).
+-- Memorization Recite mode: admin toggle, usage ledger, is_admin fix, secured usage RPC, MFA login proof.
 
 -- Align is_admin() with email_subscribers (used by check-admin-status, admin MFA, and Recite RPC).
 CREATE OR REPLACE FUNCTION public.is_admin(user_email text)
@@ -64,7 +63,8 @@ DROP FUNCTION IF EXISTS public.get_memorization_recite_usage_summary(timestamptz
 CREATE OR REPLACE FUNCTION public.get_memorization_recite_usage_summary(
   p_start timestamptz DEFAULT date_trunc('month', now()),
   p_end timestamptz DEFAULT now(),
-  p_email text DEFAULT NULL
+  p_email text DEFAULT NULL,
+  p_mfa_session_start_ms bigint DEFAULT NULL
 )
 RETURNS TABLE (
   attempt_count bigint,
@@ -80,6 +80,7 @@ DECLARE
   v_jwt_email text;
   v_email text;
   v_p_email text;
+  v_session_start timestamptz;
 BEGIN
   v_jwt_email := nullif(trim(lower(coalesce(auth.jwt() ->> 'email', ''))), '');
   v_p_email := nullif(trim(lower(coalesce(p_email, ''))), '');
@@ -95,13 +96,20 @@ BEGIN
       RAISE EXCEPTION 'Not authenticated';
     END IF;
 
+    IF p_mfa_session_start_ms IS NULL OR p_mfa_session_start_ms <= 0 THEN
+      RAISE EXCEPTION 'Not authorized';
+    END IF;
+
+    v_session_start := to_timestamp(p_mfa_session_start_ms / 1000.0);
+
     IF NOT EXISTS (
       SELECT 1
       FROM public.verification_codes vc
       WHERE lower(vc.email) = v_email
         AND vc.action_type = 'admin_login'
         AND vc.used_at IS NOT NULL
-        AND vc.used_at > now() - interval '30 days'
+        AND vc.used_at >= v_session_start - interval '15 minutes'
+        AND vc.used_at <= v_session_start + interval '15 minutes'
     ) THEN
       RAISE EXCEPTION 'Not authorized';
     END IF;
@@ -122,7 +130,7 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.get_memorization_recite_usage_summary(timestamptz, timestamptz, text)
+GRANT EXECUTE ON FUNCTION public.get_memorization_recite_usage_summary(timestamptz, timestamptz, text, bigint)
   TO anon, authenticated;
 
 -- Retain used admin_login codes so MFA sessions (and Recite transcribe) work after 1 hour.

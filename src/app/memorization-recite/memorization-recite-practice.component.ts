@@ -15,6 +15,7 @@ import { UserSessionService } from '../services/user-session.service';
 import {
   alignRecitation,
   buildReciteDisplaySegments,
+  formatReciteSkippedLabels,
   reciteScorePercent,
   type ReciteAlignmentResult,
   type ReciteAlignmentSummary,
@@ -22,13 +23,13 @@ import {
 } from '../lib/memorization/memorizationReciteAlignment';
 import {
   MEMORIZATION_FULL_HIDE_ROUND,
-  formatMemorizationTokensPlain,
+  formatMemorizationReciteWhisperPrompt,
   hiddenFractionForRound,
   type MemorizationToken,
 } from '../lib/memorization/memorizationPracticeUtils';
 import { computeReciteModeAvailable } from './integration';
 
-export type RecitePhase = 'ready' | 'recording' | 'transcribing' | 'results';
+export type RecitePhase = 'ready' | 'recording' | 'stopping' | 'transcribing' | 'results';
 
 export type ReciteAttemptMetrics = {
   wrong: number;
@@ -81,6 +82,7 @@ export class MemorizationRecitePracticeComponent {
   phase: RecitePhase = 'ready';
   error = '';
   recordingMs = 0;
+  transcript = '';
   alignment: ReciteAlignmentSummary | null = null;
   settingsLoaded = false;
   enabled = false;
@@ -124,21 +126,18 @@ export class MemorizationRecitePracticeComponent {
     if (!this.alignment) return '';
     const pct = reciteScorePercent(this.alignment);
     const base = `${this.alignment.correctCount} of ${this.alignment.totalTypable} words correct (${pct}%)`;
-    const { missingCount } = this.alignment;
-    if (missingCount > 0) {
-      return `${base} · ${missingCount} skipped`;
+    const skippedLabels = formatReciteSkippedLabels(this.tokens, this.alignment.results);
+    if (skippedLabels.length > 0) {
+      return `${base} · ${skippedLabels.length} skipped`;
     }
     return base;
   }
 
   get skippedWordsLabel(): string | null {
-    if (!this.alignment || this.alignment.missingCount === 0) return null;
-    const words = this.alignment.results
-      .filter((r) => r.status === 'missing')
-      .map((r) => this.tokens[r.tokenIndex]?.text ?? '')
-      .filter(Boolean);
-    if (words.length === 0) return null;
-    return words.join(', ');
+    if (!this.alignment) return null;
+    const labels = formatReciteSkippedLabels(this.tokens, this.alignment.results);
+    if (labels.length === 0) return null;
+    return labels.join(', ');
   }
 
   get alignedColumns() {
@@ -182,6 +181,7 @@ export class MemorizationRecitePracticeComponent {
     this.invalidateStop();
     this.phase = 'ready';
     this.error = '';
+    this.transcript = '';
     this.alignment = null;
     this.alignmentByToken = new Map();
     this.recordingMs = 0;
@@ -190,18 +190,16 @@ export class MemorizationRecitePracticeComponent {
   }
 
   async prepareClose(): Promise<void> {
-    if (this.phase === 'recording') {
+    if (
+      this.phase === 'recording' ||
+      this.phase === 'stopping' ||
+      this.phase === 'transcribing'
+    ) {
       this.invalidateStop();
       await this.reciteService.cancelRecording();
       this.phase = 'ready';
       this.cdr.markForCheck();
-    }
-    if (this.phase === 'transcribing' && this.inFlightStop) {
-      try {
-        await this.inFlightStop;
-      } catch {
-        // stop errors are already reflected in error
-      }
+      return;
     }
     if (this.phase === 'results') {
       this.applyAttemptMetrics();
@@ -212,6 +210,7 @@ export class MemorizationRecitePracticeComponent {
     this.invalidateStop();
     void this.reciteService.cancelRecording();
     this.phase = 'ready';
+    this.transcript = '';
     this.alignment = null;
     this.alignmentByToken = new Map();
     this.cdr.markForCheck();
@@ -223,7 +222,7 @@ export class MemorizationRecitePracticeComponent {
   }
 
   async startRecording(): Promise<void> {
-    if (this.starting || this.phase === 'recording' || !this.active) return;
+    if (this.starting || this.phase === 'recording' || this.phase === 'stopping' || !this.active) return;
 
     const startGeneration = ++this.startGeneration;
     this.error = '';
@@ -275,7 +274,14 @@ export class MemorizationRecitePracticeComponent {
   }
 
   async stopRecording(): Promise<void> {
+    if (this.inFlightStop) {
+      await this.inFlightStop;
+      return;
+    }
     if (this.phase !== 'recording') return;
+
+    this.phase = 'stopping';
+    this.cdr.markForCheck();
 
     const stopRun = this.runStop();
     this.inFlightStop = stopRun;
@@ -366,16 +372,25 @@ export class MemorizationRecitePracticeComponent {
 
   private async runStop(): Promise<void> {
     const stopGeneration = this.stopGeneration;
-    this.phase = 'transcribing';
     this.error = '';
     this.cdr.markForCheck();
     try {
-      const prompt = formatMemorizationTokensPlain(this.tokens);
-      const transcript = await this.reciteService.stopAndTranscribe({
+      const prompt = formatMemorizationReciteWhisperPrompt(this.tokens, this.reference);
+      const captured = await this.reciteService.stopRecordingCapture();
+      if (!this.isStopCurrent(stopGeneration)) return;
+
+      this.phase = 'transcribing';
+      this.cdr.markForCheck();
+
+      const transcript = await this.reciteService.transcribeCapturedRecording({
         memorizedItemId: this.itemId,
         prompt,
+        blob: captured.blob,
+        audioSeconds: captured.audioSeconds,
       });
       if (!this.isStopCurrent(stopGeneration)) return;
+
+      this.transcript = transcript;
 
       this.alignment = alignRecitation(
         this.tokens,
@@ -418,7 +433,10 @@ export class MemorizationRecitePracticeComponent {
   }
 
   private isStopCurrent(stopGeneration: number): boolean {
-    return stopGeneration === this.stopGeneration && this.phase === 'transcribing';
+    return (
+      stopGeneration === this.stopGeneration &&
+      (this.phase === 'stopping' || this.phase === 'transcribing')
+    );
   }
 
   private isTokenHidden(i: number): boolean {

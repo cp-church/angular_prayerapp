@@ -199,6 +199,7 @@ export class MemorizationPracticeSessionComponent
   @Output() completed = new EventEmitter<PracticeSessionResult>();
   @Output() persistInProgress = new EventEmitter<MemorizationInProgressSavePayload>();
   @Output() clearInProgress = new EventEmitter<void>();
+  @Output() openSettings = new EventEmitter<void>();
 
   @ViewChild(MemorizationRecitePracticeComponent) recitePractice?: MemorizationRecitePracticeComponent;
   @ViewChild('practiceScroll') practiceScrollRef?: ElementRef<HTMLDivElement>;
@@ -267,6 +268,7 @@ export class MemorizationPracticeSessionComponent
   // @removal-recite
   reciteSettingsLoaded = false;
   reciteEnabled = false;
+  reciteFeedbackHelpOpen = false;
 
   private passageText = '';
   private passageHydratedForOpen = false;
@@ -675,6 +677,23 @@ export class MemorizationPracticeSessionComponent
     this.hasTypedInRound = true;
     this.syncMetricRefs();
     this.cdr.markForCheck();
+  }
+
+  // @removal-recite
+  openReciteFeedbackHelp(): void {
+    this.reciteFeedbackHelpOpen = true;
+    this.cdr.markForCheck();
+  }
+
+  closeReciteFeedbackHelp(): void {
+    this.reciteFeedbackHelpOpen = false;
+    this.cdr.markForCheck();
+  }
+
+  async openSettingsForReciteFeedback(): Promise<void> {
+    this.closeReciteFeedbackHelp();
+    await this.handleClose();
+    this.openSettings.emit();
   }
 
   onReciteRepeatRound(): void {

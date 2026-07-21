@@ -8,6 +8,7 @@ import {
   buildMemorizationTokens,
   getTypableTokenIndices,
   formatMemorizationTokensPlain,
+  formatMemorizationReciteWhisperPrompt,
   hiddenFractionForRound,
   MEMORIZATION_FULL_HIDE_ROUND,
   referenceTextsForMemorizationReorder,
@@ -145,6 +146,15 @@ describe('formatMemorizationTokensPlain', () => {
       { kind: 'word', text: 'God' },
     ];
     expect(formatMemorizationTokensPlain(tokens)).toBe('For God');
+  });
+});
+
+describe('formatMemorizationReciteWhisperPrompt', () => {
+  it('replaces written colon reference with spoken form for Whisper', () => {
+    const tokens = buildMemorizationTokens('All Scripture is God-breathed', '2 Timothy 3:16');
+    const prompt = formatMemorizationReciteWhisperPrompt(tokens, '2 Timothy 3:16');
+    expect(prompt).toContain('2 Timothy 3 16');
+    expect(prompt).not.toContain('3:16');
   });
 });
 

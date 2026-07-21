@@ -47,10 +47,13 @@ async function isActiveSubscriber(
   return !!subscriber && subscriber.is_blocked !== true && subscriber.is_active !== false;
 }
 
-function isPlausibleMfaSessionStart(sessionStartMs: number): boolean {
-  if (!Number.isFinite(sessionStartMs) || sessionStartMs <= 0) return false;
+function parseMfaSessionStartMs(value: FormDataEntryValue | null): number | null {
+  const sessionStartMs = Number(value);
+  if (!Number.isFinite(sessionStartMs) || sessionStartMs <= 0) return null;
   const now = Date.now();
-  return sessionStartMs <= now + 15 * 60 * 1000;
+  // Reject only far-future timestamps (clock skew); no max session age — logout clears client state.
+  if (sessionStartMs > now + 15 * 60 * 1000) return null;
+  return sessionStartMs;
 }
 
 async function resolveAuthenticatedEmail(
@@ -69,19 +72,21 @@ async function resolveAuthenticatedEmail(
   const email = String(formUserEmail ?? '').trim().toLowerCase();
   if (!email || !email.includes('@')) return null;
 
-  const sessionStartMs = Number(formMfaSessionStart);
-  if (!isPlausibleMfaSessionStart(sessionStartMs)) return null;
+  const sessionStartMs = parseMfaSessionStartMs(formMfaSessionStart);
+  if (sessionStartMs === null) return null;
 
-  const windowStart = new Date(sessionStartMs - 15 * 60 * 1000).toISOString();
-  const windowEnd = new Date(sessionStartMs + 15 * 60 * 1000).toISOString();
+  // Proof must match the login event (used_at near mfa_session_start). This window is
+  // not a session expiry — long-lived sessions stay valid because used_at is anchored to login.
+  const proofSince = new Date(sessionStartMs - 15 * 60 * 1000).toISOString();
+  const proofUntil = new Date(sessionStartMs + 15 * 60 * 1000).toISOString();
   const { data: mfaProof, error: mfaError } = await adminClient
     .from('verification_codes')
     .select('id')
     .eq('email', email)
     .eq('action_type', 'admin_login')
     .not('used_at', 'is', null)
-    .gte('used_at', windowStart)
-    .lte('used_at', windowEnd)
+    .gte('used_at', proofSince)
+    .lte('used_at', proofUntil)
     .limit(1)
     .maybeSingle();
 
@@ -149,10 +154,15 @@ Deno.serve(async (req: Request) => {
       form.get('mfa_session_start')
     );
     if (!userEmail) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({
+          error: 'Sign in again to use Recite mode.',
+        }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     const audio = form.get('audio');

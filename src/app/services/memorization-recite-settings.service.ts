@@ -68,13 +68,25 @@ export class MemorizationReciteSettingsService {
     end: Date
   ): Promise<MemorizationReciteUsageSummary> {
     const adminEmail = await this.getAdminCallerEmail();
+    const rpcParams: {
+      p_start: string;
+      p_end: string;
+      p_email: string | null;
+      p_mfa_session_start_ms?: number;
+    } = {
+      p_start: start.toISOString(),
+      p_end: end.toISOString(),
+      p_email: adminEmail,
+    };
+    const mfaSessionStartMs = this.getMfaSessionStartMs(adminEmail);
+    if (mfaSessionStartMs !== null) {
+      rpcParams.p_mfa_session_start_ms = mfaSessionStartMs;
+    } else if (this.isMfaAdminCaller(adminEmail)) {
+      throw new Error('Sign in again to view Recite usage.');
+    }
     const { data, error } = await this.supabase.client.rpc(
       'get_memorization_recite_usage_summary',
-      {
-        p_start: start.toISOString(),
-        p_end: end.toISOString(),
-        p_email: adminEmail,
-      }
+      rpcParams
     );
 
     if (error) {
@@ -92,11 +104,28 @@ export class MemorizationReciteSettingsService {
   async fetchOpenAiOrgUsage(): Promise<MemorizationReciteOpenAiUsage> {
     const apikey = this.supabase.getSupabaseKey();
     const session = await this.supabase.client.auth.getSession();
-    const token = session.data.session?.access_token;
     const userEmail = await this.getAdminCallerEmail();
+    let mfaEmail: string | null = null;
+    try {
+      mfaEmail = localStorage.getItem('mfa_authenticated_email')?.toLowerCase().trim() ?? null;
+    } catch {
+      // ignore
+    }
+    const useMfaAuth = !!mfaEmail && userEmail === mfaEmail;
+    const token = useMfaAuth ? null : session.data.session?.access_token ?? null;
     const url = new URL(`${this.supabase.getSupabaseUrl()}/functions/v1/get-openai-org-usage`);
     if (userEmail) {
       url.searchParams.set('user_email', userEmail);
+    }
+    if (useMfaAuth) {
+      const mfaSessionStart = localStorage.getItem('mfa_session_start');
+      if (!mfaSessionStart) {
+        return {
+          configured: false,
+          error: 'Sign in again to view OpenAI usage.',
+        };
+      }
+      url.searchParams.set('mfa_session_start', mfaSessionStart);
     }
     const response = await fetch(url.toString(), {
       headers: {
@@ -135,6 +164,28 @@ export class MemorizationReciteSettingsService {
       periodDays: payload.period_days,
       totalUsd: payload.total_usd,
     };
+  }
+
+  private getMfaSessionStartMs(adminEmail: string | null): number | null {
+    if (!adminEmail || !this.isMfaAdminCaller(adminEmail)) return null;
+    try {
+      const raw = localStorage.getItem('mfa_session_start');
+      if (!raw) return null;
+      const ms = Number(raw);
+      return Number.isFinite(ms) && ms > 0 ? ms : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private isMfaAdminCaller(adminEmail: string | null): boolean {
+    if (!adminEmail) return false;
+    try {
+      const mfaEmail = localStorage.getItem('mfa_authenticated_email')?.toLowerCase().trim();
+      return !!mfaEmail && mfaEmail === adminEmail;
+    } catch {
+      return false;
+    }
   }
 
   private async getAdminCallerEmail(): Promise<string | null> {

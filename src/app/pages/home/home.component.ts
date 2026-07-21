@@ -267,7 +267,7 @@ const HELP_SECTION_ID_PRESENTATION = "help_presentation";
               </button>
               <button
                 id="tour-btn-settings-mobile"
-                (click)="showSettings = true"
+                (click)="openUserSettings()"
                 class="flex items-center gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors cursor-pointer"
                 title="Settings"
               >
@@ -389,7 +389,7 @@ const HELP_SECTION_ID_PRESENTATION = "help_presentation";
                   </button>
                   <button
                     id="tour-btn-settings-desktop"
-                    (click)="showSettings = true"
+                    (click)="openUserSettings()"
                     class="flex items-center justify-center h-12 gap-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors cursor-pointer"
                     title="Settings"
                   >
@@ -471,7 +471,9 @@ const HELP_SECTION_ID_PRESENTATION = "help_presentation";
           <!-- User Settings Modal -->
           <app-user-settings
             [isOpen]="showSettings"
-            (onClose)="showSettings = false"
+            [scrollToSectionId]="settingsScrollToSectionId"
+            (onClose)="closeUserSettings()"
+            (scrollToSectionComplete)="onSettingsScrollToSectionComplete()"
           ></app-user-settings>
 
           <!-- Help Modal -->
@@ -583,6 +585,7 @@ const HELP_SECTION_ID_PRESENTATION = "help_presentation";
         (completed)="onMemorizationPracticeComplete($event)"
         (persistInProgress)="onMemorizationPersistInProgress($event)"
         (clearInProgress)="onMemorizationClearInProgress()"
+        (openSettings)="openSettingsFromReciteFeedback()"
       />
       }
       @if (showRemoveMemorizedConfirm && memorizedItemToRemove) {
@@ -1372,6 +1375,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   showPrayerForm = false;
   showSettings = false;
+  settingsScrollToSectionId: string | null = null;
   showHelp = false;
   showLogoutConfirmation = false;
   showEditPersonalPrayer = false;
@@ -1900,12 +1904,10 @@ export class HomeComponent implements OnInit, OnDestroy {
         { title: section.title, description: section.description },
         {
           openSettings: () => {
-            this.showSettings = true;
-            this.cdr.markForCheck();
+            this.openUserSettings();
           },
           closeSettings: () => {
-            this.showSettings = false;
-            this.cdr.markForCheck();
+            this.closeUserSettings();
           },
           markForCheck: () => this.cdr.markForCheck(),
         }
@@ -1922,12 +1924,10 @@ export class HomeComponent implements OnInit, OnDestroy {
         { title: section.title, description: section.description },
         {
           openSettings: () => {
-            this.showSettings = true;
-            this.cdr.markForCheck();
+            this.openUserSettings();
           },
           closeSettings: () => {
-            this.showSettings = false;
-            this.cdr.markForCheck();
+            this.closeUserSettings();
           },
           markForCheck: () => this.cdr.markForCheck(),
         }
@@ -1944,12 +1944,10 @@ export class HomeComponent implements OnInit, OnDestroy {
         { title: section.title, description: section.description },
         {
           openSettings: () => {
-            this.showSettings = true;
-            this.cdr.markForCheck();
+            this.openUserSettings();
           },
           closeSettings: () => {
-            this.showSettings = false;
-            this.cdr.markForCheck();
+            this.closeUserSettings();
           },
           markForCheck: () => this.cdr.markForCheck(),
         }
@@ -1966,12 +1964,10 @@ export class HomeComponent implements OnInit, OnDestroy {
         { title: section.title, description: section.description },
         {
           openSettings: () => {
-            this.showSettings = true;
-            this.cdr.markForCheck();
+            this.openUserSettings();
           },
           closeSettings: () => {
-            this.showSettings = false;
-            this.cdr.markForCheck();
+            this.closeUserSettings();
           },
           markForCheck: () => this.cdr.markForCheck(),
         }
@@ -1988,12 +1984,10 @@ export class HomeComponent implements OnInit, OnDestroy {
         { title: section.title, description: section.description },
         {
           openSettings: () => {
-            this.showSettings = true;
-            this.cdr.markForCheck();
+            this.openUserSettings();
           },
           closeSettings: () => {
-            this.showSettings = false;
-            this.cdr.markForCheck();
+            this.closeUserSettings();
           },
           markForCheck: () => this.cdr.markForCheck(),
         }
@@ -3194,6 +3188,27 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   closeMemorizationPractice(): void {
     this.practiceMemorizedItem = null;
+    this.cdr.markForCheck();
+  }
+
+  openUserSettings(scrollToSectionId: string | null = null): void {
+    this.settingsScrollToSectionId = scrollToSectionId;
+    this.showSettings = true;
+    this.cdr.markForCheck();
+  }
+
+  openSettingsFromReciteFeedback(): void {
+    this.openUserSettings('tour-settings-feedback-section');
+  }
+
+  closeUserSettings(): void {
+    this.showSettings = false;
+    this.settingsScrollToSectionId = null;
+    this.cdr.markForCheck();
+  }
+
+  onSettingsScrollToSectionComplete(): void {
+    this.settingsScrollToSectionId = null;
     this.cdr.markForCheck();
   }
 

@@ -42,6 +42,11 @@ const mockScriptureService = {
 
 const mockReciteService = {
   startRecording: vi.fn().mockResolvedValue(undefined),
+  stopRecordingCapture: vi.fn().mockResolvedValue({
+    blob: new Blob(['audio'], { type: 'audio/webm' }),
+    audioSeconds: 2,
+  }),
+  transcribeCapturedRecording: vi.fn().mockResolvedValue('For God so loved the world'),
   stopAndTranscribe: vi.fn().mockResolvedValue('For God so loved the world'),
   cancelRecording: vi.fn().mockResolvedValue(undefined),
 };
@@ -128,7 +133,7 @@ async function renderSession(
   const reciteSettings = { enabled: options.reciteEnabled ?? false };
   mockReciteSettingsService.getSettings.mockResolvedValue(reciteSettings);
   mockReciteSettingsService.getSettingsFromServer.mockResolvedValue(reciteSettings);
-  mockReciteService.stopAndTranscribe.mockResolvedValue(
+  mockReciteService.transcribeCapturedRecording.mockResolvedValue(
     options.reciteTranscript ?? 'For God so loved the world'
   );
 
@@ -2100,12 +2105,42 @@ describe('MemorizationPracticeSessionComponent', () => {
       cdr.detectChanges();
       expect(component.recitePhase).toBe('results');
       expect(component.reciteAlignment).not.toBeNull();
-      expect(mockReciteService.stopAndTranscribe).toHaveBeenCalledWith(
+      expect(mockReciteService.stopRecordingCapture).toHaveBeenCalled();
+      expect(mockReciteService.transcribeCapturedRecording).toHaveBeenCalledWith(
         expect.objectContaining({
           memorizedItemId: verseItem.id,
           prompt: expect.any(String),
+          blob: expect.any(Blob),
+          audioSeconds: expect.any(Number),
         })
       );
+    });
+
+    it('shows Recite feedback help and can open settings', async () => {
+      const { component, cdr } = await renderSession({
+        reciteEnabled: true,
+        reciteTranscript: 'For God so loved the world John 3 16',
+      });
+      const openSettingsSpy = vi.spyOn(component.openSettings, 'emit');
+      await waitForReciteSettings(component);
+      component.beginPracticeWithMode('recite');
+      cdr.detectChanges();
+      await vi.waitFor(() => expect(component.recitePractice).toBeTruthy());
+      await component.startReciteRecording();
+      await component.stopReciteRecording();
+      cdr.detectChanges();
+
+      expect(screen.queryByTestId('memorize-recite-help')).toBeTruthy();
+      component.openReciteFeedbackHelp();
+      cdr.detectChanges();
+      expect(screen.getByTestId('memorize-recite-feedback-help-dialog')).toBeTruthy();
+      expect(screen.getByText(/Settings → Send Feedback/)).toBeTruthy();
+
+      const closedSpy = vi.spyOn(component.closed, 'emit');
+      await component.openSettingsForReciteFeedback();
+      expect(closedSpy).toHaveBeenCalled();
+      expect(openSettingsSpy).toHaveBeenCalled();
+      expect(component.reciteFeedbackHelpOpen).toBe(false);
     });
 
     it('retry resets recite results without applying errors', async () => {

@@ -23,6 +23,8 @@ describe('MemorizationRecitePracticeComponent', () => {
   let fixture: ComponentFixture<MemorizationRecitePracticeComponent>;
   let component: MemorizationRecitePracticeComponent;
   let cancelRecording: ReturnType<typeof vi.fn>;
+  let stopRecordingCapture: ReturnType<typeof vi.fn>;
+  let transcribeCapturedRecording: ReturnType<typeof vi.fn>;
 
   beforeAll(async () => {
     await resolveComponentResources((url) => Promise.resolve(readComponentResource(url)));
@@ -30,6 +32,8 @@ describe('MemorizationRecitePracticeComponent', () => {
 
   beforeEach(async () => {
     cancelRecording = vi.fn().mockResolvedValue(undefined);
+    stopRecordingCapture = vi.fn();
+    transcribeCapturedRecording = vi.fn();
 
     await TestBed.configureTestingModule({
       imports: [MemorizationRecitePracticeComponent],
@@ -38,6 +42,8 @@ describe('MemorizationRecitePracticeComponent', () => {
           provide: MemorizationReciteService,
           useValue: {
             startRecording: vi.fn(),
+            stopRecordingCapture,
+            transcribeCapturedRecording,
             stopAndTranscribe: vi.fn(),
             cancelRecording,
           },
@@ -77,5 +83,37 @@ describe('MemorizationRecitePracticeComponent', () => {
 
     expect(cancelRecording).toHaveBeenCalled();
     expect(component.phase).toBe('ready');
+  });
+
+  it('prepareClose aborts in-flight transcription', async () => {
+    component.phase = 'transcribing';
+    component.inFlightStop = new Promise(() => {
+      // hang
+    });
+
+    await component.prepareClose();
+
+    expect(cancelRecording).toHaveBeenCalled();
+    expect(component.phase).toBe('ready');
+  });
+
+  it('ignores duplicate stop taps during capture tail', async () => {
+    let resolveCapture!: (value: { blob: Blob; audioSeconds: number }) => void;
+    stopRecordingCapture.mockReturnValue(
+      new Promise((resolve) => {
+        resolveCapture = resolve;
+      })
+    );
+    transcribeCapturedRecording.mockResolvedValue('in the beginning');
+
+    const firstStop = component.stopRecording();
+    const secondStop = component.stopRecording();
+
+    resolveCapture({ blob: new Blob(['audio']), audioSeconds: 1 });
+    await Promise.all([firstStop, secondStop]);
+
+    expect(stopRecordingCapture).toHaveBeenCalledTimes(1);
+    expect(transcribeCapturedRecording).toHaveBeenCalledTimes(1);
+    expect(component.phase).toBe('results');
   });
 });

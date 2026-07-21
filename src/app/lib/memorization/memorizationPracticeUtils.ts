@@ -1,4 +1,4 @@
-import { parseReference } from './parse-scripture-reference'
+import { formatSpokenScriptureReference, parseReference } from './parse-scripture-reference'
 
 /** Seeded PRNG (mulberry32). */
 export function seedRandom(seed: number): () => number {
@@ -99,6 +99,27 @@ export function getTypableTokenIndices(tokens: MemorizationToken[]): number[] {
 /** Plain line for intro / display (spaces and punctuation come from token text). */
 export function formatMemorizationTokensPlain(tokens: MemorizationToken[]): string {
   return tokens.map((t) => t.text).join('')
+}
+
+/**
+ * Whisper prompt: verse text plus a spoken-style reference (no colon).
+ * Whisper uses the prompt as style/vocabulary context; matching how users recite
+ * improves trailing reference capture (e.g. "three sixteen" not "3:16").
+ */
+export function formatMemorizationReciteWhisperPrompt(
+  tokens: MemorizationToken[],
+  reference: string
+): string {
+  const spokenRef = formatSpokenScriptureReference(reference)
+  const plain = formatMemorizationTokensPlain(tokens)
+  const writtenRef = reference.trim()
+  if (!spokenRef || spokenRef === writtenRef) return plain
+  if (plain.endsWith(writtenRef)) {
+    return `${plain.slice(0, plain.length - writtenRef.length)}${spokenRef}`
+  }
+  const escaped = writtenRef.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const replaced = plain.replace(new RegExp(`${escaped}\\s*$`), spokenRef)
+  return replaced === plain ? plain : replaced
 }
 
 /** Round 1 = 20% hidden, … round 5 = 100%. Round 0 = 0%. */

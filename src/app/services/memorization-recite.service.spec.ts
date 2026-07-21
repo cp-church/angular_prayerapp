@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { MemorizationReciteService } from './memorization-recite.service';
+import {
+  MemorizationReciteService,
+  RECITE_STOP_TAIL_MS,
+} from './memorization-recite.service';
 import { SupabaseService } from './supabase.service';
 import { UserSessionService } from './user-session.service';
 
@@ -137,5 +140,48 @@ describe('MemorizationReciteService', () => {
     expect(fetchMock.mock.calls[0]?.[1]?.headers?.Authorization).toBe('Bearer test-anon-key');
 
     vi.unstubAllGlobals();
+  });
+
+  it('transcribeWhisper throws when MFA session start is missing', async () => {
+    localStorage.setItem('mfa_authenticated_email', 'mfa@example.com');
+
+    await expect(
+      (
+        service as unknown as {
+          transcribeWhisper(params: { blob: Blob; audioSeconds: number }): Promise<string>;
+        }
+      ).transcribeWhisper({
+        blob: new Blob(['audio'], { type: 'audio/webm' }),
+        audioSeconds: 1,
+      })
+    ).rejects.toThrow('Session expired');
+  });
+
+  it('cancelRecording does not wait for capture tail delay', async () => {
+    vi.useFakeTimers();
+    const internal = service as unknown as {
+      recordingActive: boolean;
+      recordingStartedAt: number;
+      mediaRecorder: MediaRecorder | null;
+      audioChunks: Blob[];
+    };
+    internal.recordingActive = true;
+    internal.recordingStartedAt = Date.now() - 2000;
+    internal.audioChunks = [new Blob(['audio'], { type: 'audio/webm' })];
+    internal.mediaRecorder = {
+      state: 'recording',
+      mimeType: 'audio/webm',
+      stop: vi.fn(),
+      onstop: null,
+    } as unknown as MediaRecorder;
+
+    const capturePromise = service.stopRecordingCapture();
+    const cancelPromise = service.cancelRecording();
+    const rejection = expect(capturePromise).rejects.toThrow('Recording cancelled.');
+    await vi.advanceTimersByTimeAsync(RECITE_STOP_TAIL_MS);
+    await rejection;
+    await cancelPromise;
+
+    vi.useRealTimers();
   });
 });

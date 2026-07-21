@@ -3,6 +3,7 @@ import {
   parseReference,
   isChapterOnlyScriptureReference,
   isSingleVerseScriptureReference,
+  formatSpokenScriptureReference,
   buildVerseReferenceFromChapter,
   buildVerseRangeReferenceFromChapter,
   scriptureChapterReferenceKey,
@@ -75,6 +76,18 @@ describe('isChapterOnlyScriptureReference', () => {
 
   it('returns false for invalid refs', () => {
     expect(isChapterOnlyScriptureReference('invalid')).toBe(false);
+  });
+});
+
+describe('formatSpokenScriptureReference', () => {
+  it('uses spaces instead of colon for verse refs', () => {
+    expect(formatSpokenScriptureReference('John 3:16')).toBe('John 3 16');
+    expect(formatSpokenScriptureReference('2 Timothy 3:16')).toBe('2 Timothy 3 16');
+    expect(formatSpokenScriptureReference('Romans 8:28')).toBe('Romans 8 28');
+  });
+
+  it('leaves chapter-only refs unchanged', () => {
+    expect(formatSpokenScriptureReference('Psalm 23')).toBe('Psalm 23');
   });
 });
 

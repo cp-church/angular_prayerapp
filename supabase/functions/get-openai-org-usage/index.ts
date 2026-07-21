@@ -7,10 +7,19 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type, x-supabase-client-platform',
 };
 
+function parseMfaSessionStartMs(value: string | null): number | null {
+  const sessionStartMs = Number(value);
+  if (!Number.isFinite(sessionStartMs) || sessionStartMs <= 0) return null;
+  const now = Date.now();
+  if (sessionStartMs > now + 15 * 60 * 1000) return null;
+  return sessionStartMs;
+}
+
 async function resolveAdminEmail(
   userClient: SupabaseClient,
   adminClient: SupabaseClient,
-  queryUserEmail: string | null
+  queryUserEmail: string | null,
+  queryMfaSessionStart: string | null
 ): Promise<string | null> {
   const { data: userData } = await userClient.auth.getUser();
   const jwtEmail = userData?.user?.email?.toLowerCase().trim();
@@ -19,14 +28,19 @@ async function resolveAdminEmail(
   const email = String(queryUserEmail ?? '').trim().toLowerCase();
   if (!email || !email.includes('@')) return null;
 
-  const mfaSince = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const sessionStartMs = parseMfaSessionStartMs(queryMfaSessionStart);
+  if (sessionStartMs === null) return null;
+
+  const proofSince = new Date(sessionStartMs - 15 * 60 * 1000).toISOString();
+  const proofUntil = new Date(sessionStartMs + 15 * 60 * 1000).toISOString();
   const { data: mfaProof, error: mfaError } = await adminClient
     .from('verification_codes')
     .select('id')
     .eq('email', email)
     .eq('action_type', 'admin_login')
     .not('used_at', 'is', null)
-    .gte('used_at', mfaSince)
+    .gte('used_at', proofSince)
+    .lte('used_at', proofUntil)
     .limit(1)
     .maybeSingle();
 
@@ -98,8 +112,14 @@ Deno.serve(async (req: Request) => {
   });
   const adminClient = createClient(supabaseUrl, serviceKey);
   const queryEmail = new URL(req.url).searchParams.get('user_email');
+  const queryMfaSessionStart = new URL(req.url).searchParams.get('mfa_session_start');
 
-  const email = await resolveAdminEmail(userClient, adminClient, queryEmail);
+  const email = await resolveAdminEmail(
+    userClient,
+    adminClient,
+    queryEmail,
+    queryMfaSessionStart
+  );
   if (!email) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,

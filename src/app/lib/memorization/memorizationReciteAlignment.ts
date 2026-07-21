@@ -97,8 +97,9 @@ function spokenOrdinalToDigit(word: string): string | null {
 }
 
 function spokenAsDigit(expectedDigit: string, spoken: string): string {
-  if (isReciteDigitToken(spoken)) return spoken;
-  const fromOrdinal = spokenOrdinalToDigit(spoken);
+  const normalized = normalizeReciteWord(spoken);
+  if (isReciteDigitToken(normalized)) return normalized;
+  const fromOrdinal = spokenOrdinalToDigit(normalized);
   if (fromOrdinal === expectedDigit) return fromOrdinal;
   return spoken;
 }
@@ -554,6 +555,83 @@ function mergeDigitResultStatuses(statuses: ReciteTokenStatus[]): ReciteTokenSta
   return 'correct';
 }
 
+function segmentStatuses(
+  segment: ReciteDisplaySegment,
+  resultByToken: Map<number, ReciteAlignmentResult>
+): ReciteTokenStatus[] {
+  return segment.tokenIndices.map((i) => resultByToken.get(i)?.status ?? 'missing');
+}
+
+function countSegmentContribution(statuses: ReciteTokenStatus[]): {
+  correct: number;
+  wrong: number;
+  missing: number;
+} {
+  if (statuses.length === 0) return { correct: 0, wrong: 0, missing: 1 };
+  if (statuses.every((s) => s === 'correct')) {
+    return { correct: 1, wrong: 0, missing: 0 };
+  }
+  if (statuses.every((s) => s === 'missing')) {
+    return { correct: 0, wrong: 0, missing: 1 };
+  }
+  if (statuses.every((s) => s === 'wrong')) {
+    return { correct: 0, wrong: 1, missing: 0 };
+  }
+  return {
+    correct: 0,
+    wrong: statuses.filter((s) => s === 'wrong').length,
+    missing: statuses.filter((s) => s === 'missing').length,
+  };
+}
+
+/** Count correct/wrong/missing using display segments so multi-digit refs (e.g. 16) are one unit. */
+export function computeReciteGroupedStats(
+  tokens: MemorizationToken[],
+  results: ReciteAlignmentResult[]
+): Pick<ReciteAlignmentSummary, 'correctCount' | 'wrongCount' | 'missingCount' | 'totalTypable'> {
+  const resultByToken = new Map(results.map((r) => [r.tokenIndex, r]));
+  let correctCount = 0;
+  let wrongCount = 0;
+  let missingCount = 0;
+  let totalTypable = 0;
+
+  for (const segment of buildReciteDisplaySegments(tokens)) {
+    if (segment.kind === 'punct') continue;
+    totalTypable += 1;
+    const contribution = countSegmentContribution(segmentStatuses(segment, resultByToken));
+    correctCount += contribution.correct;
+    wrongCount += contribution.wrong;
+    missingCount += contribution.missing;
+  }
+
+  return { correctCount, wrongCount, missingCount, totalTypable };
+}
+
+/** Skipped labels grouped like display segments (verse 16 → "16", not "1, 6"). */
+export function formatReciteSkippedLabels(
+  tokens: MemorizationToken[],
+  results: ReciteAlignmentResult[]
+): string[] {
+  const missingByToken = new Set(
+    results.filter((r) => r.status === 'missing').map((r) => r.tokenIndex)
+  );
+  if (missingByToken.size === 0) return [];
+
+  const labels: string[] = [];
+  for (const segment of buildReciteDisplaySegments(tokens)) {
+    if (segment.kind === 'punct') continue;
+    if (segment.kind === 'word') {
+      const idx = segment.tokenIndices[0]!;
+      if (missingByToken.has(idx)) labels.push(segment.text);
+      continue;
+    }
+    if (segment.tokenIndices.every((i) => missingByToken.has(i))) {
+      labels.push(segment.text);
+    }
+  }
+  return labels;
+}
+
 function spokenCharForResult(
   tokens: MemorizationToken[],
   result: ReciteAlignmentResult
@@ -620,7 +698,11 @@ function buildAlignedColumns(
     }
 
     const expectedText = group.map((r) => tokens[r.tokenIndex]!.text).join('');
-    const spokenChars = group.map((r) => spokenCharForResult(tokens, r));
+    const allMissing = group.every((r) => r.status === 'missing');
+    const spokenChars =
+      allMissing && group.length > 1
+        ? [{ char: '—', status: 'missing' as const }]
+        : group.map((r) => spokenCharForResult(tokens, r));
     const expectedStatus = mergeDigitResultStatuses(group.map((r) => r.status));
     columns.push({
       spokenChars,
@@ -720,23 +802,13 @@ export function alignRecitation(
   const spokenWords = buildSpokenWordsFromTranscript(spoken, allAssignments);
   const alignedColumns = buildAlignedColumns(tokens, results, allAssignments);
 
-  let correctCount = 0;
-  let wrongCount = 0;
-  let missingCount = 0;
-  for (const r of results) {
-    if (r.status === 'correct') correctCount++;
-    else if (r.status === 'wrong') wrongCount++;
-    else missingCount++;
-  }
+  const grouped = computeReciteGroupedStats(tokens, results);
 
   return {
     results,
     spokenWords,
     alignedColumns,
-    correctCount,
-    wrongCount,
-    missingCount,
-    totalTypable: typableIndices.length,
+    ...grouped,
   };
 }
 

@@ -43,6 +43,23 @@ export function isSingleVerseScriptureReference(reference: string): boolean {
   return parsed.verseEnd === null || parsed.verseEnd === parsed.verseStart
 }
 
+/**
+ * Spoken form for Whisper prompts and STT hints — no colon (users say "3 16", not "3:16").
+ * Example: `2 Timothy 3:16` → `2 Timothy 3 16`.
+ */
+export function formatSpokenScriptureReference(reference: string): string {
+  const parsed = parseReference(reference.trim())
+  if (!parsed) return reference.trim()
+  const parts = [parsed.book, String(parsed.chapter)]
+  if (parsed.verseStart !== null) {
+    parts.push(String(parsed.verseStart))
+    if (parsed.verseEnd !== null && parsed.verseEnd !== parsed.verseStart) {
+      parts.push(String(parsed.verseEnd))
+    }
+  }
+  return parts.join(' ')
+}
+
 /** Build a verse reference from a chapter-level reference and verse number (`Genesis 1` + `16` → `Genesis 1:16`). */
 export function buildVerseReferenceFromChapter(
   chapterReference: string,

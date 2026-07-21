@@ -1763,7 +1763,9 @@ type PrintRange = "week" | "twoweeks" | "month" | "year" | "all";
 })
 export class UserSettingsComponent implements OnInit, OnDestroy, OnChanges {
   @Input() isOpen = false;
+  @Input() scrollToSectionId: string | null = null;
   @Output() onClose = new EventEmitter<void>();
+  @Output() scrollToSectionComplete = new EventEmitter<void>();
 
   name = "";
   email = "";
@@ -1816,6 +1818,7 @@ export class UserSettingsComponent implements OnInit, OnDestroy, OnChanges {
   private destroy$ = new Subject<void>();
   private emailChange$ = new Subject<string>();
   private isInitialLoad = false;
+  private scrollToSectionTimer: ReturnType<typeof setTimeout> | null = null;
 
   themeOptions = [
     {
@@ -1973,6 +1976,30 @@ export class UserSettingsComponent implements OnInit, OnDestroy, OnChanges {
         this.isInitialLoad = false;
       }, 100);
     }
+
+    if (
+      this.isOpen &&
+      this.scrollToSectionId &&
+      (changes['isOpen'] || changes['scrollToSectionId'])
+    ) {
+      this.scheduleScrollToSection();
+    }
+  }
+
+  private scheduleScrollToSection(): void {
+    if (!this.scrollToSectionId) return;
+    if (this.scrollToSectionTimer) {
+      clearTimeout(this.scrollToSectionTimer);
+    }
+    const sectionId = this.scrollToSectionId;
+    this.scrollToSectionTimer = setTimeout(() => {
+      this.scrollToSectionTimer = null;
+      document.getElementById(sectionId)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+      this.scrollToSectionComplete.emit();
+    }, 200);
   }
 
   async loadPromptTypes(): Promise<void> {
@@ -2012,6 +2039,10 @@ export class UserSettingsComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   ngOnDestroy(): void {
+    if (this.scrollToSectionTimer) {
+      clearTimeout(this.scrollToSectionTimer);
+      this.scrollToSectionTimer = null;
+    }
     this.destroy$.next();
     this.destroy$.complete();
   }
