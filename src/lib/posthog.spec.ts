@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import posthog from 'posthog-js';
 import { environment } from '../environments/environment';
 import {
+  capturePostHogEvent,
   capturePostHogException,
   capturePostHogPageview,
   initializePostHog,
@@ -155,6 +156,38 @@ describe('posthog', () => {
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Failed to capture PostHog pageview:',
+        expect.any(Error)
+      );
+    });
+  });
+
+  describe('capturePostHogEvent', () => {
+    it('should capture custom events after initialization', () => {
+      initializePostHog();
+
+      capturePostHogEvent('memorization_practice_started', { mode: 'type' });
+
+      expect(posthog.capture).toHaveBeenCalledWith('memorization_practice_started', {
+        mode: 'type',
+      });
+    });
+
+    it('should no-op before initialization', () => {
+      capturePostHogEvent('memorization_practice_started', { mode: 'type' });
+
+      expect(posthog.capture).not.toHaveBeenCalled();
+    });
+
+    it('should log when event capture fails', () => {
+      initializePostHog();
+      vi.mocked(posthog.capture).mockImplementation(() => {
+        throw new Error('event failed');
+      });
+
+      capturePostHogEvent('memorization_practice_started');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to capture PostHog event:',
         expect.any(Error)
       );
     });

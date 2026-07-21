@@ -72,4 +72,18 @@ export function capturePostHogPageview(path: string): void {
   }
 }
 
+export function capturePostHogEvent(
+  event: string,
+  properties?: Record<string, unknown>
+): void {
+  if (!initialized || !isPostHogConfigured()) {
+    return;
+  }
+  try {
+    posthog.capture(event, properties);
+  } catch (error) {
+    console.error('Failed to capture PostHog event:', error);
+  }
+}
+
 export { posthog };

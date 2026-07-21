@@ -18,6 +18,16 @@ vi.mock('../../lib/memorization/isWhisperReciteSupported', () => ({
   isWhisperReciteSupported: vi.fn(() => true),
 }));
 
+const trackMemorizationPracticeStartedMock = vi.fn();
+const trackMemorizationPracticeCompletedMock = vi.fn();
+
+vi.mock('../../lib/memorization/memorizationPracticeAnalytics', () => ({
+  trackMemorizationPracticeStarted: (...args: unknown[]) =>
+    trackMemorizationPracticeStartedMock(...args),
+  trackMemorizationPracticeCompleted: (...args: unknown[]) =>
+    trackMemorizationPracticeCompletedMock(...args),
+}));
+
 const verseItem: MemorizedItem = {
   id: 'v1',
   reference: 'John 3:16',
@@ -373,6 +383,30 @@ describe('MemorizationPracticeSessionComponent', () => {
 
       expect(component.roundIndex).toBe(MEMORIZATION_FULL_HIDE_ROUND);
       expect(component.hiddenIndices.size).toBe(component.typableIndices.length);
+    });
+
+    it('tracks PostHog practice started when beginning word mode', async () => {
+      const { component } = await renderSession();
+      component.beginPracticeWithMode('word');
+
+      expect(trackMemorizationPracticeStartedMock).toHaveBeenCalledWith(verseItem, 'word');
+      expect(trackMemorizationPracticeCompletedMock).not.toHaveBeenCalled();
+    });
+
+    it('tracks PostHog practice completed when finishing a session', async () => {
+      const { component } = await renderSession();
+      component.beginPracticeWithMode('type');
+      trackMemorizationPracticeStartedMock.mockClear();
+      (component as unknown as { wrongAttemptsRef: number }).wrongAttemptsRef = 2;
+      (component as unknown as { correctKeystrokesRef: number }).correctKeystrokesRef = 18;
+
+      component.finishPracticeSession();
+
+      expect(trackMemorizationPracticeCompletedMock).toHaveBeenCalledWith(verseItem, 'type', {
+        wrongAttempts: 2,
+        correctKeystrokes: 18,
+        completed: true,
+      });
     });
   });
 

@@ -60,6 +60,10 @@ import {
 } from '../../lib/memorization/bibleBooksMemorization';
 import { isKeyboardPracticeMode } from '../../lib/memorization/memorizationKeyboardPractice';
 import {
+  trackMemorizationPracticeCompleted,
+  trackMemorizationPracticeStarted,
+} from '../../lib/memorization/memorizationPracticeAnalytics';
+import {
   applyMemorizeListenPlaybackRateToMediaElement,
   MEMORIZE_LISTEN_REPEAT_GAP_MS,
   MemorizeListenSpeed,
@@ -646,6 +650,7 @@ export class MemorizationPracticeSessionComponent
       return;
     }
     this.reciteModeBlockedMessage = null;
+    trackMemorizationPracticeStarted(this.item, mode);
     this.syncStrictModeFromSession();
     this.stopPassageAudio();
     this.modePickerOpen = false;
@@ -740,6 +745,7 @@ export class MemorizationPracticeSessionComponent
   }
 
   private beginRecitePractice(): void {
+    trackMemorizationPracticeStarted(this.item, MEMORIZATION_RECITE_PRACTICE_MODE);
     this.syncStrictModeFromSession();
     this.stopPassageAudio();
     this.modePickerOpen = false;
@@ -1670,6 +1676,12 @@ export class MemorizationPracticeSessionComponent
   finishPracticeSession(): void {
     if (this.awaitingRoundAdvance && !this.showFinishPracticeOption) return;
     if (this.practiceCompleted) return;
+    const mode = this.practiceModeRef ?? 'type';
+    trackMemorizationPracticeCompleted(this.item, mode, {
+      wrongAttempts: this.wrongAttemptsRef,
+      correctKeystrokes: this.correctKeystrokesRef,
+      completed: true,
+    });
     this.practiceCompleted = true;
     this.completed.emit({
       wrongAttempts: this.wrongAttemptsRef,
