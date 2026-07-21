@@ -44,6 +44,19 @@ export function isSingleVerseScriptureReference(reference: string): boolean {
 }
 
 /**
+ * Inclusive verse count for a verse or verse-range reference.
+ * Returns null for chapter-only refs (e.g. Psalm 23) and unparseable strings.
+ */
+export function scriptureReferenceVerseCount(reference: string): number | null {
+  const parsed = parseReference(reference.trim())
+  if (!parsed || parsed.verseStart === null) return null
+  const end = parsed.verseEnd ?? parsed.verseStart
+  const lo = Math.min(parsed.verseStart, end)
+  const hi = Math.max(parsed.verseStart, end)
+  return hi - lo + 1
+}
+
+/**
  * Spoken form for Whisper prompts and STT hints — no colon (users say "3 16", not "3:16").
  * Example: `2 Timothy 3:16` → `2 Timothy 3 16`.
  */

@@ -2066,10 +2066,29 @@ describe('MemorizationPracticeSessionComponent', () => {
       expect(getByTestId('memorize-practice-mode-recite')).toBeTruthy();
     });
 
-    it('shows recite in mode picker for multi-verse references with inline warning on select', async () => {
+    it('allows recite for multi-verse references within the verse limit', async () => {
       const { component, getByTestId, cdr } = await renderSession({
         reciteEnabled: true,
         item: { ...verseItem, reference: 'John 3:16-18' },
+      });
+      await waitForReciteSettings(component);
+      expect(component.reciteModeVisible).toBe(true);
+      expect(component.reciteModeAvailable).toBe(true);
+
+      await component.openModePicker();
+      cdr.detectChanges();
+      expect(getByTestId('memorize-practice-mode-recite')).toBeTruthy();
+
+      component.beginPracticeWithMode('recite');
+      cdr.detectChanges();
+      expect(component.practiceMode).toBe('recite');
+      expect(component.modePickerOpen).toBe(false);
+    });
+
+    it('shows inline warning when reference exceeds the verse limit', async () => {
+      const { component, getByTestId, cdr } = await renderSession({
+        reciteEnabled: true,
+        item: { ...verseItem, reference: 'John 3:16-22' },
       });
       await waitForReciteSettings(component);
       expect(component.reciteModeVisible).toBe(true);
@@ -2085,7 +2104,7 @@ describe('MemorizationPracticeSessionComponent', () => {
       expect(component.modePickerOpen).toBe(true);
       expect(getByTestId('memorize-recite-blocked-message')).toBeTruthy();
       expect(getByTestId('memorize-recite-blocked-message').textContent).toContain(
-        'single verse'
+        '5 verses'
       );
     });
 

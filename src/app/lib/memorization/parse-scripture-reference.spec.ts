@@ -3,6 +3,7 @@ import {
   parseReference,
   isChapterOnlyScriptureReference,
   isSingleVerseScriptureReference,
+  scriptureReferenceVerseCount,
   formatSpokenScriptureReference,
   buildVerseReferenceFromChapter,
   buildVerseRangeReferenceFromChapter,
@@ -100,6 +101,21 @@ describe('isSingleVerseScriptureReference', () => {
   it('returns false for ranges and chapter-only refs', () => {
     expect(isSingleVerseScriptureReference('John 3:16-18')).toBe(false);
     expect(isSingleVerseScriptureReference('Psalm 23')).toBe(false);
+  });
+});
+
+describe('scriptureReferenceVerseCount', () => {
+  it('counts single verses and ranges', () => {
+    expect(scriptureReferenceVerseCount('John 3:16')).toBe(1);
+    expect(scriptureReferenceVerseCount('John 3:16-18')).toBe(3);
+    expect(scriptureReferenceVerseCount('Genesis 1:1-5')).toBe(5);
+    expect(scriptureReferenceVerseCount('Genesis 1:5-1')).toBe(5);
+  });
+
+  it('returns null for chapter-only and invalid refs', () => {
+    expect(scriptureReferenceVerseCount('Psalm 23')).toBeNull();
+    expect(scriptureReferenceVerseCount('Genesis 1')).toBeNull();
+    expect(scriptureReferenceVerseCount('not a reference')).toBeNull();
   });
 });
 

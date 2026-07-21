@@ -27,7 +27,7 @@ import {
 } from '../../memorization-recite/memorization-recite-practice.component';
 import {
   MEMORIZATION_RECITE_PRACTICE_MODE,
-  RECITE_SINGLE_VERSE_ONLY_MESSAGE,
+  RECITE_VERSE_LIMIT_MESSAGE,
   computeReciteModeAvailable,
   computeReciteModeVisible,
   isRecitePracticeMode,
@@ -637,7 +637,7 @@ export class MemorizationPracticeSessionComponent
     // @removal-recite
     if (isRecitePracticeMode(mode)) {
       if (!this.reciteModeAvailable) {
-        this.reciteModeBlockedMessage = RECITE_SINGLE_VERSE_ONLY_MESSAGE;
+        this.reciteModeBlockedMessage = RECITE_VERSE_LIMIT_MESSAGE;
         this.cdr.markForCheck();
         return;
       }
