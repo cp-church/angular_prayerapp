@@ -22,8 +22,7 @@ export function computeReciteModeVisible(options: {
   return (
     isWhisperReciteSupported() &&
     options.settingsLoaded &&
-    options.enabled &&
-    !options.isBibleBooks
+    options.enabled
   );
 }
 
@@ -35,6 +34,6 @@ export function computeReciteModeAvailable(options: {
 }): boolean {
   return (
     computeReciteModeVisible(options) &&
-    isSingleVerseScriptureReference(options.reference)
+    (options.isBibleBooks || isSingleVerseScriptureReference(options.reference))
   );
 }

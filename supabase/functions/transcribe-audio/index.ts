@@ -10,7 +10,7 @@ const corsHeaders = {
 const WHISPER_MODEL = 'whisper-1';
 const WHISPER_RATE_USD_PER_MINUTE = 0.006;
 const MAX_BYTES = 10 * 1024 * 1024;
-const RECITE_MAX_AUDIO_SECONDS = 180;
+const RECITE_MAX_AUDIO_SECONDS = 300;
 const BYTES_PER_SECOND_ESTIMATE = 8000;
 
 function estimateAudioSecondsFromBytes(byteSize: number): number {

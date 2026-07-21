@@ -2089,6 +2089,36 @@ describe('MemorizationPracticeSessionComponent', () => {
       );
     });
 
+    it('exposes recite for bible books items and can start practice', async () => {
+      const bibleBooksItem: MemorizedItem = {
+        id: 'bb-recite',
+        reference: 'Bible Books (OT)',
+        text: 'Genesis Exodus Leviticus',
+        translation: 'esv',
+        dateAdded: Date.now(),
+        lastPracticedAt: null,
+        practiceSessions: [],
+        kind: 'bibleBooks',
+        bibleBooksScope: 'ot',
+      };
+      const { component, getByTestId, cdr } = await renderSession({
+        reciteEnabled: true,
+        item: bibleBooksItem,
+      });
+      await waitForReciteSettings(component);
+      expect(component.reciteModeVisible).toBe(true);
+      expect(component.reciteModeAvailable).toBe(true);
+
+      await component.openModePicker();
+      cdr.detectChanges();
+      expect(getByTestId('memorize-practice-mode-recite')).toBeTruthy();
+
+      component.beginPracticeWithMode('recite');
+      cdr.detectChanges();
+      expect(component.practiceMode).toBe('recite');
+      expect(component.modePickerOpen).toBe(false);
+    });
+
     it('enables Record when parent settings loaded before child refresh completes', async () => {
       const { component, cdr } = await renderSession({ reciteEnabled: true });
       await waitForReciteSettings(component);

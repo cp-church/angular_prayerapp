@@ -116,4 +116,26 @@ describe('MemorizationRecitePracticeComponent', () => {
     expect(transcribeCapturedRecording).toHaveBeenCalledTimes(1);
     expect(component.phase).toBe('results');
   });
+
+  it('omits whisper prompt for bible books transcription', async () => {
+    component.isBibleBooks = true;
+    component.reference = 'Bible Books (OT)';
+    component.tokens = [
+      { kind: 'word', text: 'Genesis' },
+      { kind: 'punct', text: ' ' },
+      { kind: 'word', text: 'Exodus' },
+    ];
+    component.typableIndices = [0, 2];
+    stopRecordingCapture.mockResolvedValue({ blob: new Blob(['audio']), audioSeconds: 2 });
+    transcribeCapturedRecording.mockResolvedValue('Genesis Exodus');
+
+    await component.stopRecording();
+
+    expect(transcribeCapturedRecording).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: '',
+        memorizedItemId: 'item-1',
+      })
+    );
+  });
 });

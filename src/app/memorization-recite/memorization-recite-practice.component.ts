@@ -375,7 +375,8 @@ export class MemorizationRecitePracticeComponent {
     this.error = '';
     this.cdr.markForCheck();
     try {
-      const prompt = formatMemorizationReciteWhisperPrompt(this.tokens, this.reference);
+      const alignmentReference = this.isBibleBooks ? '' : this.reference;
+      const prompt = formatMemorizationReciteWhisperPrompt(this.tokens, alignmentReference);
       const captured = await this.reciteService.stopRecordingCapture();
       if (!this.isStopCurrent(stopGeneration)) return;
 
@@ -396,7 +397,7 @@ export class MemorizationRecitePracticeComponent {
         this.tokens,
         this.typableIndices,
         transcript,
-        this.reference
+        alignmentReference
       );
       this.alignmentByToken = new Map(
         this.alignment.results.map((r) => [r.tokenIndex, r])

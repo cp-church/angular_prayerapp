@@ -102,7 +102,8 @@ import type {
                     Enable Recite mode
                   </span>
                   <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                    Shows Recite in memorization practice for single-verse items. Requires
+                    Shows Recite in memorization practice for single-verse and Bible Books items.
+                    Requires
                     <code class="text-xs">OPENAI_API_KEY</code> on the server.
                   </p>
                 </div>

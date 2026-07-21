@@ -23,6 +23,12 @@ describe('computeReciteModeVisible', () => {
     vi.spyOn(whisperSupport, 'isWhisperReciteSupported').mockReturnValue(true);
 
     expect(computeReciteModeVisible(baseOptions)).toBe(true);
+    expect(
+      computeReciteModeVisible({
+        ...baseOptions,
+        isBibleBooks: true,
+      })
+    ).toBe(true);
   });
 });
 
@@ -63,5 +69,17 @@ describe('computeReciteModeAvailable', () => {
         reference: 'John 3:16-18',
       })
     ).toBe(false);
+  });
+
+  it('returns true for bible books items without a single-verse reference', () => {
+    vi.spyOn(whisperSupport, 'isWhisperReciteSupported').mockReturnValue(true);
+
+    expect(
+      computeReciteModeAvailable({
+        ...baseOptions,
+        isBibleBooks: true,
+        reference: 'Bible Books (OT)',
+      })
+    ).toBe(true);
   });
 });

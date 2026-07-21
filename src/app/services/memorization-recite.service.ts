@@ -3,7 +3,7 @@ import { SupabaseService } from './supabase.service';
 import { UserSessionService } from './user-session.service';
 import { isWhisperReciteSupported } from '../lib/memorization/isWhisperReciteSupported';
 
-export const RECITE_MAX_DURATION_MS = 3 * 60 * 1000;
+export const RECITE_MAX_DURATION_MS = 5 * 60 * 1000;
 export const RECITE_MIN_DURATION_MS = 1000;
 /** Brief tail after stop tap so trailing reference words are not clipped. */
 export const RECITE_STOP_TAIL_MS = 400;

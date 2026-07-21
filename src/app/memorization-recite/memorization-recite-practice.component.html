@@ -10,8 +10,13 @@
     </p>
     @if (phase === 'ready') {
       <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">
-        Say the <strong>entire</strong> verse and reference from memory. Shown words are cues only.
-        Hold Hint to peek at blanks.
+        @if (isBibleBooks) {
+          Say <strong>all the books in order</strong> from memory. Shown names are cues only.
+          Hold Hint to peek at blanks.
+        } @else {
+          Say the <strong>entire</strong> verse and reference from memory. Shown words are cues only.
+          Hold Hint to peek at blanks.
+        }
       </p>
     } @else if (phase === 'recording' || phase === 'stopping') {
       <p class="text-sm text-red-600 dark:text-red-400 font-medium mb-4 animate-pulse">
