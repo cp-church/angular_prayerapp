@@ -1,0 +1,147 @@
+@if (active) {
+  <div class="pt-4" data-testid="memorize-recite-panel">
+    <p class="text-sm text-gray-600 dark:text-gray-400 mb-2" data-testid="memorize-recite-round-header">
+      @if (awaitingRoundAdvance) {
+        {{ roundAdvanceHeaderCopy }}
+      } @else {
+        Round {{ roundIndex }} of {{ MEMORIZATION_FULL_HIDE_ROUND }} — about
+        {{ Math.round(hiddenFractionForRound(roundIndex) * 100) }}% hidden
+      }
+    </p>
+    @if (phase === 'ready') {
+      <p class="text-sm text-gray-700 dark:text-gray-300 mb-4">
+        Say the <strong>entire</strong> verse and reference from memory. Shown words are cues only.
+        Hold Hint to peek at blanks.
+      </p>
+    } @else if (phase === 'recording') {
+      <p class="text-sm text-red-600 dark:text-red-400 font-medium mb-4 animate-pulse">
+        Recording… {{ formatReciteDuration(recordingMs) }}
+      </p>
+    } @else if (phase === 'transcribing') {
+      <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Checking your recitation…</p>
+    } @else if (phase === 'results' && alignment) {
+      <p class="text-sm font-medium text-gray-800 dark:text-gray-100 mb-1" data-testid="memorize-recite-score">
+        {{ scoreSummary }}
+      </p>
+      @if (skippedWordsLabel) {
+        <p
+          class="text-sm text-amber-700 dark:text-amber-400 mb-4"
+          data-testid="memorize-recite-skipped"
+        >
+          Skipped: {{ skippedWordsLabel }}
+        </p>
+      } @else {
+        <div class="mb-4"></div>
+      }
+    }
+    @if (error) {
+      <p class="text-sm text-red-600 dark:text-red-400 mb-3" data-testid="memorize-recite-error">
+        {{ error }}
+      </p>
+    }
+    @if (phase === 'results' && alignment) {
+      <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+        Top: what you said (red = wrong, amber — = skipped). Bottom: correct verse.
+      </p>
+      <div
+        class="touch-manipulation text-base leading-relaxed font-serif flex flex-wrap gap-x-2 gap-y-3 items-end rounded-md p-1"
+        data-testid="memorize-recite-aligned-words"
+      >
+        @for (col of alignedColumns; track $index) {
+          <div class="inline-flex flex-col items-center gap-0.5 max-w-[8rem]">
+            <span class="inline text-center break-words">
+              @if (col.spokenChars) {
+                @for (sc of col.spokenChars; track $index) {
+                  <span
+                    [class.text-green-700]="sc.status === 'correct'"
+                    [class.dark:text-green-400]="sc.status === 'correct'"
+                    [class.text-red-600]="sc.status === 'wrong'"
+                    [class.dark:text-red-400]="sc.status === 'wrong'"
+                    [class.text-amber-600]="sc.status === 'missing'"
+                    [class.dark:text-amber-400]="sc.status === 'missing'"
+                  >
+                    {{ sc.char }}
+                  </span>
+                }
+              } @else {
+                <span
+                  [class.text-green-700]="col.spoken?.status === 'correct'"
+                  [class.dark:text-green-400]="col.spoken?.status === 'correct'"
+                  [class.text-red-600]="col.spoken?.status === 'wrong'"
+                  [class.dark:text-red-400]="col.spoken?.status === 'wrong'"
+                >
+                  {{ col.spoken?.text }}
+                </span>
+              }
+            </span>
+            @if (col.expected) {
+              <span
+                class="inline text-center break-words text-sm border-t border-gray-200 dark:border-gray-600 pt-0.5 w-full text-gray-800 dark:text-gray-100"
+                [class.text-amber-700]="col.expected.status === 'missing'"
+                [class.dark:text-amber-400]="col.expected.status === 'missing'"
+              >
+                {{ col.expected.text }}
+              </span>
+            }
+          </div>
+        }
+      </div>
+    } @else {
+      <div
+        class="touch-manipulation text-base leading-relaxed font-serif flex flex-wrap gap-x-0 gap-y-1.5 sm:gap-y-1 items-baseline rounded-md p-1"
+        data-testid="memorize-recite-words"
+      >
+        @for (segment of displaySegments; track $index) {
+          @if (segment.kind === 'punct') {
+            <span class="inline text-gray-800 dark:text-gray-100 whitespace-pre">{{ segment.text }}</span>
+          } @else if (segment.kind === 'digits') {
+            <span
+              class="inline-flex items-baseline border-b-2 box-border px-0.5 sm:px-0 min-h-[1.5em] justify-center"
+              [class.border-gray-400]="segmentHasHiddenBlank(segment)"
+              [class.dark:border-gray-500]="segmentHasHiddenBlank(segment)"
+              [class.border-transparent]="!segmentHasHiddenBlank(segment)"
+            >
+              @for (char of segment.text; track $index; let charIndex = $index) {
+                <span
+                  [class.text-gray-800]="digitCharShowsText(segment, charIndex)"
+                  [class.dark:text-gray-100]="digitCharShowsText(segment, charIndex)"
+                  [class.text-blue-800]="digitCharShowHint(segment, charIndex)"
+                  [class.dark:text-blue-200]="digitCharShowHint(segment, charIndex)"
+                  [class.italic]="digitCharShowHint(segment, charIndex)"
+                  [class.text-transparent]="digitCharShowsBlank(segment, charIndex)"
+                  [class.select-none]="digitCharShowsBlank(segment, charIndex)"
+                  [class.pointer-events-none]="digitCharShowsBlank(segment, charIndex)"
+                  [attr.aria-hidden]="digitCharShowsBlank(segment, charIndex)"
+                >
+                  {{ char }}
+                </span>
+              }
+            </span>
+          } @else {
+            <span
+              class="inline-flex items-baseline border-b-2 box-border px-0.5 sm:px-0 min-h-[1.5em] min-w-[0.6em] justify-center"
+              [class.border-gray-400]="segmentHasHiddenBlank(segment)"
+              [class.dark:border-gray-500]="segmentHasHiddenBlank(segment)"
+              [class.border-transparent]="!segmentHasHiddenBlank(segment)"
+            >
+              <span
+                [class.text-gray-800]="segmentShowsText(segment)"
+                [class.dark:text-gray-100]="segmentShowsText(segment)"
+                [class.text-blue-800]="segmentShowHint(segment)"
+                [class.dark:text-blue-200]="segmentShowHint(segment)"
+                [class.italic]="segmentShowHint(segment)"
+                [class.text-transparent]="segmentFullyBlank(segment)"
+                [class.select-none]="segmentFullyBlank(segment)"
+                [class.pointer-events-none]="segmentFullyBlank(segment)"
+                [attr.aria-hidden]="segmentFullyBlank(segment)"
+              >
+                {{ segmentDisplayText(segment) }}
+              </span>
+            </span>
+          }
+        }
+      </div>
+    }
+  </div>
+
+}

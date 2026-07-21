@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest';
@@ -8,9 +8,15 @@ import { ElementRef, SimpleChange, ɵresolveComponentResources as resolveCompone
 import { MemorizationPracticeSessionComponent } from './memorization-practice-session.component';
 import { ScriptureService } from '../../services/scripture.service';
 import { UserSessionService } from '../../services/user-session.service';
+import { MemorizationReciteService } from '../../services/memorization-recite.service';
+import { MemorizationReciteSettingsService } from '../../services/memorization-recite-settings.service';
 import type { MemorizedItem } from '../../types/memorization';
 import { MEMORIZATION_FULL_HIDE_ROUND } from '../../lib/memorization/memorizationPracticeUtils';
 import { MEMORIZE_LISTEN_REPEAT_GAP_MS } from '../../lib/memorization/memorizeListenSpeedStorage';
+
+vi.mock('../../lib/memorization/isWhisperReciteSupported', () => ({
+  isWhisperReciteSupported: vi.fn(() => true),
+}));
 
 const verseItem: MemorizedItem = {
   id: 'v1',
@@ -32,6 +38,17 @@ const mockScriptureService = {
     audioUrl: 'https://audio.test/x.mp3',
     useSpeechSynthesis: false,
   }),
+};
+
+const mockReciteService = {
+  startRecording: vi.fn().mockResolvedValue(undefined),
+  stopAndTranscribe: vi.fn().mockResolvedValue('For God so loved the world'),
+  cancelRecording: vi.fn().mockResolvedValue(undefined),
+};
+
+const mockReciteSettingsService = {
+  getSettings: vi.fn().mockResolvedValue({ enabled: false }),
+  getSettingsFromServer: vi.fn().mockResolvedValue({ enabled: false }),
 };
 
 function createMockUserSessionService(
@@ -95,6 +112,8 @@ async function renderSession(
     isOpen?: boolean;
     memorizationStrictMode?: boolean;
     deferSessionLoad?: boolean;
+    reciteEnabled?: boolean;
+    reciteTranscript?: string;
   } = {}
 ) {
   const closed = vi.fn();
@@ -105,6 +124,13 @@ async function renderSession(
   const sessionService = createMockUserSessionService(strictMode, {
     deferSessionLoad: options.deferSessionLoad,
   });
+
+  const reciteSettings = { enabled: options.reciteEnabled ?? false };
+  mockReciteSettingsService.getSettings.mockResolvedValue(reciteSettings);
+  mockReciteSettingsService.getSettingsFromServer.mockResolvedValue(reciteSettings);
+  mockReciteService.stopAndTranscribe.mockResolvedValue(
+    options.reciteTranscript ?? 'For God so loved the world'
+  );
 
   const result = await render(MemorizationPracticeSessionComponent, {
     componentInputs: {
@@ -117,6 +143,8 @@ async function renderSession(
         provide: UserSessionService,
         useValue: sessionService,
       },
+      { provide: MemorizationReciteService, useValue: mockReciteService },
+      { provide: MemorizationReciteSettingsService, useValue: mockReciteSettingsService },
     ],
   });
 
@@ -151,12 +179,21 @@ function correctReorderOrder(n: number): number[] {
 }
 
 const componentDir = dirname(fileURLToPath(import.meta.url));
+const reciteComponentDir = join(componentDir, '../../memorization-recite');
+
+function readComponentResource(url: string): string {
+  for (const base of [componentDir, reciteComponentDir]) {
+    const path = join(base, url);
+    if (existsSync(path)) {
+      return readFileSync(path, 'utf-8');
+    }
+  }
+  throw new Error(`Component resource not found: ${url}`);
+}
 
 describe('MemorizationPracticeSessionComponent', () => {
   beforeAll(async () => {
-    await resolveComponentResources((url) =>
-      Promise.resolve(readFileSync(join(componentDir, url), 'utf-8'))
-    );
+    await resolveComponentResources((url) => Promise.resolve(readComponentResource(url)));
   });
 
   beforeEach(() => {
@@ -634,7 +671,7 @@ describe('MemorizationPracticeSessionComponent', () => {
   describe('Escape key handling', () => {
     it('closes mode picker on Escape', async () => {
       const { component, closed } = await renderSession();
-      component.openModePicker();
+      await component.openModePicker();
       expect(component.modePickerOpen).toBe(true);
 
       component.onWindowKeydown(makeKeyEvent('Escape'));
@@ -665,7 +702,7 @@ describe('MemorizationPracticeSessionComponent', () => {
     it('openModePicker and closeModePicker toggle flag', async () => {
       const { component } = await renderSession();
 
-      component.openModePicker();
+      await component.openModePicker();
       expect(component.modePickerOpen).toBe(true);
 
       component.closeModePicker();
@@ -2004,6 +2041,91 @@ describe('MemorizationPracticeSessionComponent', () => {
         component.processWordGuess('__wrong__');
       }
       expect(component.correctKeystrokesTotal).toBeGreaterThan(0);
+    });
+  });
+
+  describe('recite mode', () => {
+    async function waitForReciteSettings(
+      component: MemorizationPracticeSessionComponent
+    ): Promise<void> {
+      await vi.waitFor(() => expect(component.reciteSettingsLoaded).toBe(true));
+    }
+
+    it('exposes recite in mode picker for enabled single-verse items', async () => {
+      const { component, getByTestId, cdr } = await renderSession({ reciteEnabled: true });
+      await waitForReciteSettings(component);
+      expect(component.reciteModeAvailable).toBe(true);
+
+      await component.openModePicker();
+      cdr.detectChanges();
+      expect(getByTestId('memorize-practice-mode-recite')).toBeTruthy();
+    });
+
+    it('hides recite for multi-verse references', async () => {
+      const { component } = await renderSession({
+        reciteEnabled: true,
+        item: { ...verseItem, reference: 'John 3:16-18' },
+      });
+      await waitForReciteSettings(component);
+      expect(component.reciteModeAvailable).toBe(false);
+    });
+
+    it('enables Record when parent settings loaded before child refresh completes', async () => {
+      const { component, cdr } = await renderSession({ reciteEnabled: true });
+      await waitForReciteSettings(component);
+      component.beginPracticeWithMode('recite');
+      cdr.detectChanges();
+      await vi.waitFor(() => expect(component.recitePractice).toBeTruthy());
+      component.recitePractice!.settingsLoaded = false;
+
+      expect(component.reciteSettingsLoadedForRecord).toBe(true);
+    });
+
+    it('records, transcribes, and shows alignment results', async () => {
+      const { component, cdr } = await renderSession({
+        reciteEnabled: true,
+        reciteTranscript: 'For God so loved the world John 3 16',
+      });
+      await waitForReciteSettings(component);
+      component.beginPracticeWithMode('recite');
+      cdr.detectChanges();
+      await vi.waitFor(() => expect(component.recitePractice).toBeTruthy());
+
+      await component.startReciteRecording();
+      cdr.detectChanges();
+      expect(component.recitePhase).toBe('recording');
+      expect(mockReciteService.startRecording).toHaveBeenCalled();
+
+      await component.stopReciteRecording();
+      cdr.detectChanges();
+      expect(component.recitePhase).toBe('results');
+      expect(component.reciteAlignment).not.toBeNull();
+      expect(mockReciteService.stopAndTranscribe).toHaveBeenCalledWith(
+        expect.objectContaining({
+          memorizedItemId: verseItem.id,
+          prompt: expect.any(String),
+        })
+      );
+    });
+
+    it('retry resets recite results without applying errors', async () => {
+      const { component, cdr } = await renderSession({
+        reciteEnabled: true,
+        reciteTranscript: 'For so loved the world',
+      });
+      await waitForReciteSettings(component);
+      component.beginPracticeWithMode('recite');
+      cdr.detectChanges();
+      await vi.waitFor(() => expect(component.recitePractice).toBeTruthy());
+      await component.startReciteRecording();
+      await component.stopReciteRecording();
+      cdr.detectChanges();
+      expect(component.displayPracticeErrors).toBeGreaterThan(0);
+
+      component.onReciteRepeatRound();
+      cdr.detectChanges();
+      expect(component.recitePhase).toBe('ready');
+      expect(component.displayPracticeErrors).toBe(0);
     });
   });
 });

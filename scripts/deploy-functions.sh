@@ -70,6 +70,14 @@ case $FUNCTION_NAME in
         echo "   - SUPABASE_URL"
         echo "   - SUPABASE_SERVICE_ROLE_KEY"
         ;;
+    "transcribe-audio")
+        deploy_function "transcribe-audio" ""
+        echo "💡 Requires OPENAI_API_KEY secret. Used by Memorize Recite mode (Whisper STT)."
+        ;;
+    "get-openai-org-usage")
+        deploy_function "get-openai-org-usage" ""
+        echo "💡 Requires OPENAI_ADMIN_KEY secret (optional). Admin-only OpenAI org usage for Recite settings."
+        ;;
     "all")
         echo "Deploying all functions..."
         echo ""
@@ -78,6 +86,8 @@ case $FUNCTION_NAME in
         deploy_function "send-prayer-reminders" ""
         deploy_function "send-user-hourly-prayer-reminders" ""
         deploy_function "cleanup-device-tokens" ""
+        deploy_function "transcribe-audio" ""
+        deploy_function "get-openai-org-usage" ""
         echo "🎉 All functions deployed successfully!"
         ;;
     *)
@@ -91,6 +101,8 @@ case $FUNCTION_NAME in
         echo "  send-prayer-reminders    - Automated prayer reminders"
         echo "  send-user-hourly-prayer-reminders - User hourly self-reminders (cron)"
         echo "  cleanup-device-tokens    - Stale device tokens + push log cleanup (cron)"
+        echo "  transcribe-audio         - Whisper STT for Memorize Recite mode"
+        echo "  get-openai-org-usage     - Admin OpenAI org usage (Recite settings)"
         echo "  all                      - Deploy all functions (default)"
         echo ""
         exit 1

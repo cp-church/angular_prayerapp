@@ -48,7 +48,27 @@ export type MemorizationPracticeMode =
   | 'type'
   | 'word'
   | 'reorder'
-  | 'firstLetters';
+  | 'firstLetters'
+  | 'recite';
+
+export interface MemorizationReciteSettings {
+  enabled: boolean;
+}
+
+export interface MemorizationReciteUsageSummary {
+  attemptCount: number;
+  billableAudioSeconds: number;
+  estimatedCostUsd: number;
+}
+
+export interface MemorizationReciteOpenAiUsage {
+  configured: boolean;
+  periodDays?: number;
+  totalUsd?: number;
+  error?: string;
+  /** Org costs API needs OPENAI_ADMIN_KEY (separate from OPENAI_API_KEY for Whisper). */
+  adminKeyRequired?: boolean;
+}
 
 export interface MemorizationInProgress {
   sessionSeed: string;

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   parseReference,
   isChapterOnlyScriptureReference,
+  isSingleVerseScriptureReference,
   buildVerseReferenceFromChapter,
   buildVerseRangeReferenceFromChapter,
   scriptureChapterReferenceKey,
@@ -74,6 +75,18 @@ describe('isChapterOnlyScriptureReference', () => {
 
   it('returns false for invalid refs', () => {
     expect(isChapterOnlyScriptureReference('invalid')).toBe(false);
+  });
+});
+
+describe('isSingleVerseScriptureReference', () => {
+  it('returns true for single-verse refs', () => {
+    expect(isSingleVerseScriptureReference('John 3:16')).toBe(true);
+    expect(isSingleVerseScriptureReference('Genesis 1:1')).toBe(true);
+  });
+
+  it('returns false for ranges and chapter-only refs', () => {
+    expect(isSingleVerseScriptureReference('John 3:16-18')).toBe(false);
+    expect(isSingleVerseScriptureReference('Psalm 23')).toBe(false);
   });
 });
 

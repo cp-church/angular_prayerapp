@@ -423,6 +423,20 @@ Apply migration [`20260707120000_memorization_esv.sql`](../supabase/migrations/2
 
 Without `ESV_API_TOKEN`, ESV passages and listen mode fail until the secret is set. Without `API_BIBLE_KEY` and Bible IDs, non-ESV translations fail at fetch time; users can still manage lists in other translations if passages were previously cached.
 
+### OpenAI API (Memorize Recite mode)
+
+Recite mode uses server-side **Whisper** transcription. Apply migration [`20260721120000_memorization_recite_mode.sql`](../supabase/migrations/20260721120000_memorization_recite_mode.sql) (includes `is_admin` fix, usage ledger, and secured MFA-aware usage RPC), then:
+
+```bash
+supabase secrets set OPENAI_API_KEY=your_openai_project_api_key
+# Optional: org-wide spend in Admin → Memorization Recite Mode (last 30 days, all usage on that OpenAI org)
+supabase secrets set OPENAI_ADMIN_KEY=your_openai_admin_api_key
+./scripts/deploy-functions.sh transcribe-audio
+./scripts/deploy-functions.sh get-openai-org-usage
+```
+
+Enable the feature under **Admin → Settings → Content → Memorization Recite Mode**. **`OPENAI_API_KEY`** powers Whisper transcription (`transcribe-audio`). **`OPENAI_ADMIN_KEY`** (a separate [Admin API key](https://platform.openai.com/settings/organization/admin-keys)) is optional and powers the org spend line in admin; it reflects **all** usage on that OpenAI organization, not just this app. App-tracked usage (attempts, minutes, estimated cost) is stored in `memorization_recite_usage` without either admin secret.
+
 ---
 
 ## Deployment

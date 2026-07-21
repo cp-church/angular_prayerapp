@@ -19,6 +19,17 @@ import { CommonModule, DOCUMENT } from '@angular/common';
 import { Subscription, combineLatest } from 'rxjs';
 import { ScriptureService } from '../../services/scripture.service';
 import { UserSessionService } from '../../services/user-session.service';
+// @removal-recite
+import { MemorizationReciteSettingsService } from '../../services/memorization-recite-settings.service';
+import {
+  MemorizationRecitePracticeComponent,
+  type ReciteAttemptMetrics,
+} from '../../memorization-recite/memorization-recite-practice.component';
+import {
+  MEMORIZATION_RECITE_PRACTICE_MODE,
+  computeReciteModeAvailable,
+  isRecitePracticeMode,
+} from '../../memorization-recite/integration';
 import type { PracticeSessionResult } from '../../services/memorization.service';
 import {
   isMemorizationListenTranslation,
@@ -121,6 +132,7 @@ function hiddenTypingTokenIndices(
     MemorizationWordChoicesFooterComponent,
     MemorizeListenControlsDialogComponent,
     BibleBooksMemorizationListComponent,
+    MemorizationRecitePracticeComponent,
     ScriptureAttributionComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -178,6 +190,8 @@ export class MemorizationPracticeSessionComponent
   private readonly ngZone = inject(NgZone);
   private readonly scripture = inject(ScriptureService);
   private readonly userSessionService = inject(UserSessionService);
+  // @removal-recite
+  private readonly reciteSettingsService = inject(MemorizationReciteSettingsService);
 
   @Input({ required: true }) item!: MemorizedItem;
   @Input() isOpen = false;
@@ -186,6 +200,7 @@ export class MemorizationPracticeSessionComponent
   @Output() persistInProgress = new EventEmitter<MemorizationInProgressSavePayload>();
   @Output() clearInProgress = new EventEmitter<void>();
 
+  @ViewChild(MemorizationRecitePracticeComponent) recitePractice?: MemorizationRecitePracticeComponent;
   @ViewChild('practiceScroll') practiceScrollRef?: ElementRef<HTMLDivElement>;
   @ViewChild('firstLetterCuesViewport') firstLetterCuesViewportRef?: ElementRef<HTMLDivElement>;
   @ViewChild('practiceWordsWord') practiceWordsWordRef?: ElementRef<HTMLDivElement>;
@@ -248,6 +263,10 @@ export class MemorizationPracticeSessionComponent
   passageAudioUrl: string | null = null;
   passageLoading = false;
   passageLoadError: string | null = null;
+
+  // @removal-recite
+  reciteSettingsLoaded = false;
+  reciteEnabled = false;
 
   private passageText = '';
   private passageHydratedForOpen = false;
@@ -340,6 +359,47 @@ export class MemorizationPracticeSessionComponent
 
   get showStartOver(): boolean {
     return this.phase === 'practicing' || (this.phase === 'intro' && !!this.item.inProgressPractice);
+  }
+
+  // @removal-recite
+  get recitePhase() {
+    return this.recitePractice?.phase ?? 'ready';
+  }
+
+  get reciteAlignment() {
+    return this.recitePractice?.alignment ?? null;
+  }
+
+  get reciteStarting(): boolean {
+    return this.recitePractice?.starting ?? false;
+  }
+
+  get reciteSettingsLoadedForRecord(): boolean {
+    return this.reciteSettingsLoaded || (this.recitePractice?.settingsLoaded ?? false);
+  }
+
+  get showReciteNextRoundOption(): boolean {
+    return this.recitePractice?.showNextRoundOption ?? false;
+  }
+
+  get showReciteFinishOption(): boolean {
+    return this.recitePractice?.showFinishOption ?? false;
+  }
+
+  get reciteModeAvailable(): boolean {
+    return computeReciteModeAvailable({
+      settingsLoaded: this.reciteSettingsLoaded,
+      enabled: this.reciteEnabled,
+      isBibleBooks: this.isBibleBooks,
+      reference: this.item.reference,
+    });
+  }
+
+  get displayPracticeErrors(): number {
+    if (isRecitePracticeMode(this.practiceMode) && this.recitePractice) {
+      return this.recitePractice.displayPracticeErrors;
+    }
+    return this.wrongAttemptsInRound;
   }
 
   /** Strict mode: advance only after a perfect round (no wrong attempts). */
@@ -512,9 +572,13 @@ export class MemorizationPracticeSessionComponent
     // Fullscreen modal — close only via explicit buttons / Escape.
   }
 
-  handleClose(): void {
+  async handleClose(): Promise<void> {
     this.listenPanelOpen = false;
     this.stopPassageAudio();
+    // @removal-recite
+    if (isRecitePracticeMode(this.practiceMode)) {
+      await this.recitePractice?.prepareClose();
+    }
     if (this.sessionSeed && this.phase === 'practicing') {
       this.syncMetricRefs();
       if (this.awaitingRoundAdvance) {
@@ -529,6 +593,8 @@ export class MemorizationPracticeSessionComponent
   handleStartOver(): void {
     this.listenPanelOpen = false;
     this.stopPassageAudio();
+    // @removal-recite
+    this.recitePractice?.cancel();
     this.clearInProgress.emit();
     this.sessionSeed = '';
     this.practiceCompleted = false;
@@ -539,9 +605,12 @@ export class MemorizationPracticeSessionComponent
     this.cdr.markForCheck();
   }
 
-  openModePicker(): void {
-    this.modePickerOpen = true;
-    this.cdr.markForCheck();
+  async openModePicker(): Promise<void> {
+    await this.fetchReciteSettings();
+    this.ngZone.run(() => {
+      this.modePickerOpen = true;
+      this.cdr.markForCheck();
+    });
   }
 
   closeModePicker(): void {
@@ -550,6 +619,11 @@ export class MemorizationPracticeSessionComponent
   }
 
   beginPracticeWithMode(mode: MemorizationPracticeMode): void {
+    // @removal-recite
+    if (isRecitePracticeMode(mode)) {
+      this.beginRecitePractice();
+      return;
+    }
     this.syncStrictModeFromSession();
     this.stopPassageAudio();
     this.modePickerOpen = false;
@@ -576,6 +650,98 @@ export class MemorizationPracticeSessionComponent
       practiceMode: mode,
     });
     this.cdr.markForCheck();
+  }
+
+  // @removal-recite — delegates for tests
+  async startReciteRecording(): Promise<void> {
+    await this.recitePractice?.startRecording();
+  }
+
+  async stopReciteRecording(): Promise<void> {
+    await this.recitePractice?.stopRecording();
+  }
+
+  onReciteClearHint(): void {
+    this.hintHeld = false;
+    this.hintPeekCount = 0;
+    this.clearHintInterval();
+  }
+
+  onReciteAttemptMetrics(metrics: ReciteAttemptMetrics): void {
+    this.wrongAttemptsInRound += metrics.wrong;
+    this.wrongAttemptsTotal += metrics.wrong;
+    this.correctKeystrokesTotal += metrics.correct;
+    this.roundCompletedWithErrors = metrics.hadErrors;
+    this.hasTypedInRound = true;
+    this.syncMetricRefs();
+    this.cdr.markForCheck();
+  }
+
+  onReciteRepeatRound(): void {
+    this.repeatRound();
+  }
+
+  onReciteNextRound(): void {
+    this.recitePractice?.applyAttemptMetrics();
+    this.onRoundComplete();
+    if (this.practiceCompleted) return;
+    if (this.showNextRoundOption) {
+      this.nextRound();
+    }
+    this.cdr.markForCheck();
+  }
+
+  onReciteFinishPractice(): void {
+    this.recitePractice?.applyAttemptMetrics();
+    this.onRoundComplete();
+    if (!this.practiceCompleted) {
+      this.finishPracticeSession();
+    }
+    this.cdr.markForCheck();
+  }
+
+  private beginRecitePractice(): void {
+    this.syncStrictModeFromSession();
+    this.stopPassageAudio();
+    this.modePickerOpen = false;
+    this.practiceCompleted = false;
+    this.wrongAttemptsTotal = 0;
+    this.wrongAttemptsInRound = 0;
+    this.correctKeystrokesTotal = 0;
+    this.syncMetricRefs();
+    this.sessionSeed = generateMemorizationSessionSeed();
+    this.practiceModeRef = MEMORIZATION_RECITE_PRACTICE_MODE;
+    this.practiceMode = MEMORIZATION_RECITE_PRACTICE_MODE;
+    const r = Math.min(MEMORIZATION_FULL_HIDE_ROUND, Math.max(1, Math.floor(this.startRoundChoice)));
+    this.startRound(r);
+    if (this.practiceScrollRef?.nativeElement) {
+      this.practiceScrollRef.nativeElement.scrollTop = 0;
+    }
+    void this.recitePractice?.refreshSettings();
+    this.persistInProgress.emit({
+      sessionSeed: this.sessionSeed,
+      wrongAttempts: this.wrongAttemptsRef,
+      correctKeystrokes: this.correctKeystrokesRef,
+      phase: { kind: 'inRound', roundIndex: r },
+      practiceMode: MEMORIZATION_RECITE_PRACTICE_MODE,
+    });
+    this.cdr.markForCheck();
+  }
+
+  // @removal-recite
+  private loadReciteSettings(): void {
+    this.reciteSettingsLoaded = false;
+    this.cdr.markForCheck();
+    void this.fetchReciteSettings();
+  }
+
+  private async fetchReciteSettings(): Promise<void> {
+    const settings = await this.reciteSettingsService.getSettingsFromServer();
+    this.ngZone.run(() => {
+      this.reciteEnabled = settings.enabled;
+      this.reciteSettingsLoaded = true;
+      this.cdr.markForCheck();
+    });
   }
 
   startRoundAndFocusInput(r: number): void {
@@ -904,6 +1070,8 @@ export class MemorizationPracticeSessionComponent
       void this.loadPassageText();
     }
     this.loadAudioUrl();
+    this.reciteSettingsLoaded = false;
+    this.loadReciteSettings();
     this.attachViewportListeners();
     this.attachStrictModeSessionSubscription();
     if (this.isBibleBooks) {
@@ -958,6 +1126,8 @@ export class MemorizationPracticeSessionComponent
     this.detachAllListeners();
     this.detachStrictModeSessionSubscription();
     this.clearHintInterval();
+    // @removal-recite
+    this.recitePractice?.destroy();
   }
 
   private recomputeDerivedFromItem(): void {
@@ -1077,6 +1247,8 @@ export class MemorizationPracticeSessionComponent
     this.practiceMode = null;
     this.practiceModeRef = null;
     this.modePickerOpen = false;
+    // @removal-recite
+    this.recitePractice?.resetAttemptState();
     this.syncMetricRefs();
   }
 
@@ -1133,6 +1305,9 @@ export class MemorizationPracticeSessionComponent
       this.awaitingRoundAdvance = true;
       this.roundAffirmation = pickRandomRoundAffirmation();
       this.phase = 'practicing';
+      if (isRecitePracticeMode(modeRaw)) {
+        this.recitePractice?.resetAttemptState();
+      }
     } else {
       this.roundAdvanceHandled = null;
       const r = ip.phase.roundIndex;
@@ -1167,6 +1342,9 @@ export class MemorizationPracticeSessionComponent
         }
       }
       this.phase = 'practicing';
+      if (isRecitePracticeMode(modeRaw)) {
+        this.recitePractice?.resetAttemptState();
+      }
     }
 
     this.syncStrictModeFromSession();
@@ -1226,6 +1404,9 @@ export class MemorizationPracticeSessionComponent
     this.awaitingRoundAdvance = false;
     this.roundAffirmation = '';
     this.phase = 'practicing';
+    if (isRecitePracticeMode(this.practiceModeRef)) {
+      this.recitePractice?.resetAttemptState();
+    }
   }
 
   private revealFirstLetterCueForToken(tokenIndex: number): void {

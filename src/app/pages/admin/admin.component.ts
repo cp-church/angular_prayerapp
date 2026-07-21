@@ -38,6 +38,7 @@ import { PrayerEncouragementSettingsComponent } from '../../components/prayer-en
 import { RichTextEditorsSettingsComponent } from '../../components/rich-text-editors-settings/rich-text-editors-settings.component';
 import { PlanningCenterListMapperComponent } from '../../components/planning-center-list-mapper/planning-center-list-mapper.component';
 import { MemorizationRecommendationsManagerComponent } from '../../components/memorization-recommendations-manager/memorization-recommendations-manager.component';
+import { MemorizationReciteSettingsComponent } from '../../components/memorization-recite-settings/memorization-recite-settings.component'; // @removal-recite
 import { SiteAnalyticsActivityChartComponent } from '../../components/site-analytics-activity-chart/site-analytics-activity-chart.component';
 import { AdminHelpModalComponent } from '../../components/admin-help-modal/admin-help-modal.component';
 import { AdminHelpDriverTourService } from '../../services/admin-help-driver-tour.service';
@@ -73,6 +74,7 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
     RichTextEditorsSettingsComponent,
     PlanningCenterListMapperComponent,
     MemorizationRecommendationsManagerComponent,
+    MemorizationReciteSettingsComponent,
     SiteAnalyticsActivityChartComponent,
     AdminHelpModalComponent
   ],
@@ -669,6 +671,9 @@ type SettingsTab = 'analytics' | 'email' | 'content' | 'tools' | 'security';
                 </div>
                 <div class="mb-4">
                   <app-memorization-recommendations-manager #memorizeRecommendationsManager></app-memorization-recommendations-manager>
+                </div>
+                <div class="mb-4">
+                  <app-memorization-recite-settings></app-memorization-recite-settings>
                 </div>
                 <div class="mb-4">
                   <app-planning-center-list-mapper></app-planning-center-list-mapper>

@@ -14,7 +14,7 @@ import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
       aria-live="polite"
     >
       <div
-        class="animate-spin rounded-full h-10 w-10 border-2 border-gray-200 dark:border-gray-600 border-t-blue-600 dark:border-t-blue-400"
+        class="animate-spin rounded-full h-10 w-10 border-2 border-blue-600 border-t-transparent dark:border-blue-400 dark:border-t-transparent"
         aria-hidden="true"
       ></div>
       <p class="text-sm text-gray-600 dark:text-gray-400 text-center px-2 max-w-md">
