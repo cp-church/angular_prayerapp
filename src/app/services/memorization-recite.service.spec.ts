@@ -68,9 +68,8 @@ describe('MemorizationReciteService', () => {
     expect(email).toBe('session@example.com');
   });
 
-  it('transcribeWhisper includes mfa_session_start for MFA sessions without JWT', async () => {
+  it('transcribeWhisper sends user_email with anon bearer for MFA sessions without JWT', async () => {
     localStorage.setItem('mfa_authenticated_email', 'mfa@example.com');
-    localStorage.setItem('mfa_session_start', '1710000000000');
 
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -93,15 +92,14 @@ describe('MemorizationReciteService', () => {
     expect(transcript).toBe('hello world');
     const body = fetchMock.mock.calls[0]?.[1]?.body as FormData;
     expect(body.get('user_email')).toBe('mfa@example.com');
-    expect(body.get('mfa_session_start')).toBe('1710000000000');
+    expect(body.get('mfa_session_start')).toBeNull();
     expect(fetchMock.mock.calls[0]?.[1]?.headers?.Authorization).toBe('Bearer test-anon-key');
 
     vi.unstubAllGlobals();
   });
 
-  it('transcribeWhisper prefers MFA proof over a stale Supabase JWT', async () => {
+  it('transcribeWhisper prefers MFA email with anon bearer over a stale Supabase JWT', async () => {
     localStorage.setItem('mfa_authenticated_email', 'mfa@example.com');
-    localStorage.setItem('mfa_session_start', '1710000000000');
 
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -136,25 +134,32 @@ describe('MemorizationReciteService', () => {
     });
 
     const body = fetchMock.mock.calls[0]?.[1]?.body as FormData;
-    expect(body.get('mfa_session_start')).toBe('1710000000000');
+    expect(body.get('user_email')).toBe('mfa@example.com');
     expect(fetchMock.mock.calls[0]?.[1]?.headers?.Authorization).toBe('Bearer test-anon-key');
 
     vi.unstubAllGlobals();
   });
 
-  it('transcribeWhisper throws when MFA session start is missing', async () => {
+  it('transcribeWhisper works for MFA sessions without mfa_session_start', async () => {
     localStorage.setItem('mfa_authenticated_email', 'mfa@example.com');
 
-    await expect(
-      (
-        service as unknown as {
-          transcribeWhisper(params: { blob: Blob; audioSeconds: number }): Promise<string>;
-        }
-      ).transcribeWhisper({
-        blob: new Blob(['audio'], { type: 'audio/webm' }),
-        audioSeconds: 1,
-      })
-    ).rejects.toThrow('Session expired');
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ transcript: 'hello world' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const transcript = await (
+      service as unknown as {
+        transcribeWhisper(params: { blob: Blob; audioSeconds: number }): Promise<string>;
+      }
+    ).transcribeWhisper({
+      blob: new Blob(['audio'], { type: 'audio/webm' }),
+      audioSeconds: 1,
+    });
+
+    expect(transcript).toBe('hello world');
+    vi.unstubAllGlobals();
   });
 
   it('cancelRecording does not wait for capture tail delay', async () => {

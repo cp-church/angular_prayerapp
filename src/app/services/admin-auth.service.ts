@@ -76,7 +76,9 @@ export class AdminAuthService {
           user_metadata: {},
           app_metadata: {},
           aud: 'authenticated',
-          created_at: localStorage.getItem('mfa_session_start') || new Date().toISOString(),
+          created_at: localStorage.getItem('adminSessionStart')
+            ? new Date(Number(localStorage.getItem('adminSessionStart'))).toISOString()
+            : new Date().toISOString(),
           updated_at: new Date().toISOString(),
           email_confirmed_at: new Date().toISOString(),
           phone: '',
@@ -463,7 +465,6 @@ export class AdminAuthService {
 
       // Store MFA authenticated email for session restoration after browser restart
       localStorage.setItem('mfa_authenticated_email', email);
-      localStorage.setItem('mfa_session_start', Date.now().toString());
 
       // Invalidate personal prayers cache on login to ensure fresh data
       // This prevents stale personal prayer data from being displayed if cache wasn't properly cleared on previous logout
@@ -517,7 +518,6 @@ export class AdminAuthService {
       
       // Clear MFA authenticated session data
       localStorage.removeItem('mfa_authenticated_email');
-      localStorage.removeItem('mfa_session_start');
       
       // Clear user-specific caches to prevent next user from seeing previous user's data
       this.cacheService.invalidateCategory('personalPrayers');

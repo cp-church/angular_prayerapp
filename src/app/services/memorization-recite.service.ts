@@ -202,13 +202,6 @@ export class MemorizationReciteService {
     if (userEmail) {
       form.append('user_email', userEmail);
     }
-    if (useMfaAuth) {
-      const mfaSessionStart = localStorage.getItem('mfa_session_start');
-      if (!mfaSessionStart) {
-        throw new Error('Session expired. Sign in again to use Recite mode.');
-      }
-      form.append('mfa_session_start', mfaSessionStart);
-    }
     if (params.memorizedItemId) {
       form.append('memorized_item_id', params.memorizedItemId);
     }

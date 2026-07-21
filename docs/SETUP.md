@@ -425,7 +425,19 @@ Without `ESV_API_TOKEN`, ESV passages and listen mode fail until the secret is s
 
 ### OpenAI API (Memorize Recite mode)
 
-Recite mode uses server-side **Whisper** transcription. Apply migration [`20260721120000_memorization_recite_mode.sql`](../supabase/migrations/20260721120000_memorization_recite_mode.sql) (includes `is_admin` fix, usage ledger, and secured MFA-aware usage RPC), then:
+Recite mode uses server-side **Whisper** transcription. Apply migration [`20260721120000_memorization_recite_mode.sql`](../supabase/migrations/20260721120000_memorization_recite_mode.sql) (includes `is_admin` fix, usage ledger, and admin usage RPC). The SQL is **idempotent** (`IF NOT EXISTS`, `CREATE OR REPLACE`, `DROP … IF EXISTS`).
+
+**Already applied?** `supabase db push` skips migrations recorded in `schema_migrations`. To upgrade an older deploy (e.g. RPC still required `mfa_session_start`), re-run the file manually:
+
+```bash
+supabase db execute -f supabase/migrations/20260721120000_memorization_recite_mode.sql
+```
+
+Or paste the file into the Supabase SQL editor. Safe to run multiple times.
+
+If production briefly had a separate `20260721130000_recite_subscriber_mfa_auth` migration applied, its changes are merged into `120000`; you may mark that version reverted: `supabase migration repair --status reverted 20260721130000`.
+
+Then:
 
 ```bash
 supabase secrets set OPENAI_API_KEY=your_openai_project_api_key

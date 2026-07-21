@@ -114,20 +114,8 @@ describe('MemorizationReciteSettingsService', () => {
     expect(settings.enabled).toBe(true);
   });
 
-  it('loadUsageSummary throws when MFA admin session start is missing', async () => {
-    localStorage.setItem('mfa_authenticated_email', 'admin@example.com');
-    await expect(
-      service.loadUsageSummary(
-        new Date('2026-07-01T00:00:00.000Z'),
-        new Date('2026-07-31T00:00:00.000Z')
-      )
-    ).rejects.toThrow('Sign in again to view Recite usage.');
-    expect(rpc).not.toHaveBeenCalled();
-  });
-
-  it('loadUsageSummary passes MFA admin email and session start to RPC', async () => {
+  it('loadUsageSummary passes MFA admin email to RPC without session start', async () => {
     localStorage.setItem('mfa_authenticated_email', 'Admin@Example.com');
-    localStorage.setItem('mfa_session_start', '1710000000000');
     rpc.mockResolvedValue({
       data: [{ attempt_count: 2, billable_audio_seconds: 30, estimated_cost_usd: 0.01 }],
       error: null,
@@ -142,14 +130,12 @@ describe('MemorizationReciteSettingsService', () => {
       p_start: '2026-07-01T00:00:00.000Z',
       p_end: '2026-07-31T00:00:00.000Z',
       p_email: 'admin@example.com',
-      p_mfa_session_start_ms: 1710000000000,
     });
     expect(summary.attemptCount).toBe(2);
   });
 
   it('loadUsageSummary prefers MFA admin email over user session email', async () => {
     localStorage.setItem('mfa_authenticated_email', 'admin@example.com');
-    localStorage.setItem('mfa_session_start', '1710000000000');
     const userSession = {
       getCurrentSession: vi.fn(() => ({ email: 'member@example.com', fullName: 'Member', isActive: true })),
     };
@@ -183,27 +169,11 @@ describe('MemorizationReciteSettingsService', () => {
       p_start: '2026-07-01T00:00:00.000Z',
       p_end: '2026-07-31T00:00:00.000Z',
       p_email: 'admin@example.com',
-      p_mfa_session_start_ms: 1710000000000,
     });
-  });
-
-  it('fetchOpenAiOrgUsage returns re-login error when MFA session start is missing', async () => {
-    localStorage.setItem('mfa_authenticated_email', 'admin@example.com');
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
-
-    const usage = await service.fetchOpenAiOrgUsage();
-
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(usage.configured).toBe(false);
-    expect(usage.error).toBe('Sign in again to view OpenAI usage.');
-
-    vi.unstubAllGlobals();
   });
 
   it('fetchOpenAiOrgUsage includes user_email for MFA admin sessions', async () => {
     localStorage.setItem('mfa_authenticated_email', 'admin@example.com');
-    localStorage.setItem('mfa_session_start', '1710000000000');
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -219,7 +189,7 @@ describe('MemorizationReciteSettingsService', () => {
     expect(fetchMock).toHaveBeenCalled();
     const calledUrl = new URL(String(fetchMock.mock.calls[0]?.[0]));
     expect(calledUrl.searchParams.get('user_email')).toBe('admin@example.com');
-    expect(calledUrl.searchParams.get('mfa_session_start')).toBe('1710000000000');
+    expect(calledUrl.searchParams.get('mfa_session_start')).toBeNull();
     expect(fetchMock.mock.calls[0]?.[1]?.headers?.Authorization).toBe('Bearer test-anon-key');
     expect(usage.configured).toBe(true);
     expect(usage.totalUsd).toBe(1.25);
