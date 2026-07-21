@@ -102,24 +102,15 @@ export function formatMemorizationTokensPlain(tokens: MemorizationToken[]): stri
 }
 
 /**
- * Whisper prompt: verse text plus a spoken-style reference (no colon).
- * Whisper uses the prompt as style/vocabulary context; matching how users recite
- * improves trailing reference capture (e.g. "three sixteen" not "3:16").
+ * Whisper prompt: spoken-style reference only (not the verse body).
+ * Feeding the full verse biases Whisper to insert omitted words that appear in the prompt.
  */
 export function formatMemorizationReciteWhisperPrompt(
-  tokens: MemorizationToken[],
+  _tokens: MemorizationToken[],
   reference: string
 ): string {
-  const spokenRef = formatSpokenScriptureReference(reference)
-  const plain = formatMemorizationTokensPlain(tokens)
-  const writtenRef = reference.trim()
-  if (!spokenRef || spokenRef === writtenRef) return plain
-  if (plain.endsWith(writtenRef)) {
-    return `${plain.slice(0, plain.length - writtenRef.length)}${spokenRef}`
-  }
-  const escaped = writtenRef.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const replaced = plain.replace(new RegExp(`${escaped}\\s*$`), spokenRef)
-  return replaced === plain ? plain : replaced
+  const spokenRef = formatSpokenScriptureReference(reference.trim());
+  return spokenRef || reference.trim();
 }
 
 /** Round 1 = 20% hidden, … round 5 = 100%. Round 0 = 0%. */

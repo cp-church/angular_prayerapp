@@ -150,11 +150,12 @@ describe('formatMemorizationTokensPlain', () => {
 });
 
 describe('formatMemorizationReciteWhisperPrompt', () => {
-  it('replaces written colon reference with spoken form for Whisper', () => {
+  it('uses spoken reference only (not verse body) for Whisper', () => {
     const tokens = buildMemorizationTokens('All Scripture is God-breathed', '2 Timothy 3:16');
     const prompt = formatMemorizationReciteWhisperPrompt(tokens, '2 Timothy 3:16');
-    expect(prompt).toContain('2 Timothy 3 16');
+    expect(prompt).toBe('2 Timothy 3 16');
     expect(prompt).not.toContain('3:16');
+    expect(prompt).not.toContain('Scripture');
   });
 });
 

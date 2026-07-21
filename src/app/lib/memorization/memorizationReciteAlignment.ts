@@ -271,8 +271,80 @@ function consumeExpectedDigit(
   return { status: 'wrong', fragment: candidate, remainder: null };
 }
 
+/** Bible book names ending in "s" are not morphological plurals (Numbers ≠ number). */
+const RECITE_NON_MORPHOLOGICAL_S_WORDS = new Set([
+  'numbers',
+  'corinthians',
+  'thessalonians',
+  'philippians',
+  'colossians',
+  'galatians',
+]);
+
+/** True when the longer word's final "s" is part of the stem, not a plural -s (jesus, witness). */
+function longerEndsWithNonPluralS(longer: string): boolean {
+  return longer.endsWith('us') || longer.endsWith('ss');
+}
+
+/** Singular/plural pairs (mouth/mouths) must not count as fuzzy-correct. */
+function isPluralFormPair(expected: string, spoken: string): boolean {
+  if (expected === spoken) return false;
+  if (expected.length < 4 || spoken.length < 4) return false;
+
+  // Verse expects plural, user said singular (mouth vs mouths).
+  if (
+    expected.length === spoken.length + 1 &&
+    expected === `${spoken}s` &&
+    !spoken.endsWith('s') &&
+    !spoken.endsWith('y')
+  ) {
+    if (RECITE_NON_MORPHOLOGICAL_S_WORDS.has(expected)) return false;
+    if (longerEndsWithNonPluralS(expected)) return false;
+    return true;
+  }
+
+  // User said plural, verse expects singular (rare).
+  if (
+    spoken.length === expected.length + 1 &&
+    spoken === `${expected}s` &&
+    !expected.endsWith('s') &&
+    !expected.endsWith('y')
+  ) {
+    if (RECITE_NON_MORPHOLOGICAL_S_WORDS.has(spoken)) return false;
+    if (longerEndsWithNonPluralS(spoken)) return false;
+    return true;
+  }
+
+  // -es plurals (dish/dishes); skip witness-style ...s + s truncations.
+  if (
+    expected.length === spoken.length + 2 &&
+    expected === `${spoken}es` &&
+    !spoken.endsWith('s')
+  ) {
+    return true;
+  }
+  if (
+    spoken.length === expected.length + 2 &&
+    spoken === `${expected}es` &&
+    !expected.endsWith('s')
+  ) {
+    return true;
+  }
+
+  // -ies ↔ -y (city/cities).
+  if (expected.endsWith('ies') && spoken.endsWith('y') && expected === `${spoken.slice(0, -1)}ies`) {
+    return true;
+  }
+  if (spoken.endsWith('ies') && expected.endsWith('y') && spoken === `${expected.slice(0, -1)}ies`) {
+    return true;
+  }
+
+  return false;
+}
+
 function wordsFuzzyMatch(expected: string, spoken: string): boolean {
   if (expected === spoken) return true;
+  if (isPluralFormPair(expected, spoken)) return false;
   // Single reference digits (8 vs 9, 8 vs 6) are one edit apart and must not fuzzy-match.
   if (isReciteDigitToken(expected) || isReciteDigitToken(spoken)) {
     return false;

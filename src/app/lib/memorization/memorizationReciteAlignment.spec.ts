@@ -549,5 +549,118 @@ describe('memorizationReciteAlignment', () => {
         summary.results.filter((r) => r.spokenText === 'timing' && r.status === 'wrong')
       ).toHaveLength(1);
     });
+
+    it('does not show a spoken word for omitted short words (Ephesians 4:29 as good)', () => {
+      const ephTokens = buildMemorizationTokens(
+        'Let no corrupting talk come out of your mouths, but only such as is good for building up, as fits the occasion, that it may give grace to those who hear.',
+        'Ephesians 4:29'
+      );
+      const ephTypable = getTypableTokenIndices(ephTokens);
+      const transcript =
+        'let no corrupting talk come out of your mouths but only such as good for building up as fits the occasion that it may give grace to those who hear ephesians 4 29';
+      const summary = alignRecitation(ephTokens, ephTypable, transcript, 'Ephesians 4:29');
+
+      const isResult = summary.results.find((r) => ephTokens[r.tokenIndex]?.text === 'is');
+      const isCol = summary.alignedColumns.find((c) => c.expected?.text === 'is');
+      expect(isResult?.status).toBe('missing');
+      expect(isCol?.spokenChars).toEqual([{ char: '—', status: 'missing' }]);
+      expect(summary.spokenWords.some((w) => w.text === 'is')).toBe(false);
+    });
+
+    it('shows is when STT transcript includes it even if user meant to skip (Ephesians 4:29)', () => {
+      const ephTokens = buildMemorizationTokens(
+        'Let no corrupting talk come out of your mouths, but only such as is good for building up, as fits the occasion, that it may give grace to those who hear.',
+        'Ephesians 4:29'
+      );
+      const ephTypable = getTypableTokenIndices(ephTokens);
+      const transcript =
+        'let no corrupting talk come out of your mouths but only such as is good for building up as fits the occasion that it may give grace to those who hear ephesians 4 29';
+      const summary = alignRecitation(ephTokens, ephTypable, transcript, 'Ephesians 4:29');
+
+      const isResult = summary.results.find((r) => ephTokens[r.tokenIndex]?.text === 'is');
+      const isCol = summary.alignedColumns.find((c) => c.expected?.text === 'is');
+      expect(isResult?.status).toBe('correct');
+      expect(isResult?.spokenText).toBe('is');
+      expect(isCol?.spokenChars).toEqual([{ char: 'is', status: 'correct' }]);
+    });
+
+    it('marks singular mouth wrong when verse expects mouths (Ephesians 4:29)', () => {
+      const ephTokens = buildMemorizationTokens(
+        'Let no corrupting talk come out of your mouths, but only such as is good for building up, as fits the occasion, that it may give grace to those who hear.',
+        'Ephesians 4:29'
+      );
+      const ephTypable = getTypableTokenIndices(ephTokens);
+      const transcript =
+        'let no corrupting talk come out of your mouth but only such as is good for building up as fits the occasion that it may give grace to those who hear ephesians 4 29';
+      const summary = alignRecitation(ephTokens, ephTypable, transcript, 'Ephesians 4:29');
+
+      const mouths = summary.results.find(
+        (r) => normalizeReciteWord(ephTokens[r.tokenIndex]?.text ?? '') === 'mouths'
+      );
+      const mouthsCol = summary.alignedColumns.find((c) => c.expected?.text === 'mouths,');
+      expect(mouths?.status).toBe('wrong');
+      expect(mouths?.spokenText).toBe('mouth');
+      expect(mouthsCol?.spokenChars).toEqual([{ char: 'mouth', status: 'wrong' }]);
+    });
+
+    it('fuzzy-matches STT truncation before final s (witness/witnes)', () => {
+      const tokens = buildMemorizationTokens('The witness spoke truth', 'John 1:1');
+      const typable = getTypableTokenIndices(tokens);
+      const summary = alignRecitation(
+        tokens,
+        typable,
+        'the witnes spoke truth john 1 1',
+        'John 1:1'
+      );
+      const witness = summary.results.find(
+        (r) => normalizeReciteWord(tokens[r.tokenIndex]?.text ?? '') === 'witness'
+      );
+      expect(witness?.status).toBe('correct');
+    });
+
+    it('fuzzy-matches STT truncation of always (always/alway)', () => {
+      const tokens = buildMemorizationTokens('I will always remember', 'Psalm 119:1');
+      const typable = getTypableTokenIndices(tokens);
+      const summary = alignRecitation(
+        tokens,
+        typable,
+        'i will alway remember psalm 119 1',
+        'Psalm 119:1'
+      );
+      const always = summary.results.find(
+        (r) => normalizeReciteWord(tokens[r.tokenIndex]?.text ?? '') === 'always'
+      );
+      expect(always?.status).toBe('correct');
+    });
+
+    it('fuzzy-matches STT truncation of jesus (jesus/jesu)', () => {
+      const tokens = buildMemorizationTokens('We have peace with God through our Lord Jesus Christ', 'Romans 5:1');
+      const typable = getTypableTokenIndices(tokens);
+      const summary = alignRecitation(
+        tokens,
+        typable,
+        'we have peace with god through our lord jesu christ romans 5 1',
+        'Romans 5:1'
+      );
+      const jesus = summary.results.find(
+        (r) => normalizeReciteWord(tokens[r.tokenIndex]?.text ?? '') === 'jesus'
+      );
+      expect(jesus?.status).toBe('correct');
+    });
+
+    it('fuzzy-matches Numbers book when STT says number', () => {
+      const tokens = buildMemorizationTokens('The Lord spoke', 'Numbers 12:3');
+      const typable = getTypableTokenIndices(tokens);
+      const summary = alignRecitation(
+        tokens,
+        typable,
+        'the lord spoke number 12 3',
+        'Numbers 12:3'
+      );
+      const numbers = summary.results.find(
+        (r) => normalizeReciteWord(tokens[r.tokenIndex]?.text ?? '') === 'numbers'
+      );
+      expect(numbers?.status).toBe('correct');
+    });
   });
 });
