@@ -2066,13 +2066,27 @@ describe('MemorizationPracticeSessionComponent', () => {
       expect(getByTestId('memorize-practice-mode-recite')).toBeTruthy();
     });
 
-    it('hides recite for multi-verse references', async () => {
-      const { component } = await renderSession({
+    it('shows recite in mode picker for multi-verse references with inline warning on select', async () => {
+      const { component, getByTestId, cdr } = await renderSession({
         reciteEnabled: true,
         item: { ...verseItem, reference: 'John 3:16-18' },
       });
       await waitForReciteSettings(component);
+      expect(component.reciteModeVisible).toBe(true);
       expect(component.reciteModeAvailable).toBe(false);
+
+      await component.openModePicker();
+      cdr.detectChanges();
+      expect(getByTestId('memorize-practice-mode-recite')).toBeTruthy();
+
+      component.beginPracticeWithMode('recite');
+      cdr.detectChanges();
+      expect(component.practiceMode).toBeNull();
+      expect(component.modePickerOpen).toBe(true);
+      expect(getByTestId('memorize-recite-blocked-message')).toBeTruthy();
+      expect(getByTestId('memorize-recite-blocked-message').textContent).toContain(
+        'single verse'
+      );
     });
 
     it('enables Record when parent settings loaded before child refresh completes', async () => {

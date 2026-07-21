@@ -11,6 +11,22 @@ export function isRecitePracticeMode(
   return mode === MEMORIZATION_RECITE_PRACTICE_MODE;
 }
 
+export const RECITE_SINGLE_VERSE_ONLY_MESSAGE =
+  'Due to transcription limitations, Recite mode only works when you choose a single verse.';
+
+export function computeReciteModeVisible(options: {
+  settingsLoaded: boolean;
+  enabled: boolean;
+  isBibleBooks: boolean;
+}): boolean {
+  return (
+    isWhisperReciteSupported() &&
+    options.settingsLoaded &&
+    options.enabled &&
+    !options.isBibleBooks
+  );
+}
+
 export function computeReciteModeAvailable(options: {
   settingsLoaded: boolean;
   enabled: boolean;
@@ -18,10 +34,7 @@ export function computeReciteModeAvailable(options: {
   reference: string;
 }): boolean {
   return (
-    isWhisperReciteSupported() &&
-    options.settingsLoaded &&
-    options.enabled &&
-    !options.isBibleBooks &&
+    computeReciteModeVisible(options) &&
     isSingleVerseScriptureReference(options.reference)
   );
 }

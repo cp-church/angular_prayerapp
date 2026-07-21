@@ -27,7 +27,9 @@ import {
 } from '../../memorization-recite/memorization-recite-practice.component';
 import {
   MEMORIZATION_RECITE_PRACTICE_MODE,
+  RECITE_SINGLE_VERSE_ONLY_MESSAGE,
   computeReciteModeAvailable,
+  computeReciteModeVisible,
   isRecitePracticeMode,
 } from '../../memorization-recite/integration';
 import type { PracticeSessionResult } from '../../services/memorization.service';
@@ -268,6 +270,7 @@ export class MemorizationPracticeSessionComponent
   // @removal-recite
   reciteSettingsLoaded = false;
   reciteEnabled = false;
+  reciteModeBlockedMessage: string | null = null;
   reciteFeedbackHelpOpen = false;
 
   private passageText = '';
@@ -386,6 +389,14 @@ export class MemorizationPracticeSessionComponent
 
   get showReciteFinishOption(): boolean {
     return this.recitePractice?.showFinishOption ?? false;
+  }
+
+  get reciteModeVisible(): boolean {
+    return computeReciteModeVisible({
+      settingsLoaded: this.reciteSettingsLoaded,
+      enabled: this.reciteEnabled,
+      isBibleBooks: this.isBibleBooks,
+    });
   }
 
   get reciteModeAvailable(): boolean {
@@ -610,6 +621,7 @@ export class MemorizationPracticeSessionComponent
   async openModePicker(): Promise<void> {
     await this.fetchReciteSettings();
     this.ngZone.run(() => {
+      this.reciteModeBlockedMessage = null;
       this.modePickerOpen = true;
       this.cdr.markForCheck();
     });
@@ -617,15 +629,23 @@ export class MemorizationPracticeSessionComponent
 
   closeModePicker(): void {
     this.modePickerOpen = false;
+    this.reciteModeBlockedMessage = null;
     this.cdr.markForCheck();
   }
 
   beginPracticeWithMode(mode: MemorizationPracticeMode): void {
     // @removal-recite
     if (isRecitePracticeMode(mode)) {
+      if (!this.reciteModeAvailable) {
+        this.reciteModeBlockedMessage = RECITE_SINGLE_VERSE_ONLY_MESSAGE;
+        this.cdr.markForCheck();
+        return;
+      }
+      this.reciteModeBlockedMessage = null;
       this.beginRecitePractice();
       return;
     }
+    this.reciteModeBlockedMessage = null;
     this.syncStrictModeFromSession();
     this.stopPassageAudio();
     this.modePickerOpen = false;
