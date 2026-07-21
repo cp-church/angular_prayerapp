@@ -256,6 +256,56 @@ describe('memorizationReciteAlignment', () => {
       }
     });
 
+    it('aligns verse-range references when STT inserts connectives between verse numbers', () => {
+      const rangeTokens = buildMemorizationTokens(
+        'For God so loved the world',
+        'John 3:16-18'
+      );
+      const rangeTypable = getTypableTokenIndices(rangeTokens);
+      const verse = 'For God so loved the world';
+      for (const transcript of [
+        `${verse} John 3 16 and 18`,
+        `${verse} John 3 16 through 18`,
+        `${verse} John 3 16 to 18`,
+        `${verse} John 3 sixteen through eighteen`,
+        `${verse} John 3 16-18`,
+        `${verse} John 3 16 dash 18`,
+        `${verse} John 3 16 hyphen 18`,
+        'John 3 16 through 18 For God so loved the world',
+      ]) {
+        const summary = alignRecitation(
+          rangeTokens,
+          rangeTypable,
+          transcript,
+          'John 3:16-18'
+        );
+        expect(summary.correctCount, transcript).toBe(summary.totalTypable);
+        expect(summary.wrongCount, transcript).toBe(0);
+        expect(summary.missingCount, transcript).toBe(0);
+      }
+
+      const twoVerseTokens = buildMemorizationTokens(
+        'For God so loved the world',
+        'John 3:16-17'
+      );
+      const twoVerseTypable = getTypableTokenIndices(twoVerseTokens);
+      for (const transcript of [
+        `${verse} John 3 16 and 17`,
+        `${verse} John 3 16 through 17`,
+        `${verse} John 3 sixteen and seventeen`,
+      ]) {
+        const summary = alignRecitation(
+          twoVerseTokens,
+          twoVerseTypable,
+          transcript,
+          'John 3:16-17'
+        );
+        expect(summary.correctCount, transcript).toBe(summary.totalTypable);
+        expect(summary.wrongCount, transcript).toBe(0);
+        expect(summary.missingCount, transcript).toBe(0);
+      }
+    });
+
     it('shows expected spelling and casing for correct matches in aligned columns', () => {
       const jamesTokens = buildMemorizationTokens(
         'James, a servant of God and of the Lord Jesus Christ,',

@@ -366,9 +366,15 @@ const SKIP_SPOKEN_WORDS = new Set(['chapter', 'ch', 'verse', 'verses']);
 const REFERENCE_SKIP_SPOKEN_WORDS = new Set([
   'and',
   'colon',
+  'dash',
   'dot',
+  'hyphen',
+  'minus',
   'period',
   'point',
+  'thru',
+  'through',
+  'to',
 ]);
 
 export function splitTypableVerseAndReference(
