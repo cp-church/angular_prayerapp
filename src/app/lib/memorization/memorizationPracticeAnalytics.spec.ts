@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
+  resetMemorizationPracticeStartDedupeForTesting,
   trackMemorizationPracticeCompleted,
+  trackMemorizationPracticeSessionStart,
   trackMemorizationPracticeStarted,
 } from './memorizationPracticeAnalytics';
 import type { MemorizedItem } from '../../types/memorization';
@@ -36,6 +38,7 @@ const bibleBooksItem: MemorizedItem = {
 describe('memorizationPracticeAnalytics', () => {
   beforeEach(() => {
     capturePostHogEventMock.mockClear();
+    resetMemorizationPracticeStartDedupeForTesting();
   });
 
   it('tracks practice started for verse items', () => {
@@ -69,6 +72,27 @@ describe('memorizationPracticeAnalytics', () => {
       item_kind: 'verse',
       wrong_attempts: 2,
       correct_keystrokes: 40,
+    });
+  });
+
+  it('tracks session start once per session seed', () => {
+    trackMemorizationPracticeSessionStart('seed-a', verseItem, 'reorder');
+    trackMemorizationPracticeSessionStart('seed-a', verseItem, 'reorder');
+
+    expect(capturePostHogEventMock).toHaveBeenCalledTimes(1);
+    expect(capturePostHogEventMock).toHaveBeenCalledWith('memorization_practice_started', {
+      mode: 'reorder',
+      item_kind: 'verse',
+    });
+  });
+
+  it('includes resumed on hydrated session starts', () => {
+    trackMemorizationPracticeSessionStart('seed-b', verseItem, 'reorder', { resumed: true });
+
+    expect(capturePostHogEventMock).toHaveBeenCalledWith('memorization_practice_started', {
+      mode: 'reorder',
+      item_kind: 'verse',
+      resumed: true,
     });
   });
 });

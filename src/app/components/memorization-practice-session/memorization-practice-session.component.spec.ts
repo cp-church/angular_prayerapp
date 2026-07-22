@@ -18,12 +18,12 @@ vi.mock('../../lib/memorization/isWhisperReciteSupported', () => ({
   isWhisperReciteSupported: vi.fn(() => true),
 }));
 
-const trackMemorizationPracticeStartedMock = vi.fn();
+const trackMemorizationPracticeSessionStartMock = vi.fn();
 const trackMemorizationPracticeCompletedMock = vi.fn();
 
 vi.mock('../../lib/memorization/memorizationPracticeAnalytics', () => ({
-  trackMemorizationPracticeStarted: (...args: unknown[]) =>
-    trackMemorizationPracticeStartedMock(...args),
+  trackMemorizationPracticeSessionStart: (...args: unknown[]) =>
+    trackMemorizationPracticeSessionStartMock(...args),
   trackMemorizationPracticeCompleted: (...args: unknown[]) =>
     trackMemorizationPracticeCompletedMock(...args),
 }));
@@ -389,14 +389,18 @@ describe('MemorizationPracticeSessionComponent', () => {
       const { component } = await renderSession();
       component.beginPracticeWithMode('word');
 
-      expect(trackMemorizationPracticeStartedMock).toHaveBeenCalledWith(verseItem, 'word');
+      expect(trackMemorizationPracticeSessionStartMock).toHaveBeenCalledWith(
+        expect.any(String),
+        verseItem,
+        'word'
+      );
       expect(trackMemorizationPracticeCompletedMock).not.toHaveBeenCalled();
     });
 
     it('tracks PostHog practice completed when finishing a session', async () => {
       const { component } = await renderSession();
       component.beginPracticeWithMode('type');
-      trackMemorizationPracticeStartedMock.mockClear();
+      trackMemorizationPracticeSessionStartMock.mockClear();
       (component as unknown as { wrongAttemptsRef: number }).wrongAttemptsRef = 2;
       (component as unknown as { correctKeystrokesRef: number }).correctKeystrokesRef = 18;
 
@@ -928,6 +932,12 @@ describe('MemorizationPracticeSessionComponent', () => {
       expect(component.roundIndex).toBe(2);
       expect(component.reorderSlotChunkIds.length).toBe(component.reorderChunks.length);
       expect(component.awaitingRoundAdvance).toBe(false);
+      expect(trackMemorizationPracticeSessionStartMock).toHaveBeenCalledWith(
+        'reorder-seed',
+        item,
+        'reorder',
+        { resumed: true }
+      );
     });
 
     it('hydrates inRound type state on open', async () => {

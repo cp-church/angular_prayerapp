@@ -61,7 +61,7 @@ import {
 import { isKeyboardPracticeMode } from '../../lib/memorization/memorizationKeyboardPractice';
 import {
   trackMemorizationPracticeCompleted,
-  trackMemorizationPracticeStarted,
+  trackMemorizationPracticeSessionStart,
 } from '../../lib/memorization/memorizationPracticeAnalytics';
 import {
   applyMemorizeListenPlaybackRateToMediaElement,
@@ -650,7 +650,6 @@ export class MemorizationPracticeSessionComponent
       return;
     }
     this.reciteModeBlockedMessage = null;
-    trackMemorizationPracticeStarted(this.item, mode);
     this.syncStrictModeFromSession();
     this.stopPassageAudio();
     this.modePickerOpen = false;
@@ -660,6 +659,7 @@ export class MemorizationPracticeSessionComponent
     this.correctKeystrokesTotal = 0;
     this.syncMetricRefs();
     this.sessionSeed = generateMemorizationSessionSeed();
+    trackMemorizationPracticeSessionStart(this.sessionSeed, this.item, mode);
     this.practiceModeRef = mode;
     const r = Math.min(MEMORIZATION_FULL_HIDE_ROUND, Math.max(1, Math.floor(this.startRoundChoice)));
     this.practiceMode = mode;
@@ -745,7 +745,6 @@ export class MemorizationPracticeSessionComponent
   }
 
   private beginRecitePractice(): void {
-    trackMemorizationPracticeStarted(this.item, MEMORIZATION_RECITE_PRACTICE_MODE);
     this.syncStrictModeFromSession();
     this.stopPassageAudio();
     this.modePickerOpen = false;
@@ -755,6 +754,11 @@ export class MemorizationPracticeSessionComponent
     this.correctKeystrokesTotal = 0;
     this.syncMetricRefs();
     this.sessionSeed = generateMemorizationSessionSeed();
+    trackMemorizationPracticeSessionStart(
+      this.sessionSeed,
+      this.item,
+      MEMORIZATION_RECITE_PRACTICE_MODE
+    );
     this.practiceModeRef = MEMORIZATION_RECITE_PRACTICE_MODE;
     this.practiceMode = MEMORIZATION_RECITE_PRACTICE_MODE;
     const r = Math.min(MEMORIZATION_FULL_HIDE_ROUND, Math.max(1, Math.floor(this.startRoundChoice)));
@@ -1394,6 +1398,10 @@ export class MemorizationPracticeSessionComponent
 
     this.syncStrictModeFromSession();
     this.resumeKeyboardPrimeActive = false;
+    const hydratedMode = this.practiceModeRef ?? this.practiceMode ?? 'type';
+    trackMemorizationPracticeSessionStart(this.sessionSeed, this.item, hydratedMode, {
+      resumed: true,
+    });
 
     // Prefer sync focus when the input is already in the DOM (resume after primeKeyboardFocusForResume).
     // Fall back to rAF only for layout settle (Android scroll clamp); keyboard may not reopen then.
