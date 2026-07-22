@@ -333,9 +333,6 @@ export class MemorizationRecitePracticeComponent {
   digitCharShowsBlank(segment: ReciteDisplaySegment, charIndex: number): boolean {
     const tokenIndex = segment.tokenIndices[charIndex]!;
     if (this.showViaHint(tokenIndex)) return false;
-    if (this.digitSegmentHasUnrevealedHidden(segment)) {
-      return true;
-    }
     return this.tokenShowsBlank(tokenIndex);
   }
 
@@ -491,11 +488,5 @@ export class MemorizationRecitePracticeComponent {
       return !this.resultsShowsBlank(i);
     }
     return !this.isTokenHidden(i) || this.isTokenRevealed(i) || this.showViaHint(i);
-  }
-
-  private digitSegmentHasUnrevealedHidden(segment: ReciteDisplaySegment): boolean {
-    return segment.tokenIndices.some(
-      (i) => this.isTokenHidden(i) && !this.isTokenRevealed(i)
-    );
   }
 }

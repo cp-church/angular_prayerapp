@@ -8,6 +8,11 @@ import { MemorizationRecitePracticeComponent } from './memorization-recite-pract
 import { MemorizationReciteService } from '../services/memorization-recite.service';
 import { MemorizationReciteSettingsService } from '../services/memorization-recite-settings.service';
 import { UserSessionService } from '../services/user-session.service';
+import {
+  buildMemorizationTokens,
+  getTypableTokenIndices,
+} from '../lib/memorization/memorizationPracticeUtils';
+import { buildReciteDisplaySegments } from '../lib/memorization/memorizationReciteAlignment';
 
 const componentDir = dirname(fileURLToPath(import.meta.url));
 
@@ -137,5 +142,30 @@ describe('MemorizationRecitePracticeComponent', () => {
         memorizedItemId: 'item-1',
       })
     );
+  });
+
+  it('shows visible digits in a multi-digit reference when only the sibling is hidden or hinted', () => {
+    const verse =
+      'Let no corrupting talk come out of your mouths, but only such as is good for building up, as fits the occasion, that it may give grace to those who hear.';
+    const tokens = buildMemorizationTokens(verse, 'Ephesians 4:29');
+    const segments = buildReciteDisplaySegments(tokens);
+    const verseSegment = segments.find((s) => s.kind === 'digits' && s.text === '29');
+    expect(verseSegment).toBeTruthy();
+
+    const twoIdx = verseSegment!.tokenIndices[0]!;
+    const nineIdx = verseSegment!.tokenIndices[1]!;
+
+    component.tokens = tokens;
+    component.typableIndices = getTypableTokenIndices(tokens);
+    component.hiddenIndices = new Set([nineIdx]);
+    component.revealed = new Set();
+    component.hintPeekIndices = new Set([nineIdx]);
+    component.phase = 'ready';
+    component.active = true;
+
+    expect(component.digitCharShowsBlank(verseSegment!, 0)).toBe(false);
+    expect(component.digitCharShowsBlank(verseSegment!, 1)).toBe(false);
+    expect(component.digitCharShowsText(verseSegment!, 0)).toBe(true);
+    expect(component.digitCharShowsText(verseSegment!, 1)).toBe(true);
   });
 });
