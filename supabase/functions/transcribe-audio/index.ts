@@ -29,13 +29,13 @@ function resolveBilledAudioSeconds(clientSeconds: number, byteSize: number): num
   return Math.min(RECITE_MAX_AUDIO_SECONDS, billable);
 }
 
-async function isActiveSubscriber(
+async function isKnownSubscriber(
   adminClient: SupabaseClient,
   email: string
 ): Promise<boolean> {
   const { data: subscriber, error } = await adminClient
     .from('email_subscribers')
-    .select('email, is_active, is_blocked')
+    .select('email')
     .eq('email', email)
     .maybeSingle();
 
@@ -44,7 +44,7 @@ async function isActiveSubscriber(
     return false;
   }
 
-  return !!subscriber && subscriber.is_blocked !== true && subscriber.is_active !== false;
+  return !!subscriber;
 }
 
 async function resolveAuthenticatedEmail(
@@ -55,14 +55,14 @@ async function resolveAuthenticatedEmail(
   const { data: userData } = await userClient.auth.getUser();
   const jwtEmail = userData?.user?.email?.toLowerCase().trim();
   if (jwtEmail) {
-    if (!(await isActiveSubscriber(adminClient, jwtEmail))) return null;
+    if (!(await isKnownSubscriber(adminClient, jwtEmail))) return null;
     return jwtEmail;
   }
 
   const email = String(formUserEmail ?? '').trim().toLowerCase();
   if (!email || !email.includes('@')) return null;
 
-  if (!(await isActiveSubscriber(adminClient, email))) return null;
+  if (!(await isKnownSubscriber(adminClient, email))) return null;
 
   return email;
 }
