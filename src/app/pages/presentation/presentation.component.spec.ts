@@ -21,16 +21,21 @@ function createQuery(result: any) {
 describe('PresentationComponent', () => {
   let component: PresentationComponent;
   let mockRouter: any;
+  let mockRoute: any;
   let mockSupabase: any;
   let mockThemeService: any;
   let mockPrayerService: any;
   let mockCacheService: any;
   let mockPlanningCenterListService: any;
+  let mockPresentationSettingsService: any;
   let cdr: any;
   let ngZone: any;
 
   beforeEach(() => {
     mockRouter = { navigate: vi.fn() };
+    mockRoute = {
+      snapshot: { queryParamMap: { get: vi.fn(() => null) } },
+    };
     mockSupabase = { client: { from: vi.fn() } };
     mockThemeService = { getTheme: vi.fn() };
     mockPrayerService = { prayers$: { subscribe: vi.fn(), value: [] } };
@@ -41,11 +46,24 @@ describe('PresentationComponent', () => {
       getCurrentListId: vi.fn(() => null),
       getCurrentMembers: vi.fn(() => [])
     };
+    mockPresentationSettingsService = {
+      load: vi.fn(() => ({
+        contentTypes: ['prayers'],
+        randomize: false,
+        smartMode: true,
+        displayDuration: 10,
+        timeFilter: 'month',
+        statusFilters: { current: true, answered: true },
+        prayerTimerMinutes: 10,
+      })),
+      save: vi.fn(),
+    };
     cdr = { markForCheck: vi.fn(), detectChanges: vi.fn() };
     ngZone = { run: (cb: any) => cb() };
     const helpDriverTour = { destroy: vi.fn(), startPresentationModeTour: vi.fn() };
     component = new PresentationComponent(
       mockRouter,
+      mockRoute,
       mockSupabase,
       mockPrayerService,
       mockCacheService,
@@ -53,7 +71,8 @@ describe('PresentationComponent', () => {
       cdr,
       ngZone as any,
       helpDriverTour as any,
-      mockPlanningCenterListService
+      mockPlanningCenterListService,
+      mockPresentationSettingsService
     );
   });
 
@@ -220,14 +239,17 @@ describe('PresentationComponent', () => {
     });
 
     it('items getter returns member prayers when specified', () => {
-      component.contentType = 'members';
+      component.contentTypes = ['members'];
       component.memberPrayers = [{ id: 'pc-member-1', prayer_for: 'Member' } as any];
       
       expect(component.items).toEqual(component.memberPrayers);
     });
 
     it('handleContentTypeChange fetches members when switched to "members"', async () => {
-      component.contentType = 'members';
+      component.contentTypes = ['members'];
+      component.planningCenterListMembers = [
+        { id: 'm1', name: 'Member 1', avatar: null },
+      ];
       const spy = vi.spyOn(component, 'fetchMemberPrayers');
       
       await component.handleContentTypeChange();
@@ -318,13 +340,23 @@ describe('PresentationComponent', () => {
     expect(toggleSpy).toHaveBeenCalled();
   });
 
+  it('fetchPrayers applies status filters when prayers are mixed with other content types', async () => {
+    const q = createQuery({ data: [], error: null });
+    const inSpy = vi.spyOn(q, 'in');
+    mockSupabase.client.from = vi.fn().mockReturnValue(q);
+    component.contentTypes = ['prayers', 'prompts'];
+    component.statusFilters = { current: true, answered: false };
+    await component.fetchPrayers();
+    expect(inSpy).toHaveBeenCalledWith('status', ['current']);
+  });
+
   it('fetchPrayers handles success and sorts by latest activity', async () => {
     const now = new Date();
     const older = { id: 'old', created_at: new Date(now.getTime() - 10000).toISOString(), prayer_updates: [] };
     const newer = { id: 'new', created_at: now.toISOString(), prayer_updates: [] };
     const query = createQuery({ data: [older, newer], error: null });
     mockSupabase.client.from = vi.fn().mockReturnValue(query);
-    component.contentType = 'prayers';
+    component.contentTypes = ['prayers'];
     await component.fetchPrayers();
     expect(component.prayers.length).toBe(2);
     expect(component.prayers[0].id).toBe('new');
@@ -333,7 +365,7 @@ describe('PresentationComponent', () => {
   it('fetchPrayers handles errors by clearing prayers', async () => {
     const query = createQuery({ data: null, error: { message: 'boom' } });
     mockSupabase.client.from = vi.fn().mockReturnValue(query);
-    component.contentType = 'prayers';
+    component.contentTypes = ['prayers'];
     await component.fetchPrayers();
     expect(component.prayers).toEqual([]);
   });
@@ -349,7 +381,7 @@ describe('PresentationComponent', () => {
       calls++;
       return calls === 1 ? q1 : q2;
     });
-    component.contentType = 'prompts';
+    component.contentTypes = ['prompts'];
     await component.fetchPrompts();
     expect(component.prompts.length).toBe(2);
     // p2 has type t2 which has display_order 1 so it should come first
@@ -372,11 +404,13 @@ import { ChangeDetectorRef, NgZone } from '@angular/core';
 describe('PresentationComponent', () => {
   let component: PresentationComponent;
   let mockRouter: any;
+  let mockRoute: any;
   let mockSupabase: any;
   let mockThemeService: any;
   let mockPrayerService: any;
   let mockCacheService: any;
   let mockPlanningCenterListService: any;
+  let mockPresentationSettingsService: any;
   let mockCdr: any;
   let mockNgZone: any;
 
@@ -384,6 +418,9 @@ describe('PresentationComponent', () => {
     vi.clearAllMocks();
 
     mockRouter = { navigate: vi.fn() };
+    mockRoute = {
+      snapshot: { queryParamMap: { get: vi.fn(() => null) } },
+    };
     mockSupabase = { client: {} };
     mockThemeService = {};
     mockPrayerService = { prayers$: { subscribe: vi.fn(), value: [] } };
@@ -394,12 +431,25 @@ describe('PresentationComponent', () => {
       getCurrentListId: vi.fn(() => null),
       getCurrentMembers: vi.fn(() => [])
     };
+    mockPresentationSettingsService = {
+      load: vi.fn(() => ({
+        contentTypes: ['prayers'],
+        randomize: false,
+        smartMode: true,
+        displayDuration: 10,
+        timeFilter: 'month',
+        statusFilters: { current: true, answered: true },
+        prayerTimerMinutes: 10,
+      })),
+      save: vi.fn(),
+    };
     mockCdr = { markForCheck: vi.fn(), detectChanges: vi.fn() };
     mockNgZone = { run: (fn: Function) => fn() } as unknown as NgZone;
     const helpDriverTour = { destroy: vi.fn(), startPresentationModeTour: vi.fn() };
 
     component = new PresentationComponent(
       mockRouter as unknown as Router,
+      mockRoute,
       mockSupabase as unknown as SupabaseService,
       mockPrayerService as any,
       mockCacheService as any,
@@ -407,7 +457,8 @@ describe('PresentationComponent', () => {
       mockCdr as unknown as ChangeDetectorRef,
       mockNgZone as unknown as NgZone,
       helpDriverTour as any,
-      mockPlanningCenterListService
+      mockPlanningCenterListService,
+      mockPresentationSettingsService
     );
   });
 
@@ -435,6 +486,129 @@ describe('PresentationComponent', () => {
     
     expect(lc).toHaveBeenCalled();
     expect(sc).toHaveBeenCalled();
+  });
+
+  describe('presentation settings', () => {
+    it('ngOnInit applies persisted settings from service', async () => {
+      mockPresentationSettingsService.load.mockReturnValue({
+        contentTypes: ['personal'],
+        randomize: true,
+        smartMode: false,
+        displayDuration: 30,
+        timeFilter: 'week',
+        statusFilters: { current: false, answered: true },
+        prayerTimerMinutes: 30,
+      });
+      vi.spyOn(component, 'loadTheme').mockImplementation(() => {});
+      vi.spyOn(component, 'loadPlanningCenterMembers').mockResolvedValue(undefined);
+      vi.spyOn(component, 'loadContent').mockResolvedValue(undefined);
+      vi.spyOn(component, 'setupControlsAutoHide').mockImplementation(() => {});
+
+      component.ngOnInit();
+      await Promise.resolve();
+
+      expect(component.contentTypes).toEqual(['personal']);
+      expect(component.randomize).toBe(true);
+      expect(component.smartMode).toBe(false);
+      expect(component.displayDuration).toBe(30);
+      expect(component.timeFilter).toBe('week');
+      expect(component.statusFilters).toEqual({ current: false, answered: true });
+      expect(component.prayerTimerMinutes).toBe(30);
+    });
+
+    it('ngOnInit applies home navigation content types over persisted settings', async () => {
+      mockPresentationSettingsService.load.mockReturnValue({
+        contentTypes: ['prayers'],
+        randomize: false,
+        smartMode: true,
+        displayDuration: 10,
+        timeFilter: 'month',
+        statusFilters: { current: true, answered: true },
+        prayerTimerMinutes: 10,
+      });
+      const replaceState = vi.fn();
+      vi.stubGlobal('history', {
+        state: { presentationHomeContentTypes: ['prompts'] },
+        replaceState,
+      });
+      vi.spyOn(component, 'loadTheme').mockImplementation(() => {});
+      vi.spyOn(component, 'loadPlanningCenterMembers').mockResolvedValue(undefined);
+      vi.spyOn(component, 'loadContent').mockResolvedValue(undefined);
+      vi.spyOn(component, 'setupControlsAutoHide').mockImplementation(() => {});
+
+      component.ngOnInit();
+      await Promise.resolve();
+
+      expect(component.contentTypes).toEqual(['prompts']);
+      expect(mockPresentationSettingsService.save).toHaveBeenCalledWith(
+        expect.objectContaining({ contentTypes: ['prompts'] })
+      );
+      expect(replaceState).toHaveBeenCalled();
+      vi.unstubAllGlobals();
+    });
+
+    it('ngOnInit applies home query param content types for new-tab navigation', async () => {
+      mockPresentationSettingsService.load.mockReturnValue({
+        contentTypes: ['prayers'],
+        randomize: false,
+        smartMode: true,
+        displayDuration: 10,
+        timeFilter: 'month',
+        statusFilters: { current: true, answered: true },
+        prayerTimerMinutes: 10,
+      });
+      mockRoute.snapshot.queryParamMap.get.mockReturnValue('prompts');
+      vi.spyOn(component, 'loadTheme').mockImplementation(() => {});
+      vi.spyOn(component, 'loadPlanningCenterMembers').mockResolvedValue(undefined);
+      vi.spyOn(component, 'loadContent').mockResolvedValue(undefined);
+      vi.spyOn(component, 'setupControlsAutoHide').mockImplementation(() => {});
+
+      component.ngOnInit();
+      await Promise.resolve();
+
+      expect(component.contentTypes).toEqual(['prompts']);
+      expect(mockRouter.navigate).toHaveBeenCalledWith([], {
+        relativeTo: mockRoute,
+        queryParams: { homeTypes: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+    });
+
+    it('handleContentTypeChange persists settings', async () => {
+      vi.spyOn(component, 'loadContent').mockResolvedValue(undefined);
+      component.contentTypes = ['personal'];
+
+      await component.handleContentTypeChange();
+
+      expect(mockPresentationSettingsService.save).toHaveBeenCalledWith(
+        expect.objectContaining({ contentTypes: ['personal'] })
+      );
+    });
+
+    it('handlePrayerTimerMinutesChange persists settings', () => {
+      component.handlePrayerTimerMinutesChange(45);
+      expect(component.prayerTimerMinutes).toBe(45);
+      expect(mockPresentationSettingsService.save).toHaveBeenCalledWith(
+        expect.objectContaining({ prayerTimerMinutes: 45 })
+      );
+    });
+
+    it('handleSmartModeChange persists settings', () => {
+      component.handleSmartModeChange(false);
+      expect(component.smartMode).toBe(false);
+      expect(mockPresentationSettingsService.save).toHaveBeenCalledWith(
+        expect.objectContaining({ smartMode: false })
+      );
+    });
+
+    it('handleDisplayDurationChange persists settings', () => {
+      component.handleDisplayDurationChange(25);
+      expect(component.displayDuration).toBe(25);
+      expect(mockPresentationSettingsService.save).toHaveBeenCalledWith(
+        expect.objectContaining({ displayDuration: 25 })
+      );
+    });
   });
 
   describe('theme handling', () => {
@@ -505,7 +679,7 @@ describe('PresentationComponent', () => {
 
     it('nextSlide and previousSlide update index', () => {
       component.prayers = [{ id: '1' } as any, { id: '2' } as any, { id: '3' } as any];
-      component.contentType = 'prayers';
+      component.contentTypes = ['prayers'];
       component.currentIndex = 0;
       component.isPlaying = true;
       // Don't mock startAutoAdvance so the branch is covered
@@ -551,7 +725,7 @@ describe('PresentationComponent', () => {
         { id: 'pr2', type: 'reflection' } as any
       ];
       
-      component.contentType = 'prayers';
+      component.contentTypes = ['prayers'];
       component.prayers = prayers;
       component.prompts = prompts;
       
@@ -575,7 +749,7 @@ describe('PresentationComponent', () => {
         { id: 'pr3', type: 'challenge' } as any
       ];
       
-      component.contentType = 'prompts';
+      component.contentTypes = ['prompts'];
       component.prayers = prayers;
       component.prompts = prompts;
       
@@ -598,7 +772,7 @@ describe('PresentationComponent', () => {
         { id: 'pr2', type: 'reflection' } as any
       ];
       
-      component.contentType = 'all';
+      component.contentTypes = [];
       component.prayers = prayers;
       component.prompts = prompts;
       
@@ -670,7 +844,7 @@ describe('PresentationComponent', () => {
     // Set up test data
     component.prayers = [{ id: 'p1', prayer_for: 'John' } as any];
     component.prompts = [{ id: 'pr1', type: 'encouragement' } as any];
-    component.contentType = 'prayers';
+    component.contentTypes = ['prayers'];
     
     const loadSpy = vi.spyOn(component, 'loadContent').mockImplementation(() => Promise.resolve());
 
@@ -708,7 +882,7 @@ describe('PresentationComponent', () => {
     const recent = { id: 'r', created_at: now.toISOString(), prayer_updates: [] };
     const q = createQuery({ data: [recent], error: null });
     mockSupabase.client.from = vi.fn().mockReturnValue(q);
-    component.contentType = 'prayers';
+    component.contentTypes = ['prayers'];
     component.timeFilter = 'week';
     component.statusFilters = { current: true, answered: false };
     await component.fetchPrayers();
@@ -719,7 +893,7 @@ describe('PresentationComponent', () => {
     const pSpy = vi.spyOn(component, 'fetchPrayers').mockImplementation(() => Promise.resolve());
     const prSpy = vi.spyOn(component, 'fetchPrompts').mockImplementation(() => Promise.resolve());
     const shuffleSpy = vi.spyOn(component, 'shuffleItems').mockImplementation(() => {});
-    component.contentType = 'all';
+    component.contentTypes = [];
     component.randomize = true;
     await component.loadContent();
     expect(pSpy).toHaveBeenCalled();
@@ -821,7 +995,7 @@ describe('PresentationComponent', () => {
       component.displayDuration = 5;
       component.prompts = [{ id: 'pr1', description: 'x'.repeat(100), type: 'encouragement' } as any];
       component.prayers = [];
-      component.contentType = 'prompts';
+      component.contentTypes = ['prompts'];
       component.currentIndex = 0;
       
       const duration = component.calculateCurrentDuration();
@@ -888,7 +1062,7 @@ describe('PresentationComponent', () => {
       const recent = { id: 'r', created_at: now.toISOString(), prayer_updates: [] };
       const q = createQuery({ data: [recent], error: null });
       mockSupabase.client.from = vi.fn().mockReturnValue(q);
-      component.contentType = 'prayers';
+      component.contentTypes = ['prayers'];
       component.timeFilter = 'twoweeks';
       await component.fetchPrayers();
       expect(component.prayers.length).toBe(1);
@@ -899,7 +1073,7 @@ describe('PresentationComponent', () => {
       const recent = { id: 'r', created_at: now.toISOString(), prayer_updates: [] };
       const q = createQuery({ data: [recent], error: null });
       mockSupabase.client.from = vi.fn().mockReturnValue(q);
-      component.contentType = 'prayers';
+      component.contentTypes = ['prayers'];
       component.timeFilter = 'year';
       await component.fetchPrayers();
       expect(component.prayers.length).toBe(1);
@@ -910,7 +1084,7 @@ describe('PresentationComponent', () => {
       const recent = { id: 'r', created_at: now.toISOString(), prayer_updates: [] };
       const q = createQuery({ data: [recent], error: null });
       mockSupabase.client.from = vi.fn().mockReturnValue(q);
-      component.contentType = 'prayers';
+      component.contentTypes = ['prayers'];
       component.timeFilter = 'all';
       await component.fetchPrayers();
       expect(component.prayers.length).toBe(1);
@@ -922,7 +1096,7 @@ describe('PresentationComponent', () => {
       const current = { id: 'c', status: 'current', created_at: new Date().toISOString(), prayer_updates: [] };
       const q = createQuery({ data: [current], error: null });
       mockSupabase.client.from = vi.fn().mockReturnValue(q);
-      component.contentType = 'prayers';
+      component.contentTypes = ['prayers'];
       component.statusFilters = { current: true, answered: false };
       await component.fetchPrayers();
       expect(component.prayers.length).toBe(1);
@@ -932,7 +1106,7 @@ describe('PresentationComponent', () => {
       const answered = { id: 'a', status: 'answered', created_at: new Date().toISOString(), prayer_updates: [] };
       const q = createQuery({ data: [answered], error: null });
       mockSupabase.client.from = vi.fn().mockReturnValue(q);
-      component.contentType = 'prayers';
+      component.contentTypes = ['prayers'];
       component.statusFilters = { current: false, answered: true };
       await component.fetchPrayers();
       expect(component.prayers.length).toBe(1);
@@ -1105,7 +1279,7 @@ describe('PresentationComponent', () => {
       
       const q = createQuery({ data: [prayer1, prayer2], error: null });
       mockSupabase.client.from = vi.fn().mockReturnValue(q);
-      component.contentType = 'prayers';
+      component.contentTypes = ['prayers'];
       component.timeFilter = 'all'; // Don't filter by time for this test
       
       await component.fetchPrayers();
@@ -1127,7 +1301,7 @@ describe('PresentationComponent', () => {
       };
       const q = createQuery({ data: [prayerWithMixedUpdates], error: null });
       mockSupabase.client.from = vi.fn().mockReturnValue(q);
-      component.contentType = 'prayers';
+      component.contentTypes = ['prayers'];
       
       await component.fetchPrayers();
       
@@ -1162,7 +1336,7 @@ describe('PresentationComponent', () => {
       
       const q = createQuery({ data: [oldPrayerWithRecentUpdate, recentPrayer, oldPrayerWithoutUpdates], error: null });
       mockSupabase.client.from = vi.fn().mockReturnValue(q);
-      component.contentType = 'prayers';
+      component.contentTypes = ['prayers'];
       component.timeFilter = 'month'; // 30 days
       
       await component.fetchPrayers();
@@ -1196,7 +1370,7 @@ describe('PresentationComponent', () => {
   describe('state mutation tests', () => {
     it('loadContent sets loading to true and false', async () => {
       const fetchSpy = vi.spyOn(component, 'fetchPrayers').mockImplementation(() => Promise.resolve());
-      component.contentType = 'prayers';
+      component.contentTypes = ['prayers'];
       
       expect(component.loading).toBe(true); // was true from constructor
       const promise = component.loadContent();
@@ -1271,7 +1445,7 @@ describe('PresentationComponent', () => {
     it('fetchPrayers with contentType not prayers does not filter by status', async () => {
       const q = createQuery({ data: [{ id: '1', created_at: new Date().toISOString(), prayer_updates: [] }], error: null });
       mockSupabase.client.from = vi.fn().mockReturnValue(q);
-      component.contentType = 'prompts';
+      component.contentTypes = ['prompts'];
       await component.fetchPrayers();
       expect(component.prayers.length).toBe(1);
     });
@@ -1279,7 +1453,7 @@ describe('PresentationComponent', () => {
     it('fetchPrayers with contentType not prayers does not apply timeFilter', async () => {
       const q = createQuery({ data: [{ id: '1', created_at: new Date().toISOString(), prayer_updates: [] }], error: null });
       mockSupabase.client.from = vi.fn().mockReturnValue(q);
-      component.contentType = 'prompts';
+      component.contentTypes = ['prompts'];
       component.timeFilter = 'week';
       await component.fetchPrayers();
       expect(component.prayers.length).toBe(1);
@@ -1312,7 +1486,7 @@ describe('PresentationComponent', () => {
       component.displayDuration = 5;
       component.prompts = [{ id: 'pr1', type: 'encouragement' } as any];
       component.prayers = [];
-      component.contentType = 'prompts';
+      component.contentTypes = ['prompts'];
       component.currentIndex = 0;
       
       const duration = component.calculateCurrentDuration();
@@ -1325,7 +1499,7 @@ describe('PresentationComponent', () => {
       const prompts = [{ id: 'pr1', type: 'encouragement' } as any];
       component.prayers = prayers;
       component.prompts = prompts;
-      component.contentType = 'prayers';
+      component.contentTypes = ['prayers'];
       
       expect(component.items).toEqual(prayers);
     });
@@ -1335,7 +1509,7 @@ describe('PresentationComponent', () => {
       const prompts = [{ id: 'pr1', type: 'encouragement' } as any];
       component.prayers = prayers;
       component.prompts = prompts;
-      component.contentType = 'prompts';
+      component.contentTypes = ['prompts'];
       
       expect(component.items).toEqual(prompts);
     });
@@ -1345,7 +1519,7 @@ describe('PresentationComponent', () => {
       const prompts = [{ id: 'pr1', type: 'encouragement' } as any];
       component.prayers = prayers;
       component.prompts = prompts;
-      component.contentType = 'all';
+      component.contentTypes = [];
       
       const items = component.items;
       expect(items).toHaveLength(2);
@@ -1355,7 +1529,7 @@ describe('PresentationComponent', () => {
 
     it('currentItem returns item at currentIndex', () => {
       component.prayers = [{ id: 'a' } as any, { id: 'b' } as any, { id: 'c' } as any];
-      component.contentType = 'prayers';
+      component.contentTypes = ['prayers'];
       component.currentIndex = 1;
       
       expect(component.currentItem.id).toBe('b');
@@ -1451,7 +1625,7 @@ describe('PresentationComponent', () => {
     it('loadContent catches errors from fetchPrayers', async () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       vi.spyOn(component, 'fetchPrayers').mockRejectedValue(new Error('Fetch error'));
-      component.contentType = 'prayers';
+      component.contentTypes = ['prayers'];
       await component.loadContent();
       expect(consoleSpy).toHaveBeenCalled();
       expect(component.loading).toBe(false);
@@ -1478,7 +1652,7 @@ describe('PresentationComponent', () => {
     it('fetchPrayers with both status filters false results in no status filter applied', async () => {
       const q = createQuery({ data: [], error: null });
       mockSupabase.client.from = vi.fn().mockReturnValue(q);
-      component.contentType = 'prayers';
+      component.contentTypes = ['prayers'];
       component.statusFilters = { current: false, answered: false };
       await component.fetchPrayers();
       expect(component.prayers).toEqual([]);
@@ -1513,7 +1687,7 @@ describe('PresentationComponent', () => {
   
     describe('Additional presentation helpers', () => {
       it('loadContent randomizes when enabled', async () => {
-        component.contentType = 'prayers';
+        component.contentTypes = ['prayers'];
         component.randomize = true;
         const fetchSpy = vi.spyOn(component, 'fetchPrayers').mockResolvedValue();
         const shuffleSpy = vi.spyOn(component, 'shuffleItems').mockImplementation(() => {});
@@ -1526,7 +1700,7 @@ describe('PresentationComponent', () => {
       });
 
       it('loadContent handles failures gracefully', async () => {
-        component.contentType = 'prayers';
+        component.contentTypes = ['prayers'];
         vi.spyOn(component, 'fetchPrayers').mockRejectedValue(new Error('boom'));
 
         await component.loadContent();
@@ -1553,7 +1727,7 @@ describe('PresentationComponent', () => {
           }
         ];
 
-        component.contentType = 'prayers';
+        component.contentTypes = ['prayers'];
         component.timeFilter = 'week';
         component.statusFilters = { current: true, answered: true };
         const query = createQuery({ data, error: null });
@@ -1649,7 +1823,7 @@ describe('PresentationComponent', () => {
       });
 
       it('items getter respects selected personal categories for all content', () => {
-        component.contentType = 'all';
+        component.contentTypes = [];
         component.prayers = [{ id: 'p' }] as any;
         component.prompts = [{ id: 'pr' }] as any;
         component.personalPrayers = [{ id: 'personal', category: 'cat' }] as any;
@@ -1673,7 +1847,7 @@ describe('PresentationComponent', () => {
       });
 
       it('handleStatusFilterChange refreshes both prayers and personal lists when showing all', async () => {
-        component.contentType = 'all';
+        component.contentTypes = [];
         const prayersSpy = vi.spyOn(component, 'fetchPrayers').mockResolvedValue();
         const personalSpy = vi.spyOn(component, 'fetchPersonalPrayers').mockResolvedValue();
 
@@ -1684,8 +1858,90 @@ describe('PresentationComponent', () => {
         expect(component.currentIndex).toBe(0);
       });
 
+      it('serializes overlapping filter reload handlers', async () => {
+        const order: string[] = [];
+        vi.spyOn(component, 'loadContent').mockImplementation(async () => {
+          order.push('load-start');
+          await new Promise((resolve) => setTimeout(resolve, 20));
+          order.push('load-end');
+        });
+        vi.spyOn(component, 'refetchPrayerScopedContent').mockImplementation(async () => {
+          order.push('refetch-start');
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          order.push('refetch-end');
+        });
+
+        const contentChange = component.handleContentTypeChange();
+        const statusChange = component.handleStatusFilterChange();
+        await Promise.all([contentChange, statusChange]);
+
+        expect(order).toEqual([
+          'load-start',
+          'load-end',
+          'refetch-start',
+          'refetch-end',
+        ]);
+      });
+
+      it('handleStatusFilterChange reshuffles combined items when randomize is enabled', async () => {
+        component.contentTypes = [];
+        component.randomize = true;
+        component.prayers = [{ id: 'p1', prayer_for: 'A' } as any];
+        component.prompts = [{ id: 'pr1', type: 'encouragement' } as any];
+        component.combinedShuffledItems = [{ id: 'stale' } as any];
+        vi.spyOn(component, 'fetchPrayers').mockResolvedValue();
+        vi.spyOn(component, 'fetchPersonalPrayers').mockResolvedValue();
+        const shuffleSpy = vi.spyOn(component, 'shuffleItems');
+
+        await component.handleStatusFilterChange();
+
+        expect(shuffleSpy).toHaveBeenCalled();
+      });
+
+      it('handleStatusFilterChange reshuffles single-type prayers when randomize is enabled', async () => {
+        component.contentTypes = ['prayers'];
+        component.randomize = true;
+        component.prayers = [
+          { id: 'p1', prayer_for: 'A' } as any,
+          { id: 'p2', prayer_for: 'B' } as any,
+        ];
+        vi.spyOn(component, 'fetchPrayers').mockResolvedValue();
+        const shuffleSpy = vi.spyOn(component, 'shuffleItems');
+
+        await component.handleStatusFilterChange();
+
+        expect(shuffleSpy).toHaveBeenCalled();
+      });
+
+      it('handlePersonalCategoriesChange reshuffles combined items when randomize is enabled', () => {
+        component.contentTypes = [];
+        component.randomize = true;
+        component.prayers = [{ id: 'p1', prayer_for: 'A' } as any];
+        component.personalPrayers = [
+          { id: 'pp1', category: 'cat-a' } as any,
+          { id: 'pp2', category: 'cat-b' } as any,
+        ];
+        const shuffleSpy = vi.spyOn(component, 'shuffleItems');
+
+        component.handlePersonalCategoriesChange(['cat-a']);
+
+        expect(shuffleSpy).toHaveBeenCalled();
+        expect(component.currentIndex).toBe(0);
+      });
+
+      it('sanitizeContentTypesForAvailableContent removes members when list is unmapped', () => {
+        component.contentTypes = ['members'];
+        Object.defineProperty(component, 'hasMembers', { get: () => false });
+        const saveSpy = vi.spyOn(mockPresentationSettingsService, 'save');
+
+        (component as any).sanitizeContentTypesForAvailableContent();
+
+        expect(component.contentTypes).toEqual(['prayers']);
+        expect(saveSpy).toHaveBeenCalled();
+      });
+
       it('handleTimeFilterChange mirrors status change behavior', async () => {
-        component.contentType = 'all';
+        component.contentTypes = [];
         const prayersSpy = vi.spyOn(component, 'fetchPrayers').mockResolvedValue();
         const personalSpy = vi.spyOn(component, 'fetchPersonalPrayers').mockResolvedValue();
 
@@ -1720,7 +1976,7 @@ describe('PresentationComponent', () => {
       it('calculateCurrentDuration handles prompt descriptions', () => {
         const prompt = { description: 'a'.repeat(50) } as any;
         component.prompts = [prompt];
-        component.contentType = 'prompts';
+        component.contentTypes = ['prompts'];
         component.currentIndex = 0;
         component.smartMode = true;
 

@@ -29,8 +29,8 @@ describe('PresentationSettingsModalComponent', () => {
       expect(component.displayDuration).toBe(10);
     });
 
-    it('should have contentType default to prayers', () => {
-      expect(component.contentType).toBe('prayers');
+    it('should have contentTypes default to prayers', () => {
+      expect(component.contentTypes).toEqual(['prayers']);
     });
 
     it('should have randomize default to false', () => {
@@ -61,8 +61,8 @@ describe('PresentationSettingsModalComponent', () => {
       expect(component.localDisplayDuration).toBe(10);
     });
 
-    it('should have localContentType default to prayers', () => {
-      expect(component.localContentType).toBe('prayers');
+    it('should have localContentTypes default to prayers', () => {
+      expect(component.localContentTypes).toEqual(['prayers']);
     });
 
     it('should have localRandomize default to false', () => {
@@ -81,8 +81,20 @@ describe('PresentationSettingsModalComponent', () => {
       expect(component.showSmartModeDetails).toBe(false);
     });
 
+    it('should have showContentTypeDropdown default to false', () => {
+      expect(component.showContentTypeDropdown).toBe(false);
+    });
+
+    it('should have showTimeFilterDropdown default to false', () => {
+      expect(component.showTimeFilterDropdown).toBe(false);
+    });
+
     it('should have showStatusDropdown default to false', () => {
       expect(component.showStatusDropdown).toBe(false);
+    });
+
+    it('should have pendingContentTypes default to empty array', () => {
+      expect(component.pendingContentTypes).toEqual([]);
     });
 
     it('should have pendingStatusFilter default to empty array', () => {
@@ -101,24 +113,58 @@ describe('PresentationSettingsModalComponent', () => {
       expect(syncSpy).toHaveBeenCalled();
     });
 
-    it('should call initPendingStatusFilter', () => {
-      const initSpy = vi.spyOn(component, 'initPendingStatusFilter');
+    it('should call initPendingContentTypes', () => {
+      const initSpy = vi.spyOn(component, 'initPendingContentTypes');
       component.ngOnInit();
       expect(initSpy).toHaveBeenCalled();
     });
   });
 
   describe('ngOnChanges', () => {
-    it('should call syncLocalState', () => {
+    it('should sync local state when becoming visible', () => {
+      component.visible = true;
       const syncSpy = vi.spyOn(component, 'syncLocalState');
-      component.ngOnChanges();
+      component.ngOnChanges({
+        visible: {
+          previousValue: false,
+          currentValue: true,
+          firstChange: false,
+          isFirstChange: () => false,
+        },
+      });
       expect(syncSpy).toHaveBeenCalled();
     });
 
-    it('should call initPendingStatusFilter', () => {
-      const initSpy = vi.spyOn(component, 'initPendingStatusFilter');
-      component.ngOnChanges();
-      expect(initSpy).toHaveBeenCalled();
+    it('should flush open dropdowns when becoming hidden', () => {
+      component.visible = false;
+      component.showContentTypeDropdown = true;
+      component.pendingContentTypes = ['prompts'];
+      component.localContentTypes = ['prayers'];
+      const emitSpy = vi.spyOn(component.contentTypesChange, 'emit');
+      component.ngOnChanges({
+        visible: {
+          previousValue: true,
+          currentValue: false,
+          firstChange: false,
+          isFirstChange: () => false,
+        },
+      });
+      expect(emitSpy).toHaveBeenCalledWith(['prompts']);
+      expect(component.showContentTypeDropdown).toBe(false);
+    });
+
+    it('should reset dropdown state when becoming visible', () => {
+      component.visible = true;
+      component.showStatusDropdown = true;
+      component.ngOnChanges({
+        visible: {
+          previousValue: false,
+          currentValue: true,
+          firstChange: false,
+          isFirstChange: () => false,
+        },
+      });
+      expect(component.showStatusDropdown).toBe(false);
     });
   });
 
@@ -126,7 +172,7 @@ describe('PresentationSettingsModalComponent', () => {
     it('should sync all input properties to local state', () => {
       component.smartMode = false;
       component.displayDuration = 20;
-      component.contentType = 'prompts';
+      component.contentTypes = ['prompts'];
       component.randomize = true;
       component.timeFilter = 'week';
       component.prayerTimerMinutes = 15;
@@ -135,16 +181,16 @@ describe('PresentationSettingsModalComponent', () => {
 
       expect(component.localSmartMode).toBe(false);
       expect(component.localDisplayDuration).toBe(20);
-      expect(component.localContentType).toBe('prompts');
+      expect(component.localContentTypes).toEqual(['prompts']);
       expect(component.localRandomize).toBe(true);
       expect(component.localTimeFilter).toBe('week');
       expect(component.localPrayerTimerMinutes).toBe(15);
     });
 
-    it('should handle contentType "all"', () => {
-      component.contentType = 'all';
+    it('should handle empty contentTypes as all content types', () => {
+      component.contentTypes = [];
       component.syncLocalState();
-      expect(component.localContentType).toBe('all');
+      expect(component.localContentTypes).toEqual([]);
     });
 
     it('should handle theme changes', () => {
@@ -177,11 +223,15 @@ describe('PresentationSettingsModalComponent', () => {
       expect(component.pendingStatusFilter).toEqual(['answered']);
     });
 
-    it('should initialize with empty array when both are false', () => {
+    it('should initialize with all statuses when both filters are inactive', () => {
       component.statusFiltersCurrent = false;
       component.statusFiltersAnswered = false;
       component.initPendingStatusFilter();
-      expect(component.pendingStatusFilter).toEqual([]);
+      expect(component.pendingStatusFilter).toEqual([
+        'current',
+        'answered',
+        'archived',
+      ]);
     });
   });
 
@@ -214,6 +264,153 @@ describe('PresentationSettingsModalComponent', () => {
     });
   });
 
+  describe('content type dropdown', () => {
+    it('should open content type dropdown', () => {
+      component.toggleContentTypeDropdown();
+      expect(component.showContentTypeDropdown).toBe(true);
+    });
+
+    it('should close content type dropdown when toggled again', () => {
+      component.showContentTypeDropdown = true;
+      component.pendingContentTypes = ['prompts'];
+      const emitSpy = vi.spyOn(component.contentTypesChange, 'emit');
+      component.toggleContentTypeDropdown();
+      expect(component.showContentTypeDropdown).toBe(false);
+      expect(emitSpy).toHaveBeenCalledWith(['prompts']);
+    });
+
+    it('should apply pending content types and emit change', () => {
+      const emitSpy = vi.spyOn(component.contentTypesChange, 'emit');
+      component.pendingContentTypes = ['prompts', 'personal'];
+      component.applyContentTypeFilter();
+      expect(component.localContentTypes).toEqual(['prompts', 'personal']);
+      expect(emitSpy).toHaveBeenCalledWith(['prompts', 'personal']);
+      expect(component.showContentTypeDropdown).toBe(false);
+    });
+
+    it('should not emit when pending content types are unchanged', () => {
+      component.localContentTypes = ['prompts'];
+      component.pendingContentTypes = ['prompts'];
+      component.showContentTypeDropdown = true;
+      const emitSpy = vi.spyOn(component.contentTypesChange, 'emit');
+
+      component.applyContentTypeFilter();
+
+      expect(emitSpy).not.toHaveBeenCalled();
+      expect(component.showContentTypeDropdown).toBe(false);
+    });
+
+    it('should initialize pending selections as all types when local is empty', () => {
+      component.localContentTypes = [];
+
+      component.initPendingContentTypes();
+
+      expect(component.pendingContentTypes).toEqual([
+        'prayers',
+        'prompts',
+        'personal',
+      ]);
+    });
+
+    it('should select all available content types when All Content Types is chosen', () => {
+      component.pendingContentTypes = ['prompts'];
+
+      component.selectAllPendingContentTypes();
+
+      expect(component.pendingContentTypes).toEqual([
+        'prayers',
+        'prompts',
+        'personal',
+      ]);
+      expect(component.isAllPendingContentTypesSelected()).toBe(true);
+    });
+
+    it('should emit empty array when all available content types are selected', () => {
+      const emitSpy = vi.spyOn(component.contentTypesChange, 'emit');
+      component.localContentTypes = ['prompts'];
+      component.pendingContentTypes = ['prayers', 'prompts', 'personal'];
+
+      component.applyContentTypeFilter();
+
+      expect(emitSpy).toHaveBeenCalledWith([]);
+      expect(component.localContentTypes).toEqual([]);
+    });
+
+    it('should not emit when all types are already selected via empty local state', () => {
+      component.localContentTypes = [];
+      component.pendingContentTypes = ['prayers', 'prompts', 'personal'];
+      component.showContentTypeDropdown = true;
+      const emitSpy = vi.spyOn(component.contentTypesChange, 'emit');
+
+      component.applyContentTypeFilter();
+
+      expect(emitSpy).not.toHaveBeenCalled();
+      expect(component.showContentTypeDropdown).toBe(false);
+    });
+
+    it('should not uncheck the last pending content type', () => {
+      component.pendingContentTypes = ['prompts'];
+
+      component.togglePendingContentType('prompts');
+
+      expect(component.pendingContentTypes).toEqual(['prompts']);
+    });
+
+    it('should toggle pending content type selections', () => {
+      component.pendingContentTypes = ['prompts'];
+      component.togglePendingContentType('personal');
+      expect(component.pendingContentTypes).toEqual(['prompts', 'personal']);
+      component.togglePendingContentType('prompts');
+      expect(component.pendingContentTypes).toEqual(['personal']);
+    });
+
+    it('should return All Content Types when none selected', () => {
+      component.localContentTypes = [];
+      expect(component.getContentTypeDisplay()).toBe('All Content Types');
+    });
+
+    it('should return display labels for multiple content types', () => {
+      component.localContentTypes = ['prayers', 'prompts'];
+      expect(component.getContentTypeDisplay()).toBe('Prayers, Prompts');
+    });
+
+    it('should close other dropdowns when opening content type', () => {
+      component.showTimeFilterDropdown = true;
+      component.showStatusDropdown = true;
+      component.toggleContentTypeDropdown();
+      expect(component.showTimeFilterDropdown).toBe(false);
+      expect(component.showStatusDropdown).toBe(false);
+      expect(component.showContentTypeDropdown).toBe(true);
+    });
+  });
+
+  describe('time filter dropdown', () => {
+    it('should open time filter dropdown', () => {
+      component.toggleTimeFilterDropdown();
+      expect(component.showTimeFilterDropdown).toBe(true);
+    });
+
+    it('should select time filter and emit change', () => {
+      const emitSpy = vi.spyOn(component.timeFilterChange, 'emit');
+      component.selectTimeFilter('year');
+      expect(component.localTimeFilter).toBe('year');
+      expect(emitSpy).toHaveBeenCalledWith('year');
+      expect(component.showTimeFilterDropdown).toBe(false);
+    });
+
+    it('should return display label for time filter', () => {
+      component.localTimeFilter = 'week';
+      expect(component.getTimeFilterDisplay()).toBe('Last Week');
+    });
+
+    it('should close other dropdowns when opening time filter', () => {
+      component.showContentTypeDropdown = true;
+      component.toggleTimeFilterDropdown();
+      expect(component.showContentTypeDropdown).toBe(false);
+      expect(component.showTimeFilterDropdown).toBe(true);
+    });
+  });
+
   describe('toggleStatusDropdown', () => {
     it('should toggle showStatusDropdown from false to true', () => {
       component.showStatusDropdown = false;
@@ -231,11 +428,8 @@ describe('PresentationSettingsModalComponent', () => {
       
       component.toggleStatusDropdown();
       
-      // After toggling from true, showStatusDropdown is toggled to false
-      // Note: applyStatusFilter also sets showStatusDropdown to false, 
-      // then the toggle inverts it, so it ends up true
       expect(applySpy).toHaveBeenCalled();
-      expect(component.showStatusDropdown).toBe(true);
+      expect(component.showStatusDropdown).toBe(false);
     });
 
     it('should call initPendingStatusFilter when opening', () => {
@@ -270,6 +464,12 @@ describe('PresentationSettingsModalComponent', () => {
       expect(component.pendingStatusFilter).toEqual(['answered']);
     });
 
+    it('should not uncheck the last pending status', () => {
+      component.pendingStatusFilter = ['answered'];
+      component.togglePendingStatus('answered');
+      expect(component.pendingStatusFilter).toEqual(['answered']);
+    });
+
     it('should handle multiple toggles', () => {
       component.pendingStatusFilter = [];
       
@@ -298,17 +498,29 @@ describe('PresentationSettingsModalComponent', () => {
     });
   });
 
-  describe('clearPendingStatus', () => {
-    it('should clear all pending status filters', () => {
-      component.pendingStatusFilter = ['current', 'answered'];
-      component.clearPendingStatus();
-      expect(component.pendingStatusFilter).toEqual([]);
+  describe('selectAllPendingStatus', () => {
+    it('should select all available status filters', () => {
+      component.pendingStatusFilter = ['current'];
+
+      component.selectAllPendingStatus();
+
+      expect(component.pendingStatusFilter).toEqual([
+        'current',
+        'answered',
+        'archived',
+      ]);
+      expect(component.isAllPendingStatusSelected()).toBe(true);
     });
 
-    it('should work when already empty', () => {
-      component.pendingStatusFilter = [];
-      component.clearPendingStatus();
-      expect(component.pendingStatusFilter).toEqual([]);
+    it('should apply as all statuses when every option is selected', () => {
+      const emitSpy = vi.spyOn(component.statusFiltersChange, 'emit');
+      component.statusFiltersCurrent = true;
+      component.statusFiltersAnswered = true;
+      component.pendingStatusFilter = ['current', 'answered', 'archived'];
+
+      component.applyStatusFilter();
+
+      expect(emitSpy).toHaveBeenCalledWith({ current: false, answered: false });
     });
   });
 
@@ -334,6 +546,8 @@ describe('PresentationSettingsModalComponent', () => {
   describe('applyStatusFilter', () => {
     it('should emit statusFiltersChange with correct values', () => {
       const emitSpy = vi.spyOn(component.statusFiltersChange, 'emit');
+      component.statusFiltersCurrent = false;
+      component.statusFiltersAnswered = false;
       component.pendingStatusFilter = ['current', 'answered'];
       
       component.applyStatusFilter();
@@ -343,6 +557,8 @@ describe('PresentationSettingsModalComponent', () => {
 
     it('should close the dropdown', () => {
       component.showStatusDropdown = true;
+      component.statusFiltersCurrent = false;
+      component.statusFiltersAnswered = true;
       component.pendingStatusFilter = ['current'];
       
       component.applyStatusFilter();
@@ -352,6 +568,8 @@ describe('PresentationSettingsModalComponent', () => {
 
     it('should emit false for missing statuses', () => {
       const emitSpy = vi.spyOn(component.statusFiltersChange, 'emit');
+      component.statusFiltersCurrent = false;
+      component.statusFiltersAnswered = true;
       component.pendingStatusFilter = ['current'];
       
       component.applyStatusFilter();
@@ -361,11 +579,26 @@ describe('PresentationSettingsModalComponent', () => {
 
     it('should handle empty filter', () => {
       const emitSpy = vi.spyOn(component.statusFiltersChange, 'emit');
+      component.statusFiltersCurrent = true;
+      component.statusFiltersAnswered = true;
       component.pendingStatusFilter = [];
       
       component.applyStatusFilter();
       
       expect(emitSpy).toHaveBeenCalledWith({ current: false, answered: false });
+    });
+
+    it('should not emit when pending status filters are unchanged', () => {
+      component.statusFiltersCurrent = true;
+      component.statusFiltersAnswered = false;
+      component.pendingStatusFilter = ['current'];
+      component.showStatusDropdown = true;
+      const emitSpy = vi.spyOn(component.statusFiltersChange, 'emit');
+
+      component.applyStatusFilter();
+
+      expect(emitSpy).not.toHaveBeenCalled();
+      expect(component.showStatusDropdown).toBe(false);
     });
 
     it('should handle only answered', () => {
@@ -404,6 +637,49 @@ describe('PresentationSettingsModalComponent', () => {
     });
   });
 
+  describe('closeModal', () => {
+    it('applies open dropdowns before closing', () => {
+      const closeSpy = vi.spyOn(component.close, 'emit');
+      const applyContentSpy = vi.spyOn(component, 'applyContentTypeFilter');
+      const applyStatusSpy = vi.spyOn(component, 'applyStatusFilter');
+      component.showContentTypeDropdown = true;
+      component.showStatusDropdown = true;
+      component.pendingContentTypes = ['prompts'];
+      component.pendingStatusFilter = ['answered'];
+
+      component.closeModal();
+
+      expect(applyContentSpy).toHaveBeenCalled();
+      expect(applyStatusSpy).toHaveBeenCalled();
+      expect(closeSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('onSettingsBodyPointerDown', () => {
+    it('applies open dropdowns when clicking outside dropdown UI', () => {
+      const applyContentSpy = vi.spyOn(component, 'applyContentTypeFilter');
+      component.showContentTypeDropdown = true;
+      component.pendingContentTypes = ['prompts'];
+      const outside = document.createElement('div');
+
+      component.onSettingsBodyPointerDown({ target: outside } as MouseEvent);
+
+      expect(applyContentSpy).toHaveBeenCalled();
+      expect(component.showContentTypeDropdown).toBe(false);
+    });
+
+    it('does nothing when clicking inside a dropdown panel', () => {
+      const applyContentSpy = vi.spyOn(component, 'applyContentTypeFilter');
+      component.showContentTypeDropdown = true;
+      const panel = document.createElement('div');
+      panel.setAttribute('data-settings-dropdown-panel', 'content-type');
+
+      component.onSettingsBodyPointerDown({ target: panel } as MouseEvent);
+
+      expect(applyContentSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('Event Emitters', () => {
     it('should have close event emitter', () => {
       expect(component.close).toBeTruthy();
@@ -421,8 +697,8 @@ describe('PresentationSettingsModalComponent', () => {
       expect(component.displayDurationChange).toBeTruthy();
     });
 
-    it('should have contentTypeChange event emitter', () => {
-      expect(component.contentTypeChange).toBeTruthy();
+    it('should have contentTypesChange event emitter', () => {
+      expect(component.contentTypesChange).toBeTruthy();
     });
 
     it('should have randomizeChange event emitter', () => {
@@ -445,8 +721,5 @@ describe('PresentationSettingsModalComponent', () => {
       expect(component.startPrayerTimer).toBeTruthy();
     });
 
-    it('should have refresh event emitter', () => {
-      expect(component.refresh).toBeTruthy();
-    });
   });
 });

@@ -7,13 +7,24 @@ import {
   NgZone,
   ChangeDetectionStrategy,
 } from "@angular/core";
-import { Router } from "@angular/router";
+import { ActivatedRoute, Router } from "@angular/router";
 import { interval, Subscription } from "rxjs";
 import { SupabaseService } from "../../services/supabase.service";
 import { PrayerService } from "../../services/prayer.service";
 import { CacheService } from "../../services/cache.service";
 import { ThemeService } from "../../services/theme.service";
 import { PlanningCenterListService } from "../../services/planning-center-list.service";
+import { PresentationSettingsService } from "../../services/presentation-settings.service";
+import {
+  includesPresentationContentType,
+  parsePresentationHandoffContentTypes,
+  parsePresentationHandoffQueryParam,
+  PRESENTATION_HOME_NAV_STATE_KEY,
+  PRESENTATION_HOME_QUERY_PARAM_KEY,
+  PresentationSettings,
+  PresentationTimeFilter,
+  SelectablePresentationContentType,
+} from "../../types/presentation";
 import { PresentationToolbarComponent } from "../../components/presentation-toolbar/presentation-toolbar.component";
 import { PrayerDisplayCardComponent } from "../../components/prayer-display-card/prayer-display-card.component";
 import { markdownToPlainText } from "../../../utils/markdown";
@@ -53,9 +64,7 @@ interface PrayerPrompt {
   created_at: string;
 }
 
-type ContentType = "prayers" | "prompts" | "personal" | "members" | "all";
 type ThemeOption = "light" | "dark" | "system";
-type TimeFilter = "week" | "twoweeks" | "month" | "year" | "all";
 
 @Component({
   selector: "app-presentation",
@@ -77,18 +86,7 @@ type TimeFilter = "week" | "twoweeks" | "month" | "year" | "all";
             class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"
           ></div>
           <div class="text-gray-900 dark:text-white text-xl">
-            Loading
-            {{
-              contentType === "prayers"
-                ? "prayers"
-                : contentType === "prompts"
-                ? "prompts"
-                : contentType === "personal"
-                ? "personal prayers"
-                : contentType === "members"
-                ? "member prayers"
-                : "all content"
-            }}...
+            Loading {{ getContentLoadingLabel() }}...
           </div>
         </div>
       </div>
@@ -125,17 +123,7 @@ type TimeFilter = "week" | "twoweeks" | "month" | "year" | "all";
             No Content Available
           </h2>
           <p class="text-gray-600 dark:text-gray-400 mb-6">
-            {{
-              contentType === "prayers"
-                ? "No prayers match your current filters"
-                : contentType === "prompts"
-                ? "No prayer prompts available"
-                : contentType === "personal"
-                ? "No personal prayers available"
-                : contentType === "members"
-                ? "No member updates available"
-                : "No content available"
-            }}
+            {{ getEmptyContentMessage() }}
           </p>
           <button
             (click)="exitPresentation()"
@@ -168,7 +156,7 @@ type TimeFilter = "week" | "twoweeks" | "month" | "year" | "all";
         [theme]="theme"
         [smartMode]="smartMode"
         [displayDuration]="displayDuration"
-        [contentType]="contentType"
+        [contentTypes]="contentTypes"
         [randomize]="randomize"
         [timeFilter]="timeFilter"
         [statusFiltersCurrent]="statusFilters.current"
@@ -179,18 +167,17 @@ type TimeFilter = "week" | "twoweeks" | "month" | "year" | "all";
         [selectedCategories]="selectedPersonalCategories"
         (close)="showSettings = false"
         (themeChange)="handleThemeChange($event)"
-        (smartModeChange)="smartMode = $event"
-        (displayDurationChange)="displayDuration = $event"
-        (contentTypeChange)="contentType = $event; handleContentTypeChange()"
+        (smartModeChange)="handleSmartModeChange($event)"
+        (displayDurationChange)="handleDisplayDurationChange($event)"
+        (contentTypesChange)="contentTypes = $event; handleContentTypeChange()"
         (randomizeChange)="randomize = $event; handleRandomizeChange()"
         (timeFilterChange)="timeFilter = $event; handleTimeFilterChange()"
         (statusFiltersChange)="
           statusFilters = $event; handleStatusFilterChange()
         "
-        (prayerTimerMinutesChange)="prayerTimerMinutes = $event"
-        (categoriesChange)="selectedPersonalCategories = $event"
+        (prayerTimerMinutesChange)="handlePrayerTimerMinutesChange($event)"
+        (categoriesChange)="handlePersonalCategoriesChange($event)"
         (startPrayerTimer)="startPrayerTimer()"
-        (refresh)="refreshContent()"
       >
       </app-presentation-settings-modal>
 
@@ -280,9 +267,9 @@ export class PresentationComponent implements OnInit, OnDestroy {
   showSettings = false;
   loading = true;
   showControls = true;
-  contentType: ContentType = "prayers";
+  contentTypes: SelectablePresentationContentType[] = ["prayers"];
   statusFilters = { current: true, answered: true };
-  timeFilter: TimeFilter = "month";
+  timeFilter: PresentationTimeFilter = "month";
   theme: ThemeOption = "system";
   randomize = false;
   countdownRemaining = 0;
@@ -318,8 +305,11 @@ export class PresentationComponent implements OnInit, OnDestroy {
 
   private fullGuidedTourResumeStartGlobalSectionIndex: number | null = null;
 
+  private filterReloadChain: Promise<void> = Promise.resolve();
+
   constructor(
     private router: Router,
+    private route: ActivatedRoute,
     private supabase: SupabaseService,
     private prayerService: PrayerService,
     private cacheService: CacheService,
@@ -327,13 +317,21 @@ export class PresentationComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef,
     private ngZone: NgZone,
     private helpDriverTourService: HelpDriverTourService,
-    private planningCenterListService: PlanningCenterListService
+    private planningCenterListService: PlanningCenterListService,
+    private presentationSettingsService: PresentationSettingsService
   ) {}
 
   ngOnInit(): void {
     this.loadTheme();
+    this.applySettings(this.presentationSettingsService.load());
+    const homeContentTypes = this.consumeHomeNavigationContentTypes();
+    if (homeContentTypes) {
+      this.contentTypes = homeContentTypes;
+      this.persistSettings();
+    }
     // Load Planning Center members before setting up content
     this.loadPlanningCenterMembers().then(() => {
+      this.sanitizeContentTypesForAvailableContent();
       this.loadContent();
       this.setupControlsAutoHide();
     });
@@ -452,6 +450,43 @@ export class PresentationComponent implements OnInit, OnDestroy {
     this.applyTheme();
   }
 
+  applySettings(settings: PresentationSettings): void {
+    this.contentTypes = [...settings.contentTypes];
+    this.randomize = settings.randomize;
+    this.smartMode = settings.smartMode;
+    this.displayDuration = settings.displayDuration;
+    this.timeFilter = settings.timeFilter;
+    this.statusFilters = { ...settings.statusFilters };
+    this.prayerTimerMinutes = settings.prayerTimerMinutes;
+  }
+
+  persistSettings(): void {
+    this.presentationSettingsService.save({
+      contentTypes: [...this.contentTypes],
+      randomize: this.randomize,
+      smartMode: this.smartMode,
+      displayDuration: this.displayDuration,
+      timeFilter: this.timeFilter,
+      statusFilters: { ...this.statusFilters },
+      prayerTimerMinutes: this.prayerTimerMinutes,
+    });
+  }
+
+  handleSmartModeChange(enabled: boolean): void {
+    this.smartMode = enabled;
+    this.persistSettings();
+  }
+
+  handleDisplayDurationChange(seconds: number): void {
+    this.displayDuration = seconds;
+    this.persistSettings();
+  }
+
+  handlePrayerTimerMinutesChange(minutes: number): void {
+    this.prayerTimerMinutes = minutes;
+    this.persistSettings();
+  }
+
   applyTheme(): void {
     const root = document.documentElement;
     let effectiveTheme: "light" | "dark";
@@ -497,26 +532,25 @@ export class PresentationComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
 
     try {
-      if (this.contentType === "prayers") {
-        await this.fetchPrayers();
-      } else if (this.contentType === "prompts") {
-        await this.fetchPrompts();
-      } else if (this.contentType === "personal") {
-        await this.fetchPersonalPrayers();
-      } else if (this.contentType === "members") {
-        await this.fetchMemberPrayers();
-      } else {
-        // For 'all' content type, fetch member prayers if they have a members list
-        const fetchPromises = [
-          this.fetchPrayers(),
-          this.fetchPrompts(),
-          this.fetchPersonalPrayers(),
-        ];
-        if (this.hasMembers) {
-          fetchPromises.push(this.fetchMemberPrayers());
-        }
-        await Promise.all(fetchPromises);
+      const fetchPromises: Promise<void>[] = [];
+
+      if (includesPresentationContentType(this.contentTypes, "prayers")) {
+        fetchPromises.push(this.fetchPrayers());
       }
+      if (includesPresentationContentType(this.contentTypes, "prompts")) {
+        fetchPromises.push(this.fetchPrompts());
+      }
+      if (includesPresentationContentType(this.contentTypes, "personal")) {
+        fetchPromises.push(this.fetchPersonalPrayers());
+      }
+      if (
+        includesPresentationContentType(this.contentTypes, "members") &&
+        this.hasMembers
+      ) {
+        fetchPromises.push(this.fetchMemberPrayers());
+      }
+
+      await Promise.all(fetchPromises);
 
       if (this.randomize) {
         this.shuffleItems();
@@ -661,7 +695,7 @@ export class PresentationComponent implements OnInit, OnDestroy {
         )
         .eq("approval_status", "approved");
 
-      if (this.contentType === "prayers") {
+      if (includesPresentationContentType(this.contentTypes, "prayers")) {
         const statuses: string[] = [];
         if (this.statusFilters.current) statuses.push("current");
         if (this.statusFilters.answered) statuses.push("answered");
@@ -669,9 +703,6 @@ export class PresentationComponent implements OnInit, OnDestroy {
         if (statuses.length > 0) {
           query = query.in("status", statuses);
         }
-      } else if (this.contentType === "all") {
-        // For 'all' content type, exclude archived prayers
-        query = query.in("status", ["current", "answered"]);
       }
 
       // Don't filter by date at database level - we need all prayers to check their updates
@@ -688,7 +719,10 @@ export class PresentationComponent implements OnInit, OnDestroy {
       }));
 
       // Apply time filter client-side to include prayers with recent updates
-      if (this.contentType === "prayers" && this.timeFilter !== "all") {
+      if (
+        includesPresentationContentType(this.contentTypes, "prayers") &&
+        this.timeFilter !== "all"
+      ) {
         const now = new Date();
         const startDate = new Date();
 
@@ -910,31 +944,43 @@ export class PresentationComponent implements OnInit, OnDestroy {
   }
 
   get items(): any[] {
-    if (this.contentType === "prayers") return this.prayers;
-    if (this.contentType === "prompts") return this.prompts;
-    if (this.contentType === "personal") {
-      // Filter personal prayers by category if categories are selected
-      if (this.selectedPersonalCategories.length > 0) {
-        return this.personalPrayers.filter(
-          (p) =>
-            p.category && this.selectedPersonalCategories.includes(p.category)
-        );
+    if (this.contentTypes.length === 1) {
+      const only = this.contentTypes[0];
+      if (only === "prayers") return this.prayers;
+      if (only === "prompts") return this.prompts;
+      if (only === "personal") {
+        if (this.selectedPersonalCategories.length > 0) {
+          return this.personalPrayers.filter(
+            (p) =>
+              p.category &&
+              this.selectedPersonalCategories.includes(p.category)
+          );
+        }
+        return this.personalPrayers;
       }
-      return this.personalPrayers;
+      if (only === "members") {
+        return this.memberPrayers;
+      }
     }
-    if (this.contentType === "members") {
-      return this.memberPrayers;
-    }
-    // For 'all' content type, return shuffled combined items if randomize is enabled
+
     if (this.randomize && this.combinedShuffledItems.length > 0) {
       return this.combinedShuffledItems;
     }
-    return [
-      ...this.prayers,
-      ...this.prompts,
-      ...this.getFilteredPersonalPrayers(),
-      ...this.memberPrayers,
-    ];
+
+    const combined: any[] = [];
+    if (includesPresentationContentType(this.contentTypes, "prayers")) {
+      combined.push(...this.prayers);
+    }
+    if (includesPresentationContentType(this.contentTypes, "prompts")) {
+      combined.push(...this.prompts);
+    }
+    if (includesPresentationContentType(this.contentTypes, "personal")) {
+      combined.push(...this.getFilteredPersonalPrayers());
+    }
+    if (includesPresentationContentType(this.contentTypes, "members")) {
+      combined.push(...this.memberPrayers);
+    }
+    return combined;
   }
 
   private getFilteredPersonalPrayers(): any[] {
@@ -1087,68 +1133,185 @@ export class PresentationComponent implements OnInit, OnDestroy {
 
   async handleContentTypeChange(): Promise<void> {
     this.currentIndex = 0;
-    await this.loadContent();
+    this.persistSettings();
+    await this.scheduleFilterReload(() => this.loadContent());
     this.cdr.markForCheck();
   }
 
   async handleStatusFilterChange(): Promise<void> {
     this.currentIndex = 0;
-    if (this.contentType === "prayers") {
-      await this.fetchPrayers();
-    } else if (this.contentType === "personal") {
-      await this.fetchPersonalPrayers();
-    } else if (this.contentType === "all") {
-      await Promise.all([this.fetchPrayers(), this.fetchPersonalPrayers()]);
-    }
+    this.persistSettings();
+    await this.scheduleFilterReload(() => this.refetchPrayerScopedContent());
     this.cdr.markForCheck();
   }
 
   async handleTimeFilterChange(): Promise<void> {
     this.currentIndex = 0;
-    if (this.contentType === "prayers") {
-      await this.fetchPrayers();
-    } else if (this.contentType === "personal") {
-      await this.fetchPersonalPrayers();
-    } else if (this.contentType === "all") {
-      await Promise.all([this.fetchPrayers(), this.fetchPersonalPrayers()]);
-    }
+    this.persistSettings();
+    await this.scheduleFilterReload(() => this.refetchPrayerScopedContent());
     this.cdr.markForCheck();
   }
 
+  private scheduleFilterReload(task: () => Promise<void>): Promise<void> {
+    const run = this.filterReloadChain.then(task);
+    this.filterReloadChain = run.catch(() => {});
+    return run;
+  }
+
+  private consumeHomeNavigationContentTypes(): SelectablePresentationContentType[] | null {
+    const state = history.state as Record<string, unknown> | null;
+    const fromState = parsePresentationHandoffContentTypes(
+      state?.[PRESENTATION_HOME_NAV_STATE_KEY]
+    );
+    if (fromState) {
+      history.replaceState(
+        { ...state, [PRESENTATION_HOME_NAV_STATE_KEY]: undefined },
+        ""
+      );
+      return fromState;
+    }
+
+    const fromQuery = parsePresentationHandoffQueryParam(
+      this.route.snapshot.queryParamMap.get(PRESENTATION_HOME_QUERY_PARAM_KEY)
+    );
+    if (fromQuery) {
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { [PRESENTATION_HOME_QUERY_PARAM_KEY]: null },
+        queryParamsHandling: "merge",
+        replaceUrl: true,
+      });
+      return fromQuery;
+    }
+
+    return null;
+  }
+
+  handlePersonalCategoriesChange(categories: string[]): void {
+    this.selectedPersonalCategories = categories;
+    this.refreshCombinedShuffleIfNeeded();
+    this.currentIndex = 0;
+    this.cdr.markForCheck();
+  }
+
+  private sanitizeContentTypesForAvailableContent(): void {
+    if (this.hasMembers) {
+      return;
+    }
+    const filtered = this.contentTypes.filter((type) => type !== "members");
+    if (filtered.length === this.contentTypes.length) {
+      return;
+    }
+    this.contentTypes = filtered.length > 0 ? filtered : ["prayers"];
+    this.persistSettings();
+  }
+
+  private async refetchPrayerScopedContent(): Promise<void> {
+    const refetchPromises: Promise<void>[] = [];
+    if (includesPresentationContentType(this.contentTypes, "prayers")) {
+      refetchPromises.push(this.fetchPrayers());
+    }
+    if (includesPresentationContentType(this.contentTypes, "personal")) {
+      refetchPromises.push(this.fetchPersonalPrayers());
+    }
+    await Promise.all(refetchPromises);
+    this.refreshCombinedShuffleIfNeeded();
+  }
+
+  private refreshCombinedShuffleIfNeeded(): void {
+    if (this.randomize) {
+      this.shuffleItems();
+      return;
+    }
+    this.combinedShuffledItems = [];
+  }
+
   async handleRandomizeChange(): Promise<void> {
+    this.persistSettings();
     if (this.randomize) {
       this.shuffleItems();
     } else {
-      await this.loadContent();
+      await this.scheduleFilterReload(() => this.loadContent());
     }
     this.currentIndex = 0;
     this.cdr.markForCheck();
   }
 
   shuffleItems(): void {
-    if (this.contentType === "prayers") {
-      this.prayers = this.shuffleArray([...this.prayers]);
-    } else if (this.contentType === "prompts") {
-      this.prompts = this.shuffleArray([...this.prompts]);
-    } else if (this.contentType === "personal") {
-      this.personalPrayers = this.shuffleArray([...this.personalPrayers]);
-    } else if (this.contentType === "members") {
-      this.memberPrayers = this.shuffleArray([...this.memberPrayers]);
-    } else if (this.contentType === "all") {
-      // For 'all' content type, combine all items first, then shuffle them together
-      const combined = [
-        ...this.prayers,
-        ...this.prompts,
-        ...this.getFilteredPersonalPrayers(),
-        ...this.memberPrayers,
-      ];
-      this.combinedShuffledItems = this.shuffleArray(combined);
-    } else {
-      this.prayers = this.shuffleArray([...this.prayers]);
-      this.prompts = this.shuffleArray([...this.prompts]);
-      this.personalPrayers = this.shuffleArray([...this.personalPrayers]);
-      this.memberPrayers = this.shuffleArray([...this.memberPrayers]);
+    if (this.contentTypes.length === 1) {
+      const only = this.contentTypes[0];
+      if (only === "prayers") {
+        this.prayers = this.shuffleArray([...this.prayers]);
+      } else if (only === "prompts") {
+        this.prompts = this.shuffleArray([...this.prompts]);
+      } else if (only === "personal") {
+        this.personalPrayers = this.shuffleArray([...this.personalPrayers]);
+      } else if (only === "members") {
+        this.memberPrayers = this.shuffleArray([...this.memberPrayers]);
+      }
+      return;
     }
+
+    const combined: any[] = [];
+    if (includesPresentationContentType(this.contentTypes, "prayers")) {
+      combined.push(...this.prayers);
+    }
+    if (includesPresentationContentType(this.contentTypes, "prompts")) {
+      combined.push(...this.prompts);
+    }
+    if (includesPresentationContentType(this.contentTypes, "personal")) {
+      combined.push(...this.getFilteredPersonalPrayers());
+    }
+    if (includesPresentationContentType(this.contentTypes, "members")) {
+      combined.push(...this.memberPrayers);
+    }
+    this.combinedShuffledItems = this.shuffleArray(combined);
+  }
+
+  getContentLoadingLabel(): string {
+    if (this.contentTypes.length === 0) {
+      return "all content";
+    }
+    if (this.contentTypes.length === 1) {
+      switch (this.contentTypes[0]) {
+        case "prayers":
+          return "prayers";
+        case "prompts":
+          return "prompts";
+        case "personal":
+          return "personal prayers";
+        case "members":
+          return "member prayers";
+        default: {
+          const _exhaustive: never = this.contentTypes[0];
+          return _exhaustive;
+        }
+      }
+    }
+    return "content";
+  }
+
+  getEmptyContentMessage(): string {
+    if (this.contentTypes.length === 0) {
+      return "No content available";
+    }
+    if (this.contentTypes.length === 1) {
+      switch (this.contentTypes[0]) {
+        case "prayers":
+          return "No prayers match your current filters";
+        case "prompts":
+          return "No prayer prompts available";
+        case "personal":
+          return "No personal prayers available";
+        case "members":
+          return "No member updates available";
+        default: {
+          const _exhaustive: never = this.contentTypes[0];
+          return _exhaustive;
+        }
+      }
+    }
+    return "No content matches your current filters";
   }
 
   shuffleArray<T>(array: T[]): T[] {

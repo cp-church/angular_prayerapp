@@ -87,7 +87,6 @@ export const TOUR_PRESENTATION_SETTING_RANDOMIZE_ID = 'tour-presentation-setting
 export const TOUR_PRESENTATION_SETTING_TIME_FILTER_ID = 'tour-presentation-setting-time-filter';
 export const TOUR_PRESENTATION_SETTING_STATUS_ID = 'tour-presentation-setting-status';
 export const TOUR_PRESENTATION_SETTING_TIMER_ID = 'tour-presentation-setting-timer';
-export const TOUR_PRESENTATION_SETTING_REFRESH_ID = 'tour-presentation-setting-refresh';
 
 /** Home stores this before navigating to `/presentation`; `PresentationComponent` reads it to start the tour. */
 export const PRESENTATION_HELP_TOUR_SESSION_KEY = 'prayerapp_start_presentation_help_tour';
@@ -2810,7 +2809,7 @@ export class HelpDriverTourService {
 
   /**
    * **Prayer Presentation Mode** (`help_presentation`): runs on `/presentation` after Home navigates here.
-   * Toolbar controls → open **Settings** → theme, smart/duration, content type, randomize, time/status, timer, refresh → exit.
+   * Toolbar controls → open **Settings** → theme, smart/duration, content type, randomize, time/status, timer → exit.
    */
   startPresentationModeTour(section: { title: string; description: string }, hooks: PresentationModeTourHooks): void {
     if (typeof document === 'undefined') {
@@ -2989,15 +2988,6 @@ export class HelpDriverTourService {
           description:
             'Separate from slide auto-advance: set <strong>minutes</strong> for a focused prayer block, then <strong>Start Prayer Timer</strong>. You’ll get a full-screen notice when time is up.',
           side: 'bottom',
-          align: 'start',
-        },
-      },
-      {
-        element: () => document.getElementById(TOUR_PRESENTATION_SETTING_REFRESH_ID) ?? modalOrBar(),
-        popover: {
-          title: 'Refresh',
-          description: 'Reload content from the server after filters or data change elsewhere.',
-          side: 'top',
           align: 'start',
         },
       },

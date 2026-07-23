@@ -191,34 +191,29 @@ test.describe('State Persistence & Local Storage', () => {
   test('presentation mode settings should persist', async ({ page }) => {
     await page.goto('/presentation');
     await page.waitForTimeout(2000);
-    
-    // Open settings
+
     const settingsButton = page.locator('button[title*="Settings"]').first();
-    if (await settingsButton.isVisible()) {
-      await settingsButton.click();
+    await expect(settingsButton).toBeVisible();
+    await settingsButton.click();
+    await page.waitForTimeout(500);
+
+    const randomizeSection = page.locator('#tour-presentation-setting-randomize');
+    await expect(randomizeSection).toBeVisible();
+    const randomizeCheckbox = randomizeSection.locator('input[type="checkbox"]');
+    await randomizeCheckbox.check();
+    await page.waitForTimeout(300);
+
+    const closeButton = page.locator('#tour-presentation-settings-modal button').first();
+    if (await closeButton.isVisible()) {
+      await closeButton.click();
       await page.waitForTimeout(500);
-      
-      // Apply a setting
-      const radioButtons = page.locator('input[type="radio"]');
-      const firstRadio = radioButtons.first();
-      if (await firstRadio.isVisible()) {
-        await firstRadio.click();
-        await page.waitForTimeout(300);
-        
-        // Close modal
-        const closeButton = page.locator('[role="dialog"] button').first();
-        if (await closeButton.isVisible()) {
-          await closeButton.click();
-          await page.waitForTimeout(500);
-        }
-        
-        // Reload and check if setting persists
-        await page.reload();
-        await page.waitForTimeout(2000);
-        
-        // Page should be functional
-        await expect(page.locator('body')).toBeVisible();
-      }
     }
+
+    await page.reload();
+    await page.waitForTimeout(2000);
+
+    await settingsButton.click();
+    await page.waitForTimeout(500);
+    await expect(randomizeSection.locator('input[type="checkbox"]')).toBeChecked();
   });
 });

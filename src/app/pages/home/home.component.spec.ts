@@ -57,7 +57,8 @@ const makeMocks = () => {
     userSession$: userSessionSubject.asObservable(),
     getUserEmail: vi.fn(() => null),
     getUserFullName: vi.fn(() => null),
-    getCurrentSession: vi.fn(() => null)
+    getCurrentSession: vi.fn(() => null),
+    getDefaultPrayerView: vi.fn(() => 'current'),
   };
 
   const pcListIdSubject = new BehaviorSubject<string | null>(null);
@@ -1039,6 +1040,79 @@ describe('HomeComponent', () => {
     expect(mocks.router.navigate).toHaveBeenCalledWith(['/login'], { queryParams: { email: 'u@e.com', sessionExpired: true } });
   });
 
+  it('onPresentationLinkClick navigates with router state on primary click', () => {
+    const comp = new HomeComponent(
+      mocks.prayerService,
+      mocks.promptService,
+      mocks.adminAuthService,
+      mocks.userSessionService,
+      mocks.planningCenterListService,
+      mocks.badgeService,
+      mocks.memorizationService,
+      mocks.memorizationRecommendationsService,
+      mocks.scriptureService,
+      mocks.cacheService,
+      mocks.toastService,
+      mocks.analyticsService,
+      mocks.cdr,
+      mocks.router,
+      mocks.activatedRoute,
+      mocks.supabaseService,
+      mocks.helpDriverTourService,
+      mocks.helpContentService
+    );
+    comp.activeFilter = 'prompts';
+    const preventDefault = vi.fn();
+    comp.onPresentationLinkClick({
+      button: 0,
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      altKey: false,
+      preventDefault,
+    } as unknown as MouseEvent);
+    expect(preventDefault).toHaveBeenCalled();
+    expect(mocks.router.navigate).toHaveBeenCalledWith(['/presentation'], {
+      state: { presentationHomeContentTypes: ['prompts'] },
+    });
+  });
+
+  it('onPresentationLinkClick allows modifier clicks to use native link navigation', () => {
+    const comp = new HomeComponent(
+      mocks.prayerService,
+      mocks.promptService,
+      mocks.adminAuthService,
+      mocks.userSessionService,
+      mocks.planningCenterListService,
+      mocks.badgeService,
+      mocks.memorizationService,
+      mocks.memorizationRecommendationsService,
+      mocks.scriptureService,
+      mocks.cacheService,
+      mocks.toastService,
+      mocks.analyticsService,
+      mocks.cdr,
+      mocks.router,
+      mocks.activatedRoute,
+      mocks.supabaseService,
+      mocks.helpDriverTourService,
+      mocks.helpContentService
+    );
+    comp.activeFilter = 'prompts';
+    const preventDefault = vi.fn();
+    comp.onPresentationLinkClick({
+      button: 0,
+      ctrlKey: true,
+      metaKey: false,
+      shiftKey: false,
+      altKey: false,
+      preventDefault,
+    } as unknown as MouseEvent);
+    expect(preventDefault).not.toHaveBeenCalled();
+    expect(mocks.router.navigate).not.toHaveBeenCalled();
+    expect(comp.presentationHandoffQueryParams).toEqual({ homeTypes: 'prompts' });
+  });
+
   it('loadAdminSettings loads deletion and update policies successfully', async () => {
     const mockSupabaseService: any = {
       client: {
@@ -1431,7 +1505,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       expect(typeof comp['getUnreadPromptCountByType']).toBe('function');
@@ -1464,7 +1538,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       // Component should have badge count functionality
@@ -1501,7 +1575,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       expect(comp).toBeDefined();
@@ -1538,7 +1612,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       expect(comp).toBeDefined();
@@ -1570,7 +1644,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       // Add prompts after initialization
@@ -1614,7 +1688,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       expect(comp.getUnreadPromptCountByType('Morning')).toBe(1);
@@ -1642,7 +1716,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.selectedPersonalCategories = ['Members'];
@@ -1670,7 +1744,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.togglePersonalCategory('NewCat');
@@ -1699,7 +1773,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       await comp.onPrayerFormClose({ isPersonal: true });
@@ -1727,7 +1801,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.onPrayerFormClose({});
@@ -1762,7 +1836,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       await comp.deletePersonalPrayer('p1');
@@ -1792,7 +1866,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       await comp.deletePersonalPrayer('p1');
@@ -1825,7 +1899,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       await comp.addPersonalUpdate({
@@ -1861,7 +1935,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       await comp.addPersonalUpdate({
@@ -1895,7 +1969,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       await comp.addPersonalUpdate({
@@ -1929,7 +2003,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       await comp.deletePersonalUpdate({updateId: 'u1', prayerId: 'p1'});
@@ -1959,7 +2033,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       await comp.deletePersonalUpdate({updateId: 'u1', prayerId: 'p1'});
@@ -1991,7 +2065,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
       comp.personalPrayers = prayers;
       comp.filters = { searchTerm: '' };
@@ -2025,7 +2099,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
       comp.personalPrayers = prayers;
       comp.filters = { searchTerm: 'find' };
@@ -2082,7 +2156,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
       comp.personalPrayers = prayers as any;
       comp.filters = { searchTerm: 'searchable' };
@@ -2117,7 +2191,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
       comp.personalPrayers = prayers;
       comp.selectedPersonalCategories = ['Evening'];
@@ -2147,7 +2221,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.markAllCurrentAsRead();
@@ -2174,7 +2248,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.markAllAnsweredAsRead();
@@ -2201,7 +2275,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.markAllPromptsAsRead();
@@ -2230,7 +2304,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.filters.searchTerm = 'search';
@@ -2261,7 +2335,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       const prayers: PrayerRequest[] = [
@@ -2300,7 +2374,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.personalPrayers = [
@@ -2351,7 +2425,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.personalPrayers = prayers;
@@ -2403,7 +2477,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.personalPrayers = [...prayers]; // Make a copy to avoid reference issues
@@ -2443,7 +2517,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.onCategoryDragStarted();
@@ -2471,7 +2545,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.isCategoryDragging = true;
@@ -2502,7 +2576,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.uniquePersonalCategories = ['Members', 'Leaders'];
@@ -2537,7 +2611,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.uniquePersonalCategories = ['Members', 'Leaders'];
@@ -2578,7 +2652,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.uniquePersonalCategories = ['Members', 'Leaders'];
@@ -2623,7 +2697,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.uniquePersonalCategories = ['A', 'B', 'C', 'D', 'E'];
@@ -2659,7 +2733,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.uniquePersonalCategories = ['Members', 'Leaders'];
@@ -2698,7 +2772,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.uniquePersonalCategories = ['Members', 'Leaders'];
@@ -2746,7 +2820,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.uniquePersonalCategories = ['Members', 'Leaders'];
@@ -2789,7 +2863,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       const prayers: PrayerRequest[] = [
@@ -2829,7 +2903,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       const prayers: PrayerRequest[] = [
@@ -2876,7 +2950,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       const prayers: PrayerRequest[] = [
@@ -2919,7 +2993,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       const result = comp.formatDate('2024-01-15T10:30:00Z');
@@ -2949,7 +3023,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       const result = comp.getUserEmail();
@@ -2978,7 +3052,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       const result = comp.getUserEmail();
@@ -3005,7 +3079,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.markAllCurrentAsRead();
@@ -3031,7 +3105,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.markAllAnsweredAsRead();
@@ -3057,7 +3131,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.markAllPromptsAsRead();
@@ -3085,7 +3159,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       const item = {
@@ -3126,7 +3200,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       const bridge = document.createElement('input');
@@ -3180,7 +3254,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       const bridge = document.createElement('input');
@@ -3222,7 +3296,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       const prayer = { id: '1', prayer_for: 'Test', title: 'Test Prayer' } as any;
@@ -3252,7 +3326,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.editingPrayer = { id: '1', prayer_for: 'Test', title: 'Test Prayer' } as any;
@@ -3285,7 +3359,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       const update = { id: 'u1', text: 'Update text' } as any;
@@ -3315,7 +3389,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.editingUpdate = { id: 'u1', text: 'Update' } as any;
@@ -3349,7 +3423,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       const update = { id: 'u1', text: 'Update' } as any;
@@ -3380,7 +3454,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.editingMemberUpdate = { id: 'u1', text: 'Update' } as any;
@@ -3431,7 +3505,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.navigateToAdmin();
@@ -3461,7 +3535,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.navigateToAdmin();
@@ -3494,7 +3568,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       await comp.logout();
@@ -3524,7 +3598,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.editingMemberUpdate = { id: 'u1', text: 'Update' } as any;
@@ -3560,7 +3634,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.editingMemberUpdate = { id: 'u1', text: 'Update' } as any;
@@ -3603,7 +3677,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -3652,7 +3726,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp['showAdminMfaModal']();
@@ -3688,7 +3762,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp['showAdminMfaModal']();
@@ -3719,7 +3793,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp['showAdminMfaModal']();
@@ -3755,7 +3829,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.filteredPlanningCenterPrayers = [
@@ -3789,7 +3863,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.filteredPlanningCenterPrayers = [
@@ -3824,7 +3898,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.filteredPlanningCenterPrayers = [
@@ -3857,7 +3931,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.filteredPlanningCenterPrayers = [
@@ -3904,7 +3978,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.filteredPlanningCenterPrayers = [
@@ -3937,7 +4011,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.filteredPlanningCenterPrayers = [
@@ -3970,7 +4044,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.filteredPlanningCenterPrayers = [
@@ -4003,7 +4077,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.filteredPlanningCenterPrayers = [
@@ -4038,7 +4112,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.personalPrayers = [
@@ -4070,7 +4144,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.personalPrayers = [
@@ -4099,7 +4173,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.personalPrayers = [];
@@ -4130,7 +4204,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       const updateData = { id: 'u1', text: 'Update' };
@@ -4160,7 +4234,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       const requestData = { id: 'p1', reason: 'Done' };
@@ -4190,7 +4264,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       const requestData = { id: 'u1', reason: 'Spam' };
@@ -4221,7 +4295,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -4274,7 +4348,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.activeFilter = 'current';
@@ -4303,7 +4377,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.activeFilter = 'prompts';
@@ -4344,7 +4418,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.ngOnInit();
@@ -4383,7 +4457,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.ngOnInit();
@@ -4428,7 +4502,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.ngOnInit();
@@ -4477,7 +4551,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.ngOnInit();
@@ -4532,7 +4606,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.ngOnInit();
@@ -4570,7 +4644,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.ngOnInit();
@@ -4611,7 +4685,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.ngOnInit();
@@ -4651,7 +4725,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
       comp.ngOnInit();
@@ -4686,7 +4760,7 @@ describe('HomeComponent', () => {
         mocks.activatedRoute,
         mocks.supabaseService,
         mocks.helpDriverTourService,
-        mocks.helpContentService
+        mocks.helpContentService,
       );
 
     it('shows filter when list id is set before members finish loading', () => {

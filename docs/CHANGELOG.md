@@ -4,6 +4,22 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Presentation — settings handoff and persistence ✅
+- **Home → Pray**: Clicking **Pray** from the home page opens presentation mode with **Content Type** matching the active filter tab (Current/Answered/Total → Prayers; Prompts → Prompts; Personal → Personal; Members → Members; Memorize uses the user’s default prayer view).
+- **Presentation**: Content type, randomize order, smart mode, auto-advance interval, time period, prayer status, and prayer timer duration persist in `localStorage` via [`PresentationSettingsService`](src/app/services/presentation-settings.service.ts).
+- **Presentation settings UI**: Settings modal uses bordered section cards (Theme, Filters, Display &amp; Timing, Prayer timer) matching the main app settings layout in [`presentation-settings-modal`](src/app/components/presentation-settings-modal/presentation-settings-modal.component.ts). Content type, randomize, time period, categories, and prayer status live in one **Filters** section. Content type supports multi-select (same interaction as prayer status); time period uses a custom dropdown. Removed redundant **Refresh prayers** action — filter and content changes reload automatically.
+- **Fix**: Presentation **time period** and **prayer status** filters now apply to congregation prayers whenever prayers are included in a multi-select (or all-types) content mix, not only when prayers are the sole type.
+- **Fix**: Home → Pray content-type handoff is persisted immediately so a `/presentation` reload keeps the tab-derived selection.
+- **Fix**: Home → Pray handoff uses router navigation state (not an in-memory service override), so aborted navigation cannot apply a stale override on a later visit.
+- **Fix**: Presentation filter changes serialize async reloads so rapid dropdown changes cannot leave stale prayer data on screen.
+- **Fix**: Randomize + multi-type presentation sessions reshuffle after prayer status or time period changes instead of keeping stale `combinedShuffledItems`.
+- **Fix**: Home **Pray** is a real link again (modifier/middle-click opens a new tab); same-tab navigation uses router state, and new-tab navigation uses a `homeTypes` query param on the link.
+- **Fix**: Closing presentation settings applies any open content-type or prayer-status dropdown before dismissing the modal (including toolbar toggle and prayer-timer start).
+- **Fix**: Unchecking every content-type option no longer widens the session to all types; the prior selection is kept instead.
+- **Fix**: Content-type and prayer-status dropdowns only reload presentation content when the pending selection actually changed.
+- **Fix**: Choosing **All Content Types** in presentation settings checks every available type in the dropdown (and still persists as “all” when applied).
+- **Fix**: **All Statuses** checks every status option; at least one content type and one status must stay selected.
+- **Fix**: Presentation settings modal scrolls normally while a filter dropdown is open (removed full-screen dropdown backdrops that blocked wheel/touch scrolling).
 ### Memorize — Recite mode (Whisper) ✅
 - **Practice**: New **Recite mode (beta)** on single-verse items — record the verse, OpenAI **whisper-1** transcription via [`transcribe-audio`](../supabase/functions/transcribe-audio/index.ts), word-by-word alignment UI in [`memorization-practice-session`](src/app/components/memorization-practice-session/memorization-practice-session.component.ts). Alignment logic in [`memorizationReciteAlignment.ts`](src/app/lib/memorization/memorizationReciteAlignment.ts).
 - **Admin**: **Settings → Content → Memorization Recite Mode** ([`memorization-recite-settings`](src/app/components/memorization-recite-settings/memorization-recite-settings.component.ts)) — enable toggle, app-tracked usage this month, optional OpenAI org spend (last 30 days) via [`get-openai-org-usage`](../supabase/functions/get-openai-org-usage/index.ts). **`OPENAI_API_KEY`** for Whisper; optional **`OPENAI_ADMIN_KEY`** (Admin API key) for org-wide spend in admin.

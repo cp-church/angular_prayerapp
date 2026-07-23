@@ -77,6 +77,14 @@ import {
   distinctUntilChanged,
 } from "rxjs";
 import { PlanningCenterListService } from "../../services/planning-center-list.service";
+import { mapHomeFilterToContentType } from "../../services/presentation-settings.service";
+import {
+  HomePresentationFilter,
+  PRESENTATION_HOME_NAV_STATE_KEY,
+  PRESENTATION_HOME_QUERY_PARAM_KEY,
+  SelectablePresentationContentType,
+  serializePresentationHandoffQueryParam,
+} from "../../types/presentation";
 import { ToastService } from "../../services/toast.service";
 import { AnalyticsService } from "../../services/analytics.service";
 import { PullToRefreshDirective } from "../../directives/pull-to-refresh.directive";
@@ -287,14 +295,16 @@ const HELP_SECTION_ID_PRESENTATION = "help_presentation";
                   <circle cx="12" cy="12" r="3"></circle>
                 </svg>
               </button>
-              <button
+              <a
                 id="tour-btn-prayer-mode-mobile"
                 routerLink="/presentation"
+                [queryParams]="presentationHandoffQueryParams"
+                (click)="onPresentationLinkClick($event)"
                 class="flex items-center gap-1 bg-[#2F5F54] dark:bg-[#2F5F54] text-white px-3 py-2 rounded-lg hover:bg-[#1a3a2e] dark:hover:bg-[#1a3a2e] focus:outline-none focus:ring-2 focus:ring-[#2F5F54] transition-colors text-sm cursor-pointer"
                 title="Prayer Mode"
               >
                 <span>Pray</span>
-              </button>
+              </a>
               <button
                 id="tour-btn-new-prayer-request-mobile"
                 (click)="showPrayerForm = true"
@@ -409,14 +419,16 @@ const HELP_SECTION_ID_PRESENTATION = "help_presentation";
                       <circle cx="12" cy="12" r="3"></circle>
                     </svg>
                   </button>
-                  <button
+                  <a
                     id="tour-btn-prayer-mode-desktop"
                     routerLink="/presentation"
+                    [queryParams]="presentationHandoffQueryParams"
+                    (click)="onPresentationLinkClick($event)"
                     class="flex items-center justify-center h-12 gap-1 bg-[#2F5F54] dark:bg-[#2F5F54] text-white px-3 rounded-lg hover:bg-[#1a3a2e] dark:hover:bg-[#1a3a2e] focus:outline-none focus:ring-2 focus:ring-[#2F5F54] transition-colors text-sm cursor-pointer"
                     title="Prayer Mode"
                   >
                     <span>Pray</span>
-                  </button>
+                  </a>
                   <button
                     id="tour-btn-new-prayer-request-desktop"
                     (click)="showPrayerForm = true"
@@ -3258,6 +3270,48 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
     await this.memorizationService.removeItem(item.id);
     this.cdr.markForCheck();
+  }
+
+  get presentationHandoffQueryParams(): Record<string, string> | null {
+    const serialized = serializePresentationHandoffQueryParam(
+      this.getPresentationHandoffContentTypes()
+    );
+    return serialized
+      ? { [PRESENTATION_HOME_QUERY_PARAM_KEY]: serialized }
+      : null;
+  }
+
+  onPresentationLinkClick(event: MouseEvent): void {
+    if (this.shouldUseNativePresentationNavigation(event)) {
+      return;
+    }
+    event.preventDefault();
+    void this.router.navigate(["/presentation"], {
+      state: {
+        [PRESENTATION_HOME_NAV_STATE_KEY]: this.getPresentationHandoffContentTypes(),
+      },
+    });
+  }
+
+  private shouldUseNativePresentationNavigation(event: MouseEvent): boolean {
+    return (
+      event.button !== 0 ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.shiftKey ||
+      event.altKey
+    );
+  }
+
+  private getPresentationHandoffContentTypes(): SelectablePresentationContentType[] {
+    const defaultPrayerView =
+      this.userSessionService.getDefaultPrayerView() ?? "current";
+    return [
+      mapHomeFilterToContentType(
+        this.activeFilter as HomePresentationFilter,
+        defaultPrayerView
+      ),
+    ];
   }
 
   navigateToAdmin(): void {

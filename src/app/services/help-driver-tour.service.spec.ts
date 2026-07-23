@@ -56,7 +56,6 @@ import {
   TOUR_PRESENTATION_SETTING_TIME_FILTER_ID,
   TOUR_PRESENTATION_SETTING_STATUS_ID,
   TOUR_PRESENTATION_SETTING_TIMER_ID,
-  TOUR_PRESENTATION_SETTING_REFRESH_ID,
 } from './help-driver-tour.service';
 import type { HelpContent } from '../types/help-content';
 
@@ -1005,7 +1004,6 @@ describe('HelpDriverTourService', () => {
     mountEl(TOUR_PRESENTATION_SETTING_TIME_FILTER_ID, 'div');
     mountEl(TOUR_PRESENTATION_SETTING_STATUS_ID, 'div');
     mountEl(TOUR_PRESENTATION_SETTING_TIMER_ID, 'div');
-    mountEl(TOUR_PRESENTATION_SETTING_REFRESH_ID, 'div');
   }
 
   describe('full guided tour utilities', () => {
@@ -1492,12 +1490,12 @@ describe('HelpDriverTourService', () => {
       vi.useFakeTimers();
       service.startPresentationModeTour(section, h);
       const config = vi.mocked(driver).mock.calls[0][0];
-      expect(config?.steps?.length).toBe(18);
-      resolveStepElements(config, Array.from({ length: 18 }, (_, i) => i));
+      expect(config?.steps?.length).toBe(17);
+      resolveStepElements(config, Array.from({ length: 17 }, (_, i) => i));
       fireStepNext(config, 5);
       vi.advanceTimersByTime(380);
       expect(h.openSettings).toHaveBeenCalled();
-      const closeSettingsIdx = 16;
+      const closeSettingsIdx = 15;
       fireStepNext(config, closeSettingsIdx);
       vi.advanceTimersByTime(280);
       expect(h.closeSettings).toHaveBeenCalled();
@@ -1507,7 +1505,7 @@ describe('HelpDriverTourService', () => {
         driver: {} as never,
       });
       expect(h.onFullGuidedTourInterrupted).toHaveBeenCalled();
-      fireStepNext(config, 17);
+      fireStepNext(config, 16);
       expect(h.persistFullGuidedTourQueue).toHaveBeenCalled();
       expect(h.exitPresentation).toHaveBeenCalled();
       vi.useRealTimers();
