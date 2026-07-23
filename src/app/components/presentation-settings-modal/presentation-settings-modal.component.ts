@@ -739,6 +739,11 @@ type ThemeOption = "light" | "dark" | "system";
         -webkit-overflow-scrolling: touch;
         overscroll-behavior: contain;
         touch-action: pan-y;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      :host .presentation-settings-scroll::-webkit-scrollbar {
+        display: none;
       }
       :host .presentation-range {
         -webkit-appearance: none;

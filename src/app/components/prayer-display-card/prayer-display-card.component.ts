@@ -47,7 +47,7 @@ interface PrayerPrompt {
     <!-- Prayer Card -->
     @if (prayer) {
     <div
-      class="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-h-full overflow-y-auto"
+      class="presentation-card-scroll bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-h-full overflow-y-auto"
     >
       <!-- Category Badge (Personal Prayers) -->
       @if (prayer.category && isPersonalPrayer()) {
@@ -196,7 +196,7 @@ interface PrayerPrompt {
     <!-- Prompt Card -->
     @if (prompt) {
     <div
-      class="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-h-full overflow-y-auto"
+      class="presentation-card-scroll bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-h-full overflow-y-auto"
     >
       <!-- Type Badge -->
       <div class="mb-6">
@@ -232,6 +232,13 @@ interface PrayerPrompt {
     `
       :host {
         display: contents;
+      }
+      .presentation-card-scroll {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      .presentation-card-scroll::-webkit-scrollbar {
+        display: none;
       }
     `,
   ],

@@ -19,17 +19,17 @@ import {
       id="tour-presentation-toolbar"
       class="presentation-toolbar-bar"
       [class]="
-        'fixed bottom-0 left-0 right-0 z-40 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md p-4 md:p-5 lg:p-6 border-t border-gray-200 dark:border-gray-700 transition-transform duration-300 ' +
+        'fixed bottom-0 left-0 right-0 z-40 flex items-center bg-white/90 dark:bg-gray-800/90 backdrop-blur-md px-4 md:px-5 lg:px-6 pt-4 md:pt-5 lg:pt-6 border-t border-gray-200 dark:border-gray-700 transition-transform duration-300 ' +
         (visible ? 'translate-y-0' : 'translate-y-full')
       "
     >
-      <div class="container mx-auto flex items-center justify-between">
+      <div class="container mx-auto flex w-full items-center justify-between">
         <!-- Navigation -->
         <div class="flex items-center gap-2 md:gap-3 lg:gap-4">
           <button
             id="tour-presentation-prev"
             (click)="previous.emit()"
-            class="p-3 md:p-3.5 lg:p-4 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 text-blue-900 dark:text-blue-200 rounded-full transition-colors cursor-pointer"
+            class="flex items-center justify-center p-3 md:p-3.5 lg:p-4 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 text-blue-900 dark:text-blue-200 rounded-full transition-colors cursor-pointer"
             title="Previous"
           >
             <svg
@@ -46,7 +46,7 @@ import {
           <button
             id="tour-presentation-play"
             (click)="togglePlay.emit()"
-            class="p-3 md:p-3.5 lg:p-4 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 text-blue-900 dark:text-blue-200 rounded-full transition-colors cursor-pointer"
+            class="flex items-center justify-center p-3 md:p-3.5 lg:p-4 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 text-blue-900 dark:text-blue-200 rounded-full transition-colors cursor-pointer"
             [title]="isPlaying ? 'Pause' : 'Play'"
           >
             <svg
@@ -66,7 +66,7 @@ import {
           <button
             id="tour-presentation-next"
             (click)="next.emit()"
-            class="p-3 md:p-3.5 lg:p-4 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 text-blue-900 dark:text-blue-200 rounded-full transition-colors cursor-pointer"
+            class="flex items-center justify-center p-3 md:p-3.5 lg:p-4 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 text-blue-900 dark:text-blue-200 rounded-full transition-colors cursor-pointer"
             title="Next"
           >
             <svg
@@ -101,7 +101,7 @@ import {
           <button
             id="tour-presentation-settings"
             (click)="settingsToggle.emit()"
-            class="p-3 md:p-3.5 lg:p-4 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 text-blue-900 dark:text-blue-200 rounded-full transition-colors cursor-pointer"
+            class="flex items-center justify-center p-3 md:p-3.5 lg:p-4 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 text-blue-900 dark:text-blue-200 rounded-full transition-colors cursor-pointer"
             title="Settings"
           >
             <svg
@@ -123,7 +123,7 @@ import {
           <button
             id="tour-presentation-exit"
             (click)="exit.emit()"
-            class="p-3 md:p-3.5 lg:p-4 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 text-blue-900 dark:text-blue-200 rounded-full transition-colors cursor-pointer"
+            class="flex items-center justify-center p-3 md:p-3.5 lg:p-4 bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 text-blue-900 dark:text-blue-200 rounded-full transition-colors cursor-pointer"
             title="Exit Presentation"
           >
             <svg
@@ -147,7 +147,17 @@ import {
         display: contents;
       }
       .presentation-toolbar-bar {
-        padding-bottom: env(safe-area-inset-bottom, 0px);
+        padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+      }
+      @media (min-width: 768px) {
+        .presentation-toolbar-bar {
+          padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+        }
+      }
+      @media (min-width: 1024px) {
+        .presentation-toolbar-bar {
+          padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+        }
       }
     `,
   ],

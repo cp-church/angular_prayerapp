@@ -101,7 +101,7 @@ type ThemeOption = "light" | "dark" | "system";
         "
       >
         <div class="w-full max-w-6xl mx-auto h-full">
-          <div class="h-full overflow-y-auto flex items-center px-2">
+          <div class="presentation-scroll h-full overflow-y-auto flex items-center px-2">
             <app-prayer-display-card
               [prayer]="isPrayer(currentItem) ? currentItem : undefined"
               [prompt]="isPrompt(currentItem) ? currentItem : undefined"
@@ -240,6 +240,13 @@ type ThemeOption = "light" | "dark" | "system";
       }
       .presentation-content-with-toolbar {
         padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px));
+      }
+      .presentation-scroll {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      .presentation-scroll::-webkit-scrollbar {
+        display: none;
       }
     `,
   ],
