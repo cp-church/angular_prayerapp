@@ -189,6 +189,62 @@ describe('PresentationComponent', () => {
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/']);
   });
 
+  it('exitPresentation restores Home tab and category when opened from Pray', () => {
+    component['homeReturnContext'] = {
+      activeFilter: 'personal',
+      selectedPersonalCategories: ['Evening'],
+    };
+
+    component.exitPresentation();
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/'], {
+      state: {
+        homeReturnContext: {
+          activeFilter: 'personal',
+          selectedPersonalCategories: ['Evening'],
+        },
+      },
+    });
+  });
+
+  it('ngOnInit stores return context from home handoff for exit navigation', async () => {
+    mockPresentationSettingsService.load.mockReturnValue({
+      contentTypes: ['prayers'],
+      randomize: false,
+      smartMode: true,
+      displayDuration: 10,
+      timeFilter: 'all',
+      statusFilters: { current: true, answered: true },
+      prayerTimerMinutes: 10,
+    });
+    vi.stubGlobal('history', {
+      state: {
+        presentationHomeHandoff: {
+          contentTypes: ['personal'],
+          personalCategories: ['Evening'],
+          returnContext: {
+            activeFilter: 'personal',
+            selectedPersonalCategories: ['Evening'],
+          },
+        },
+      },
+      replaceState: vi.fn(),
+    });
+    vi.spyOn(component, 'loadTheme').mockImplementation(() => {});
+    vi.spyOn(component, 'loadPlanningCenterMembers').mockResolvedValue(undefined);
+    vi.spyOn(component, 'loadContent').mockResolvedValue(undefined);
+    vi.spyOn(component, 'setupControlsAutoHide').mockImplementation(() => {});
+
+    component.ngOnInit();
+    await Promise.resolve();
+
+    expect(component['homeReturnContext']).toEqual({
+      activeFilter: 'personal',
+      selectedPersonalCategories: ['Evening'],
+    });
+    vi.unstubAllGlobals();
+  });
+
   describe('Members functionality', () => {
     it('loadPlanningCenterMembers syncs hydrated list from PlanningCenterListService', async () => {
       const mockCachedMembers = [{ id: '1', name: 'John' }];
@@ -516,7 +572,7 @@ describe('PresentationComponent', () => {
       expect(component.prayerTimerMinutes).toBe(30);
     });
 
-    it('ngOnInit applies home navigation content types over persisted settings', async () => {
+    it('ngOnInit applies home navigation handoff over persisted settings without saving', async () => {
       mockPresentationSettingsService.load.mockReturnValue({
         contentTypes: ['prayers'],
         randomize: false,
@@ -540,14 +596,12 @@ describe('PresentationComponent', () => {
       await Promise.resolve();
 
       expect(component.contentTypes).toEqual(['prompts']);
-      expect(mockPresentationSettingsService.save).toHaveBeenCalledWith(
-        expect.objectContaining({ contentTypes: ['prompts'] })
-      );
+      expect(mockPresentationSettingsService.save).not.toHaveBeenCalled();
       expect(replaceState).toHaveBeenCalled();
       vi.unstubAllGlobals();
     });
 
-    it('ngOnInit applies home query param content types for new-tab navigation', async () => {
+    it('ngOnInit applies home handoff status and categories without saving', async () => {
       mockPresentationSettingsService.load.mockReturnValue({
         contentTypes: ['prayers'],
         randomize: false,
@@ -557,7 +611,16 @@ describe('PresentationComponent', () => {
         statusFilters: { current: true, answered: true },
         prayerTimerMinutes: 10,
       });
-      mockRoute.snapshot.queryParamMap.get.mockReturnValue('prompts');
+      const replaceState = vi.fn();
+      vi.stubGlobal('history', {
+        state: {
+          presentationHomeHandoff: {
+            contentTypes: ['prompts'],
+            promptCategories: ['Church'],
+          },
+        },
+        replaceState,
+      });
       vi.spyOn(component, 'loadTheme').mockImplementation(() => {});
       vi.spyOn(component, 'loadPlanningCenterMembers').mockResolvedValue(undefined);
       vi.spyOn(component, 'loadContent').mockResolvedValue(undefined);
@@ -567,11 +630,78 @@ describe('PresentationComponent', () => {
       await Promise.resolve();
 
       expect(component.contentTypes).toEqual(['prompts']);
+      expect(component.selectedPromptCategories).toEqual(['Church']);
+      expect(mockPresentationSettingsService.save).not.toHaveBeenCalled();
+      vi.unstubAllGlobals();
+    });
+
+    it('ngOnInit applies home query param handoff for new-tab navigation', async () => {
+      mockPresentationSettingsService.load.mockReturnValue({
+        contentTypes: ['prayers'],
+        randomize: false,
+        smartMode: true,
+        displayDuration: 10,
+        timeFilter: 'all',
+        statusFilters: { current: true, answered: true },
+        prayerTimerMinutes: 10,
+      });
+      mockRoute.snapshot.queryParamMap.get.mockImplementation((key: string) => {
+        if (key === 'homeTypes') return 'prompts';
+        if (key === 'homeStatus') return 'answered';
+        return null;
+      });
+      vi.spyOn(component, 'loadTheme').mockImplementation(() => {});
+      vi.spyOn(component, 'loadPlanningCenterMembers').mockResolvedValue(undefined);
+      vi.spyOn(component, 'loadContent').mockResolvedValue(undefined);
+      vi.spyOn(component, 'setupControlsAutoHide').mockImplementation(() => {});
+
+      component.ngOnInit();
+      await Promise.resolve();
+
+      expect(component.contentTypes).toEqual(['prompts']);
+      expect(component.statusFilters).toEqual({ current: false, answered: true });
+      expect(mockPresentationSettingsService.save).not.toHaveBeenCalled();
       expect(mockRouter.navigate).toHaveBeenCalledWith([], {
         relativeTo: mockRoute,
-        queryParams: { homeTypes: null },
+        queryParams: {
+          homeTypes: null,
+          homeStatus: null,
+          homePromptCats: null,
+          homePersonalCats: null,
+          homeReturnFilter: null,
+        },
         queryParamsHandling: 'merge',
         replaceUrl: true,
+      });
+    });
+
+    it('ngOnInit stores return context from query param handoff for new-tab exit', async () => {
+      mockPresentationSettingsService.load.mockReturnValue({
+        contentTypes: ['prayers'],
+        randomize: false,
+        smartMode: true,
+        displayDuration: 10,
+        timeFilter: 'all',
+        statusFilters: { current: true, answered: true },
+        prayerTimerMinutes: 10,
+      });
+      mockRoute.snapshot.queryParamMap.get.mockImplementation((key: string) => {
+        if (key === 'homeTypes') return 'personal';
+        if (key === 'homePersonalCats') return 'Evening';
+        if (key === 'homeReturnFilter') return 'personal';
+        return null;
+      });
+      vi.spyOn(component, 'loadTheme').mockImplementation(() => {});
+      vi.spyOn(component, 'loadPlanningCenterMembers').mockResolvedValue(undefined);
+      vi.spyOn(component, 'loadContent').mockResolvedValue(undefined);
+      vi.spyOn(component, 'setupControlsAutoHide').mockImplementation(() => {});
+
+      component.ngOnInit();
+      await Promise.resolve();
+
+      expect(component['homeReturnContext']).toEqual({
+        activeFilter: 'personal',
+        selectedPersonalCategories: ['Evening'],
       });
     });
 

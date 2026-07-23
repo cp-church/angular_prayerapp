@@ -1073,7 +1073,14 @@ describe('HomeComponent', () => {
     } as unknown as MouseEvent);
     expect(preventDefault).toHaveBeenCalled();
     expect(mocks.router.navigate).toHaveBeenCalledWith(['/presentation'], {
-      state: { presentationHomeContentTypes: ['prompts'] },
+      state: {
+        presentationHomeHandoff: {
+          contentTypes: ['prompts'],
+          returnContext: {
+            activeFilter: 'prompts',
+          },
+        },
+      },
     });
   });
 
@@ -1110,7 +1117,145 @@ describe('HomeComponent', () => {
     } as unknown as MouseEvent);
     expect(preventDefault).not.toHaveBeenCalled();
     expect(mocks.router.navigate).not.toHaveBeenCalled();
-    expect(comp.presentationHandoffQueryParams).toEqual({ homeTypes: 'prompts' });
+    expect(comp.presentationHandoffQueryParams).toEqual({
+      homeTypes: 'prompts',
+      homeReturnFilter: 'prompts',
+    });
+  });
+
+  it('presentationHandoffQueryParams includes answered status from answered tab', () => {
+    const comp = new HomeComponent(
+      mocks.prayerService,
+      mocks.promptService,
+      mocks.adminAuthService,
+      mocks.userSessionService,
+      mocks.planningCenterListService,
+      mocks.badgeService,
+      mocks.memorizationService,
+      mocks.memorizationRecommendationsService,
+      mocks.scriptureService,
+      mocks.cacheService,
+      mocks.toastService,
+      mocks.analyticsService,
+      mocks.cdr,
+      mocks.router,
+      mocks.activatedRoute,
+      mocks.supabaseService,
+      mocks.helpDriverTourService,
+      mocks.helpContentService
+    );
+    comp.activeFilter = 'answered';
+    expect(comp.presentationHandoffQueryParams).toEqual({
+      homeTypes: 'prayers',
+      homeStatus: 'answered',
+      homeReturnFilter: 'answered',
+    });
+  });
+
+  it('presentationHandoffQueryParams includes selected prompt type', () => {
+    const comp = new HomeComponent(
+      mocks.prayerService,
+      mocks.promptService,
+      mocks.adminAuthService,
+      mocks.userSessionService,
+      mocks.planningCenterListService,
+      mocks.badgeService,
+      mocks.memorizationService,
+      mocks.memorizationRecommendationsService,
+      mocks.scriptureService,
+      mocks.cacheService,
+      mocks.toastService,
+      mocks.analyticsService,
+      mocks.cdr,
+      mocks.router,
+      mocks.activatedRoute,
+      mocks.supabaseService,
+      mocks.helpDriverTourService,
+      mocks.helpContentService
+    );
+    comp.activeFilter = 'prompts';
+    comp.selectedPromptTypes = ['Church'];
+    expect(comp.presentationHandoffQueryParams).toEqual({
+      homeTypes: 'prompts',
+      homePromptCats: 'Church',
+      homeReturnFilter: 'prompts',
+    });
+  });
+
+  it('onPresentationLinkClick passes answered status in router state', () => {
+    const comp = new HomeComponent(
+      mocks.prayerService,
+      mocks.promptService,
+      mocks.adminAuthService,
+      mocks.userSessionService,
+      mocks.planningCenterListService,
+      mocks.badgeService,
+      mocks.memorizationService,
+      mocks.memorizationRecommendationsService,
+      mocks.scriptureService,
+      mocks.cacheService,
+      mocks.toastService,
+      mocks.analyticsService,
+      mocks.cdr,
+      mocks.router,
+      mocks.activatedRoute,
+      mocks.supabaseService,
+      mocks.helpDriverTourService,
+      mocks.helpContentService
+    );
+    comp.activeFilter = 'answered';
+    const preventDefault = vi.fn();
+    comp.onPresentationLinkClick({
+      button: 0,
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      altKey: false,
+      preventDefault,
+    } as unknown as MouseEvent);
+    expect(mocks.router.navigate).toHaveBeenCalledWith(['/presentation'], {
+      state: {
+        presentationHomeHandoff: {
+          contentTypes: ['prayers'],
+          statusFilters: { current: false, answered: true },
+          returnContext: {
+            activeFilter: 'answered',
+          },
+        },
+      },
+    });
+  });
+
+  it('applyHomeReturnContext restores personal tab and category', () => {
+    const comp = new HomeComponent(
+      mocks.prayerService,
+      mocks.promptService,
+      mocks.adminAuthService,
+      mocks.userSessionService,
+      mocks.planningCenterListService,
+      mocks.badgeService,
+      mocks.memorizationService,
+      mocks.memorizationRecommendationsService,
+      mocks.scriptureService,
+      mocks.cacheService,
+      mocks.toastService,
+      mocks.analyticsService,
+      mocks.cdr,
+      mocks.router,
+      mocks.activatedRoute,
+      mocks.supabaseService,
+      mocks.helpDriverTourService,
+      mocks.helpContentService
+    );
+    const setFilterSpy = vi.spyOn(comp, 'setFilter');
+
+    comp['applyHomeReturnContext']({
+      activeFilter: 'personal',
+      selectedPersonalCategories: ['Evening'],
+    });
+
+    expect(setFilterSpy).toHaveBeenCalledWith('personal');
+    expect(comp.selectedPersonalCategories).toEqual(['Evening']);
   });
 
   it('loadAdminSettings loads deletion and update policies successfully', async () => {

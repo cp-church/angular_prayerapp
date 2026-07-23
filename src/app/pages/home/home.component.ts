@@ -80,10 +80,13 @@ import { PlanningCenterListService } from "../../services/planning-center-list.s
 import { mapHomeFilterToContentType } from "../../services/presentation-settings.service";
 import {
   HomePresentationFilter,
-  PRESENTATION_HOME_NAV_STATE_KEY,
-  PRESENTATION_HOME_QUERY_PARAM_KEY,
+  HomeReturnContext,
+  HOME_RETURN_CONTEXT_STATE_KEY,
+  PRESENTATION_HOME_HANDOFF_STATE_KEY,
   SelectablePresentationContentType,
-  serializePresentationHandoffQueryParam,
+  buildPresentationHomeHandoff,
+  parseHomeReturnContextFromState,
+  serializePresentationHomeHandoffQueryParams,
 } from "../../types/presentation";
 import { ToastService } from "../../services/toast.service";
 import { AnalyticsService } from "../../services/analytics.service";
@@ -1414,6 +1417,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   viewReady = false;
   selectedPromptTypes: string[] = [];
   selectedPersonalCategories: string[] = [];
+  private pendingHomeReturnContext: HomeReturnContext | null = null;
   isCategoryDragging = false;
   uniquePersonalCategories: string[] = [];
   isSwappingCategories = false;
@@ -1504,6 +1508,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.pendingHomeReturnContext = this.consumeHomeReturnContext();
+
     const initialTree = this.router.parseUrl(this.router.url);
     const qf = initialTree.queryParams["filter"];
     if (qf === "current" || qf === "answered" || qf === "memorize") {
@@ -1523,6 +1529,15 @@ export class HomeComponent implements OnInit, OnDestroy {
           return;
         }
         const tree = this.router.parseUrl(e.urlAfterRedirects);
+        const returnContext = this.consumeHomeReturnContext();
+        if (returnContext) {
+          if (this.viewReady) {
+            this.applyHomeReturnContext(returnContext);
+            this.cdr.markForCheck();
+          } else {
+            this.pendingHomeReturnContext = returnContext;
+          }
+        }
         const filterParam = tree.queryParams["filter"];
         const deepLinkFilter =
           filterParam === "current" ||
@@ -1708,8 +1723,13 @@ export class HomeComponent implements OnInit, OnDestroy {
       .subscribe((session) => {
         const s = session!;
         const fromEmail = this.initialEmailFilterTab;
-        this.activeFilter = fromEmail ?? s.defaultPrayerView ?? "current";
-        this.setFilter(this.activeFilter);
+        if (this.pendingHomeReturnContext) {
+          this.applyHomeReturnContext(this.pendingHomeReturnContext);
+          this.pendingHomeReturnContext = null;
+        } else {
+          this.activeFilter = fromEmail ?? s.defaultPrayerView ?? "current";
+          this.setFilter(this.activeFilter);
+        }
         if (fromEmail) {
           this.initialEmailFilterTab = null;
           this.navigateStrippingFilterQueryParam();
@@ -3273,12 +3293,10 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   get presentationHandoffQueryParams(): Record<string, string> | null {
-    const serialized = serializePresentationHandoffQueryParam(
-      this.getPresentationHandoffContentTypes()
+    const params = serializePresentationHomeHandoffQueryParams(
+      this.getPresentationHomeHandoff()
     );
-    return serialized
-      ? { [PRESENTATION_HOME_QUERY_PARAM_KEY]: serialized }
-      : null;
+    return Object.keys(params).length > 0 ? params : null;
   }
 
   onPresentationLinkClick(event: MouseEvent): void {
@@ -3288,7 +3306,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     event.preventDefault();
     void this.router.navigate(["/presentation"], {
       state: {
-        [PRESENTATION_HOME_NAV_STATE_KEY]: this.getPresentationHandoffContentTypes(),
+        [PRESENTATION_HOME_HANDOFF_STATE_KEY]: this.getPresentationHomeHandoff(),
       },
     });
   }
@@ -3303,15 +3321,51 @@ export class HomeComponent implements OnInit, OnDestroy {
     );
   }
 
-  private getPresentationHandoffContentTypes(): SelectablePresentationContentType[] {
+  private getPresentationHomeHandoff() {
     const defaultPrayerView =
       this.userSessionService.getDefaultPrayerView() ?? "current";
-    return [
+    const contentTypes: SelectablePresentationContentType[] = [
       mapHomeFilterToContentType(
         this.activeFilter as HomePresentationFilter,
         defaultPrayerView
       ),
     ];
+    return buildPresentationHomeHandoff({
+      contentTypes,
+      activeFilter: this.activeFilter as HomePresentationFilter,
+      selectedPromptTypes: this.selectedPromptTypes,
+      selectedPersonalCategories: this.selectedPersonalCategories,
+    });
+  }
+
+  private consumeHomeReturnContext(): HomeReturnContext | null {
+    const state = history.state as Record<string, unknown> | null;
+    const returnContext = parseHomeReturnContextFromState(state);
+    if (!returnContext) {
+      return null;
+    }
+
+    history.replaceState(
+      { ...state, [HOME_RETURN_CONTEXT_STATE_KEY]: undefined },
+      ""
+    );
+    return returnContext;
+  }
+
+  private applyHomeReturnContext(context: HomeReturnContext): void {
+    this.setFilter(context.activeFilter);
+    if (
+      context.activeFilter === "prompts" &&
+      context.selectedPromptTypes?.length
+    ) {
+      this.selectedPromptTypes = [...context.selectedPromptTypes];
+    }
+    if (
+      context.activeFilter === "personal" &&
+      context.selectedPersonalCategories?.length
+    ) {
+      this.selectedPersonalCategories = [...context.selectedPersonalCategories];
+    }
   }
 
   navigateToAdmin(): void {

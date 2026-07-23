@@ -17,10 +17,14 @@ import { PlanningCenterListService } from "../../services/planning-center-list.s
 import { PresentationSettingsService } from "../../services/presentation-settings.service";
 import {
   includesPresentationContentType,
-  parsePresentationHandoffContentTypes,
-  parsePresentationHandoffQueryParam,
+  PRESENTATION_HOME_HANDOFF_QUERY_PARAM_KEYS,
+  PRESENTATION_HOME_HANDOFF_STATE_KEY,
   PRESENTATION_HOME_NAV_STATE_KEY,
-  PRESENTATION_HOME_QUERY_PARAM_KEY,
+  HOME_RETURN_CONTEXT_STATE_KEY,
+  HomeReturnContext,
+  PresentationHomeHandoff,
+  parsePresentationHomeHandoffFromQueryParams,
+  parsePresentationHomeHandoffFromState,
   PresentationSettings,
   PresentationTimeFilter,
   SelectablePresentationContentType,
@@ -319,6 +323,8 @@ export class PresentationComponent implements OnInit, OnDestroy {
 
   private filterReloadChain: Promise<void> = Promise.resolve();
 
+  private homeReturnContext: HomeReturnContext | null = null;
+
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -336,10 +342,9 @@ export class PresentationComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.loadTheme();
     this.applySettings(this.presentationSettingsService.load());
-    const homeContentTypes = this.consumeHomeNavigationContentTypes();
-    if (homeContentTypes) {
-      this.contentTypes = homeContentTypes;
-      this.persistSettings();
+    const homeHandoff = this.consumeHomeHandoff();
+    if (homeHandoff) {
+      this.applyHomeHandoff(homeHandoff);
     }
     // Load Planning Center members before setting up content
     this.loadPlanningCenterMembers().then(() => {
@@ -1184,26 +1189,61 @@ export class PresentationComponent implements OnInit, OnDestroy {
     return run;
   }
 
-  private consumeHomeNavigationContentTypes(): SelectablePresentationContentType[] | null {
+  private applyHomeHandoff(handoff: PresentationHomeHandoff): void {
+    this.contentTypes = [...handoff.contentTypes];
+    if (handoff.statusFilters) {
+      this.statusFilters = { ...handoff.statusFilters };
+    }
+    if (handoff.promptCategories) {
+      this.selectedPromptCategories = [...handoff.promptCategories];
+    }
+    if (handoff.personalCategories) {
+      this.selectedPersonalCategories = [...handoff.personalCategories];
+    }
+    if (handoff.returnContext) {
+      this.homeReturnContext = {
+        activeFilter: handoff.returnContext.activeFilter,
+        ...(handoff.returnContext.selectedPromptTypes
+          ? {
+              selectedPromptTypes: [...handoff.returnContext.selectedPromptTypes],
+            }
+          : {}),
+        ...(handoff.returnContext.selectedPersonalCategories
+          ? {
+              selectedPersonalCategories: [
+                ...handoff.returnContext.selectedPersonalCategories,
+              ],
+            }
+          : {}),
+      };
+    }
+  }
+
+  private consumeHomeHandoff(): PresentationHomeHandoff | null {
     const state = history.state as Record<string, unknown> | null;
-    const fromState = parsePresentationHandoffContentTypes(
-      state?.[PRESENTATION_HOME_NAV_STATE_KEY]
-    );
+    const fromState = parsePresentationHomeHandoffFromState(state);
     if (fromState) {
       history.replaceState(
-        { ...state, [PRESENTATION_HOME_NAV_STATE_KEY]: undefined },
+        {
+          ...state,
+          [PRESENTATION_HOME_HANDOFF_STATE_KEY]: undefined,
+          [PRESENTATION_HOME_NAV_STATE_KEY]: undefined,
+        },
         ""
       );
       return fromState;
     }
 
-    const fromQuery = parsePresentationHandoffQueryParam(
-      this.route.snapshot.queryParamMap.get(PRESENTATION_HOME_QUERY_PARAM_KEY)
+    const fromQuery = parsePresentationHomeHandoffFromQueryParams((key) =>
+      this.route.snapshot.queryParamMap.get(key)
     );
     if (fromQuery) {
+      const clearedParams = Object.fromEntries(
+        PRESENTATION_HOME_HANDOFF_QUERY_PARAM_KEYS.map((key) => [key, null])
+      );
       void this.router.navigate([], {
         relativeTo: this.route,
-        queryParams: { [PRESENTATION_HOME_QUERY_PARAM_KEY]: null },
+        queryParams: clearedParams,
         queryParamsHandling: "merge",
         replaceUrl: true,
       });
@@ -1393,6 +1433,15 @@ export class PresentationComponent implements OnInit, OnDestroy {
   }
 
   exitPresentation(): void {
-    this.router.navigate(["/"]);
+    if (this.homeReturnContext) {
+      void this.router.navigate(["/"], {
+        state: {
+          [HOME_RETURN_CONTEXT_STATE_KEY]: this.homeReturnContext,
+        },
+      });
+      return;
+    }
+
+    void this.router.navigate(["/"]);
   }
 }
