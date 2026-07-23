@@ -37,8 +37,8 @@ describe('PresentationSettingsModalComponent', () => {
       expect(component.randomize).toBe(false);
     });
 
-    it('should have timeFilter default to month', () => {
-      expect(component.timeFilter).toBe('month');
+    it('should have timeFilter default to all', () => {
+      expect(component.timeFilter).toBe('all');
     });
 
     it('should have statusFiltersCurrent default to true', () => {
@@ -69,8 +69,8 @@ describe('PresentationSettingsModalComponent', () => {
       expect(component.localRandomize).toBe(false);
     });
 
-    it('should have localTimeFilter default to month', () => {
-      expect(component.localTimeFilter).toBe('month');
+    it('should have localTimeFilter default to all', () => {
+      expect(component.localTimeFilter).toBe('all');
     });
 
     it('should have localPrayerTimerMinutes default to 10', () => {
@@ -677,6 +677,72 @@ describe('PresentationSettingsModalComponent', () => {
       component.onSettingsBodyPointerDown({ target: panel } as MouseEvent);
 
       expect(applyContentSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('categories dropdown', () => {
+    beforeEach(() => {
+      component.availableCategories = ['Current', 'Answered'];
+      component.localSelectedCategories = [];
+    });
+
+    it('should initialize pending categories as all when none are selected', () => {
+      component.initPendingCategories();
+      expect(component.pendingCategories).toEqual(['Current', 'Answered']);
+    });
+
+    it('should apply all categories as an empty selection', () => {
+      const emitSpy = vi.spyOn(component.categoriesChange, 'emit');
+      component.localSelectedCategories = ['Current'];
+      component.pendingCategories = ['Current', 'Answered'];
+
+      component.applyCategoryFilter();
+
+      expect(emitSpy).toHaveBeenCalledWith([]);
+      expect(component.localSelectedCategories).toEqual([]);
+    });
+
+    it('should not uncheck the last pending category', () => {
+      component.pendingCategories = ['Current'];
+      component.togglePendingCategory('Current');
+      expect(component.pendingCategories).toEqual(['Current']);
+    });
+
+    it('should return All Categories when none are selected', () => {
+      expect(component.getCategoriesDisplay()).toBe('All Categories');
+    });
+  });
+
+  describe('prompt categories dropdown', () => {
+    beforeEach(() => {
+      component.availablePromptCategories = ['Church', 'Family'];
+      component.localSelectedPromptCategories = [];
+    });
+
+    it('should initialize pending prompt categories as all when none are selected', () => {
+      component.initPendingPromptCategories();
+      expect(component.pendingPromptCategories).toEqual(['Church', 'Family']);
+    });
+
+    it('should apply all prompt categories as an empty selection', () => {
+      const emitSpy = vi.spyOn(component.promptCategoriesChange, 'emit');
+      component.localSelectedPromptCategories = ['Church'];
+      component.pendingPromptCategories = ['Church', 'Family'];
+
+      component.applyPromptCategoryFilter();
+
+      expect(emitSpy).toHaveBeenCalledWith([]);
+      expect(component.localSelectedPromptCategories).toEqual([]);
+    });
+
+    it('should not uncheck the last pending prompt category', () => {
+      component.pendingPromptCategories = ['Church'];
+      component.togglePendingPromptCategory('Church');
+      expect(component.pendingPromptCategories).toEqual(['Church']);
+    });
+
+    it('should return All Categories when none are selected', () => {
+      expect(component.getPromptCategoriesDisplay()).toBe('All Categories');
     });
   });
 

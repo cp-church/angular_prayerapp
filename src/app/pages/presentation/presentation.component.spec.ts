@@ -52,7 +52,7 @@ describe('PresentationComponent', () => {
         randomize: false,
         smartMode: true,
         displayDuration: 10,
-        timeFilter: 'month',
+        timeFilter: 'all',
         statusFilters: { current: true, answered: true },
         prayerTimerMinutes: 10,
       })),
@@ -437,7 +437,7 @@ describe('PresentationComponent', () => {
         randomize: false,
         smartMode: true,
         displayDuration: 10,
-        timeFilter: 'month',
+        timeFilter: 'all',
         statusFilters: { current: true, answered: true },
         prayerTimerMinutes: 10,
       })),
@@ -522,7 +522,7 @@ describe('PresentationComponent', () => {
         randomize: false,
         smartMode: true,
         displayDuration: 10,
-        timeFilter: 'month',
+        timeFilter: 'all',
         statusFilters: { current: true, answered: true },
         prayerTimerMinutes: 10,
       });
@@ -553,7 +553,7 @@ describe('PresentationComponent', () => {
         randomize: false,
         smartMode: true,
         displayDuration: 10,
-        timeFilter: 'month',
+        timeFilter: 'all',
         statusFilters: { current: true, answered: true },
         prayerTimerMinutes: 10,
       });
@@ -1924,6 +1924,34 @@ describe('PresentationComponent', () => {
         const shuffleSpy = vi.spyOn(component, 'shuffleItems');
 
         component.handlePersonalCategoriesChange(['cat-a']);
+
+        expect(shuffleSpy).toHaveBeenCalled();
+        expect(component.currentIndex).toBe(0);
+      });
+
+      it('handlePromptCategoriesChange filters prompts in items getter', () => {
+        component.contentTypes = ['prompts'];
+        component.prompts = [
+          { id: 'pr1', type: 'Church' } as any,
+          { id: 'pr2', type: 'Family' } as any,
+        ];
+
+        component.handlePromptCategoriesChange(['Church']);
+
+        expect(component.items).toEqual([{ id: 'pr1', type: 'Church' }]);
+        expect(component.currentIndex).toBe(0);
+      });
+
+      it('handlePromptCategoriesChange reshuffles combined items when randomize is enabled', () => {
+        component.contentTypes = [];
+        component.randomize = true;
+        component.prompts = [
+          { id: 'pr1', type: 'Church' } as any,
+          { id: 'pr2', type: 'Family' } as any,
+        ];
+        const shuffleSpy = vi.spyOn(component, 'shuffleItems');
+
+        component.handlePromptCategoriesChange(['Church']);
 
         expect(shuffleSpy).toHaveBeenCalled();
         expect(component.currentIndex).toBe(0);

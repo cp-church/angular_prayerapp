@@ -37,7 +37,7 @@ describe('PresentationSettingsService', () => {
       randomize: false,
       smartMode: true,
       displayDuration: 10,
-      timeFilter: 'month',
+      timeFilter: 'all',
       statusFilters: { current: true, answered: true },
       prayerTimerMinutes: 10,
     });

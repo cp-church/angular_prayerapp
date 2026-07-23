@@ -13,6 +13,7 @@ import { FormsModule } from "@angular/forms";
 import {
   PresentationTimeFilter,
   SelectablePresentationContentType,
+  includesPresentationContentType,
   showsPrayerTimeStatusFilters,
 } from "../../types/presentation";
 
@@ -265,35 +266,149 @@ type ThemeOption = "light" | "dark" | "system";
             </div>
             </div>
 
-            @if (showsPrayerTimeStatusFilters(localContentTypes)) {
-            @if (localContentTypes.includes('personal') && availableCategories &&
-            availableCategories.length > 0) {
-            <div>
+            @if (
+              includesPresentationContentType(localContentTypes, 'personal') &&
+              availableCategories.length > 0
+            ) {
+            <div id="tour-presentation-setting-categories">
               <label
                 class="block text-sm sm:text-base mb-2 text-gray-900 dark:text-gray-100"
-                >Categories</label
+                >Personal categories</label
               >
-            <div class="space-y-2">
-              @for (category of availableCategories; track category) {
-              <label
-                class="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
-              >
-                <input
-                  type="checkbox"
-                  [checked]="isCategorySelected(category)"
-                  (change)="toggleCategory($event, category)"
-                  class="w-4 h-4 sm:w-5 sm:h-5 rounded text-blue-600"
-                />
-                <span
-                  class="text-base sm:text-lg text-gray-900 dark:text-gray-100"
-                  >{{ category }}</span
+            <div class="relative">
+              <div class="flex">
+                <div
+                  class="flex-1 flex items-center px-3 sm:px-4 py-2.5 sm:py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-l-lg text-base sm:text-lg border border-r-0 border-gray-300 dark:border-gray-600"
                 >
-              </label>
+                  <span>{{ getCategoriesDisplay() }}</span>
+                </div>
+                <button
+                  type="button"
+                  data-settings-dropdown-trigger="categories"
+                  (click)="toggleCategoriesDropdown()"
+                  class="flex items-center justify-center px-2.5 sm:px-3 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-r-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                >
+                  <svg
+                    class="w-5 h-5 sm:w-6 sm:h-6 transition-transform"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    [class.rotate-180]="showCategoriesDropdown"
+                  >
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </button>
+              </div>
+              @if (showCategoriesDropdown) {
+              <div
+                class="absolute left-0 right-0 mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-[70]"
+                data-settings-dropdown-panel="categories"
+              >
+                  @for (category of availableCategories; track category) {
+                  <div
+                    (mousedown)="
+                      togglePendingCategory(category); $event.preventDefault()
+                    "
+                    class="w-full text-left px-3 sm:px-4 py-2.5 sm:py-3 text-base sm:text-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between cursor-pointer"
+                  >
+                    <span>{{ category }}</span>
+                    @if (isPendingCategorySelected(category)) {
+                    <span class="text-green-600 dark:text-green-400">✓</span>
+                    }
+                  </div>
+                  }
+                  <div
+                    (mousedown)="
+                      selectAllPendingCategories(); $event.preventDefault()
+                    "
+                    class="w-full text-left px-3 sm:px-4 py-2.5 sm:py-3 text-base sm:text-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between cursor-pointer border-t border-gray-200 dark:border-gray-700"
+                  >
+                    <span>All Categories</span>
+                    @if (isAllPendingCategoriesSelected()) {
+                    <span class="text-green-600 dark:text-green-400">✓</span>
+                    }
+                  </div>
+              </div>
               }
             </div>
             </div>
             }
 
+            @if (
+              includesPresentationContentType(localContentTypes, 'prompts') &&
+              availablePromptCategories.length > 0
+            ) {
+            <div id="tour-presentation-setting-prompt-categories">
+              <label
+                class="block text-sm sm:text-base mb-2 text-gray-900 dark:text-gray-100"
+                >Prompt categories</label
+              >
+            <div class="relative">
+              <div class="flex">
+                <div
+                  class="flex-1 flex items-center px-3 sm:px-4 py-2.5 sm:py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-l-lg text-base sm:text-lg border border-r-0 border-gray-300 dark:border-gray-600"
+                >
+                  <span>{{ getPromptCategoriesDisplay() }}</span>
+                </div>
+                <button
+                  type="button"
+                  data-settings-dropdown-trigger="prompt-categories"
+                  (click)="togglePromptCategoriesDropdown()"
+                  class="flex items-center justify-center px-2.5 sm:px-3 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-r-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                >
+                  <svg
+                    class="w-5 h-5 sm:w-6 sm:h-6 transition-transform"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    [class.rotate-180]="showPromptCategoriesDropdown"
+                  >
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </button>
+              </div>
+              @if (showPromptCategoriesDropdown) {
+              <div
+                class="absolute left-0 right-0 mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-[70]"
+                data-settings-dropdown-panel="prompt-categories"
+              >
+                  @for (category of availablePromptCategories; track category) {
+                  <div
+                    (mousedown)="
+                      togglePendingPromptCategory(category); $event.preventDefault()
+                    "
+                    class="w-full text-left px-3 sm:px-4 py-2.5 sm:py-3 text-base sm:text-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between cursor-pointer"
+                  >
+                    <span>{{ category }}</span>
+                    @if (isPendingPromptCategorySelected(category)) {
+                    <span class="text-green-600 dark:text-green-400">✓</span>
+                    }
+                  </div>
+                  }
+                  <div
+                    (mousedown)="
+                      selectAllPendingPromptCategories(); $event.preventDefault()
+                    "
+                    class="w-full text-left px-3 sm:px-4 py-2.5 sm:py-3 text-base sm:text-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center justify-between cursor-pointer border-t border-gray-200 dark:border-gray-700"
+                  >
+                    <span>All Categories</span>
+                    @if (isAllPendingPromptCategoriesSelected()) {
+                    <span class="text-green-600 dark:text-green-400">✓</span>
+                    }
+                  </div>
+              </div>
+              }
+            </div>
+            </div>
+            }
+
+            @if (showsPrayerTimeStatusFilters(localContentTypes)) {
             <div id="tour-presentation-setting-status">
               <label
                 class="block text-sm sm:text-base mb-2 text-gray-900 dark:text-gray-100"
@@ -689,12 +804,14 @@ export class PresentationSettingsModalComponent implements OnInit, OnChanges {
   @Input() displayDuration = 10;
   @Input() contentTypes: SelectablePresentationContentType[] = ["prayers"];
   @Input() randomize = false;
-  @Input() timeFilter: PresentationTimeFilter = "month";
+  @Input() timeFilter: PresentationTimeFilter = "all";
   @Input() statusFiltersCurrent = true;
   @Input() statusFiltersAnswered = true;
   @Input() prayerTimerMinutes = 10;
   @Input() availableCategories: string[] = [];
   @Input() selectedCategories: string[] = [];
+  @Input() availablePromptCategories: string[] = [];
+  @Input() selectedPromptCategories: string[] = [];
   @Input() hasMappedList = false;
 
   @Output() close = new EventEmitter<void>();
@@ -713,22 +830,28 @@ export class PresentationSettingsModalComponent implements OnInit, OnChanges {
   @Output() prayerTimerMinutesChange = new EventEmitter<number>();
   @Output() startPrayerTimer = new EventEmitter<void>();
   @Output() categoriesChange = new EventEmitter<string[]>();
+  @Output() promptCategoriesChange = new EventEmitter<string[]>();
 
   // Local state for two-way binding
   localSmartMode = true;
   localDisplayDuration = 10;
   localContentTypes: SelectablePresentationContentType[] = ["prayers"];
   localRandomize = false;
-  localTimeFilter: PresentationTimeFilter = "month";
+  localTimeFilter: PresentationTimeFilter = "all";
   localPrayerTimerMinutes = 10;
   localSelectedCategories: string[] = [];
+  localSelectedPromptCategories: string[] = [];
 
   showSmartModeDetails = false;
   showContentTypeDropdown = false;
   showTimeFilterDropdown = false;
   showStatusDropdown = false;
+  showCategoriesDropdown = false;
+  showPromptCategoriesDropdown = false;
   pendingContentTypes: SelectablePresentationContentType[] = [];
   pendingStatusFilter: string[] = [];
+  pendingCategories: string[] = [];
+  pendingPromptCategories: string[] = [];
 
   readonly contentTypeOptions: {
     value: SelectablePresentationContentType;
@@ -783,6 +906,7 @@ export class PresentationSettingsModalComponent implements OnInit, OnChanges {
     this.localTimeFilter = this.timeFilter;
     this.localPrayerTimerMinutes = this.prayerTimerMinutes;
     this.localSelectedCategories = [...this.selectedCategories];
+    this.localSelectedPromptCategories = [...this.selectedPromptCategories];
   }
 
   initPendingContentTypes() {
@@ -923,6 +1047,191 @@ export class PresentationSettingsModalComponent implements OnInit, OnChanges {
   }
 
   showsPrayerTimeStatusFilters = showsPrayerTimeStatusFilters;
+  includesPresentationContentType = includesPresentationContentType;
+
+  initPendingCategories() {
+    if (this.localSelectedCategories.length === 0) {
+      this.pendingCategories = [...this.availableCategories];
+      return;
+    }
+    this.pendingCategories = [...this.localSelectedCategories];
+  }
+
+  toggleCategoriesDropdown() {
+    if (this.showCategoriesDropdown) {
+      this.applyCategoryFilter();
+    } else {
+      this.closeOtherDropdowns("categories");
+      this.initPendingCategories();
+      this.showCategoriesDropdown = true;
+    }
+  }
+
+  togglePendingCategory(category: string) {
+    const index = this.pendingCategories.indexOf(category);
+    if (index > -1) {
+      if (this.pendingCategories.length === 1) {
+        return;
+      }
+      this.pendingCategories = this.pendingCategories.filter(
+        (value) => value !== category
+      );
+    } else {
+      this.pendingCategories = [...this.pendingCategories, category];
+    }
+  }
+
+  selectAllPendingCategories() {
+    this.pendingCategories = [...this.availableCategories];
+  }
+
+  isAllPendingCategoriesSelected(): boolean {
+    return (
+      this.availableCategories.length > 0 &&
+      this.availableCategories.every((category) =>
+        this.pendingCategories.includes(category)
+      )
+    );
+  }
+
+  isPendingCategorySelected(category: string): boolean {
+    return this.pendingCategories.includes(category);
+  }
+
+  applyCategoryFilter() {
+    const applied = this.isAllPendingCategoriesSelected()
+      ? []
+      : [...this.pendingCategories];
+    if (applied.length === 0 && !this.isAllPendingCategoriesSelected()) {
+      this.initPendingCategories();
+      this.showCategoriesDropdown = false;
+      return;
+    }
+    if (this.categoriesEqual(this.localSelectedCategories, applied)) {
+      this.showCategoriesDropdown = false;
+      return;
+    }
+    this.localSelectedCategories = [...applied];
+    this.categoriesChange.emit([...this.localSelectedCategories]);
+    this.showCategoriesDropdown = false;
+  }
+
+  getCategoriesDisplay(): string {
+    if (this.localSelectedCategories.length === 0) {
+      return "All Categories";
+    }
+    return this.localSelectedCategories.join(", ");
+  }
+
+  initPendingPromptCategories() {
+    if (this.localSelectedPromptCategories.length === 0) {
+      this.pendingPromptCategories = [...this.availablePromptCategories];
+      return;
+    }
+    this.pendingPromptCategories = [...this.localSelectedPromptCategories];
+  }
+
+  togglePromptCategoriesDropdown() {
+    if (this.showPromptCategoriesDropdown) {
+      this.applyPromptCategoryFilter();
+    } else {
+      this.closeOtherDropdowns("promptCategories");
+      this.initPendingPromptCategories();
+      this.showPromptCategoriesDropdown = true;
+    }
+  }
+
+  togglePendingPromptCategory(category: string) {
+    const index = this.pendingPromptCategories.indexOf(category);
+    if (index > -1) {
+      if (this.pendingPromptCategories.length === 1) {
+        return;
+      }
+      this.pendingPromptCategories = this.pendingPromptCategories.filter(
+        (value) => value !== category
+      );
+    } else {
+      this.pendingPromptCategories = [...this.pendingPromptCategories, category];
+    }
+  }
+
+  selectAllPendingPromptCategories() {
+    this.pendingPromptCategories = [...this.availablePromptCategories];
+  }
+
+  isAllPendingPromptCategoriesSelected(): boolean {
+    return (
+      this.availablePromptCategories.length > 0 &&
+      this.availablePromptCategories.every((category) =>
+        this.pendingPromptCategories.includes(category)
+      )
+    );
+  }
+
+  isPendingPromptCategorySelected(category: string): boolean {
+    return this.pendingPromptCategories.includes(category);
+  }
+
+  applyPromptCategoryFilter() {
+    const applied = this.isAllPendingPromptCategoriesSelected()
+      ? []
+      : [...this.pendingPromptCategories];
+    if (applied.length === 0 && !this.isAllPendingPromptCategoriesSelected()) {
+      this.initPendingPromptCategories();
+      this.showPromptCategoriesDropdown = false;
+      return;
+    }
+    if (this.promptCategoriesEqual(this.localSelectedPromptCategories, applied)) {
+      this.showPromptCategoriesDropdown = false;
+      return;
+    }
+    this.localSelectedPromptCategories = [...applied];
+    this.promptCategoriesChange.emit([...this.localSelectedPromptCategories]);
+    this.showPromptCategoriesDropdown = false;
+  }
+
+  getPromptCategoriesDisplay(): string {
+    if (this.localSelectedPromptCategories.length === 0) {
+      return "All Categories";
+    }
+    return this.localSelectedPromptCategories.join(", ");
+  }
+
+  private promptCategoriesEqual(current: string[], applied: string[]): boolean {
+    const normalizedCurrent = this.normalizePromptCategoriesForCompare(current);
+    const normalizedApplied = this.normalizePromptCategoriesForCompare(applied);
+    if (normalizedCurrent.length !== normalizedApplied.length) {
+      return false;
+    }
+    return normalizedCurrent.every((category, index) => {
+      return category === normalizedApplied[index];
+    });
+  }
+
+  private normalizePromptCategoriesForCompare(categories: string[]): string[] {
+    const normalized =
+      categories.length === 0
+        ? [...this.availablePromptCategories]
+        : categories;
+    return [...normalized].sort();
+  }
+
+  private categoriesEqual(current: string[], applied: string[]): boolean {
+    const normalizedCurrent = this.normalizeCategoriesForCompare(current);
+    const normalizedApplied = this.normalizeCategoriesForCompare(applied);
+    if (normalizedCurrent.length !== normalizedApplied.length) {
+      return false;
+    }
+    return normalizedCurrent.every(
+      (value, index) => value === normalizedApplied[index]
+    );
+  }
+
+  private normalizeCategoriesForCompare(categories: string[]): string[] {
+    const effective =
+      categories.length === 0 ? [...this.availableCategories] : categories;
+    return [...effective].sort();
+  }
 
   toggleTimeFilterDropdown() {
     if (this.showTimeFilterDropdown) {
@@ -947,17 +1256,31 @@ export class PresentationSettingsModalComponent implements OnInit, OnChanges {
     const option = this.timeFilterOptions.find(
       (o) => o.value === this.localTimeFilter
     );
-    return option?.label ?? "Last Month";
+    return option?.label ?? "All Time";
   }
 
   private closeOtherDropdowns(
-    except: "contentType" | "timeFilter" | "status"
+    except: "contentType" | "timeFilter" | "status" | "categories" | "promptCategories"
   ) {
     if (except !== "contentType") {
       if (this.showContentTypeDropdown) {
         this.applyContentTypeFilter();
       } else {
         this.showContentTypeDropdown = false;
+      }
+    }
+    if (except !== "categories") {
+      if (this.showCategoriesDropdown) {
+        this.applyCategoryFilter();
+      } else {
+        this.showCategoriesDropdown = false;
+      }
+    }
+    if (except !== "promptCategories") {
+      if (this.showPromptCategoriesDropdown) {
+        this.applyPromptCategoryFilter();
+      } else {
+        this.showPromptCategoriesDropdown = false;
       }
     }
     if (except !== "timeFilter") {
@@ -1051,27 +1374,6 @@ export class PresentationSettingsModalComponent implements OnInit, OnChanges {
     return filters.join(", ");
   }
 
-  isCategorySelected(category: string): boolean {
-    return this.localSelectedCategories.includes(category);
-  }
-
-  toggleCategory(event: Event, category: string) {
-    const checkbox = event.target as HTMLInputElement;
-    if (checkbox.checked) {
-      if (!this.localSelectedCategories.includes(category)) {
-        this.localSelectedCategories = [
-          ...this.localSelectedCategories,
-          category,
-        ];
-      }
-    } else {
-      this.localSelectedCategories = this.localSelectedCategories.filter(
-        (c) => c !== category
-      );
-    }
-    this.categoriesChange.emit(this.localSelectedCategories);
-  }
-
   closeModal(): void {
     this.applyOpenDropdowns();
     this.resetDropdownState();
@@ -1096,6 +1398,8 @@ export class PresentationSettingsModalComponent implements OnInit, OnChanges {
   private hasOpenDropdown(): boolean {
     return (
       this.showContentTypeDropdown ||
+      this.showCategoriesDropdown ||
+      this.showPromptCategoriesDropdown ||
       this.showStatusDropdown ||
       this.showTimeFilterDropdown
     );
@@ -1105,6 +1409,12 @@ export class PresentationSettingsModalComponent implements OnInit, OnChanges {
     if (this.showContentTypeDropdown) {
       this.applyContentTypeFilter();
     }
+    if (this.showCategoriesDropdown) {
+      this.applyCategoryFilter();
+    }
+    if (this.showPromptCategoriesDropdown) {
+      this.applyPromptCategoryFilter();
+    }
     if (this.showStatusDropdown) {
       this.applyStatusFilter();
     }
@@ -1113,6 +1423,8 @@ export class PresentationSettingsModalComponent implements OnInit, OnChanges {
 
   private resetDropdownState(): void {
     this.showContentTypeDropdown = false;
+    this.showCategoriesDropdown = false;
+    this.showPromptCategoriesDropdown = false;
     this.showStatusDropdown = false;
     this.showTimeFilterDropdown = false;
   }

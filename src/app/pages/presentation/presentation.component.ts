@@ -165,6 +165,8 @@ type ThemeOption = "light" | "dark" | "system";
         [availableCategories]="uniquePersonalCategories"
         [hasMappedList]="hasMembers"
         [selectedCategories]="selectedPersonalCategories"
+        [availablePromptCategories]="uniquePromptCategories"
+        [selectedPromptCategories]="selectedPromptCategories"
         (close)="showSettings = false"
         (themeChange)="handleThemeChange($event)"
         (smartModeChange)="handleSmartModeChange($event)"
@@ -177,6 +179,7 @@ type ThemeOption = "light" | "dark" | "system";
         "
         (prayerTimerMinutesChange)="handlePrayerTimerMinutesChange($event)"
         (categoriesChange)="handlePersonalCategoriesChange($event)"
+        (promptCategoriesChange)="handlePromptCategoriesChange($event)"
         (startPrayerTimer)="startPrayerTimer()"
       >
       </app-presentation-settings-modal>
@@ -269,13 +272,15 @@ export class PresentationComponent implements OnInit, OnDestroy {
   showControls = true;
   contentTypes: SelectablePresentationContentType[] = ["prayers"];
   statusFilters = { current: true, answered: true };
-  timeFilter: PresentationTimeFilter = "month";
+  timeFilter: PresentationTimeFilter = "all";
   theme: ThemeOption = "system";
   randomize = false;
   countdownRemaining = 0;
   currentDuration = 10;
   selectedPersonalCategories: string[] = [];
   uniquePersonalCategories: string[] = [];
+  selectedPromptCategories: string[] = [];
+  uniquePromptCategories: string[] = [];
 
   prayerTimerMinutes = 10;
   prayerTimerActive = false;
@@ -811,6 +816,10 @@ export class PresentationComponent implements OnInit, OnDestroy {
         typesResult.data?.map((t: any) => [t.name, t.display_order]) || []
       );
 
+      this.uniquePromptCategories = (typesResult.data || []).map(
+        (t: any) => t.name
+      );
+
       this.prompts = (promptsResult.data || [])
         .filter((p: any) => activeTypeNames.has(p.type))
         .sort((a: any, b: any) => {
@@ -822,6 +831,7 @@ export class PresentationComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error("Error fetching prompts:", error);
       this.prompts = [];
+      this.uniquePromptCategories = [];
       this.cdr.markForCheck();
     }
   }
@@ -947,7 +957,7 @@ export class PresentationComponent implements OnInit, OnDestroy {
     if (this.contentTypes.length === 1) {
       const only = this.contentTypes[0];
       if (only === "prayers") return this.prayers;
-      if (only === "prompts") return this.prompts;
+      if (only === "prompts") return this.getFilteredPrompts();
       if (only === "personal") {
         if (this.selectedPersonalCategories.length > 0) {
           return this.personalPrayers.filter(
@@ -972,7 +982,7 @@ export class PresentationComponent implements OnInit, OnDestroy {
       combined.push(...this.prayers);
     }
     if (includesPresentationContentType(this.contentTypes, "prompts")) {
-      combined.push(...this.prompts);
+      combined.push(...this.getFilteredPrompts());
     }
     if (includesPresentationContentType(this.contentTypes, "personal")) {
       combined.push(...this.getFilteredPersonalPrayers());
@@ -991,6 +1001,15 @@ export class PresentationComponent implements OnInit, OnDestroy {
       );
     }
     return this.personalPrayers;
+  }
+
+  private getFilteredPrompts(): PrayerPrompt[] {
+    if (this.selectedPromptCategories.length > 0) {
+      return this.prompts.filter((p) =>
+        this.selectedPromptCategories.includes(p.type)
+      );
+    }
+    return this.prompts;
   }
 
   togglePersonalCategory(category: string): void {
@@ -1194,6 +1213,13 @@ export class PresentationComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
+  handlePromptCategoriesChange(categories: string[]): void {
+    this.selectedPromptCategories = categories;
+    this.refreshCombinedShuffleIfNeeded();
+    this.currentIndex = 0;
+    this.cdr.markForCheck();
+  }
+
   private sanitizeContentTypesForAvailableContent(): void {
     if (this.hasMembers) {
       return;
@@ -1257,7 +1283,7 @@ export class PresentationComponent implements OnInit, OnDestroy {
       combined.push(...this.prayers);
     }
     if (includesPresentationContentType(this.contentTypes, "prompts")) {
-      combined.push(...this.prompts);
+      combined.push(...this.getFilteredPrompts());
     }
     if (includesPresentationContentType(this.contentTypes, "personal")) {
       combined.push(...this.getFilteredPersonalPrayers());
