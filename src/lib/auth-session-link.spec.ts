@@ -3,10 +3,22 @@ import {
   VERIFY_CODE_LINK_AUTH_SESSION,
   linkAuthSessionAfterVerify,
   resumeMfaSubscriberAuthLink,
+  savedMfaRequiresSupabaseLogin,
   stampSubscriberAuthLink,
 } from './auth-session-link';
 
 describe('auth-session-link', () => {
+  it('requires a church code when saved MFA has no matching Supabase session', () => {
+    expect(savedMfaRequiresSupabaseLogin('User@Example.com', null)).toBe(true);
+    expect(savedMfaRequiresSupabaseLogin('user@example.com', 'other@example.com')).toBe(
+      true
+    );
+    expect(savedMfaRequiresSupabaseLogin('User@Example.com', 'user@example.com')).toBe(
+      false
+    );
+    expect(savedMfaRequiresSupabaseLogin('', null)).toBe(false);
+  });
+
   it('exports the verify-code body flag', () => {
     expect(VERIFY_CODE_LINK_AUTH_SESSION).toBe('linkAuthSession');
   });

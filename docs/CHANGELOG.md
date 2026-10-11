@@ -4,6 +4,9 @@ Major features and milestones for the Prayer App.
 
 ## [Current] - February 2026
 
+### Auth — one church-code login before a Supabase user exists
+- A saved church login that still has no Supabase session is sent to the login screen once. The church code creates the Auth user; later opens stay signed in ([`admin-auth.service.ts`](src/app/services/admin-auth.service.ts), [`auth-session-link.ts`](src/lib/auth-session-link.ts)). A session check that times out keeps the saved login so a slow network does not force the code. A subscriber-link attempt that is still running past the startup deadline also keeps the saved login. Startup sends them to the church code only after that attempt finishes without creating a session and the follow-up session read still does not match. A link that reports success keeps the saved login.
+
 ### Settings — Print tile border
 - Settings **Prayers** and **Verses** tiles use the same 2px border as the other choice buttons in the modal ([`settings-choice-ui.ts`](src/app/lib/settings-choice-ui.ts)).
 

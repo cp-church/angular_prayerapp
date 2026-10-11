@@ -18,6 +18,7 @@ import {
   MFA_AUTH_RESUME_TOKEN_STORAGE_KEY,
   persistAuthResumeTokenFromVerifyResponse,
   resumeMfaSubscriberAuthLink,
+  savedMfaRequiresSupabaseLogin,
   stampSubscriberAuthLink,
 } from '../../lib/auth-session-link';
 import {
@@ -92,7 +93,7 @@ export class AdminAuthService {
   private ignoreSessionRestore = false;
   /** Bumped on logout and on a successful code login so an older logout tail stops. */
   private sessionEpoch = 0;
-  private readonly subscriberAuthLinkByEmail = new Map<string, Promise<void>>();
+  private readonly subscriberAuthLinkByEmail = new Map<string, Promise<boolean>>();
   private restoreBudgetTimer: ReturnType<typeof setTimeout> | undefined;
 
   public user$ = this.userSubject.asObservable();
@@ -316,36 +317,50 @@ export class AdminAuthService {
           mfaEmail
         );
       }
+      const restoreEpoch = this.sessionEpoch;
+      let subscriberLinkSettled = false;
+      let linkSucceeded = false;
+      const subscriberLink = this.ensureSubscriberAuthOnLoad(linkTargetEmail)
+        .then((ok) => {
+          linkSucceeded = ok;
+          return ok;
+        })
+        .finally(() => {
+          subscriberLinkSettled = true;
+        });
       try {
-        await withAuthStepDeadline(
-          this.ensureSubscriberAuthOnLoad(linkTargetEmail),
-          'subscriber link'
-        );
+        await withAuthStepDeadline(subscriberLink, 'subscriber link');
       } catch (error) {
         console.warn('[AdminAuth] Subscriber link skipped:', error);
       }
 
-      let afterLink: Session | null = null;
-      try {
-        const afterResult = await withAuthStepDeadline(
-          this.supabase.client.auth.getSession(),
-          'getSession after link'
+      if (subscriberLinkSettled) {
+        await this.finishSubscriberLinkRestore(
+          session,
+          mfaEmail,
+          restoreEpoch,
+          linkSucceeded
         );
-        afterLink = afterResult.data.session;
-      } catch (error) {
-        console.warn('[AdminAuth] getSession after link failed:', error);
-      }
-      if (this.logoutBlocksSessionRestore()) {
+      } else if (this.logoutBlocksSessionRestore()) {
         await this.signOutBounded('signOut after logout during restore');
       } else {
+        // The link is still running. A missing session is not proof yet.
         const restoredUser =
-          afterLink?.user ??
-          session?.user ??
-          (mfaEmail ? buildMfaMockUser(mfaEmail) : null);
-
+          session?.user ?? (mfaEmail ? buildMfaMockUser(mfaEmail) : null);
         if (restoredUser) {
           await this.completeRestoredAuthSession(restoredUser);
         }
+        void subscriberLink.then(
+          (ok) =>
+            this.finishSubscriberLinkRestore(session, mfaEmail, restoreEpoch, ok),
+          () =>
+            this.finishSubscriberLinkRestore(
+              session,
+              mfaEmail,
+              restoreEpoch,
+              false
+            )
+        );
       }
     }
 
@@ -522,19 +537,80 @@ export class AdminAuthService {
     });
   }
 
-  private async ensureSubscriberAuthOnLoad(email: string): Promise<void> {
+  /**
+   * Decide church-code login only after the subscriber link has settled.
+   * A newer login or logout owns the session and this restore must not replace it.
+   */
+  private async finishSubscriberLinkRestore(
+    session: Session | null,
+    mfaEmail: string,
+    restoreEpoch: number,
+    linkSucceeded: boolean
+  ): Promise<void> {
+    if (this.sessionEpoch !== restoreEpoch) {
+      if (this.logoutBlocksSessionRestore()) {
+        await this.signOutBounded('signOut after logout during restore');
+      }
+      return;
+    }
+
+    let afterLink: Session | null = null;
+    let afterLinkChecked = false;
+    try {
+      const afterResult = await withAuthStepDeadline(
+        this.supabase.client.auth.getSession(),
+        'getSession after link'
+      );
+      afterLink = afterResult.data.session;
+      afterLinkChecked = true;
+    } catch (error) {
+      console.warn('[AdminAuth] getSession after link failed:', error);
+    }
+    if (this.sessionEpoch !== restoreEpoch) {
+      if (this.logoutBlocksSessionRestore()) {
+        await this.signOutBounded('signOut after logout during restore');
+      }
+      return;
+    }
+    if (this.logoutBlocksSessionRestore()) {
+      await this.signOutBounded('signOut after logout during restore');
+      return;
+    }
+
+    const supabaseEmail = afterLink?.user?.email ?? session?.user?.email;
+    if (
+      !linkSucceeded &&
+      afterLinkChecked &&
+      savedMfaRequiresSupabaseLogin(mfaEmail, supabaseEmail)
+    ) {
+      console.warn(
+        '[AdminAuth] Saved church login has no Supabase user; requiring church code'
+      );
+      await this.logout();
+      return;
+    }
+
+    const restoredUser =
+      afterLink?.user ??
+      session?.user ??
+      (!linkSucceeded && mfaEmail ? buildMfaMockUser(mfaEmail) : null);
+    if (restoredUser) {
+      await this.completeRestoredAuthSession(restoredUser);
+    }
+  }
+
+  private async ensureSubscriberAuthOnLoad(email: string): Promise<boolean> {
     const normalized = email.toLowerCase().trim();
     if (!normalized) {
-      return;
+      return false;
     }
 
     const existing = this.subscriberAuthLinkByEmail.get(normalized);
     if (existing) {
-      await existing;
-      return;
+      return existing;
     }
 
-    const run = async (): Promise<void> => {
+    const run = async (): Promise<boolean> => {
       const {
         data: { session },
       } = await this.supabase.client.auth.getSession();
@@ -551,14 +627,16 @@ export class AdminAuthService {
           '[AdminAuth] Subscriber auth link on load failed:',
           result.error
         );
+        return false;
       }
+      return true;
     };
 
     const pending = run().finally(() => {
       this.subscriberAuthLinkByEmail.delete(normalized);
     });
     this.subscriberAuthLinkByEmail.set(normalized, pending);
-    await pending;
+    return pending;
   }
 
   /** Prefer session email, then MFA / cached login email (native often has the latter first). */

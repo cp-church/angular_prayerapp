@@ -50,6 +50,21 @@ export async function linkAuthSessionAfterVerify(
   return { ok: true };
 }
 
+/**
+ * Saved church login with no Supabase session for that email must enter the
+ * church code once so verify-code can create the Auth user.
+ */
+export function savedMfaRequiresSupabaseLogin(
+  mfaEmail: string,
+  supabaseEmail: string | null | undefined
+): boolean {
+  const mfa = mfaEmail.toLowerCase().trim();
+  if (!mfa) {
+    return false;
+  }
+  return (supabaseEmail ?? '').toLowerCase().trim() !== mfa;
+}
+
 /** Stamp email_subscribers when the client already holds a Supabase JWT. */
 export async function stampSubscriberAuthLink(
   client: SupabaseClient

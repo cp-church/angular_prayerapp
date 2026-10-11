@@ -2010,7 +2010,142 @@ describe('AdminAuthService', () => {
       await vi.advanceTimersByTimeAsync(100);
 
       expect(mockSupabaseClient.auth.signOut).toHaveBeenCalled();
-      expect(newService.getUser()?.email).toBe('bridged@example.com');
+      expect(newService.getUser()).toBeNull();
+      expect(localStorage.getItem('mfa_authenticated_email')).toBeNull();
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/login'], {
+        replaceUrl: true,
+      });
+    });
+
+    it('sends a saved MFA session to login when no Supabase user exists', async () => {
+      localStorage.setItem('mfa_authenticated_email', 'legacy@example.com');
+      mockSupabaseClient.auth.getSession = vi.fn().mockResolvedValue({
+        data: { session: null },
+        error: null,
+      });
+      mockSupabaseClient.auth.refreshSession = vi.fn().mockResolvedValue({
+        data: { session: null },
+        error: null,
+      });
+
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(
+        mockSupabaseService,
+        mockCacheService
+      );
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(newService.getUser()).toBeNull();
+      expect(newService.isAuthenticatedSubject.value).toBe(false);
+      expect(localStorage.getItem('mfa_authenticated_email')).toBeNull();
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/login'], {
+        replaceUrl: true,
+      });
+    });
+
+    it('keeps a saved MFA session while the subscriber link is still running', async () => {
+      localStorage.setItem('mfa_authenticated_email', 'legacy@example.com');
+      localStorage.setItem('mfa_auth_resume_token', 'resume-token');
+      let releaseLink: (value: { data: { error: string }; error: null }) => void =
+        () => {};
+      mockSupabaseClient.auth.getSession = vi.fn().mockResolvedValue({
+        data: { session: null },
+        error: null,
+      });
+      mockSupabaseClient.auth.refreshSession = vi.fn().mockResolvedValue({
+        data: { session: null },
+        error: null,
+      });
+      mockSupabaseClient.functions.invoke = vi.fn().mockImplementation((name: string) => {
+        if (name === 'resume-auth-link') {
+          return new Promise((resolve) => {
+            releaseLink = resolve;
+          });
+        }
+        return Promise.resolve({ data: { is_admin: false }, error: null });
+      });
+
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(
+        mockSupabaseService,
+        mockCacheService
+      );
+      await vi.advanceTimersByTimeAsync(1600);
+
+      expect(newService.getUser()?.email).toBe('legacy@example.com');
+      expect(newService.isAuthenticatedSubject.value).toBe(true);
+      expect(localStorage.getItem('mfa_authenticated_email')).toBe(
+        'legacy@example.com'
+      );
+      expect(mockRouter.navigate).not.toHaveBeenCalledWith(['/login'], {
+        replaceUrl: true,
+      });
+
+      releaseLink({ data: { error: 'link failed' }, error: null });
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(newService.getUser()).toBeNull();
+      expect(localStorage.getItem('mfa_authenticated_email')).toBeNull();
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/login'], {
+        replaceUrl: true,
+      });
+    });
+
+    it('keeps the saved MFA session when a slow subscriber link later succeeds', async () => {
+      localStorage.setItem('mfa_authenticated_email', 'legacy@example.com');
+      localStorage.setItem('mfa_auth_resume_token', 'resume-token');
+      let releaseLink: (value: {
+        data: { hashed_token: string };
+        error: null;
+      }) => void = () => {};
+      let linked = false;
+      mockSupabaseClient.auth.getSession = vi.fn().mockImplementation(async () => ({
+        data: {
+          session: linked
+            ? { user: { email: 'legacy@example.com', id: 'linked-user' } }
+            : null,
+        },
+        error: null,
+      }));
+      mockSupabaseClient.auth.refreshSession = vi.fn().mockResolvedValue({
+        data: { session: null },
+        error: null,
+      });
+      mockSupabaseClient.auth.verifyOtp = vi.fn().mockImplementation(async () => {
+        linked = true;
+        return { error: null };
+      });
+      mockSupabaseClient.functions.invoke = vi.fn().mockImplementation((name: string) => {
+        if (name === 'resume-auth-link') {
+          return new Promise((resolve) => {
+            releaseLink = resolve;
+          });
+        }
+        return Promise.resolve({ data: { is_admin: false }, error: null });
+      });
+
+      const { AdminAuthService } = await import('./admin-auth.service');
+      const newService = new AdminAuthService(
+        mockSupabaseService,
+        mockCacheService
+      );
+      await vi.advanceTimersByTimeAsync(1600);
+
+      expect(mockRouter.navigate).not.toHaveBeenCalledWith(['/login'], {
+        replaceUrl: true,
+      });
+
+      releaseLink({ data: { hashed_token: 'hashed-token' }, error: null });
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(newService.getUser()?.email).toBe('legacy@example.com');
+      expect(newService.isAuthenticatedSubject.value).toBe(true);
+      expect(localStorage.getItem('mfa_authenticated_email')).toBe(
+        'legacy@example.com'
+      );
+      expect(mockRouter.navigate).not.toHaveBeenCalledWith(['/login'], {
+        replaceUrl: true,
+      });
     });
   });
 
